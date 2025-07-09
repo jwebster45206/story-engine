@@ -1,0 +1,44 @@
+services:
+  roleplay-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: roleplay-agent
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - ENVIRONMENT=production
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - roleplay-network
+
+# Future services can be added here:
+# redis:
+#   image: redis:7-alpine
+#   container_name: roleplay-redis
+#   ports:
+#     - "6379:6379"
+#   volumes:
+#     - redis_data:/data
+#   restart: unless-stopped
+#   networks:
+#     - roleplay-network
+
+# llm-service:
+#   # Add your LLM service configuration here
+#   # depends_on:
+#   #   - roleplay-agent
+
+networks:
+  roleplay-network:
+    driver: bridge
+
+# volumes:
+#   redis_data:
