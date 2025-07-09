@@ -28,6 +28,7 @@ func main() {
 	// Set up routes using native Go http mux
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handlers.HealthHandler)
+	mux.HandleFunc("/chat", handlers.ChatHandler)
 
 	// Wrap with logging middleware
 	handler := middleware.Logger(mux)
