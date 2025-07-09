@@ -1,3 +1,3 @@
 module github.com/jwebster45206/roleplay-engine
 
-go 1.21
+go 1.24.3
