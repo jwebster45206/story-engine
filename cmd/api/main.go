@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/jwebster45206/roleplay-engine/internal/config"
-	"github.com/jwebster45206/roleplay-engine/internal/handlers"
+	"github.com/jwebster45206/roleplay-agent/internal/config"
+	"github.com/jwebster45206/roleplay-agent/internal/handlers"
 )
 
 func main() {
