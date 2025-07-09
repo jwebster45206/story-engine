@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -19,12 +19,20 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	response := HealthResponse{
 		Status:    "healthy",
 		Timestamp: time.Now(),
-		Service:   "roleplay-engine",
+		Service:   "roleplay-agent",
 	}
+
+	slog.Debug("Health check requested",
+		"method", r.Method,
+		"path", r.URL.Path,
+		"remote_addr", r.RemoteAddr)
 
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Error encoding health response: %v", err)
+		slog.Error("Error encoding health response",
+			"error", err,
+			"method", r.Method,
+			"path", r.URL.Path)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
