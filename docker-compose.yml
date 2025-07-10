@@ -7,9 +7,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - PORT=8080
-      - ENVIRONMENT=docker
-      - LOG_LEVEL=debug
+      - CONFIG_FILE=config.docker.json
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
@@ -19,6 +17,22 @@ services:
     restart: unless-stopped
     networks:
       - roleplay-network
+
+  ollama:
+      image: ollama/ollama
+      container_name: ollama
+      ports:
+        - "11434:11434"         # Exposes Ollama's HTTP API
+      volumes:
+        - ollama_data:/root/.ollama
+      restart: unless-stopped
+      networks:
+        - roleplay-network
+
+# Ollama data volume to persist models and configurations
+volumes:
+  ollama_data:
+    
 
 # Future services can be added here:
 # redis:

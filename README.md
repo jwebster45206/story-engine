@@ -101,3 +101,9 @@ docker-compose API structure:
 - Main project (go microservice)
 - Redis storage
 - Ollama LLM
+
+## Running the API
+
+````bash
+CONFIG_FILE=config.docker.json go run cmd/api/main.go &
+````
