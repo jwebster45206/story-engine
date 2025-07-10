@@ -1,0 +1,7 @@
+{
+  "port": "8080",
+  "environment": "development",
+  "log_level": "debug",
+  "model_url": "http://localhost:11434",
+  "model_name": "tinyllama"
+}

@@ -13,7 +13,8 @@ type Config struct {
 	Environment string     `json:"environment"`
 	LogLevel    slog.Level `json:"-"`
 	LogLevelStr string     `json:"log_level"`
-	OllamaURL   string     `json:"ollama_url"`
+	ModelURL    string     `json:"model_url"`
+	ModelName   string     `json:"model_name"`
 }
 
 func Load() (*Config, error) {
