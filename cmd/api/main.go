@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,9 +16,11 @@ import (
 )
 
 func main() {
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// Setup structured logging
 	log := logger.Setup(cfg)
 
 	log.Info("Starting roleplay-agent",
@@ -25,14 +28,12 @@ func main() {
 		"environment", cfg.Environment,
 		"log_level", cfg.LogLevel.String())
 
-	// Set up routes using native Go http mux
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handlers.HealthHandler)
 
-	// Wrap with logging middleware
-	handler := middleware.Logger(mux)
+	mux.HandleFunc("/chat", handlers.ChatHandler)
 
-	// Create server
+	handler := middleware.Logger(mux)
 	server := &http.Server{
 		Addr:         ":" + cfg.Port,
 		Handler:      handler,
@@ -41,7 +42,6 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Start server in a goroutine
 	go func() {
 		log.Info("Server starting", "addr", server.Addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

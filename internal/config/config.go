@@ -1,23 +1,42 @@
 package config
 
 import (
+	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
 )
 
 type Config struct {
-	Port        string
-	Environment string
-	LogLevel    slog.Level
+	Port        string     `json:"port"`
+	Environment string     `json:"environment"`
+	LogLevel    slog.Level `json:"-"`
+	LogLevelStr string     `json:"log_level"`
+	OllamaURL   string     `json:"ollama_url"`
 }
 
-func Load() *Config {
-	return &Config{
-		Port:        getEnv("PORT", "8080"),
-		Environment: getEnv("ENVIRONMENT", "development"),
-		LogLevel:    parseLogLevel(getEnv("LOG_LEVEL", "info")),
+func Load() (*Config, error) {
+
+	configFile := getEnv("ROLEPLAY_CONFIG", "")
+	if configFile == "" {
+		return nil, fmt.Errorf("ROLEPLAY_CONFIG environment variable is not set")
 	}
+
+	// Read config file
+	data, err := os.ReadFile(configFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file %s: %v", configFile, err)
+	}
+
+	var config Config
+	if err := json.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse config file %s: %v", configFile, err)
+	}
+
+	// Parse log level from string
+	config.LogLevel = parseLogLevel(config.LogLevelStr)
+	return &config, nil
 }
 
 func parseLogLevel(level string) slog.Level {

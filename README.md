@@ -95,9 +95,11 @@ Project will deliver a Go microservice API and a console app to demonstrate a si
 
 ## Infrastructure
 
-API runs its own mini LLM locally, and uses it to drive a gameplay session.
+API runs a small LLM locally, and uses it to drive a gameplay session.
 
-docker-compose API structure:
-- Main project (go microservice)
-- Redis storage
-- Ollama LLM
+
+## Running the API
+
+````bash
+CONFIG_FILE=config.docker.json go run cmd/api/main.go &
+````
