@@ -29,12 +29,17 @@ RUN apk --no-cache add ca-certificates
 RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup
 
-WORKDIR /root/
+WORKDIR /app
 
 # Copy the binary from builder stage
 COPY --from=builder /app/main .
 
-RUN chown appuser:appgroup main
+# Copy config files
+COPY config.docker.json .
+
+# Change ownership of all files to appuser
+RUN chown -R appuser:appgroup /app
+
 USER appuser
 
 EXPOSE 8080

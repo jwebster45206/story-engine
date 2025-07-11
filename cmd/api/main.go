@@ -36,7 +36,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	if err := llmService.InitializeModel(ctx, cfg.ModelName); err != nil {
+	if err := llmService.InitModel(ctx, cfg.ModelName); err != nil {
 		log.Error("Failed to initialize LLM model", "error", err, "model", cfg.ModelName)
 		// Don't exit on model initialization failure in development
 		if cfg.Environment == "production" {

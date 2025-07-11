@@ -32,28 +32,27 @@ func NewOllamaService(baseURL string, modelName string, logger *slog.Logger) *Ol
 	}
 }
 
-// InitializeModel initializes the LLM model by attempting to pull it if not available
-func (s *OllamaService) InitializeModel(ctx context.Context, modelName string) error {
+// InitModel initializes the LLM model by checking if it's available
+func (s *OllamaService) InitModel(ctx context.Context, modelName string) error {
 	s.logger.Info("Initializing LLM model", "model", modelName)
 
-	// Check if model is already available
+	// Wait for Ollama to be ready with retries
+	if err := s.waitForOllamaReady(ctx); err != nil {
+		return fmt.Errorf("ollama service is not ready: %w", err)
+	}
+
+	// Check if model is available (it should be pre-pulled by Ollama container)
 	ready, err := s.IsModelReady(ctx, modelName)
 	if err != nil {
 		return fmt.Errorf("failed to check model readiness: %w", err)
 	}
 
-	if ready {
-		s.logger.Info("Model already available", "model", modelName)
-		return nil
+	if !ready {
+		s.logger.Warn("Model not found, but continuing - it may be pulled by Ollama container", "model", modelName)
+	} else {
+		s.logger.Info("Model is ready", "model", modelName)
 	}
 
-	// Pull the model
-	s.logger.Info("Pulling model", "model", modelName)
-	if err := s.pullModel(ctx, modelName); err != nil {
-		return fmt.Errorf("failed to pull model: %w", err)
-	}
-
-	s.logger.Info("Model initialized successfully", "model", modelName)
 	return nil
 }
 
@@ -172,4 +171,37 @@ func (s *OllamaService) pullModel(ctx context.Context, modelName string) error {
 	}
 
 	return nil
+}
+
+// waitForOllamaReady waits for Ollama service to be ready with retries
+func (s *OllamaService) waitForOllamaReady(ctx context.Context) error {
+	maxRetries := 5
+	retryDelay := 2 * time.Second
+
+	for i := 0; i < maxRetries; i++ {
+		req, err := http.NewRequestWithContext(ctx, "GET", s.baseURL+"/api/tags", nil)
+		if err != nil {
+			s.logger.Debug("Failed to create request for readiness check", "error", err, "attempt", i+1)
+			time.Sleep(retryDelay)
+			continue
+		}
+
+		resp, err := s.httpClient.Do(req)
+		if err != nil {
+			s.logger.Debug("Ollama not ready yet", "error", err, "attempt", i+1)
+			time.Sleep(retryDelay)
+			continue
+		}
+		resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			s.logger.Info("Ollama service is ready")
+			return nil
+		}
+
+		s.logger.Debug("Ollama returned non-200 status", "status", resp.StatusCode, "attempt", i+1)
+		time.Sleep(retryDelay)
+	}
+
+	return fmt.Errorf("ollama service did not become ready after %d attempts", maxRetries)
 }
