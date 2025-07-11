@@ -8,12 +8,12 @@ import (
 
 // MockLLMService is a mock implementation of LLMService for testing
 type MockLLMService struct {
-	InitializeModelFunc  func(ctx context.Context, modelName string) error
+	InitModelFunc        func(ctx context.Context, modelName string) error
 	GenerateResponseFunc func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error)
 	IsModelReadyFunc     func(ctx context.Context, modelName string) (bool, error)
 
 	// Track calls for testing
-	InitializeModelCalls  []string
+	InitModelCalls        []string
 	GenerateResponseCalls []GenerateResponseCall
 	IsModelReadyCalls     []string
 }
@@ -25,18 +25,18 @@ type GenerateResponseCall struct {
 // NewMockLLMService creates a new mock LLM service
 func NewMockLLMService() *MockLLMService {
 	return &MockLLMService{
-		InitializeModelCalls:  make([]string, 0),
+		InitModelCalls:        make([]string, 0),
 		GenerateResponseCalls: make([]GenerateResponseCall, 0),
 		IsModelReadyCalls:     make([]string, 0),
 	}
 }
 
-// InitializeModel mocks model initialization
-func (m *MockLLMService) InitializeModel(ctx context.Context, modelName string) error {
-	m.InitializeModelCalls = append(m.InitializeModelCalls, modelName)
+// InitModel mocks model initialization
+func (m *MockLLMService) InitModel(ctx context.Context, modelName string) error {
+	m.InitModelCalls = append(m.InitModelCalls, modelName)
 
-	if m.InitializeModelFunc != nil {
-		return m.InitializeModelFunc(ctx, modelName)
+	if m.InitModelFunc != nil {
+		return m.InitModelFunc(ctx, modelName)
 	}
 
 	// Default behavior - success
@@ -73,14 +73,14 @@ func (m *MockLLMService) IsModelReady(ctx context.Context, modelName string) (bo
 
 // Reset clears all call tracking
 func (m *MockLLMService) Reset() {
-	m.InitializeModelCalls = make([]string, 0)
+	m.InitModelCalls = make([]string, 0)
 	m.GenerateResponseCalls = make([]GenerateResponseCall, 0)
 	m.IsModelReadyCalls = make([]string, 0)
 }
 
-// SetInitializeModelError sets up the mock to return an error on InitializeModel
-func (m *MockLLMService) SetInitializeModelError(err error) {
-	m.InitializeModelFunc = func(ctx context.Context, modelName string) error {
+// SetInitModelError sets up the mock to return an error on InitModel
+func (m *MockLLMService) SetInitModelError(err error) {
+	m.InitModelFunc = func(ctx context.Context, modelName string) error {
 		return err
 	}
 }

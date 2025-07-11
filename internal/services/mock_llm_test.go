@@ -12,17 +12,17 @@ func TestMockLLMService(t *testing.T) {
 	mockService := NewMockLLMService()
 
 	// Test InitializeModel
-	err := mockService.InitializeModel(context.Background(), "test-model")
+	err := mockService.InitModel(context.Background(), "test-model")
 	if err != nil {
 		t.Errorf("InitializeModel failed: %v", err)
 	}
 
-	if len(mockService.InitializeModelCalls) != 1 {
-		t.Errorf("Expected 1 InitializeModel call, got %d", len(mockService.InitializeModelCalls))
+	if len(mockService.InitModelCalls) != 1 {
+		t.Errorf("Expected 1 InitializeModel call, got %d", len(mockService.InitModelCalls))
 	}
 
-	if mockService.InitializeModelCalls[0] != "test-model" {
-		t.Errorf("Expected model name 'test-model', got '%s'", mockService.InitializeModelCalls[0])
+	if mockService.InitModelCalls[0] != "test-model" {
+		t.Errorf("Expected model name 'test-model', got '%s'", mockService.InitModelCalls[0])
 	}
 
 	// Test GenerateResponse
@@ -63,9 +63,9 @@ func TestMockLLMService_ErrorHandling(t *testing.T) {
 
 	// Test InitializeModel error
 	expectedErr := fmt.Errorf("initialization failed")
-	mockService.SetInitializeModelError(expectedErr)
+	mockService.SetInitModelError(expectedErr)
 
-	err := mockService.InitializeModel(context.Background(), "test-model")
+	err := mockService.InitModel(context.Background(), "test-model")
 	if err == nil {
 		t.Errorf("Expected error, got nil")
 	}
