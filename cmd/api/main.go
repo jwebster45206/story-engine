@@ -32,6 +32,25 @@ func main() {
 	// Initialize LLM service
 	llmService := services.NewOllamaService(cfg.OllamaURL, cfg.ModelName, log)
 
+	// Initialize cache service (Redis implementation)
+	var cache services.Cache = services.NewRedisService(cfg.RedisURL, log)
+
+	// Wait for cache to be available
+	cacheCtx, cacheCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cacheCancel()
+
+	if err := cache.WaitForConnection(cacheCtx); err != nil {
+		log.Error("Failed to connect to cache", "error", err)
+		// Don't exit on cache failure in development
+		if cfg.Environment == "production" {
+			os.Exit(1)
+		} else {
+			log.Warn("Continuing without cache connection in non-production environment")
+		}
+	} else {
+		log.Info("Cache connection established successfully")
+	}
+
 	// Initialize the model on startup
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -45,9 +64,10 @@ func main() {
 			log.Warn("Continuing without model initialization in non-production environment")
 		}
 	}
-
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", handlers.HealthHandler)
+
+	healthHandler := handlers.NewHealthHandler(cache, llmService, log)
+	mux.Handle("/health", healthHandler)
 
 	// Create chat handler with LLM service
 	chatHandler := handlers.NewChatHandler(llmService, log)
@@ -76,6 +96,11 @@ func main() {
 	<-quit
 
 	log.Info("Server is shutting down...")
+
+	// Close cache connection
+	if err := cache.Close(); err != nil {
+		log.Error("Error closing cache connection", "error", err)
+	}
 
 	// Graceful shutdown with timeout
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)

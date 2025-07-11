@@ -9,7 +9,7 @@ import (
 )
 
 func TestMockLLMService(t *testing.T) {
-	mockService := NewMockLLMService()
+	mockService := NewMockLLMAPI()
 
 	// Test InitializeModel
 	err := mockService.InitModel(context.Background(), "test-model")
@@ -59,7 +59,7 @@ func TestMockLLMService(t *testing.T) {
 }
 
 func TestMockLLMService_ErrorHandling(t *testing.T) {
-	mockService := NewMockLLMService()
+	mockService := NewMockLLMAPI()
 
 	// Test InitializeModel error
 	expectedErr := fmt.Errorf("initialization failed")

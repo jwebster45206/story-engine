@@ -1,11 +1,15 @@
 package chat
 
-// ChatRequest represents a chat message request
+// ChatRequest represents a chat message request made by the user
+// to the roleplay-agent api.
 type ChatRequest struct {
-	Message string `json:"message"`
+	GameStateID string `json:"gamestate_id"` // Unique ID for the game state
+	Message     string `json:"message"`
 }
 
-// ChatResponse represents a chat message response
+// ChatResponse represents a chat message response returned by the roleplay-agent api.
+// It omits GameState currently, but GameState should be updated
+// within the chat handler.
 type ChatResponse struct {
 	Error   string `json:"error,omitempty"`
 	Message string `json:"message,omitempty"`

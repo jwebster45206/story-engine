@@ -26,6 +26,16 @@ func NewChatHandler(llmService services.LLMService, logger *slog.Logger) *ChatHa
 }
 
 // ServeHTTP handles HTTP requests for chat
+// TODO:
+//   - Load the gamestate (chat history) from Redis by UUID
+//   - Construct the Ollama chat prompt by combining the gamestate (just chat history
+//     for now), user message, system prompt, and character description.
+//   - Call the LLM service to generate a response
+//   - Save updated gamestate
+//   - Return the response as JSON
+//
+// Next steps: Add redis to docker compose, and add redis client to the service layer.
+// Refine prompt construction, based on both gameplay requirements and LLM capabilities.
 func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
