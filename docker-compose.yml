@@ -10,6 +10,7 @@ services:
       - ROLEPLAY_CONFIG=/app/config.docker.json
     depends_on:
       - ollama
+      - redis
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
@@ -43,19 +44,17 @@ services:
 volumes:
   ollama_data:
     
+# Redis service
+  redis:
+    image: redis:7-alpine
+    container_name: roleplay-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - roleplay-network
 
 # Future services can be added here:
-# redis:
-#   image: redis:7-alpine
-#   container_name: roleplay-redis
-#   ports:
-#     - "6379:6379"
-#   volumes:
-#     - redis_data:/data
-#   restart: unless-stopped
-#   networks:
-#     - roleplay-network
-
 # llm-service:
 #   # Add your LLM service configuration here
 #   # depends_on:
@@ -64,6 +63,3 @@ volumes:
 networks:
   roleplay-network:
     driver: bridge
-
-# volumes:
-#   redis_data:

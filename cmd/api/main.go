@@ -32,6 +32,17 @@ func main() {
 	// Initialize LLM service
 	llmService := services.NewOllamaService(cfg.OllamaURL, cfg.ModelName, log)
 
+	redisService := services.NewRedisService(cfg.RedisURL, log)
+	redisCtx, redisCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer redisCancel()
+
+	if err := redisService.WaitForConnection(redisCtx); err != nil {
+		log.Error("Failed to connect to Redis", "error", err)
+		os.Exit(1)
+	} else {
+		log.Info("Redis connection established successfully")
+	}
+
 	// Initialize the model on startup
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -47,7 +58,10 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", handlers.HealthHandler)
+
+	// Create health handler with Redis dependency
+	healthHandler := handlers.NewHealthHandler(redisService, log)
+	mux.Handle("/health", healthHandler)
 
 	// Create chat handler with LLM service
 	chatHandler := handlers.NewChatHandler(llmService, log)
@@ -76,6 +90,11 @@ func main() {
 	<-quit
 
 	log.Info("Server is shutting down...")
+
+	// Close Redis connection
+	if err := redisService.Close(); err != nil {
+		log.Error("Error closing Redis connection", "error", err)
+	}
 
 	// Graceful shutdown with timeout
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)

@@ -15,6 +15,7 @@ type Config struct {
 	LogLevelStr string     `json:"log_level"`
 	OllamaURL   string     `json:"ollama_url"`
 	ModelName   string     `json:"model_name"` // only tinyllama is supported
+	RedisURL    string     `json:"redis_url"`
 }
 
 func Load() (*Config, error) {
