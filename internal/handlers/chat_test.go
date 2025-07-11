@@ -31,10 +31,10 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 		expectedMsg    string
 	}{
 		{
-			name:           "successful chat request",
-			method:         http.MethodPost,
-			body:           chat.ChatRequest{Message: "Hello, world!"},
-			mockSetup:      func(m *services.MockLLMService) {
+			name:   "successful chat request",
+			method: http.MethodPost,
+			body:   chat.ChatRequest{Message: "Hello, world!"},
+			mockSetup: func(m *services.MockLLMService) {
 				m.GenerateResponseFunc = func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 					return &chat.ChatResponse{Message: "Hello! How can I help you today?"}, nil
 				}
@@ -67,10 +67,10 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			expectedError:  "Message cannot be empty.",
 		},
 		{
-			name:           "LLM service error",
-			method:         http.MethodPost,
-			body:           chat.ChatRequest{Message: "Hello"},
-			mockSetup:      func(m *services.MockLLMService) {
+			name:   "LLM service error",
+			method: http.MethodPost,
+			body:   chat.ChatRequest{Message: "Hello"},
+			mockSetup: func(m *services.MockLLMService) {
 				m.SetGenerateResponseError(errors.New("LLM service unavailable"))
 			},
 			expectedStatus: http.StatusInternalServerError,
