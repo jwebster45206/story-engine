@@ -30,7 +30,7 @@ func main() {
 		"model_name", cfg.ModelName)
 
 	// Initialize LLM service
-	llmService := services.NewOllamaService(cfg.ModelURL, cfg.ModelName, log)
+	llmService := services.NewOllamaService(cfg.OllamaURL, cfg.ModelName, log)
 
 	// Initialize the model on startup
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)

@@ -13,7 +13,7 @@ type Config struct {
 	Environment string     `json:"environment"`
 	LogLevel    slog.Level `json:"-"`
 	LogLevelStr string     `json:"log_level"`
-	ModelURL    string     `json:"model_url"`
+	OllamaURL   string     `json:"ollama_url"`
 	ModelName   string     `json:"model_name"` // only tinyllama is supported
 }
 

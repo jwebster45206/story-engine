@@ -2,6 +2,6 @@
   "port": "8080",
   "environment": "docker",
   "log_level": "info",
-  "model_url": "http://ollama:11434",
+  "ollama_url": "http://ollama:11434",
   "model_name": "tinyllama"
 }
