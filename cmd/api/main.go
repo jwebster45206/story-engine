@@ -13,6 +13,7 @@ import (
 	"github.com/jwebster45206/roleplay-agent/internal/handlers"
 	"github.com/jwebster45206/roleplay-agent/internal/logger"
 	"github.com/jwebster45206/roleplay-agent/internal/middleware"
+	"github.com/jwebster45206/roleplay-agent/internal/services"
 )
 
 func main() {
@@ -26,12 +27,31 @@ func main() {
 	log.Info("Starting roleplay-agent",
 		"port", cfg.Port,
 		"environment", cfg.Environment,
-		"log_level", cfg.LogLevel.String())
+		"model_name", cfg.ModelName)
+
+	// Initialize LLM service
+	llmService := services.NewOllamaService(cfg.OllamaURL, cfg.ModelName, log)
+
+	// Initialize the model on startup
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	if err := llmService.InitModel(ctx, cfg.ModelName); err != nil {
+		log.Error("Failed to initialize LLM model", "error", err, "model", cfg.ModelName)
+		// Don't exit on model initialization failure in development
+		if cfg.Environment == "production" {
+			os.Exit(1)
+		} else {
+			log.Warn("Continuing without model initialization in non-production environment")
+		}
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handlers.HealthHandler)
 
-	mux.HandleFunc("/chat", handlers.ChatHandler)
+	// Create chat handler with LLM service
+	chatHandler := handlers.NewChatHandler(llmService, log)
+	mux.Handle("/chat", chatHandler)
 
 	handler := middleware.Logger(mux)
 	server := &http.Server{
@@ -58,10 +78,10 @@ func main() {
 	log.Info("Server is shutting down...")
 
 	// Graceful shutdown with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
 
-	if err := server.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Error("Server forced to shutdown", "error", err)
 		os.Exit(1)
 	}

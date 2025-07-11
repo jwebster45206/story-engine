@@ -14,6 +14,7 @@ type Config struct {
 	LogLevel    slog.Level `json:"-"`
 	LogLevelStr string     `json:"log_level"`
 	OllamaURL   string     `json:"ollama_url"`
+	ModelName   string     `json:"model_name"` // only tinyllama is supported
 }
 
 func Load() (*Config, error) {
