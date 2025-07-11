@@ -48,9 +48,14 @@ func (s *OllamaService) InitModel(ctx context.Context, modelName string) error {
 	}
 
 	if !ready {
-		s.logger.Warn("Model not found, but continuing - it may be pulled by Ollama container", "model", modelName)
+		// Pull the model if it's not available
+		s.logger.Info("Model not found, pulling it", "model", modelName)
+		if err := s.pullModel(ctx, modelName); err != nil {
+			return fmt.Errorf("failed to pull model: %w", err)
+		}
+		s.logger.Info("Model pulled successfully", "model", modelName)
 	} else {
-		s.logger.Info("Model is ready", "model", modelName)
+		s.logger.Info("Model already available", "model", modelName)
 	}
 
 	return nil
