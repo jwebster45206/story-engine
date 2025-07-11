@@ -36,12 +36,10 @@ func NewOllamaService(baseURL string, modelName string, logger *slog.Logger) *Ol
 func (s *OllamaService) InitModel(ctx context.Context, modelName string) error {
 	s.logger.Info("Initializing LLM model", "model", modelName)
 
-	// Wait for Ollama to be ready with retries
 	if err := s.waitForOllamaReady(ctx); err != nil {
 		return fmt.Errorf("ollama service is not ready: %w", err)
 	}
 
-	// Check if model is available (it should be pre-pulled by Ollama container)
 	ready, err := s.IsModelReady(ctx, modelName)
 	if err != nil {
 		return fmt.Errorf("failed to check model readiness: %w", err)
