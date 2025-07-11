@@ -11,21 +11,23 @@ import (
 )
 
 type HealthResponse struct {
-	Status     string            `json:"status"`
-	Timestamp  time.Time         `json:"timestamp"`
-	Service    string            `json:"service"`
-	Components map[string]string `json:"components"`
+	Status     string                 `json:"status"`
+	Timestamp  time.Time              `json:"timestamp"`
+	Service    string                 `json:"service"`
+	Components map[string]interface{} `json:"components"`
 }
 
 type HealthHandler struct {
-	cache  services.Cache
-	logger *slog.Logger
+	cache      services.Cache
+	llmService services.LLMService
+	logger     *slog.Logger
 }
 
-func NewHealthHandler(cache services.Cache, logger *slog.Logger) *HealthHandler {
+func NewHealthHandler(cache services.Cache, llmService services.LLMService, logger *slog.Logger) *HealthHandler {
 	return &HealthHandler{
-		cache:  cache,
-		logger: logger,
+		cache:      cache,
+		llmService: llmService,
+		logger:     logger,
 	}
 }
 
@@ -41,7 +43,7 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	components := make(map[string]string)
+	components := make(map[string]interface{})
 	overallStatus := "healthy"
 
 	// Test cache connection
@@ -51,6 +53,22 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		overallStatus = "degraded"
 	} else {
 		components["cache"] = "healthy"
+	}
+
+	// Check Ollama service and list models
+	models, err := h.llmService.ListModels(ctx)
+	if err != nil {
+		h.logger.Warn("Ollama health check failed", "error", err)
+		components["ollama"] = map[string]interface{}{
+			"status": "unhealthy",
+			"error":  err.Error(),
+		}
+		overallStatus = "degraded"
+	} else {
+		components["ollama"] = map[string]interface{}{
+			"status": "healthy",
+			"tags":   models,
+		}
 	}
 
 	response := HealthResponse{

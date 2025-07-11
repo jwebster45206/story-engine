@@ -10,6 +10,7 @@ import (
 type LLMService interface {
 	InitModel(ctx context.Context, modelName string) error
 	IsModelReady(ctx context.Context, modelName string) (bool, error)
+	ListModels(ctx context.Context) ([]string, error)
 
 	// GenerateResponse generates a chat response using the LLM
 	GenerateResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error)

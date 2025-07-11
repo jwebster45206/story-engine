@@ -66,8 +66,7 @@ func main() {
 	}
 	mux := http.NewServeMux()
 
-	// Create health handler with cache dependency
-	healthHandler := handlers.NewHealthHandler(cache, log)
+	healthHandler := handlers.NewHealthHandler(cache, llmService, log)
 	mux.Handle("/health", healthHandler)
 
 	// Create chat handler with LLM service

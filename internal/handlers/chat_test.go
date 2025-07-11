@@ -25,7 +25,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 		name           string
 		method         string
 		body           interface{}
-		mockSetup      func(*services.MockLLMService)
+		mockSetup      func(*services.MockLLMAPI)
 		expectedStatus int
 		expectedError  string
 		expectedMsg    string
@@ -34,7 +34,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			name:   "successful chat request",
 			method: http.MethodPost,
 			body:   chat.ChatRequest{Message: "Hello, world!"},
-			mockSetup: func(m *services.MockLLMService) {
+			mockSetup: func(m *services.MockLLMAPI) {
 				m.GenerateResponseFunc = func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 					return &chat.ChatResponse{Message: "Hello! How can I help you today?"}, nil
 				}
@@ -46,7 +46,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			name:           "method not allowed",
 			method:         http.MethodGet,
 			body:           nil,
-			mockSetup:      func(m *services.MockLLMService) {},
+			mockSetup:      func(m *services.MockLLMAPI) {},
 			expectedStatus: http.StatusMethodNotAllowed,
 			expectedError:  "Method not allowed. Only POST is supported.",
 		},
@@ -54,7 +54,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			name:           "invalid JSON body",
 			method:         http.MethodPost,
 			body:           "invalid json",
-			mockSetup:      func(m *services.MockLLMService) {},
+			mockSetup:      func(m *services.MockLLMAPI) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "Invalid request body. Expected JSON with 'message' field.",
 		},
@@ -62,7 +62,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			name:           "empty message",
 			method:         http.MethodPost,
 			body:           chat.ChatRequest{Message: ""},
-			mockSetup:      func(m *services.MockLLMService) {},
+			mockSetup:      func(m *services.MockLLMAPI) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "Message cannot be empty.",
 		},
@@ -70,7 +70,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			name:   "LLM service error",
 			method: http.MethodPost,
 			body:   chat.ChatRequest{Message: "Hello"},
-			mockSetup: func(m *services.MockLLMService) {
+			mockSetup: func(m *services.MockLLMAPI) {
 				m.SetGenerateResponseError(errors.New("LLM service unavailable"))
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -81,7 +81,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create mock LLM service
-			mockLLM := services.NewMockLLMService()
+			mockLLM := services.NewMockLLMAPI()
 			tt.mockSetup(mockLLM)
 
 			// Create chat handler
@@ -171,7 +171,7 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 		Level: slog.LevelError, // Reduce noise in tests
 	}))
 
-	mockLLM := services.NewMockLLMService()
+	mockLLM := services.NewMockLLMAPI()
 	var capturedMessages []chat.ChatMessage
 
 	mockLLM.GenerateResponseFunc = func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
@@ -213,7 +213,7 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 		Level: slog.LevelError,
 	}))
 
-	mockLLM := services.NewMockLLMService()
+	mockLLM := services.NewMockLLMAPI()
 	handler := NewChatHandler(mockLLM, logger)
 
 	// Test with missing Content-Type
