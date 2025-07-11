@@ -54,11 +54,11 @@ jobs:
         version: latest
         args: --timeout=5m
     
-    # - name: Lint Dockerfile
-    #   uses: hadolint/hadolint-action@v3.1.0
-    #   with:
-    #     dockerfile: Dockerfile
-    #     failure-threshold: error
+    - name: Lint Dockerfile
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        dockerfile: Dockerfile
+        failure-threshold: error
  
 #   security:
 #     runs-on: ubuntu-latest

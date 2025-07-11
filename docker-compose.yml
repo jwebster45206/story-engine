@@ -17,7 +17,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    restart: unless-stopped
     networks:
       - roleplay-network
 
@@ -36,29 +35,20 @@ services:
         timeout: 10s
         retries: 3
         start_period: 60s
-      restart: unless-stopped
       networks:
         - roleplay-network
 
-# Ollama data volume to persist models and configurations
-volumes:
-  ollama_data:
-    
-# Redis service
   redis:
     image: redis:7-alpine
     container_name: roleplay-redis
     ports:
       - "6379:6379"
-    restart: unless-stopped
     networks:
       - roleplay-network
 
-# Future services can be added here:
-# llm-service:
-#   # Add your LLM service configuration here
-#   # depends_on:
-#   #   - roleplay-agent
+# Ollama data volume to persist models and configurations
+volumes:
+  ollama_data:
 
 networks:
   roleplay-network:
