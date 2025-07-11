@@ -32,15 +32,23 @@ func main() {
 	// Initialize LLM service
 	llmService := services.NewOllamaService(cfg.OllamaURL, cfg.ModelName, log)
 
-	redisService := services.NewRedisService(cfg.RedisURL, log)
-	redisCtx, redisCancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer redisCancel()
+	// Initialize cache service (Redis implementation)
+	var cache services.Cache = services.NewRedisService(cfg.RedisURL, log)
 
-	if err := redisService.WaitForConnection(redisCtx); err != nil {
-		log.Error("Failed to connect to Redis", "error", err)
-		os.Exit(1)
+	// Wait for cache to be available
+	cacheCtx, cacheCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cacheCancel()
+
+	if err := cache.WaitForConnection(cacheCtx); err != nil {
+		log.Error("Failed to connect to cache", "error", err)
+		// Don't exit on cache failure in development
+		if cfg.Environment == "production" {
+			os.Exit(1)
+		} else {
+			log.Warn("Continuing without cache connection in non-production environment")
+		}
 	} else {
-		log.Info("Redis connection established successfully")
+		log.Info("Cache connection established successfully")
 	}
 
 	// Initialize the model on startup
@@ -56,11 +64,10 @@ func main() {
 			log.Warn("Continuing without model initialization in non-production environment")
 		}
 	}
-
 	mux := http.NewServeMux()
 
-	// Create health handler with Redis dependency
-	healthHandler := handlers.NewHealthHandler(redisService, log)
+	// Create health handler with cache dependency
+	healthHandler := handlers.NewHealthHandler(cache, log)
 	mux.Handle("/health", healthHandler)
 
 	// Create chat handler with LLM service
@@ -91,9 +98,9 @@ func main() {
 
 	log.Info("Server is shutting down...")
 
-	// Close Redis connection
-	if err := redisService.Close(); err != nil {
-		log.Error("Error closing Redis connection", "error", err)
+	// Close cache connection
+	if err := cache.Close(); err != nil {
+		log.Error("Error closing cache connection", "error", err)
 	}
 
 	// Graceful shutdown with timeout

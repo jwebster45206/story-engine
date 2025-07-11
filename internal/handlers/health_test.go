@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -19,22 +20,39 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		redisAddr      string
+		setupCache     func() services.Cache
 		expectedStatus int
 		expectedHealth string
+		expectedCache  string
 	}{
 		{
-			name:           "unhealthy redis",
-			redisAddr:      "localhost:9999", // Non-existent Redis
+			name: "healthy cache",
+			setupCache: func() services.Cache {
+				mockCache := services.NewMockCache()
+				mockCache.SetPingSuccess() // Cache is healthy
+				return mockCache
+			},
+			expectedStatus: http.StatusOK,
+			expectedHealth: "healthy",
+			expectedCache:  "healthy",
+		},
+		{
+			name: "unhealthy cache",
+			setupCache: func() services.Cache {
+				mockCache := services.NewMockCache()
+				mockCache.SetPingError(errors.New("connection failed")) // Cache is unhealthy
+				return mockCache
+			},
 			expectedStatus: http.StatusServiceUnavailable,
 			expectedHealth: "degraded",
+			expectedCache:  "unhealthy",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			redisService := services.NewRedisService(tt.redisAddr, logger)
-			handler := NewHealthHandler(redisService, logger)
+			cache := tt.setupCache()
+			handler := NewHealthHandler(cache, logger)
 
 			req := httptest.NewRequest(http.MethodGet, "/health", nil)
 			rr := httptest.NewRecorder()
@@ -67,9 +85,12 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 				t.Errorf("Expected service 'roleplay-agent', got '%s'", response.Service)
 			}
 
-			// Check Redis component exists
-			if _, exists := response.Components["redis"]; !exists {
-				t.Error("Expected redis component in response")
+			// Check cache component status
+			cacheStatus, exists := response.Components["cache"]
+			if !exists {
+				t.Error("Expected cache component in response")
+			} else if cacheStatus != tt.expectedCache {
+				t.Errorf("Expected cache status '%s', got '%s'", tt.expectedCache, cacheStatus)
 			}
 
 			// Check timestamp is recent

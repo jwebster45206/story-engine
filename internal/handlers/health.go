@@ -18,14 +18,14 @@ type HealthResponse struct {
 }
 
 type HealthHandler struct {
-	redisService *services.RedisService
-	logger       *slog.Logger
+	cache  services.Cache
+	logger *slog.Logger
 }
 
-func NewHealthHandler(redisService *services.RedisService, logger *slog.Logger) *HealthHandler {
+func NewHealthHandler(cache services.Cache, logger *slog.Logger) *HealthHandler {
 	return &HealthHandler{
-		redisService: redisService,
-		logger:       logger,
+		cache:  cache,
+		logger: logger,
 	}
 }
 
@@ -37,20 +37,20 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"path", r.URL.Path,
 		"remote_addr", r.RemoteAddr)
 
-	// Check Redis health
+	// Check cache health
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	components := make(map[string]string)
 	overallStatus := "healthy"
 
-	// Test Redis connection
-	if err := h.redisService.Ping(ctx); err != nil {
-		h.logger.Warn("Redis health check failed", "error", err)
-		components["redis"] = "unhealthy"
+	// Test cache connection
+	if err := h.cache.Ping(ctx); err != nil {
+		h.logger.Warn("Cache health check failed", "error", err)
+		components["cache"] = "unhealthy"
 		overallStatus = "degraded"
 	} else {
-		components["redis"] = "healthy"
+		components["cache"] = "healthy"
 	}
 
 	response := HealthResponse{
