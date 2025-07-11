@@ -104,7 +104,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	response, err := h.llmService.GenerateResponse(ctx, messages)
+	response, err := h.llmService.GetChatResponse(ctx, messages)
 	if err != nil {
 		h.logger.Error("Error generating chat response", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)

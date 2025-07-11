@@ -12,6 +12,6 @@ type LLMService interface {
 	IsModelReady(ctx context.Context, modelName string) (bool, error)
 	ListModels(ctx context.Context) ([]string, error)
 
-	// GenerateResponse generates a chat response using the LLM
-	GenerateResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error)
+	// GetChatResponse generates a chat response using the LLM
+	GetChatResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error)
 }

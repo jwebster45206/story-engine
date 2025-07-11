@@ -59,8 +59,8 @@ func (s *OllamaService) InitModel(ctx context.Context, modelName string) error {
 	return nil
 }
 
-// GenerateResponse generates a chat response using the Ollama API
-func (s *OllamaService) GenerateResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+// GetChatResponse generates a chat response using the Ollama API
+func (s *OllamaService) GetChatResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 	reqBody := map[string]interface{}{
 		"model":    s.modelName,
 		"messages": messages,
