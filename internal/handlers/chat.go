@@ -9,6 +9,7 @@ import (
 
 	"github.com/jwebster45206/roleplay-agent/internal/services"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
+	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 )
 
 // ChatHandler handles chat requests
@@ -28,6 +29,7 @@ func NewChatHandler(llmService services.LLMService, logger *slog.Logger) *ChatHa
 // ServeHTTP handles HTTP requests for chat
 // TODO:
 //   - Load the gamestate (chat history) from Redis by UUID
+//   - Create system prompt using
 //   - Construct the Ollama chat prompt by combining the gamestate (just chat history
 //     for now), user message, system prompt, and character description.
 //   - Call the LLM service to generate a response
@@ -95,8 +97,12 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Create chat message
 	messages := []chat.ChatMessage{
 		{
+			Role:    chat.ChatRoleSystem,
+			Content: scenario.BaseSystemPrompt,
+		},
+		{
 			Role:    chat.ChatRoleUser,
-			Content: request.Message,
+			Content: request.Message + " " + scenario.LocationPrompt,
 		},
 	}
 
