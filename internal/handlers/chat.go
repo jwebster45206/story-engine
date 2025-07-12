@@ -102,17 +102,24 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		},
 		{
 			Role:    chat.ChatRoleUser,
-			Content: request.Message + " " + scenario.LocationPrompt,
+			Content: request.Message,
+		},
+		{
+			Role:    chat.ChatRoleSystem,
+			Content: scenario.MermaidLagoonPrompt + "\n\n" + scenario.LocationPrompt, // Example prompt for the scenario
 		},
 	}
 
 	// Generate response using LLM service
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	response, err := h.llmService.GetChatResponse(ctx, messages)
 	if err != nil {
-		h.logger.Error("Error generating chat response", "error", err)
+		h.logger.Error("Error generating chat response",
+			"error", err,
+			"user_message", request.Message,
+			"message_count", len(messages))
 		w.WriteHeader(http.StatusInternalServerError)
 		errorResponse := chat.ChatResponse{
 			Error: "Failed to generate response. Please try again.",
