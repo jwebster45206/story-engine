@@ -1,18 +1,25 @@
 package chat
 
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
+
 // ChatRequest represents a chat message request made by the user
 // to the roleplay-agent api.
 type ChatRequest struct {
-	GameStateID string `json:"gamestate_id"` // Unique ID for the game state
-	Message     string `json:"message"`
+	GameStateID uuid.UUID `json:"gamestate_id"` // Unique ID for the game state
+	Message     string    `json:"message"`
 }
 
 // ChatResponse represents a chat message response returned by the roleplay-agent api.
 // It omits GameState currently, but GameState should be updated
 // within the chat handler.
 type ChatResponse struct {
-	Error   string `json:"error,omitempty"`
-	Message string `json:"message,omitempty"`
+	Error       string    `json:"error,omitempty"`
+	GameStateID uuid.UUID `json:"gamestate_id,omitempty"` // Unique ID for the game state
+	Message     string    `json:"message,omitempty"`
 }
 
 const (
@@ -27,4 +34,11 @@ const (
 type ChatMessage struct {
 	Role    string `json:"role"` // "user", "assistant", "system"
 	Content string `json:"content"`
+}
+
+func (cr *ChatRequest) Validate() error {
+	if cr.Message == "" {
+		return fmt.Errorf("message cannot be empty")
+	}
+	return nil
 }

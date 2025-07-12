@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
@@ -24,12 +25,12 @@ type Storage interface {
 	Closer
 
 	// SaveGameState saves a gamestate with the given UUID
-	SaveGameState(ctx context.Context, uuid string, gamestate *state.GameState) error
+	SaveGameState(ctx context.Context, uuid uuid.UUID, gamestate *state.GameState) error
 
 	// LoadGameState retrieves a gamestate by UUID
 	// Returns nil if the gamestate doesn't exist
-	LoadGameState(ctx context.Context, uuid string) (*state.GameState, error)
+	LoadGameState(ctx context.Context, uuid uuid.UUID) (*state.GameState, error)
 
 	// DeleteGameState removes a gamestate by UUID
-	DeleteGameState(ctx context.Context, uuid string) error
+	DeleteGameState(ctx context.Context, uuid uuid.UUID) error
 }

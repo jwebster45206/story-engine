@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
@@ -133,7 +134,7 @@ func (r *RedisService) WaitForConnection(ctx context.Context) error {
 // Storage interface implementation methods
 
 // SaveGameState saves a gamestate with the given UUID
-func (r *RedisService) SaveGameState(ctx context.Context, uuid string, gamestate *state.GameState) error {
+func (r *RedisService) SaveGameState(ctx context.Context, uuid uuid.UUID, gamestate *state.GameState) error {
 	// Marshal gamestate to JSON
 	data, err := json.Marshal(gamestate)
 	if err != nil {
@@ -142,7 +143,7 @@ func (r *RedisService) SaveGameState(ctx context.Context, uuid string, gamestate
 	}
 
 	// Use gamestate: prefix for gamestate keys
-	key := "gamestate:" + uuid
+	key := "gamestate:" + uuid.String()
 	if err := r.Set(ctx, key, string(data), 0); err != nil {
 		r.logger.Error("Failed to save gamestate", "uuid", uuid, "error", err)
 		return fmt.Errorf("failed to save gamestate: %w", err)
@@ -153,8 +154,8 @@ func (r *RedisService) SaveGameState(ctx context.Context, uuid string, gamestate
 }
 
 // LoadGameState retrieves a gamestate by UUID
-func (r *RedisService) LoadGameState(ctx context.Context, uuid string) (*state.GameState, error) {
-	key := "gamestate:" + uuid
+func (r *RedisService) LoadGameState(ctx context.Context, uuid uuid.UUID) (*state.GameState, error) {
+	key := "gamestate:" + uuid.String()
 	data, err := r.Get(ctx, key)
 	if err != nil {
 		r.logger.Error("Failed to load gamestate", "uuid", uuid, "error", err)
@@ -178,8 +179,8 @@ func (r *RedisService) LoadGameState(ctx context.Context, uuid string) (*state.G
 }
 
 // DeleteGameState removes a gamestate by UUID
-func (r *RedisService) DeleteGameState(ctx context.Context, uuid string) error {
-	key := "gamestate:" + uuid
+func (r *RedisService) DeleteGameState(ctx context.Context, uuid uuid.UUID) error {
+	key := "gamestate:" + uuid.String()
 	if err := r.Del(ctx, key); err != nil {
 		r.logger.Error("Failed to delete gamestate", "uuid", uuid, "error", err)
 		return fmt.Errorf("failed to delete gamestate: %w", err)

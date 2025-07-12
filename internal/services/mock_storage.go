@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
 // MockStorage is a mock implementation of Storage for testing
 type MockStorage struct {
-	gamestates map[string]*state.GameState
+	gamestates map[uuid.UUID]*state.GameState
 	pingError  error
 }
 
@@ -19,7 +20,7 @@ var _ Storage = (*MockStorage)(nil)
 // NewMockStorage creates a new mock storage
 func NewMockStorage() *MockStorage {
 	return &MockStorage{
-		gamestates: make(map[string]*state.GameState),
+		gamestates: make(map[uuid.UUID]*state.GameState),
 	}
 }
 
@@ -48,7 +49,7 @@ func (m *MockStorage) Close() error {
 }
 
 // SaveGameState mocks saving a gamestate
-func (m *MockStorage) SaveGameState(ctx context.Context, uuid string, gamestate *state.GameState) error {
+func (m *MockStorage) SaveGameState(ctx context.Context, uuid uuid.UUID, gamestate *state.GameState) error {
 	if gamestate == nil {
 		return errors.New("gamestate cannot be nil")
 	}
@@ -57,7 +58,7 @@ func (m *MockStorage) SaveGameState(ctx context.Context, uuid string, gamestate 
 }
 
 // LoadGameState mocks loading a gamestate
-func (m *MockStorage) LoadGameState(ctx context.Context, uuid string) (*state.GameState, error) {
+func (m *MockStorage) LoadGameState(ctx context.Context, uuid uuid.UUID) (*state.GameState, error) {
 	gamestate, exists := m.gamestates[uuid]
 	if !exists {
 		return nil, nil // Return nil for not found
@@ -66,7 +67,7 @@ func (m *MockStorage) LoadGameState(ctx context.Context, uuid string) (*state.Ga
 }
 
 // DeleteGameState mocks deleting a gamestate
-func (m *MockStorage) DeleteGameState(ctx context.Context, uuid string) error {
+func (m *MockStorage) DeleteGameState(ctx context.Context, uuid uuid.UUID) error {
 	delete(m.gamestates, uuid)
 	return nil
 }
