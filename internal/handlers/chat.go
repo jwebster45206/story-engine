@@ -9,6 +9,7 @@ import (
 
 	"github.com/jwebster45206/roleplay-agent/internal/services"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
+	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 )
 
 // ChatHandler handles chat requests
@@ -28,6 +29,7 @@ func NewChatHandler(llmService services.LLMService, logger *slog.Logger) *ChatHa
 // ServeHTTP handles HTTP requests for chat
 // TODO:
 //   - Load the gamestate (chat history) from Redis by UUID
+//   - Create system prompt using
 //   - Construct the Ollama chat prompt by combining the gamestate (just chat history
 //     for now), user message, system prompt, and character description.
 //   - Call the LLM service to generate a response
@@ -95,18 +97,29 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Create chat message
 	messages := []chat.ChatMessage{
 		{
+			Role:    chat.ChatRoleSystem,
+			Content: scenario.BaseSystemPrompt,
+		},
+		{
 			Role:    chat.ChatRoleUser,
 			Content: request.Message,
+		},
+		{
+			Role:    chat.ChatRoleSystem,
+			Content: scenario.MermaidLagoonPrompt + "\n\n" + scenario.LocationPrompt, // Example prompt for the scenario
 		},
 	}
 
 	// Generate response using LLM service
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	response, err := h.llmService.GenerateResponse(ctx, messages)
+	response, err := h.llmService.GetChatResponse(ctx, messages)
 	if err != nil {
-		h.logger.Error("Error generating chat response", "error", err)
+		h.logger.Error("Error generating chat response",
+			"error", err,
+			"user_message", request.Message,
+			"message_count", len(messages))
 		w.WriteHeader(http.StatusInternalServerError)
 		errorResponse := chat.ChatResponse{
 			Error: "Failed to generate response. Please try again.",

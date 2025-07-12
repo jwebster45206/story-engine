@@ -30,7 +30,7 @@ func TestMockLLMService(t *testing.T) {
 		{Role: chat.ChatRoleUser, Content: "Hello"},
 	}
 
-	response, err := mockService.GenerateResponse(context.Background(), messages)
+	response, err := mockService.GetChatResponse(context.Background(), messages)
 	if err != nil {
 		t.Errorf("GenerateResponse failed: %v", err)
 	}

@@ -16,9 +16,9 @@ type ChatResponse struct {
 }
 
 const (
-	ChatRoleUser     = "user"      // Use
-	ChatRoleAgent    = "assistant" // NPC
-	ChatRoleNarrator = "system"    // Narrator or system
+	ChatRoleUser   = "user"      // Use
+	ChatRoleAgent  = "assistant" // NPC
+	ChatRoleSystem = "system"    // Narrator or system
 )
 
 // ChatMessage represents a single chat message in the conversation

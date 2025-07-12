@@ -59,8 +59,8 @@ func (s *OllamaService) InitModel(ctx context.Context, modelName string) error {
 	return nil
 }
 
-// GenerateResponse generates a chat response using the Ollama API
-func (s *OllamaService) GenerateResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+// GetChatResponse generates a chat response using the Ollama API
+func (s *OllamaService) GetChatResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 	reqBody := map[string]interface{}{
 		"model":    s.modelName,
 		"messages": messages,
@@ -72,7 +72,16 @@ func (s *OllamaService) GenerateResponse(ctx context.Context, messages []chat.Ch
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", s.baseURL+"/api/chat", bytes.NewBuffer(jsonBody))
+	url := s.baseURL + "/api/chat"
+
+	// Log the full request details
+	s.logger.Info("Making Ollama chat request",
+		"url", url,
+		"model", s.modelName,
+		"message_count", len(messages),
+		"request_body", string(jsonBody))
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -85,7 +94,16 @@ func (s *OllamaService) GenerateResponse(ctx context.Context, messages []chat.Ch
 	}
 	defer resp.Body.Close()
 
+	// Read the full response body for logging
+	var responseBody bytes.Buffer
+	responseBody.ReadFrom(resp.Body)
+	responseBodyStr := responseBody.String()
+
 	if resp.StatusCode != http.StatusOK {
+		s.logger.Error("Ollama API returned error",
+			"status_code", resp.StatusCode,
+			"status", resp.Status,
+			"response_body", responseBodyStr)
 		return nil, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
 	}
 
@@ -95,7 +113,10 @@ func (s *OllamaService) GenerateResponse(ctx context.Context, messages []chat.Ch
 		} `json:"message"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&ollamaResp); err != nil {
+	if err := json.NewDecoder(bytes.NewReader(responseBody.Bytes())).Decode(&ollamaResp); err != nil {
+		s.logger.Error("Failed to decode Ollama response",
+			"error", err,
+			"response_body", responseBodyStr)
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 

@@ -46,8 +46,8 @@ func (m *MockLLMAPI) InitModel(ctx context.Context, modelName string) error {
 	return nil
 }
 
-// GenerateResponse mocks response generation
-func (m *MockLLMAPI) GenerateResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+// GetChatResponse mocks response generation
+func (m *MockLLMAPI) GetChatResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 	m.GenerateResponseCalls = append(m.GenerateResponseCalls, GenerateResponseCall{
 		Messages: messages,
 	})
