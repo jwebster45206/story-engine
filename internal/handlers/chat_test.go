@@ -64,7 +64,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			body:           chat.ChatRequest{Message: ""},
 			mockSetup:      func(m *services.MockLLMAPI) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Message cannot be empty.",
+			expectedError:  "Invalid request: message cannot be empty",
 		},
 		{
 			name:   "LLM service error",
@@ -84,8 +84,10 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			mockLLM := services.NewMockLLMAPI()
 			tt.mockSetup(mockLLM)
 
+			mockSto := services.NewMockStorage()
+
 			// Create chat handler
-			handler := NewChatHandler(mockLLM, logger)
+			handler := NewChatHandler(mockLLM, logger, mockSto)
 
 			// Prepare request body
 			var body []byte
@@ -187,9 +189,9 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 		capturedMessages = messages
 		return &chat.ChatResponse{Message: "Response"}, nil
 	}
+	mockSto := services.NewMockStorage()
 
-	handler := NewChatHandler(mockLLM, logger)
-
+	handler := NewChatHandler(mockLLM, logger, mockSto)
 	requestBody := chat.ChatRequest{Message: "Test message with special chars: !@#$%"}
 	body, _ := json.Marshal(requestBody)
 
@@ -232,7 +234,8 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 	}))
 
 	mockLLM := services.NewMockLLMAPI()
-	handler := NewChatHandler(mockLLM, logger)
+	mockSto := services.NewMockStorage()
+	handler := NewChatHandler(mockLLM, logger, mockSto)
 
 	// Test with missing Content-Type
 	requestBody := chat.ChatRequest{Message: "Hello"}

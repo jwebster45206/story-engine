@@ -1,6 +1,8 @@
 package state
 
 import (
+	"encoding/json"
+
 	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
 )
@@ -14,4 +16,16 @@ type GameState struct {
 	// Inventory TODO
 
 	// Scenario TODO
+}
+
+func NewGameState() *GameState {
+	return &GameState{
+		ID:          uuid.New(),
+		ChatHistory: make([]chat.ChatMessage, 0),
+	}
+}
+
+func (gs *GameState) CompressedHistory() []byte {
+	data, _ := json.Marshal(gs.ChatHistory)
+	return data
 }

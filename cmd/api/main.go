@@ -35,18 +35,18 @@ func main() {
 	}
 	llmService := services.NewVeniceService(cfg.VeniceAPIKey, cfg.ModelName)
 
-	// Initialize cache service (Redis implementation)
-	var cache services.Cache = services.NewRedisService(cfg.RedisURL, log)
+	// Initialize storage service (Redis implementation)
+	var storage services.Storage = services.NewRedisService(cfg.RedisURL, log)
 
-	// Wait for cache to be available
-	cacheCtx, cacheCancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cacheCancel()
+	// Wait for storage to be available
+	storageCtx, storageCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer storageCancel()
 
-	if err := cache.WaitForConnection(cacheCtx); err != nil {
-		log.Error("Failed to connect to cache", "error", err)
+	if err := storage.Ping(storageCtx); err != nil {
+		log.Error("Failed to connect to storage", "error", err)
 		os.Exit(1)
 	}
-	log.Info("Cache connection established successfully")
+	log.Info("Storage connection established successfully")
 
 	// Initialize the model on startup
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -63,11 +63,11 @@ func main() {
 	}
 	mux := http.NewServeMux()
 
-	healthHandler := handlers.NewHealthHandler(cache, llmService, log)
+	healthHandler := handlers.NewHealthHandler(storage, llmService, log)
 	mux.Handle("/health", healthHandler)
 
 	// Create chat handler with LLM service
-	chatHandler := handlers.NewChatHandler(llmService, log)
+	chatHandler := handlers.NewChatHandler(llmService, log, storage)
 	mux.Handle("/chat", chatHandler)
 
 	handler := middleware.Logger(mux)
@@ -94,9 +94,9 @@ func main() {
 
 	log.Info("Server is shutting down...")
 
-	// Close cache connection
-	if err := cache.Close(); err != nil {
-		log.Error("Error closing cache connection", "error", err)
+	// Close storage connection
+	if err := storage.Close(); err != nil {
+		log.Error("Error closing storage connection", "error", err)
 	}
 
 	// Graceful shutdown with timeout

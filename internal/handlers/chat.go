@@ -7,22 +7,26 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/internal/services"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
 	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
+	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
 // ChatHandler handles chat requests
 type ChatHandler struct {
 	llmService services.LLMService
 	logger     *slog.Logger
+	storage    services.Storage
 }
 
 // NewChatHandler creates a new chat handler
-func NewChatHandler(llmService services.LLMService, logger *slog.Logger) *ChatHandler {
+func NewChatHandler(llmService services.LLMService, logger *slog.Logger, storage services.Storage) *ChatHandler {
 	return &ChatHandler{
 		llmService: llmService,
 		logger:     logger,
+		storage:    storage,
 	}
 }
 
@@ -62,7 +66,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.logger.Info("Chat endpoint accessed",
+	h.logger.Debug("Chat endpoint accessed",
 		"method", r.Method,
 		"path", r.URL.Path,
 		"remote_addr", r.RemoteAddr)
@@ -82,11 +86,11 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate request
-	if request.Message == "" {
-		h.logger.Warn("Empty message in request")
+	if err := request.Validate(); err != nil {
+		h.logger.Warn("Invalid chat request", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
 		response := chat.ChatResponse{
-			Error: "Message cannot be empty.",
+			Error: "Invalid request: " + err.Error(),
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Error encoding error response", "error", err)
@@ -94,23 +98,58 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create chat message
+	var gs *state.GameState
+	var err error
+	if request.GameStateID == uuid.Nil {
+		gs = state.NewGameState()
+	} else {
+		// Load existing game state from Redis
+		gs, err = h.storage.LoadGameState(r.Context(), request.GameStateID)
+		if err != nil {
+			h.logger.Error("Error loading game state", "error", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			response := chat.ChatResponse{
+				Error: "Failed to load game state.",
+			}
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				h.logger.Error("Error encoding error response", "error", err)
+			}
+			return
+		}
+
+		if gs == nil {
+			h.logger.Warn("Game state not found", "requested_id", request.GameStateID.String())
+			w.WriteHeader(http.StatusBadRequest)
+			response := chat.ChatResponse{
+				Error: "Game state not found. Please provide a valid game state ID or omit the ID to create a new game.",
+			}
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				h.logger.Error("Error encoding error response", "error", err)
+			}
+			return
+		}
+	}
+
+	// System prompt first
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: scenario.BaseSystemPrompt,
-		},
-		{
-			Role:    chat.ChatRoleUser,
-			Content: request.Message,
-		},
-		{
-			Role:    chat.ChatRoleSystem,
-			Content: scenario.MermaidLagoonPrompt + "\n\n" + scenario.LocationPrompt, // Example prompt for the scenario
+			Content: scenario.BaseSystemPrompt + "\n\n" + scenario.PirateScenarioPrompt,
 		},
 	}
+	// Add chat history from game state
+	messages = append(messages, gs.ChatHistory...)
+	messages = append(messages, chat.ChatMessage{
+		Role:    chat.ChatRoleUser,
+		Content: request.Message,
+	})
+	// Explicit instructions about how to respond to user input last
+	messages = append(messages, chat.ChatMessage{
+		Role:    chat.ChatRoleSystem,
+		Content: scenario.LocationPrompt,
+	})
 
-	// Generate response using LLM service
+	// Generate response using LLM
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -130,7 +169,32 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return successful response
+	// Update game state with new chat message
+	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
+		Role:    chat.ChatRoleUser,
+		Content: request.Message,
+	})
+	// Add the LLM's response to the game state
+	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
+		Role:    chat.ChatRoleAgent,
+		Content: response.Message,
+	})
+
+	// Save the updated game state
+	if err := h.storage.SaveGameState(ctx, gs.ID, gs); err != nil {
+		h.logger.Error("Failed to save game state", "error", err, "game_state_id", gs.ID.String())
+		w.WriteHeader(http.StatusInternalServerError)
+		errorResponse := chat.ChatResponse{
+			Error: "Failed to save conversation. Please try again.",
+		}
+		if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
+		return
+	}
+
+	response.GameStateID = gs.ID
+	response.ChatHistory = gs.ChatHistory
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		h.logger.Error("Error encoding chat response", "error", err)
