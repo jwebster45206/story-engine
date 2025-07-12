@@ -29,8 +29,13 @@ func main() {
 		"environment", cfg.Environment,
 		"model_name", cfg.ModelName)
 
-	// Initialize LLM service
-	llmService := services.NewOllamaService(cfg.OllamaURL, cfg.ModelName, log)
+	// Initialize Venice AI service (hardcoded as primary provider)
+	if cfg.VeniceAPIKey == "" {
+		log.Error("Venice API key is required")
+		os.Exit(1)
+	}
+	llmService := services.NewVeniceService(cfg.VeniceAPIKey, cfg.ModelName)
+	log.Info("Using Venice AI as LLM provider")
 
 	// Initialize cache service (Redis implementation)
 	var cache services.Cache = services.NewRedisService(cfg.RedisURL, log)

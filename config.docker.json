@@ -1,8 +1,0 @@
-{
-  "port": "8080",
-  "environment": "docker",
-  "log_level": "info",
-  "ollama_url": "http://ollama:11434",
-  "model_name": "tinyllama:Q4_0",
-  "redis_url": "redis:6379"
-}
