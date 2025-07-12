@@ -9,13 +9,14 @@ import (
 )
 
 type Config struct {
-	Port        string     `json:"port"`
-	Environment string     `json:"environment"`
-	LogLevel    slog.Level `json:"-"`
-	LogLevelStr string     `json:"log_level"`
-	OllamaURL   string     `json:"ollama_url"`
-	ModelName   string     `json:"model_name"` // only tinyllama is supported
-	RedisURL    string     `json:"redis_url"`
+	Port         string     `json:"port"`
+	Environment  string     `json:"environment"`
+	LogLevel     slog.Level `json:"-"`
+	LogLevelStr  string     `json:"log_level"`
+	OllamaURL    string     `json:"ollama_url"`
+	VeniceAPIKey string     `json:"venice_api_key"`
+	ModelName    string     `json:"model_name"` // model name for Venice AI
+	RedisURL     string     `json:"redis_url"`
 }
 
 func Load() (*Config, error) {

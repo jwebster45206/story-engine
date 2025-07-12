@@ -9,7 +9,6 @@ services:
     environment:
       - ROLEPLAY_CONFIG=/app/config.docker.json
     depends_on:
-      - ollama
       - redis
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
@@ -20,23 +19,23 @@ services:
     networks:
       - roleplay-network
 
-  ollama:
-      image: ollama/ollama
-      container_name: ollama
-      ports:
-        - "11434:11434"         # Exposes Ollama's HTTP API
-      volumes:
-        - ollama_data:/root/.ollama
-      environment:
-        - OLLAMA_MODELS=/root/.ollama/models
-      healthcheck:
-        test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:11434/"]
-        interval: 15s
-        timeout: 10s
-        retries: 3
-        start_period: 60s
-      networks:
-        - roleplay-network
+  # ollama:
+  #     image: ollama/ollama
+  #     container_name: ollama
+  #     ports:
+  #       - "11434:11434"         # Exposes Ollama's HTTP API
+  #     volumes:
+  #       - ollama_data:/root/.ollama
+  #     environment:
+  #       - OLLAMA_MODELS=/root/.ollama/models
+  #     healthcheck:
+  #       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:11434/"]
+  #       interval: 15s
+  #       timeout: 10s
+  #       retries: 3
+  #       start_period: 60s
+  #     networks:
+  #       - roleplay-network
 
   redis:
     image: redis:7-alpine
@@ -46,9 +45,9 @@ services:
     networks:
       - roleplay-network
 
-# Ollama data volume to persist models and configurations
-volumes:
-  ollama_data:
+# Ollama data volume to persist models and configurations (commented out)
+# volumes:
+  # ollama_data:
 
 networks:
   roleplay-network:

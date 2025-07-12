@@ -1,0 +1,9 @@
+{
+  "port": "8080",
+  "environment": "development",
+  "log_level": "info",
+  "ollama_url": "http://localhost:11434",
+  "venice_api_key": "YOUR_VENICE_API_KEY_HERE",
+  "model_name": "venice-uncensored",
+  "redis_url": "localhost:6379"
+}

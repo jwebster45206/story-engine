@@ -27,6 +27,11 @@ go.work.sum
 # env file
 .env
 
+# Config files with secrets
+config.docker.json
+config*.json
+!config.venice.json
+
 # Editor/IDE
 # .idea/
 # .vscode/

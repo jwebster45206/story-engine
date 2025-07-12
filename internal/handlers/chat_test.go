@@ -147,17 +147,26 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 					t.Errorf("Expected 1 GenerateResponse call, got %d", len(mockLLM.GenerateResponseCalls))
 				} else {
 					call := mockLLM.GenerateResponseCalls[0]
-					if len(call.Messages) != 1 {
-						t.Errorf("Expected 1 message in call, got %d", len(call.Messages))
+					if len(call.Messages) != 3 {
+						t.Errorf("Expected 3 messages in call, got %d", len(call.Messages))
 					} else {
-						msg := call.Messages[0]
-						if msg.Role != chat.ChatRoleUser {
-							t.Errorf("Expected role %s, got %s", chat.ChatRoleUser, msg.Role)
+						// Check system message
+						if call.Messages[0].Role != chat.ChatRoleSystem {
+							t.Errorf("Expected first message role %s, got %s", chat.ChatRoleSystem, call.Messages[0].Role)
+						}
+						// Check user message
+						userMsg := call.Messages[1]
+						if userMsg.Role != chat.ChatRoleUser {
+							t.Errorf("Expected second message role %s, got %s", chat.ChatRoleUser, userMsg.Role)
 						}
 						if reqBody, ok := tt.body.(chat.ChatRequest); ok {
-							if msg.Content != reqBody.Message {
-								t.Errorf("Expected content '%s', got '%s'", reqBody.Message, msg.Content)
+							if userMsg.Content != reqBody.Message {
+								t.Errorf("Expected user message content '%s', got '%s'", reqBody.Message, userMsg.Content)
 							}
+						}
+						// Check second system message
+						if call.Messages[2].Role != chat.ChatRoleSystem {
+							t.Errorf("Expected third message role %s, got %s", chat.ChatRoleSystem, call.Messages[2].Role)
 						}
 					}
 				}
@@ -194,17 +203,26 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 		t.Fatalf("Expected status 200, got %d", rr.Code)
 	}
 
-	if len(capturedMessages) != 1 {
-		t.Fatalf("Expected 1 message, got %d", len(capturedMessages))
+	if len(capturedMessages) != 3 {
+		t.Fatalf("Expected 3 messages, got %d", len(capturedMessages))
 	}
 
-	msg := capturedMessages[0]
-	if msg.Role != chat.ChatRoleUser {
-		t.Errorf("Expected role %s, got %s", chat.ChatRoleUser, msg.Role)
+	// Check that the user message (second message) is correct
+	userMsg := capturedMessages[1]
+	if userMsg.Role != chat.ChatRoleUser {
+		t.Errorf("Expected user message role %s, got %s", chat.ChatRoleUser, userMsg.Role)
 	}
 
-	if msg.Content != requestBody.Message {
-		t.Errorf("Expected content '%s', got '%s'", requestBody.Message, msg.Content)
+	if userMsg.Content != requestBody.Message {
+		t.Errorf("Expected user message content '%s', got '%s'", requestBody.Message, userMsg.Content)
+	}
+
+	// Check that we have system messages
+	if capturedMessages[0].Role != chat.ChatRoleSystem {
+		t.Errorf("Expected first message to be system message, got %s", capturedMessages[0].Role)
+	}
+	if capturedMessages[2].Role != chat.ChatRoleSystem {
+		t.Errorf("Expected third message to be system message, got %s", capturedMessages[2].Role)
 	}
 }
 

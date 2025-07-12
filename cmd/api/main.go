@@ -29,8 +29,11 @@ func main() {
 		"environment", cfg.Environment,
 		"model_name", cfg.ModelName)
 
-	// Initialize LLM service
-	llmService := services.NewOllamaService(cfg.OllamaURL, cfg.ModelName, log)
+	if cfg.VeniceAPIKey == "" {
+		log.Error("Venice API key is required")
+		os.Exit(1)
+	}
+	llmService := services.NewVeniceService(cfg.VeniceAPIKey, cfg.ModelName)
 
 	// Initialize cache service (Redis implementation)
 	var cache services.Cache = services.NewRedisService(cfg.RedisURL, log)
@@ -41,15 +44,9 @@ func main() {
 
 	if err := cache.WaitForConnection(cacheCtx); err != nil {
 		log.Error("Failed to connect to cache", "error", err)
-		// Don't exit on cache failure in development
-		if cfg.Environment == "production" {
-			os.Exit(1)
-		} else {
-			log.Warn("Continuing without cache connection in non-production environment")
-		}
-	} else {
-		log.Info("Cache connection established successfully")
+		os.Exit(1)
 	}
+	log.Info("Cache connection established successfully")
 
 	// Initialize the model on startup
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
