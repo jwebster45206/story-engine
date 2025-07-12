@@ -98,8 +98,8 @@ Project will deliver a Go microservice API and a console app to demonstrate a si
 API runs a small LLM locally, and uses it to drive a gameplay session.
 
 
-## Running the API
+## Running the Project
 
 ````bash
-CONFIG_FILE=config.docker.json go run cmd/api/main.go &
+ROLEPLAY_CONFIG=config.docker.json go run cmd/api/main.go &
 ````
