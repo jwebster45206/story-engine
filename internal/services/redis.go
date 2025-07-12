@@ -2,21 +2,23 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
-// RedisService implements the Cache interface using Redis
+// RedisService implements the Storage interface using Redis
 type RedisService struct {
 	client *redis.Client
 	logger *slog.Logger
 }
 
-// Ensure RedisService implements Cache interface
-var _ Cache = (*RedisService)(nil)
+// Ensure RedisService implements Storage interface
+var _ Storage = (*RedisService)(nil)
 
 // NewRedisService creates a new Redis service instance
 func NewRedisService(redisURL string, logger *slog.Logger) *RedisService {
@@ -126,4 +128,63 @@ func (r *RedisService) WaitForConnection(ctx context.Context) error {
 	}
 
 	return fmt.Errorf("redis did not become available after %d attempts", maxRetries)
+}
+
+// Storage interface implementation methods
+
+// SaveGameState saves a gamestate with the given UUID
+func (r *RedisService) SaveGameState(ctx context.Context, uuid string, gamestate *state.GameState) error {
+	// Marshal gamestate to JSON
+	data, err := json.Marshal(gamestate)
+	if err != nil {
+		r.logger.Error("Failed to marshal gamestate", "uuid", uuid, "error", err)
+		return fmt.Errorf("failed to marshal gamestate: %w", err)
+	}
+
+	// Use gamestate: prefix for gamestate keys
+	key := "gamestate:" + uuid
+	if err := r.Set(ctx, key, string(data), 0); err != nil {
+		r.logger.Error("Failed to save gamestate", "uuid", uuid, "error", err)
+		return fmt.Errorf("failed to save gamestate: %w", err)
+	}
+
+	r.logger.Debug("Gamestate saved successfully", "uuid", uuid)
+	return nil
+}
+
+// LoadGameState retrieves a gamestate by UUID
+func (r *RedisService) LoadGameState(ctx context.Context, uuid string) (*state.GameState, error) {
+	key := "gamestate:" + uuid
+	data, err := r.Get(ctx, key)
+	if err != nil {
+		r.logger.Error("Failed to load gamestate", "uuid", uuid, "error", err)
+		return nil, fmt.Errorf("failed to load gamestate: %w", err)
+	}
+
+	if data == "" {
+		r.logger.Debug("Gamestate not found", "uuid", uuid)
+		return nil, nil // Return nil for not found
+	}
+
+	// Unmarshal to the specific GameState type
+	var gamestate state.GameState
+	if err := json.Unmarshal([]byte(data), &gamestate); err != nil {
+		r.logger.Error("Failed to unmarshal gamestate", "uuid", uuid, "error", err)
+		return nil, fmt.Errorf("failed to unmarshal gamestate: %w", err)
+	}
+
+	r.logger.Debug("Gamestate loaded successfully", "uuid", uuid)
+	return &gamestate, nil
+}
+
+// DeleteGameState removes a gamestate by UUID
+func (r *RedisService) DeleteGameState(ctx context.Context, uuid string) error {
+	key := "gamestate:" + uuid
+	if err := r.Del(ctx, key); err != nil {
+		r.logger.Error("Failed to delete gamestate", "uuid", uuid, "error", err)
+		return fmt.Errorf("failed to delete gamestate: %w", err)
+	}
+
+	r.logger.Debug("Gamestate deleted successfully", "uuid", uuid)
+	return nil
 }

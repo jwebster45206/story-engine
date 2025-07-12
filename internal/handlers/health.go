@@ -18,14 +18,14 @@ type HealthResponse struct {
 }
 
 type HealthHandler struct {
-	cache      services.Cache
+	storage    services.Storage
 	llmService services.LLMService
 	logger     *slog.Logger
 }
 
-func NewHealthHandler(cache services.Cache, llmService services.LLMService, logger *slog.Logger) *HealthHandler {
+func NewHealthHandler(storage services.Storage, llmService services.LLMService, logger *slog.Logger) *HealthHandler {
 	return &HealthHandler{
-		cache:      cache,
+		storage:    storage,
 		llmService: llmService,
 		logger:     logger,
 	}
@@ -46,13 +46,13 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	components := make(map[string]interface{})
 	overallStatus := "healthy"
 
-	// Test cache connection
-	if err := h.cache.Ping(ctx); err != nil {
-		h.logger.Warn("Cache health check failed", "error", err)
-		components["cache"] = "unhealthy"
+	// Test storage connection
+	if err := h.storage.Ping(ctx); err != nil {
+		h.logger.Warn("Storage health check failed", "error", err)
+		components["storage"] = "unhealthy"
 		overallStatus = "degraded"
 	} else {
-		components["cache"] = "healthy"
+		components["storage"] = "healthy"
 	}
 
 	response := HealthResponse{

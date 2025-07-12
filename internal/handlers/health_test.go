@@ -19,42 +19,42 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 	}))
 
 	tests := []struct {
-		name           string
-		setupCache     func() services.Cache
-		expectedStatus int
-		expectedHealth string
-		expectedCache  string
+		name            string
+		setupStorage    func() services.Storage
+		expectedStatus  int
+		expectedHealth  string
+		expectedStorage string
 	}{
 		{
 			name: "all healthy",
-			setupCache: func() services.Cache {
-				mockCache := services.NewMockCache()
-				mockCache.SetPingSuccess() // Cache is healthy
-				return mockCache
+			setupStorage: func() services.Storage {
+				mockStorage := services.NewMockStorage()
+				mockStorage.SetPingSuccess() // Storage is healthy
+				return mockStorage
 			},
-			expectedStatus: http.StatusOK,
-			expectedHealth: "healthy",
-			expectedCache:  "healthy",
+			expectedStatus:  http.StatusOK,
+			expectedHealth:  "healthy",
+			expectedStorage: "healthy",
 		},
 		{
-			name: "unhealthy cache",
-			setupCache: func() services.Cache {
-				mockCache := services.NewMockCache()
-				mockCache.SetPingError(errors.New("connection failed")) // Cache is unhealthy
-				return mockCache
+			name: "unhealthy storage",
+			setupStorage: func() services.Storage {
+				mockStorage := services.NewMockStorage()
+				mockStorage.SetPingError(errors.New("connection failed")) // Storage is unhealthy
+				return mockStorage
 			},
-			expectedStatus: http.StatusServiceUnavailable,
-			expectedHealth: "degraded",
-			expectedCache:  "unhealthy",
+			expectedStatus:  http.StatusServiceUnavailable,
+			expectedHealth:  "degraded",
+			expectedStorage: "unhealthy",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cache := tt.setupCache()
+			storage := tt.setupStorage()
 			// Create a mock LLM service for the handler (even though we don't use it in health check)
 			mockLLM := services.NewMockLLMAPI()
-			handler := NewHealthHandler(cache, mockLLM, logger)
+			handler := NewHealthHandler(storage, mockLLM, logger)
 
 			req := httptest.NewRequest(http.MethodGet, "/health", nil)
 			rr := httptest.NewRecorder()
@@ -87,12 +87,12 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 				t.Errorf("Expected service 'roleplay-agent', got '%s'", response.Service)
 			}
 
-			// Check cache component status
-			cacheComponent, exists := response.Components["cache"]
+			// Check storage component status
+			storageComponent, exists := response.Components["storage"]
 			if !exists {
-				t.Error("Expected cache component in response")
-			} else if cacheComponent != tt.expectedCache {
-				t.Errorf("Expected cache status '%s', got '%v'", tt.expectedCache, cacheComponent)
+				t.Error("Expected storage component in response")
+			} else if storageComponent != tt.expectedStorage {
+				t.Errorf("Expected storage status '%s', got '%v'", tt.expectedStorage, storageComponent)
 			}
 
 			// Check timestamp is recent
@@ -110,12 +110,12 @@ func TestHealthHandler_ResponseFormat(t *testing.T) {
 	}))
 
 	// Use mock services to ensure predictable behavior
-	mockCache := services.NewMockCache()
-	mockCache.SetPingError(errors.New("cache unavailable"))
+	mockStorage := services.NewMockStorage()
+	mockStorage.SetPingError(errors.New("storage unavailable"))
 
 	mockLLM := services.NewMockLLMAPI()
 
-	handler := NewHealthHandler(mockCache, mockLLM, logger)
+	handler := NewHealthHandler(mockStorage, mockLLM, logger)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
@@ -148,8 +148,8 @@ func TestHealthHandler_ResponseFormat(t *testing.T) {
 		t.Error("Components field is empty")
 	}
 
-	// Verify cache component is present
-	if _, exists := response.Components["cache"]; !exists {
-		t.Error("Cache component missing")
+	// Verify storage component is present
+	if _, exists := response.Components["storage"]; !exists {
+		t.Error("Storage component missing")
 	}
 }
