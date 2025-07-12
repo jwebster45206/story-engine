@@ -30,7 +30,7 @@ go.work.sum
 # Config files with secrets
 config.docker.json
 config*.json
-!config.venice.json
+!config.template.json
 
 # Editor/IDE
 # .idea/

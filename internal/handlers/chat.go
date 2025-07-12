@@ -116,13 +116,25 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
+
+		if gs == nil {
+			h.logger.Warn("Game state not found", "requested_id", request.GameStateID.String())
+			w.WriteHeader(http.StatusBadRequest)
+			response := chat.ChatResponse{
+				Error: "Game state not found. Please provide a valid game state ID or omit the ID to create a new game.",
+			}
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				h.logger.Error("Error encoding error response", "error", err)
+			}
+			return
+		}
 	}
 
 	// System prompt first
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: scenario.BaseSystemPrompt + "\n\n" + scenario.MermaidLagoonPrompt,
+			Content: scenario.BaseSystemPrompt + "\n\n" + scenario.PirateScenarioPrompt,
 		},
 	}
 	// Add chat history from game state
@@ -156,15 +168,33 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	response.GameStateID = gs.ID
 
 	// Update game state with new chat message
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
 		Role:    chat.ChatRoleUser,
 		Content: request.Message,
 	})
-	h.storage.SaveGameState(ctx, gs.ID, gs)
+	// Add the LLM's response to the game state
+	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
+		Role:    chat.ChatRoleAgent,
+		Content: response.Message,
+	})
 
+	// Save the updated game state
+	if err := h.storage.SaveGameState(ctx, gs.ID, gs); err != nil {
+		h.logger.Error("Failed to save game state", "error", err, "game_state_id", gs.ID.String())
+		w.WriteHeader(http.StatusInternalServerError)
+		errorResponse := chat.ChatResponse{
+			Error: "Failed to save conversation. Please try again.",
+		}
+		if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
+		return
+	}
+
+	response.GameStateID = gs.ID
+	response.ChatHistory = gs.ChatHistory
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		h.logger.Error("Error encoding chat response", "error", err)

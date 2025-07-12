@@ -17,9 +17,10 @@ type ChatRequest struct {
 // It omits GameState currently, but GameState should be updated
 // within the chat handler.
 type ChatResponse struct {
-	Error       string    `json:"error,omitempty"`
-	GameStateID uuid.UUID `json:"gamestate_id,omitempty"` // Unique ID for the game state
-	Message     string    `json:"message,omitempty"`
+	Error       string        `json:"error,omitempty"`
+	GameStateID uuid.UUID     `json:"gamestate_id,omitempty"` // Unique ID for the game state
+	Message     string        `json:"message,omitempty"`
+	ChatHistory []ChatMessage `json:"chat_history,omitempty"` // History of chat messages
 }
 
 const (
