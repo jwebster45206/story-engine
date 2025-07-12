@@ -21,11 +21,9 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 	tests := []struct {
 		name           string
 		setupCache     func() services.Cache
-		setupLLM       func() services.LLMService
 		expectedStatus int
 		expectedHealth string
 		expectedCache  string
-		expectedOllama string
 	}{
 		{
 			name: "all healthy",
@@ -34,14 +32,9 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 				mockCache.SetPingSuccess() // Cache is healthy
 				return mockCache
 			},
-			setupLLM: func() services.LLMService {
-				mockLLM := services.NewMockLLMAPI()
-				return mockLLM
-			},
 			expectedStatus: http.StatusOK,
 			expectedHealth: "healthy",
 			expectedCache:  "healthy",
-			expectedOllama: "healthy",
 		},
 		{
 			name: "unhealthy cache",
@@ -50,39 +43,18 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 				mockCache.SetPingError(errors.New("connection failed")) // Cache is unhealthy
 				return mockCache
 			},
-			setupLLM: func() services.LLMService {
-				mockLLM := services.NewMockLLMAPI()
-				return mockLLM
-			},
 			expectedStatus: http.StatusServiceUnavailable,
 			expectedHealth: "degraded",
 			expectedCache:  "unhealthy",
-			expectedOllama: "healthy",
-		},
-		{
-			name: "unhealthy ollama",
-			setupCache: func() services.Cache {
-				mockCache := services.NewMockCache()
-				mockCache.SetPingSuccess()
-				return mockCache
-			},
-			setupLLM: func() services.LLMService {
-				mockLLM := services.NewMockLLMAPI()
-				mockLLM.SetListModelsError(errors.New("ollama connection failed"))
-				return mockLLM
-			},
-			expectedStatus: http.StatusServiceUnavailable,
-			expectedHealth: "degraded",
-			expectedCache:  "healthy",
-			expectedOllama: "unhealthy",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cache := tt.setupCache()
-			llmService := tt.setupLLM()
-			handler := NewHealthHandler(cache, llmService, logger)
+			// Create a mock LLM service for the handler (even though we don't use it in health check)
+			mockLLM := services.NewMockLLMAPI()
+			handler := NewHealthHandler(cache, mockLLM, logger)
 
 			req := httptest.NewRequest(http.MethodGet, "/health", nil)
 			rr := httptest.NewRecorder()
@@ -123,31 +95,6 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 				t.Errorf("Expected cache status '%s', got '%v'", tt.expectedCache, cacheComponent)
 			}
 
-			// Check ollama component status
-			ollamaComponent, exists := response.Components["ollama"]
-			if !exists {
-				t.Error("Expected ollama component in response")
-			} else {
-				ollamaMap, ok := ollamaComponent.(map[string]interface{})
-				if !ok {
-					t.Errorf("Expected ollama component to be a map, got %T", ollamaComponent)
-				} else {
-					status, statusExists := ollamaMap["status"]
-					if !statusExists {
-						t.Error("Expected ollama status in component")
-					} else if status != tt.expectedOllama {
-						t.Errorf("Expected ollama status '%s', got '%v'", tt.expectedOllama, status)
-					}
-
-					if tt.expectedOllama == "healthy" {
-						// Check that tags are present for healthy ollama
-						if _, tagsExist := ollamaMap["tags"]; !tagsExist {
-							t.Error("Expected tags in healthy ollama component")
-						}
-					}
-				}
-			}
-
 			// Check timestamp is recent
 			timeDiff := time.Since(response.Timestamp)
 			if timeDiff > time.Second {
@@ -167,7 +114,6 @@ func TestHealthHandler_ResponseFormat(t *testing.T) {
 	mockCache.SetPingError(errors.New("cache unavailable"))
 
 	mockLLM := services.NewMockLLMAPI()
-	mockLLM.SetListModelsError(errors.New("ollama unavailable"))
 
 	handler := NewHealthHandler(mockCache, mockLLM, logger)
 
@@ -202,12 +148,8 @@ func TestHealthHandler_ResponseFormat(t *testing.T) {
 		t.Error("Components field is empty")
 	}
 
-	// Verify both cache and ollama components are present
+	// Verify cache component is present
 	if _, exists := response.Components["cache"]; !exists {
 		t.Error("Cache component missing")
-	}
-
-	if _, exists := response.Components["ollama"]; !exists {
-		t.Error("Ollama component missing")
 	}
 }

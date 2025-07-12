@@ -55,22 +55,6 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		components["cache"] = "healthy"
 	}
 
-	// Check Ollama service and list models
-	models, err := h.llmService.ListModels(ctx)
-	if err != nil {
-		h.logger.Warn("Ollama health check failed", "error", err)
-		components["ollama"] = map[string]interface{}{
-			"status": "unhealthy",
-			"error":  err.Error(),
-		}
-		overallStatus = "degraded"
-	} else {
-		components["ollama"] = map[string]interface{}{
-			"status": "healthy",
-			"tags":   models,
-		}
-	}
-
 	response := HealthResponse{
 		Status:     overallStatus,
 		Timestamp:  time.Now(),
