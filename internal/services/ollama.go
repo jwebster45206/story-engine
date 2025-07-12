@@ -96,7 +96,9 @@ func (s *OllamaService) GetChatResponse(ctx context.Context, messages []chat.Cha
 
 	// Read the full response body for logging
 	var responseBody bytes.Buffer
-	responseBody.ReadFrom(resp.Body)
+	if _, err := responseBody.ReadFrom(resp.Body); err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
 	responseBodyStr := responseBody.String()
 
 	if resp.StatusCode != http.StatusOK {
