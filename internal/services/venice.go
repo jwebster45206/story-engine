@@ -97,28 +97,11 @@ func NewVeniceService(apiKey string, modelName string) *VeniceService {
 
 // InitModel initializes the model (Venice AI doesn't require explicit model initialization)
 func (v *VeniceService) InitModel(ctx context.Context, modelName string) error {
-	// Venice AI doesn't require explicit model initialization
-	// We can optionally validate that the model exists by calling ListModels
-	models, err := v.ListModels(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to validate model: %w", err)
-	}
-
-	// Check if the model exists
-	for _, model := range models {
-		if model == modelName {
-			return nil
-		}
-	}
-
-	// If model not found, still return success since Venice supports model traits
-	// and compatibility mappings that might not appear in the basic models list
 	return nil
 }
 
 // IsModelReady checks if the model is ready (always true for Venice AI)
 func (v *VeniceService) IsModelReady(ctx context.Context, modelName string) (bool, error) {
-	// Venice AI models are always ready
 	return true, nil
 }
 
@@ -166,18 +149,11 @@ func (v *VeniceService) ListModels(ctx context.Context) ([]string, error) {
 
 // GetChatResponse generates a chat response using Venice AI
 func (v *VeniceService) GetChatResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
-	// Use the configured model name, fallback to venice-uncensored if empty
-	modelName := v.modelName
-	if modelName == "" {
-		modelName = "venice-uncensored"
-	}
-
-	return v.GetChatResponseWithModel(ctx, messages, modelName)
+	return v.GetChatResponseWithModel(ctx, messages, v.modelName)
 }
 
 // GetChatResponseWithModel generates a chat response using Venice AI with a specific model
 func (v *VeniceService) GetChatResponseWithModel(ctx context.Context, messages []chat.ChatMessage, modelName string) (*chat.ChatResponse, error) {
-	// Prepare the request
 	veniceReq := VeniceChatRequest{
 		Model:       modelName,
 		Messages:    messages,
