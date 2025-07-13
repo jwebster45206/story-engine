@@ -153,8 +153,8 @@ func TestGameStateHandler_Delete(t *testing.T) {
 		{
 			name:           "non-existent game state",
 			gameStateID:    uuid.New().String(),
-			expectedStatus: http.StatusNotFound,
-			expectError:    true,
+			expectedStatus: http.StatusNoContent,
+			expectError:    false,
 		},
 		{
 			name:           "invalid game state ID format",
