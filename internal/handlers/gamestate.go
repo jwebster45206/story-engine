@@ -50,7 +50,9 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			response := ErrorResponse{
 				Error: "Invalid game state ID format",
 			}
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				h.logger.Error("Failed to encode error response", "error", err)
+			}
 			return
 		}
 	}
@@ -65,7 +67,9 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			response := ErrorResponse{
 				Error: "Game state ID is required for GET requests",
 			}
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				h.logger.Error("Failed to encode error response", "error", err)
+			}
 			return
 		}
 		h.handleRead(w, r, gameStateID)
@@ -76,7 +80,9 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			response := ErrorResponse{
 				Error: "Game state ID is required for DELETE requests",
 			}
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				h.logger.Error("Failed to encode error response", "error", err)
+			}
 			return
 		}
 		h.handleDelete(w, r, gameStateID)
@@ -86,7 +92,9 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		response := ErrorResponse{
 			Error: "Method not allowed. Supported methods: POST, GET, DELETE",
 		}
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
 	}
 }
 
@@ -105,13 +113,17 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		response := ErrorResponse{
 			Error: "Failed to create game state",
 		}
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
 		return
 	}
 
 	h.logger.Debug("Game state created successfully", "id", gs.ID.String())
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(gs)
+	if err := json.NewEncoder(w).Encode(gs); err != nil {
+		h.logger.Error("Failed to encode game state response", "error", err)
+	}
 }
 
 func (h *GameStateHandler) handleRead(w http.ResponseWriter, r *http.Request, gameStateID uuid.UUID) {
@@ -124,7 +136,9 @@ func (h *GameStateHandler) handleRead(w http.ResponseWriter, r *http.Request, ga
 		response := ErrorResponse{
 			Error: "Failed to load game state",
 		}
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
 		return
 	}
 
@@ -134,13 +148,17 @@ func (h *GameStateHandler) handleRead(w http.ResponseWriter, r *http.Request, ga
 		response := ErrorResponse{
 			Error: "Game state not found",
 		}
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
 		return
 	}
 
 	h.logger.Debug("Game state loaded successfully", "id", gameStateID.String(), "chat_history_length", len(gs.ChatHistory))
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(gs)
+	if err := json.NewEncoder(w).Encode(gs); err != nil {
+		h.logger.Error("Failed to encode game state response", "error", err)
+	}
 }
 
 func (h *GameStateHandler) handleDelete(w http.ResponseWriter, r *http.Request, gameStateID uuid.UUID) {
@@ -150,7 +168,9 @@ func (h *GameStateHandler) handleDelete(w http.ResponseWriter, r *http.Request, 
 		response := ErrorResponse{
 			Error: "Failed to delete game state",
 		}
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
 		return
 	}
 	h.logger.Debug("Game state deleted successfully", "id", gameStateID.String())

@@ -64,7 +64,9 @@ func TestGameStateHandler_Read(t *testing.T) {
 
 	// Create a test game state
 	testGS := state.NewGameState()
-	mockStorage.SaveGameState(context.Background(), testGS.ID, testGS)
+	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
+		t.Fatalf("Failed to save test game state: %v", err)
+	}
 
 	tests := []struct {
 		name           string
@@ -136,7 +138,9 @@ func TestGameStateHandler_Delete(t *testing.T) {
 
 	// Create a test game state
 	testGS := state.NewGameState()
-	mockStorage.SaveGameState(context.Background(), testGS.ID, testGS)
+	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
+		t.Fatalf("Failed to save test game state: %v", err)
+	}
 
 	tests := []struct {
 		name           string

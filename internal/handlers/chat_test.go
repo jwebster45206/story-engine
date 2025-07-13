@@ -94,7 +94,9 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 				// Create a test game state
 				testGS := state.NewGameState()
 				gameStateID = testGS.ID
-				mockSto.SaveGameState(context.Background(), testGS.ID, testGS)
+				if err := mockSto.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
+					t.Fatalf("Failed to save test game state: %v", err)
+				}
 
 				// Update the request body to include GameStateID
 				if reqBody, ok := tt.body.(chat.ChatRequest); ok {
@@ -216,7 +218,9 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 
 	// Create a test game state
 	testGS := state.NewGameState()
-	mockSto.SaveGameState(context.Background(), testGS.ID, testGS)
+	if err := mockSto.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
+		t.Fatalf("Failed to save test game state: %v", err)
+	}
 
 	handler := NewChatHandler(mockLLM, logger, mockSto)
 	requestBody := chat.ChatRequest{
@@ -268,7 +272,9 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 
 	// Create a test game state
 	testGS := state.NewGameState()
-	mockSto.SaveGameState(context.Background(), testGS.ID, testGS)
+	if err := mockSto.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
+		t.Fatalf("Failed to save test game state: %v", err)
+	}
 
 	handler := NewChatHandler(mockLLM, logger, mockSto)
 
