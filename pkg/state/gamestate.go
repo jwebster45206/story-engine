@@ -1,6 +1,9 @@
 package state
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
 	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
@@ -9,8 +12,10 @@ import (
 // NPC represents a non-player character in the game
 type NPC struct {
 	Name        string `json:"name"`
-	Disposition string `json:"disposition"` // e.g. "hostile", "neutral", "friendly"
-	Profile     string `json:"profile"`     // short description or backstory
+	Type        string `json:"type"`                // e.g. "villager", "guard", "merchant"
+	Disposition string `json:"disposition"`         // e.g. "hostile", "neutral", "friendly"
+	Description string `json:"description"`         // short description or backstory
+	IsImportant bool   `json:"important,omitempty"` // whether this NPC is important to the story
 }
 
 // GameState is the current state of a roleplay game session.
@@ -52,4 +57,18 @@ func (gs *GameState) GetClosingPrompt() chat.ChatMessage {
 		Role:    chat.ChatRoleSystem,
 		Content: scenario.ClosingPromptGeneral,
 	}
+}
+
+func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error) {
+	if gs == nil {
+		return chat.ChatMessage{}, fmt.Errorf("game state is nil")
+	}
+	jsonData, err := json.Marshal(ToPromptState(gs))
+	if err != nil {
+		return chat.ChatMessage{}, err
+	}
+	return chat.ChatMessage{
+		Role:    chat.ChatRoleSystem,
+		Content: fmt.Sprintf("Use the following JSON game state as world context. Do not explain it.\n\nAfter your response, append a JSON object called `gamestate` with the current values, if anything in the game state has changed. If there are no changes, omit it. \n\nGame State:\n```json\n%s\n```", jsonData),
+	}, nil
 }
