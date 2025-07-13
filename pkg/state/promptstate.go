@@ -8,7 +8,7 @@ type PromptState struct {
 	Location  string          `json:"location"`
 	Flags     map[string]bool `json:"flags"`
 	Inventory []string        `json:"inventory"`
-	NPCs      map[string]NPC  `json:"npcs"`
+	NPCs      NPCMap          `json:"npcs"`
 }
 
 func ToPromptState(gs *GameState) *PromptState {

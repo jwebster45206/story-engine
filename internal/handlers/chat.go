@@ -189,7 +189,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Attempt to extract and apply Gamestate JSON from the LLM response
-	if err := parseAndApplyGameState(&response.Message, gs); err != nil {
+	if err := parseAndApplyGameState(&response.Message, gs, h.logger); err != nil {
 		h.logger.Error("Failed to parse Gamestate JSON from LLM response", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		errorResponse := ErrorResponse{
@@ -232,12 +232,19 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // parseAndApplyGameState looks for a Gamestate JSON block in the response message, applies it to the game state, and removes it from the message.
-func parseAndApplyGameState(responseMsg *string, gs *state.GameState) error {
+func parseAndApplyGameState(responseMsg *string, gs *state.GameState, log *slog.Logger) error {
 	msg := *responseMsg
 	prefix := "Gamestate:"
 	prefixIdx := strings.Index(msg, prefix)
-	codeIdx := strings.Index(msg, "```json")
+	// Accept both ```json, ```JSON, and plain ``` (case-insensitive)
+	codeIdx := strings.Index(strings.ToLower(msg), "```json")
+	codeMarker := "```json"
 	if codeIdx == -1 {
+		codeIdx = strings.Index(msg, "```")
+		codeMarker = "```"
+	}
+	if codeIdx == -1 {
+		log.Debug("No code block found in response", "msg", msg)
 		return nil // No code block, nothing to do
 	}
 
@@ -248,18 +255,33 @@ func parseAndApplyGameState(responseMsg *string, gs *state.GameState) error {
 		blockStart = codeIdx
 	}
 	// Find the end of the code block
-	codeEnd := strings.Index(msg[codeIdx+len("```json"):], "```")
+	codeEnd := strings.Index(msg[codeIdx+len(codeMarker):], "```")
 	if codeEnd == -1 {
+		log.Debug("No closing code block found after code marker", "msg", msg[codeIdx:])
 		// Remove everything from blockStart to end of message
 		cleaned := strings.TrimSpace(msg[:blockStart])
 		*responseMsg = cleaned
 		return nil
 	}
 
-	codeEnd = codeIdx + len("```json") + codeEnd
-	jsonStr := strings.TrimSpace(msg[codeIdx+len("```json") : codeEnd])
+	codeEnd = codeIdx + len(codeMarker) + codeEnd
+	jsonStr := strings.TrimSpace(msg[codeIdx+len(codeMarker) : codeEnd])
+	// If the block starts with '"gamestate":', wrap it in braces to make valid JSON
+	trimmed := strings.TrimSpace(jsonStr)
+	if strings.HasPrefix(trimmed, "\"gamestate\"") || strings.HasPrefix(trimmed, "'gamestate'") {
+		jsonStr = "{" + trimmed + "}"
+	} else if strings.HasPrefix(trimmed, "gamestate:") {
+		// Remove "gamestate:" and wrap in {"gamestate": ...}
+		rest := strings.TrimSpace(strings.TrimPrefix(trimmed, "gamestate:"))
+		jsonStr = "{\"gamestate\": " + rest + "}"
+	}
+	log.Debug("Found Gamestate JSON block in response",
+		"gamestate_json", jsonStr,
+		"game_state_id", gs.ID.String(),
+	)
 	var ps state.PromptState
 	if err := json.Unmarshal([]byte(jsonStr), &ps); err != nil {
+		log.Debug("Failed to unmarshal Gamestate JSON", "jsonStr", jsonStr, "error", err)
 		return err
 	}
 	state.ApplyPromptStateToGameState(&ps, gs)

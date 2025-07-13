@@ -69,6 +69,6 @@ func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error) {
 	}
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf("Use the following JSON game state as world context. Do not explain it.\n\nAfter your response, append a JSON object called `gamestate` with the current values, if anything in the game state has changed. If there are no changes, omit it. \n\nGame State:\n```json\n%s\n```", jsonData),
+		Content: fmt.Sprintf("Use the following JSON game state as world context. Do not explain it.\n\nAfter your response, append a JSON object called `gamestate` with the current values. Add any new NPCs, update NPC dispositions as needed, update items in inventory, and update location.\n\nGame State:\n```json\n%s\n```", jsonData),
 	}, nil
 }

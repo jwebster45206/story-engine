@@ -310,10 +310,14 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 }
 
 func TestParseAndApplyGameState(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+
 	t.Run("removes Gamestate block and applies JSON", func(t *testing.T) {
 		msg := "You see a dark cave.\n\nGamestate:\n```json\n{\n  \"location\": \"cave\",\n  \"flags\": {\"torch_lit\": true}\n}\n```\n"
 		gs := &state.GameState{}
-		err := parseAndApplyGameState(&msg, gs)
+		err := parseAndApplyGameState(&msg, gs, logger)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -331,7 +335,7 @@ func TestParseAndApplyGameState(t *testing.T) {
 	t.Run("no code block returns nil and leaves message", func(t *testing.T) {
 		msg := "Just a normal message."
 		gs := &state.GameState{}
-		err := parseAndApplyGameState(&msg, gs)
+		err := parseAndApplyGameState(&msg, gs, logger)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -343,7 +347,7 @@ func TestParseAndApplyGameState(t *testing.T) {
 	t.Run("malformed JSON returns error", func(t *testing.T) {
 		msg := "Gamestate:\n```json\n{not valid json}\n```"
 		gs := &state.GameState{}
-		err := parseAndApplyGameState(&msg, gs)
+		err := parseAndApplyGameState(&msg, gs, logger)
 		if err == nil {
 			t.Error("expected error for malformed JSON, got nil")
 		}
