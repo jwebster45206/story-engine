@@ -30,16 +30,16 @@ type ConsoleConfig struct {
 }
 
 func printBanner() {
-	banner := `  ___     ___   _       _____   ____   _         _    __   __ 
-|  _ \   / _ \ | |     | ____| |  _ \ | |       / \  |  \ / / 
-| |_) | | | | || |     |  _|   | |_) || |      / _ \  \ \/ /  
-|  _ <  | |_| || |___  | |___  |  __/ | |___  / ___ \  \  /   
-|_| \_\  \___/ |_____| |_____| |_|    |_____||_|   \_|  |_|                                                                 
-      _       ____   _____  _   _   _____ 
-     / \     / ___| | ____|| \ | | |_   _|
-    / _ \   | |  _  |  _|  |  \| |   | |  
-   / ___ \  | |_| | | |___ | |\  |   | |  
-  /_/   \_\  \____| |_____||_| \_|   |_|  
+	banner := `   ___     ___   _       _____   ____   _         _    __   __ 
+ |  _ \   / _ \ | |     | ____| |  _ \ | |       / \  |  \ / / 
+ | |_) | | | | || |     |  _|   | |_) || |      / _ \  \ \/ /  
+ |  _ <  | |_| || |___  | |___  |  __/ | |___  / ___ \  \  /   
+ |_| \_\  \___/ |_____| |_____| |_|    |_____||_|   \_|  |_|                                                                 
+       _       ____   _____  _   _   _____ 
+      / \     / ___| | ____|| \ | | |_   _|
+     / _ \   | |  _  |  _|  |  \| |   | |  
+    / ___ \  | |_| | | |___ | |\  |   | |  
+   /_/   \_\  \____| |_____||_| \_|   |_|  
                                           
 `
 	fmt.Print(banner)
@@ -63,6 +63,71 @@ func printDivider() {
 
 func clearScreen() {
 	fmt.Print("\033[2J\033[H")
+}
+
+func wrapText(text string, width int) string {
+	// Split by lines first to preserve intentional line breaks
+	lines := strings.Split(text, "\n")
+	var wrappedLines []string
+
+	for _, line := range lines {
+		// If line is empty or only whitespace, preserve it as-is
+		if strings.TrimSpace(line) == "" {
+			wrappedLines = append(wrappedLines, line)
+			continue
+		}
+
+		// If line fits within width, keep it as-is
+		if len(line) <= width {
+			wrappedLines = append(wrappedLines, line)
+			continue
+		}
+
+		// Line is too long, need to wrap it
+		words := strings.Fields(line)
+		if len(words) == 0 {
+			wrappedLines = append(wrappedLines, line)
+			continue
+		}
+
+		var currentLine strings.Builder
+
+		for _, word := range words {
+			// Check if adding this word would exceed the width
+			testLine := currentLine.String()
+			if testLine != "" {
+				testLine += " "
+			}
+			testLine += word
+
+			if len(testLine) <= width {
+				// Word fits on current line
+				if currentLine.Len() > 0 {
+					currentLine.WriteString(" ")
+				}
+				currentLine.WriteString(word)
+			} else {
+				// Word doesn't fit, finish current line and start new one
+				if currentLine.Len() > 0 {
+					wrappedLines = append(wrappedLines, currentLine.String())
+					currentLine.Reset()
+				}
+				currentLine.WriteString(word)
+			}
+		}
+
+		// Add the last line if it has content
+		if currentLine.Len() > 0 {
+			wrappedLines = append(wrappedLines, currentLine.String())
+		}
+	}
+
+	return strings.Join(wrappedLines, "\n")
+}
+
+func printWrapped(text string) {
+	wrapped := wrapText(text, 80) // 80 characters is a good default for most terminals
+	fmt.Print(wrapped)
 }
 
 func printHelp() {
@@ -181,15 +246,17 @@ func main() {
 		// Handle special commands first
 		if handleCommand(input) {
 			continue
-		}
-
-		// Send message to API with progress dots
+		} // Send message to API with progress dots
 		response, err := sendChatMessageWithProgress(client, consoleConfig.APIBaseURL, gameStateID, input)
 		if err != nil {
 			printRed(err.Error())
 			continue
 		}
-		fmt.Printf("Agent: %s\n", response.Message)
+
+		// Print the agent response with word wrapping
+		fmt.Printf("\n%sAgent:%s ", ColorGreen, ColorReset)
+		printWrapped(response.Message)
+		fmt.Println()
 		fmt.Println()
 	}
 
