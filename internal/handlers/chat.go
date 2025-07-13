@@ -11,7 +11,6 @@ import (
 	"github.com/jwebster45206/roleplay-agent/internal/services"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
 	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
-	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
 // ChatHandler handles chat requests
@@ -98,36 +97,41 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var gs *state.GameState
-	var err error
 	if request.GameStateID == uuid.Nil {
-		gs = state.NewGameState()
-	} else {
-		// Load existing game state from Redis
-		gs, err = h.storage.LoadGameState(r.Context(), request.GameStateID)
-		if err != nil {
-			h.logger.Error("Error loading game state", "error", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			response := chat.ChatResponse{
-				Error: "Failed to load game state.",
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				h.logger.Error("Error encoding error response", "error", err)
-			}
-			return
+		w.WriteHeader(http.StatusBadRequest)
+		response := chat.ChatResponse{
+			Error: "Game state ID is required.",
 		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
+		return
+	}
 
-		if gs == nil {
-			h.logger.Warn("Game state not found", "requested_id", request.GameStateID.String())
-			w.WriteHeader(http.StatusBadRequest)
-			response := chat.ChatResponse{
-				Error: "Game state not found. Please provide a valid game state ID or omit the ID to create a new game.",
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				h.logger.Error("Error encoding error response", "error", err)
-			}
-			return
+	// Load existing game state from Redis
+	gs, err := h.storage.LoadGameState(r.Context(), request.GameStateID)
+	if err != nil {
+		h.logger.Error("Error loading game state", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		response := chat.ChatResponse{
+			Error: "Failed to load game state.",
 		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
+		return
+	}
+
+	if gs == nil {
+		h.logger.Warn("Game state not found", "requested_id", request.GameStateID.String())
+		w.WriteHeader(http.StatusBadRequest)
+		response := chat.ChatResponse{
+			Error: "Game state not found. Please provide a valid game state ID.",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
+		return
 	}
 
 	// System prompt first

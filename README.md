@@ -100,6 +100,14 @@ API runs a small LLM locally, and uses it to drive a gameplay session.
 
 ## Running the Project
 
+#### API
+
 ````bash
 ROLEPLAY_CONFIG=config.docker.json go run cmd/api/main.go &
+````
+
+#### Console Client
+
+````bash
+ROLEPLAY_CONFIG=config.docker.json go run cmd/console/main.go
 ````

@@ -11,8 +11,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/internal/services"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
+	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
 func TestChatHandler_ServeHTTP(t *testing.T) {
@@ -85,6 +87,21 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			tt.mockSetup(mockLLM)
 
 			mockSto := services.NewMockStorage()
+
+			// For tests that need a valid GameStateID, create one
+			var gameStateID uuid.UUID
+			if tt.expectedStatus == http.StatusOK || tt.name == "LLM service error" {
+				// Create a test game state
+				testGS := state.NewGameState()
+				gameStateID = testGS.ID
+				mockSto.SaveGameState(context.Background(), testGS.ID, testGS)
+
+				// Update the request body to include GameStateID
+				if reqBody, ok := tt.body.(chat.ChatRequest); ok {
+					reqBody.GameStateID = gameStateID
+					tt.body = reqBody
+				}
+			}
 
 			// Create chat handler
 			handler := NewChatHandler(mockLLM, logger, mockSto)
@@ -191,8 +208,15 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 	}
 	mockSto := services.NewMockStorage()
 
+	// Create a test game state
+	testGS := state.NewGameState()
+	mockSto.SaveGameState(context.Background(), testGS.ID, testGS)
+
 	handler := NewChatHandler(mockLLM, logger, mockSto)
-	requestBody := chat.ChatRequest{Message: "Test message with special chars: !@#$%"}
+	requestBody := chat.ChatRequest{
+		GameStateID: testGS.ID,
+		Message:     "Test message with special chars: !@#$%",
+	}
 	body, _ := json.Marshal(requestBody)
 
 	req := httptest.NewRequest(http.MethodPost, "/chat", bytes.NewBuffer(body))
@@ -235,10 +259,18 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 
 	mockLLM := services.NewMockLLMAPI()
 	mockSto := services.NewMockStorage()
+
+	// Create a test game state
+	testGS := state.NewGameState()
+	mockSto.SaveGameState(context.Background(), testGS.ID, testGS)
+
 	handler := NewChatHandler(mockLLM, logger, mockSto)
 
 	// Test with missing Content-Type
-	requestBody := chat.ChatRequest{Message: "Hello"}
+	requestBody := chat.ChatRequest{
+		GameStateID: testGS.ID,
+		Message:     "Hello",
+	}
 	body, _ := json.Marshal(requestBody)
 
 	req := httptest.NewRequest(http.MethodPost, "/chat", bytes.NewBuffer(body))

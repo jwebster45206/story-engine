@@ -66,9 +66,12 @@ func main() {
 	healthHandler := handlers.NewHealthHandler(storage, llmService, log)
 	mux.Handle("/health", healthHandler)
 
-	// Create chat handler with LLM service
 	chatHandler := handlers.NewChatHandler(llmService, log, storage)
 	mux.Handle("/chat", chatHandler)
+
+	gameStateHandler := handlers.NewGameStateHandler(storage, log)
+	mux.Handle("/gamestate", gameStateHandler)
+	mux.Handle("/gamestate/", gameStateHandler)
 
 	handler := middleware.Logger(mux)
 	server := &http.Server{
