@@ -3,100 +3,127 @@ API and console app for LLM-powered text roleplay
 
 Gameplay uses elements of 80's text adventure games, augmented with a modern LLM's conversational capabilities. 
 
-```
-/roleplay-agent/
-├── cmd/
-│   ├── api/                # API server (e.g., HTTP server with /chat route)
-│   │   └── main.go
-│   └── console/            # Console CLI client
-│       └── main.go
-├── internal/
-│   ├── agent/              # Prompt builder, chat logic, model adapter
-│   │   └── agent.go
-│   ├── config/             # Environment name, Redis address, Model parameters
-│   │   └── config.go
-│   ├── handlers/           # HTTP handlers
-│   │   └── chat.go
-│   │   └── handlers.go
-│   ├── model/              # LLM interface (Ollama client or mock)
-│   │   └── ollama.go
-│   │   └── mock.go
-│   ├── scenario/
-│   │   └── scenario.go     # Loads and manages the template for the roleplay scenario
-│   └── state/              # JSON state object + update logic
-│       ├── state.go
-├── go.mod
-└── README.md
-└── sample_state.json
-└── sample_scenario.json
-```
-
 ## Architecture
-Project will deliver a Go microservice API and a console app to demonstrate a simple gameplay implementation. 
+Project includes a Go microservice API and a console app. Console app is lightweight, to demonstrate a barebones gameplay session. 
 
-## Initial Responsibilities
+### GameState
 
-`/cmd/api/main.go`
+The GameState represents the complete state of a roleplay session, including conversation history and session metadata. Each game state is uniquely identified by a UUID and contains:
 
-- Starts an HTTP server
+- **Session ID**: Unique identifier for tracking individual gameplay sessions
+- **Chat History**: Complete conversation log between user and AI agent
+- **Serialization**: JSON-based storage format for persistence and retrieval
 
-`POST /chat`
+Game states are created at session start and maintained throughout the roleplay experience. Future enhancements may include location tracking, inventory systems, and game flags.
 
-- Reads input + state, sends to agent, returns response
+### Storage Interface
 
-`/internal/agent/agent.go`
+The project uses Redis as the primary storage backend for game state persistence. The storage interface provides:
 
-- Builds prompt with system instructions + user input + world state
+- **Game State Management**: Create, read, update, and delete operations for game sessions
+- **Redis Integration**: High-performance in-memory storage with optional persistence
+- **Idempotent Operations**: RESTful design with safe delete operations 
 
-`/internal/model/ollama.go`
+The storage interface is abstracted to allow for future backend implementations.
 
-- LLM interface (Ollama client or mock)
-- TODO: streaming vs non-streaming generation: prob start with non-streaming only, but study this
+### LLM Interface
 
-`internal/handlers`
+The LLM interface provides an abstraction layer for Large Language Model integration:
 
-- handlers package is responsible for HTTP handlers
-- When `POST /chat` is received:
-  - Validate the input
-  - Send gamestate and request to the agent
-  - Return agent's response to user
+- **Current Implementation**: Venice AI service for low-cost and performant responses
+- **Interface Design**: Pluggable architecture supporting multiple LLM providers
+- **Chat Integration**: Handles conversation context and message formatting
+- **Model Management**: API for model initialization and readiness checks
 
-`internal/agent/`
+**Note**: Ollama integration exists but is not actively developed due to performance constraints on macOS development environments. 
 
-- Prompt builder, chat logic, model adapter
-- agent package communicates with the LLM, and translates its responses to gamestate and user response
-- agent package also parses user input for sending to the LLM and storing in gamestate 
+### Scenario Model
 
-`internal/scenario`
+Scenarios define the template and rules for roleplay sessions:
 
-- scenario is the template for a roleplay session
-- it is loaded from a json file when requested, and cached in redis
-- it includes the story that serves as the basis for the session
-- it includes clear descriptions of the 2 main characters
-- it includes foundational prompt rules for the LLM's character
-- it includes end conditions
-- TODO: add key-value gauge metrics
-- TODO: add inventory system
-- TODO: add room system
+- **Narrative Foundation**: Each scenario provides the story context and setting for gameplay
+- **Character Definitions**: Clear descriptions of main characters and NPCs
+- **LLM Prompt Rules**: Foundational guidelines that shape the AI's roleplay behavior
+- **Conversation Formatting**: Rules for character dialogue presentation (double line breaks, character names with colons)
+- **Game Boundaries**: Guidelines for staying in character and handling player actions
 
-`/internal/state/`
+**Current Scenarios**:
+- Pirate Captain in Caribbean (Golden Age of Piracy setting)
 
-- Defines game state struct
-- Doesn't make a copy of scenario
-- Responsible for storing game state in Redis, and retrieving it. 
+**Planned Features**:
+- Dynamic scenario loading from JSON files
+- Redis caching for scenario data
+- Key-value gauge metrics for game progress
+- Inventory management system
+- Room/location system for spatial gameplay
 
-### Console
-`/cmd/console/main.go`
+## Endpoints
 
-1. Reads user input from stdin
-2. Sends to agent logic
-3. Prints response
-4. Return to #1
+The API provides RESTful endpoints for game management and chat interaction:
 
-## Infrastructure
+### Health Check
+```bash
+GET /health
+```
+Returns API status and health information.
 
-API runs a small LLM locally, and uses it to drive a gameplay session.
+### Game State Management
 
+**Create Game State**
+```bash
+POST /gamestate
+Content-Type: application/json
+
+# Response: 201 Created
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "chat_history": []
+}
+```
+
+**Get Game State**
+```bash
+GET /gamestate/{id}
+
+# Response: 200 OK
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "chat_history": [...]
+}
+```
+
+**Delete Game State**
+```bash
+DELETE /gamestate/{id}
+
+# Response: 204 No Content (idempotent)
+```
+
+### Chat Interaction
+
+**Send Chat Message**
+```bash
+POST /chat
+Content-Type: application/json
+
+{
+  "game_state_id": "550e8400-e29b-41d4-a716-446655440000",
+  "message": "I examine the treasure chest."
+}
+
+# Response: 200 OK
+{
+  "message": "The ancient chest creaks as you approach. Its brass hinges are green with age, and strange symbols are carved into the weathered wood.\n\nDavey: \"Careful there, Captain. That chest has been waiting here longer than any of us have been alive.\""
+}
+```
+
+### Error Responses
+All endpoints return consistent error format:
+```json
+{
+  "error": "Descriptive error message"
+}
+``` 
 
 ## Running the Project
 
