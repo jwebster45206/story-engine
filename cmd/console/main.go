@@ -16,9 +16,101 @@ import (
 	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
+// ANSI color codes
+const (
+	ColorReset = "\033[0m"
+	ColorRed   = "\033[31m"
+	ColorGreen = "\033[32m"
+	ColorBlue  = "\033[36m"
+)
+
 type ConsoleConfig struct {
 	APIBaseURL string
 	Timeout    time.Duration
+}
+
+func printBanner() {
+	banner := `  ___     ___   _       _____   ____   _         _    __   __ 
+|  _ \   / _ \ | |     | ____| |  _ \ | |       / \  |  \ / / 
+| |_) | | | | || |     |  _|   | |_) || |      / _ \  \ \/ /  
+|  _ <  | |_| || |___  | |___  |  __/ | |___  / ___ \  \  /   
+|_| \_\  \___/ |_____| |_____| |_|    |_____||_|   \_|  |_|                                                                 
+      _       ____   _____  _   _   _____ 
+     / \     / ___| | ____|| \ | | |_   _|
+    / _ \   | |  _  |  _|  |  \| |   | |  
+   / ___ \  | |_| | | |___ | |\  |   | |  
+  /_/   \_\  \____| |_____||_| \_|   |_|  
+                                          
+`
+	fmt.Print(banner)
+}
+
+func printGreen(text string) {
+	fmt.Printf("%s%s%s\n", ColorGreen, text, ColorReset)
+}
+
+func printRed(text string) {
+	fmt.Printf("%s%s%s\n", ColorRed, text, ColorReset)
+}
+
+func printBlue(text string) {
+	fmt.Printf("%s%s%s", ColorBlue, text, ColorReset)
+}
+
+func printDivider() {
+	fmt.Println(strings.Repeat("-", 50))
+}
+
+func clearScreen() {
+	fmt.Print("\033[2J\033[H")
+}
+
+func printHelp() {
+	printGreen("=== ROLEPLAY AGENT COMMANDS ===")
+	fmt.Println()
+	printGreen("Game Commands:")
+	fmt.Println("  help     - Show this help message")
+	fmt.Println("  quit     - Exit the game")
+	fmt.Println()
+	printGreen("How to Play:")
+	fmt.Println("  - Type your message and press Enter to interact with the AI agent")
+	fmt.Println("  - The agent will respond in character based on the roleplay scenario")
+	fmt.Println("  - Use natural language to describe actions, ask questions, or continue the story")
+	fmt.Println()
+	printGreen("Tips:")
+	fmt.Println("  - Be descriptive in your actions for more immersive responses")
+	fmt.Println("  - Don't break character - stay in the role you choose")
+	fmt.Println()
+}
+
+func confirmQuit() bool {
+	printGreen("Are you sure you want to quit? (y/n)")
+	printBlue("Answer: ")
+
+	var response string
+	fmt.Scanln(&response)
+
+	response = strings.ToLower(strings.TrimSpace(response))
+	return response == "y" || response == "yes"
+}
+
+// handleCommand processes user input for special commands
+// Returns true if a command was handled, false if input should be sent to agent
+func handleCommand(input string) bool {
+	command := strings.ToLower(strings.TrimSpace(input))
+
+	switch command {
+	case "help", "h":
+		printHelp()
+		return true
+	case "quit", "q", "exit":
+		if confirmQuit() {
+			os.Exit(0)
+		}
+		return true
+	default:
+		return false
+	}
 }
 
 type ErrorResponse struct {
@@ -26,6 +118,9 @@ type ErrorResponse struct {
 }
 
 func main() {
+	clearScreen()
+	printDivider()
+	printBanner()
 
 	// Console-specific config
 	consoleConfig := &ConsoleConfig{
@@ -38,35 +133,35 @@ func main() {
 		Timeout: consoleConfig.Timeout,
 	}
 
-	// Print welcome message
-	fmt.Println("🎭 Welcome to Roleplay Agent Console!")
-	fmt.Println("Type your messages and press Enter. Type 'quit' or 'exit' to stop.")
-	fmt.Println("Connecting to API at:", consoleConfig.APIBaseURL)
-	fmt.Println(strings.Repeat("-", 50))
-
 	// Test connection to API
 	if !testConnection(client, consoleConfig.APIBaseURL) {
-		fmt.Println("❌ Could not connect to API. Please ensure the API is running.")
-		fmt.Println("💡 Try: docker-compose up -d")
+		printRed("Could not connect to API. Please ensure the API is running.")
+		printGreen("Try: docker-compose up -d")
 		os.Exit(1)
 	}
 
-	fmt.Println("✅ Connected to API successfully!")
+	printGreen("Connected to API successfully!")
 
 	// Create a new game state for this session
 	gameStateID, err := createGameState(client, consoleConfig.APIBaseURL)
 	if err != nil {
-		fmt.Printf("❌ Failed to create game state: %v\n", err)
+		printRed("Failed to create game state: " + err.Error())
 		os.Exit(1)
 	}
 
-	fmt.Printf("🎮 Game state created: %s\n", gameStateID)
-	fmt.Println(strings.Repeat("-", 50))
+	printGreen("Game state created")
+
+	// Print welcome message
+	printGreen("\nWelcome to Roleplay Agent Console!")
+	printGreen("Type your messages and press Enter. Type 'help' for instructions, or 'quit' to stop.")
+
+	printDivider()
+	fmt.Println("")
 
 	// Main chat loop
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
-		fmt.Print("You: ")
+		printBlue("You: ")
 
 		// Read user input
 		if !scanner.Scan() {
@@ -75,16 +170,20 @@ func main() {
 
 		input := strings.TrimSpace(scanner.Text())
 
-		// Check for exit commands
-		if input == "quit" || input == "exit" || input == "" {
-			fmt.Println("👋 Goodbye!")
-			break
+		// Check for empty input
+		if input == "" {
+			continue
 		}
 
-		// Send message to API
-		response, err := sendChatMessage(client, consoleConfig.APIBaseURL, gameStateID, input)
+		// Handle special commands first
+		if handleCommand(input) {
+			continue
+		}
+
+		// Send message to API with progress dots
+		response, err := sendChatMessageWithProgress(client, consoleConfig.APIBaseURL, gameStateID, input)
 		if err != nil {
-			fmt.Printf("❌ %v\n", err)
+			printRed(err.Error())
 			continue
 		}
 		fmt.Printf("Agent: %s\n", response.Message)
@@ -92,7 +191,7 @@ func main() {
 	}
 
 	if err := scanner.Err(); err != nil {
-		fmt.Printf("❌ Error reading input: %v\n", err)
+		printRed("Error reading input: " + err.Error())
 	}
 }
 
@@ -152,7 +251,7 @@ func createGameState(client *http.Client, baseURL string) (uuid.UUID, error) {
 	return createdGameState.ID, nil
 }
 
-func sendChatMessage(client *http.Client, baseURL string, gameStateID uuid.UUID, message string) (*chat.ChatResponse, error) {
+func sendChatMessageWithProgress(client *http.Client, baseURL string, gameStateID uuid.UUID, message string) (*chat.ChatResponse, error) {
 	// Prepare request
 	chatReq := chat.ChatRequest{
 		GameStateID: gameStateID,
@@ -164,39 +263,86 @@ func sendChatMessage(client *http.Client, baseURL string, gameStateID uuid.UUID,
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// Send POST request
-	resp, err := client.Post(
-		baseURL+"/chat",
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
+	// Create a channel to receive the result
+	resultChan := make(chan struct {
+		response *chat.ChatResponse
+		err      error
+	})
 
-	// Read response
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	// Check if request was successful
-	if resp.StatusCode != http.StatusOK {
-		var errorResp ErrorResponse
-		if err := json.Unmarshal(body, &errorResp); err != nil {
-			return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+	// Start the request in a goroutine
+	go func() {
+		// Send POST request
+		resp, err := client.Post(
+			baseURL+"/chat",
+			"application/json",
+			bytes.NewBuffer(jsonData),
+		)
+		if err != nil {
+			resultChan <- struct {
+				response *chat.ChatResponse
+				err      error
+			}{nil, fmt.Errorf("failed to send request: %w", err)}
+			return
 		}
-		return nil, fmt.Errorf("chat request failed: %s", errorResp.Error)
-	}
+		defer resp.Body.Close()
 
-	// Parse successful response
-	var chatResp chat.ChatResponse
-	if err := json.Unmarshal(body, &chatResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
+		// Read response
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			resultChan <- struct {
+				response *chat.ChatResponse
+				err      error
+			}{nil, fmt.Errorf("failed to read response: %w", err)}
+			return
+		}
 
-	return &chatResp, nil
+		// Check if request was successful
+		if resp.StatusCode != http.StatusOK {
+			var errorResp ErrorResponse
+			if err := json.Unmarshal(body, &errorResp); err != nil {
+				resultChan <- struct {
+					response *chat.ChatResponse
+					err      error
+				}{nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))}
+				return
+			}
+			resultChan <- struct {
+				response *chat.ChatResponse
+				err      error
+			}{nil, fmt.Errorf("chat request failed: %s", errorResp.Error)}
+			return
+		}
+
+		// Parse successful response
+		var chatResp chat.ChatResponse
+		if err := json.Unmarshal(body, &chatResp); err != nil {
+			resultChan <- struct {
+				response *chat.ChatResponse
+				err      error
+			}{nil, fmt.Errorf("failed to parse response: %w", err)}
+			return
+		}
+
+		resultChan <- struct {
+			response *chat.ChatResponse
+			err      error
+		}{&chatResp, nil}
+	}()
+
+	// Show progress dots while waiting
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case result := <-resultChan:
+			// Clear the current line and return to beginning
+			fmt.Print("\r\033[K")
+			return result.response, result.err
+		case <-ticker.C:
+			fmt.Print(".")
+		}
+	}
 }
 
 func getEnv(key, defaultValue string) string {
