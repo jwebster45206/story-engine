@@ -236,31 +236,39 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // parseAndApplyGameState looks for a Gamestate JSON block in the response message, applies it to the game state, and removes it from the message.
 func parseAndApplyGameState(responseMsg *string, gs *state.GameState) error {
-	const gamestateTag = "Gamestate:"
 	msg := *responseMsg
-	idx := strings.Index(msg, gamestateTag)
-	if idx == -1 {
-		return nil // No gamestate block, nothing to do
-	}
-	// Find the start of the code block
-	jsonStart := strings.Index(msg[idx:], "```json")
-	if jsonStart == -1 {
+	prefix := "Gamestate:"
+	prefixIdx := strings.Index(msg, prefix)
+	codeIdx := strings.Index(msg, "```json")
+	if codeIdx == -1 {
 		return nil // No code block, nothing to do
 	}
-	jsonStart += idx + len("```json")
-	jsonEnd := strings.Index(msg[jsonStart:], "```")
-	if jsonEnd == -1 {
-		return nil // No closing code block, nothing to do
+
+	var blockStart int
+	if prefixIdx != -1 && prefixIdx < codeIdx {
+		blockStart = prefixIdx
+	} else {
+		blockStart = codeIdx
 	}
-	jsonEnd += jsonStart
-	jsonStr := strings.TrimSpace(msg[jsonStart:jsonEnd])
+	// Find the end of the code block
+	codeEnd := strings.Index(msg[codeIdx+len("```json"):], "```")
+	if codeEnd == -1 {
+		// Remove everything from blockStart to end of message
+		cleaned := strings.TrimSpace(msg[:blockStart])
+		*responseMsg = cleaned
+		return nil
+	}
+
+	codeEnd = codeIdx + len("```json") + codeEnd
+	jsonStr := strings.TrimSpace(msg[codeIdx+len("```json") : codeEnd])
 	var ps state.PromptState
 	if err := json.Unmarshal([]byte(jsonStr), &ps); err != nil {
 		return err
 	}
-	// Copy promptstate fields to GameState
 	state.ApplyPromptStateToGameState(&ps, gs)
-	// Remove the gamestate block from the response message
-	*responseMsg = strings.TrimSpace(msg[:idx])
+
+	// Remove everything from blockStart to end of message
+	cleaned := strings.TrimSpace(msg[:blockStart])
+	*responseMsg = cleaned
 	return nil
 }
