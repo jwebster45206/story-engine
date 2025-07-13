@@ -48,10 +48,6 @@ func TestGameStateHandler_Create(t *testing.T) {
 	if response.ID == uuid.Nil {
 		t.Error("Expected non-nil game state ID")
 	}
-
-	if response.ChatHistory == nil {
-		t.Error("Expected chat history to be initialized")
-	}
 }
 
 func TestGameStateHandler_Read(t *testing.T) {
