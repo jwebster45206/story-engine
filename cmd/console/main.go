@@ -208,7 +208,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	printGreen("Connected to API successfully!")
+	printGreen("Connected to API successfully. ")
 
 	// Create a new game state for this session
 	gameStateID, err := createGameState(client, consoleConfig.APIBaseURL)
@@ -217,10 +217,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	printGreen("Game state created")
+	printGreen("Game state created: " + gameStateID.String())
 
 	// Print welcome message
-	printGreen("\nWelcome to Roleplay Agent Console!")
+	printGreen("\nWelcome to Roleplay Agent Console.")
 	printGreen("Type your messages and press Enter. Type 'help' for instructions, or 'quit' to stop.")
 
 	printDivider()
