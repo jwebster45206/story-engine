@@ -11,7 +11,6 @@ import (
 	"github.com/jwebster45206/roleplay-agent/internal/services"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
 	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
-	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
 // ChatHandler handles chat requests
@@ -53,7 +52,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"remote_addr", r.RemoteAddr)
 
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		response := chat.ChatResponse{
+		response := ErrorResponse{
 			Error: "Method not allowed. Only POST is supported.",
 		}
 
@@ -76,7 +75,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		h.logger.Warn("Invalid request body", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
-		response := chat.ChatResponse{
+		response := ErrorResponse{
 			Error: "Invalid request body. Expected JSON with 'message' field.",
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -89,7 +88,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := request.Validate(); err != nil {
 		h.logger.Warn("Invalid chat request", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
-		response := chat.ChatResponse{
+		response := ErrorResponse{
 			Error: "Invalid request: " + err.Error(),
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -98,36 +97,41 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var gs *state.GameState
-	var err error
 	if request.GameStateID == uuid.Nil {
-		gs = state.NewGameState()
-	} else {
-		// Load existing game state from Redis
-		gs, err = h.storage.LoadGameState(r.Context(), request.GameStateID)
-		if err != nil {
-			h.logger.Error("Error loading game state", "error", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			response := chat.ChatResponse{
-				Error: "Failed to load game state.",
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				h.logger.Error("Error encoding error response", "error", err)
-			}
-			return
+		w.WriteHeader(http.StatusBadRequest)
+		response := ErrorResponse{
+			Error: "Game state ID is required.",
 		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
+		return
+	}
 
-		if gs == nil {
-			h.logger.Warn("Game state not found", "requested_id", request.GameStateID.String())
-			w.WriteHeader(http.StatusBadRequest)
-			response := chat.ChatResponse{
-				Error: "Game state not found. Please provide a valid game state ID or omit the ID to create a new game.",
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				h.logger.Error("Error encoding error response", "error", err)
-			}
-			return
+	// Load existing game state from Redis
+	gs, err := h.storage.LoadGameState(r.Context(), request.GameStateID)
+	if err != nil {
+		h.logger.Error("Error loading game state", "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		response := ErrorResponse{
+			Error: "Failed to load game state.",
 		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
+		return
+	}
+
+	if gs == nil {
+		h.logger.Warn("Game state not found", "requested_id", request.GameStateID.String())
+		w.WriteHeader(http.StatusBadRequest)
+		response := ErrorResponse{
+			Error: "Game state not found. Please provide a valid game state ID.",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
+		return
 	}
 
 	// System prompt first
@@ -160,7 +164,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"user_message", request.Message,
 			"message_count", len(messages))
 		w.WriteHeader(http.StatusInternalServerError)
-		errorResponse := chat.ChatResponse{
+		errorResponse := ErrorResponse{
 			Error: "Failed to generate response. Please try again.",
 		}
 		if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
@@ -184,7 +188,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := h.storage.SaveGameState(ctx, gs.ID, gs); err != nil {
 		h.logger.Error("Failed to save game state", "error", err, "game_state_id", gs.ID.String())
 		w.WriteHeader(http.StatusInternalServerError)
-		errorResponse := chat.ChatResponse{
+		errorResponse := ErrorResponse{
 			Error: "Failed to save conversation. Please try again.",
 		}
 		if err := json.NewEncoder(w).Encode(errorResponse); err != nil {

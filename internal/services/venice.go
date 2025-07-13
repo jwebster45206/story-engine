@@ -14,6 +14,7 @@ import (
 
 const (
 	veniceBaseURL = "https://api.venice.ai/api/v1"
+	msgNoResponse = "(no response)"
 )
 
 // VeniceService implements LLMService for Venice AI
@@ -196,14 +197,12 @@ func (v *VeniceService) GetChatResponseWithModel(ctx context.Context, messages [
 	}
 
 	if veniceResp.Error != nil {
-		return &chat.ChatResponse{
-			Error: veniceResp.Error.Message,
-		}, nil
+		return nil, fmt.Errorf("API error: %s", veniceResp.Error.Message)
 	}
 
 	if len(veniceResp.Choices) == 0 {
 		return &chat.ChatResponse{
-			Error: "no response choices returned",
+			Message: msgNoResponse,
 		}, nil
 	}
 

@@ -11,8 +11,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/internal/services"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
+	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
 func TestChatHandler_ServeHTTP(t *testing.T) {
@@ -86,6 +88,23 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 
 			mockSto := services.NewMockStorage()
 
+			// For tests that need a valid GameStateID, create one
+			var gameStateID uuid.UUID
+			if tt.expectedStatus == http.StatusOK || tt.name == "LLM service error" {
+				// Create a test game state
+				testGS := state.NewGameState()
+				gameStateID = testGS.ID
+				if err := mockSto.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
+					t.Fatalf("Failed to save test game state: %v", err)
+				}
+
+				// Update the request body to include GameStateID
+				if reqBody, ok := tt.body.(chat.ChatRequest); ok {
+					reqBody.GameStateID = gameStateID
+					tt.body = reqBody
+				}
+			}
+
 			// Create chat handler
 			handler := NewChatHandler(mockLLM, logger, mockSto)
 
@@ -123,23 +142,29 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 				t.Errorf("Expected Content-Type application/json, got %s", rr.Header().Get("Content-Type"))
 			}
 
-			// Parse response
-			var response chat.ChatResponse
-			if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
-				t.Fatalf("Failed to decode response: %v", err)
-			}
-
-			// Check expected error
+			// Parse response based on expected status
 			if tt.expectedError != "" {
-				if response.Error != tt.expectedError {
-					t.Errorf("Expected error '%s', got '%s'", tt.expectedError, response.Error)
+				// For error cases, expect ErrorResponse
+				var errorResponse ErrorResponse
+				if err := json.NewDecoder(rr.Body).Decode(&errorResponse); err != nil {
+					t.Fatalf("Failed to decode error response: %v", err)
 				}
-			}
 
-			// Check expected message
-			if tt.expectedMsg != "" {
-				if response.Message != tt.expectedMsg {
-					t.Errorf("Expected message '%s', got '%s'", tt.expectedMsg, response.Message)
+				if errorResponse.Error != tt.expectedError {
+					t.Errorf("Expected error '%s', got '%s'", tt.expectedError, errorResponse.Error)
+				}
+			} else {
+				// For success cases, expect ChatResponse
+				var response chat.ChatResponse
+				if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+					t.Fatalf("Failed to decode chat response: %v", err)
+				}
+
+				// Check expected message
+				if tt.expectedMsg != "" {
+					if response.Message != tt.expectedMsg {
+						t.Errorf("Expected message '%s', got '%s'", tt.expectedMsg, response.Message)
+					}
 				}
 			}
 
@@ -191,8 +216,17 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 	}
 	mockSto := services.NewMockStorage()
 
+	// Create a test game state
+	testGS := state.NewGameState()
+	if err := mockSto.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
+		t.Fatalf("Failed to save test game state: %v", err)
+	}
+
 	handler := NewChatHandler(mockLLM, logger, mockSto)
-	requestBody := chat.ChatRequest{Message: "Test message with special chars: !@#$%"}
+	requestBody := chat.ChatRequest{
+		GameStateID: testGS.ID,
+		Message:     "Test message with special chars: !@#$%",
+	}
 	body, _ := json.Marshal(requestBody)
 
 	req := httptest.NewRequest(http.MethodPost, "/chat", bytes.NewBuffer(body))
@@ -235,10 +269,20 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 
 	mockLLM := services.NewMockLLMAPI()
 	mockSto := services.NewMockStorage()
+
+	// Create a test game state
+	testGS := state.NewGameState()
+	if err := mockSto.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
+		t.Fatalf("Failed to save test game state: %v", err)
+	}
+
 	handler := NewChatHandler(mockLLM, logger, mockSto)
 
 	// Test with missing Content-Type
-	requestBody := chat.ChatRequest{Message: "Hello"}
+	requestBody := chat.ChatRequest{
+		GameStateID: testGS.ID,
+		Message:     "Hello",
+	}
 	body, _ := json.Marshal(requestBody)
 
 	req := httptest.NewRequest(http.MethodPost, "/chat", bytes.NewBuffer(body))

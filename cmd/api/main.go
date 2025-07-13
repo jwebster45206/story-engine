@@ -35,10 +35,7 @@ func main() {
 	}
 	llmService := services.NewVeniceService(cfg.VeniceAPIKey, cfg.ModelName)
 
-	// Initialize storage service (Redis implementation)
 	var storage services.Storage = services.NewRedisService(cfg.RedisURL, log)
-
-	// Wait for storage to be available
 	storageCtx, storageCancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer storageCancel()
 
@@ -51,24 +48,22 @@ func main() {
 	// Initialize the model on startup
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-
 	if err := llmService.InitModel(ctx, cfg.ModelName); err != nil {
 		log.Error("Failed to initialize LLM model", "error", err, "model", cfg.ModelName)
-		// Don't exit on model initialization failure in development
-		if cfg.Environment == "production" {
-			os.Exit(1)
-		} else {
-			log.Warn("Continuing without model initialization in non-production environment")
-		}
+		os.Exit(1)
 	}
+
 	mux := http.NewServeMux()
 
 	healthHandler := handlers.NewHealthHandler(storage, llmService, log)
 	mux.Handle("/health", healthHandler)
 
-	// Create chat handler with LLM service
 	chatHandler := handlers.NewChatHandler(llmService, log, storage)
 	mux.Handle("/chat", chatHandler)
+
+	gameStateHandler := handlers.NewGameStateHandler(storage, log)
+	mux.Handle("/gamestate", gameStateHandler)
+	mux.Handle("/gamestate/", gameStateHandler)
 
 	handler := middleware.Logger(mux)
 	server := &http.Server{
