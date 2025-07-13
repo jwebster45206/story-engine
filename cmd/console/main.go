@@ -88,7 +88,10 @@ func confirmQuit() bool {
 	printBlue("Answer: ")
 
 	var response string
-	fmt.Scanln(&response)
+	if _, err := fmt.Scanln(&response); err != nil {
+		// If there's an error reading input, default to not quitting
+		return false
+	}
 
 	response = strings.ToLower(strings.TrimSpace(response))
 	return response == "y" || response == "yes"
