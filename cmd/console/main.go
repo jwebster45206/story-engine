@@ -77,20 +77,11 @@ func main() {
 		// Send message to API
 		response, err := sendChatMessage(client, consoleConfig.APIBaseURL, input)
 		if err != nil {
-			fmt.Printf("❌ Error: %v\n", err)
+			fmt.Printf("❌ %v\n", err)
 			log.Error("Failed to send chat message", "error", err, "input", input)
 			continue
 		}
-
-		// Display response
-		if response.Error != "" {
-			fmt.Printf("⚠️  API Error: %s\n", response.Error)
-		} else if response.Message != "" {
-			fmt.Printf("Agent: %s\n", response.Message)
-		} else {
-			fmt.Println("Agent: [No response]")
-		}
-
+		fmt.Printf("Agent: %s\n", response.Message)
 		fmt.Println()
 	}
 

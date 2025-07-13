@@ -140,23 +140,29 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 				t.Errorf("Expected Content-Type application/json, got %s", rr.Header().Get("Content-Type"))
 			}
 
-			// Parse response
-			var response chat.ChatResponse
-			if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
-				t.Fatalf("Failed to decode response: %v", err)
-			}
-
-			// Check expected error
+			// Parse response based on expected status
 			if tt.expectedError != "" {
-				if response.Error != tt.expectedError {
-					t.Errorf("Expected error '%s', got '%s'", tt.expectedError, response.Error)
+				// For error cases, expect ErrorResponse
+				var errorResponse ErrorResponse
+				if err := json.NewDecoder(rr.Body).Decode(&errorResponse); err != nil {
+					t.Fatalf("Failed to decode error response: %v", err)
 				}
-			}
 
-			// Check expected message
-			if tt.expectedMsg != "" {
-				if response.Message != tt.expectedMsg {
-					t.Errorf("Expected message '%s', got '%s'", tt.expectedMsg, response.Message)
+				if errorResponse.Error != tt.expectedError {
+					t.Errorf("Expected error '%s', got '%s'", tt.expectedError, errorResponse.Error)
+				}
+			} else {
+				// For success cases, expect ChatResponse
+				var response chat.ChatResponse
+				if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+					t.Fatalf("Failed to decode chat response: %v", err)
+				}
+
+				// Check expected message
+				if tt.expectedMsg != "" {
+					if response.Message != tt.expectedMsg {
+						t.Errorf("Expected message '%s', got '%s'", tt.expectedMsg, response.Message)
+					}
 				}
 			}
 
