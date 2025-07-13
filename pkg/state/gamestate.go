@@ -1,10 +1,9 @@
 package state
 
 import (
-	"encoding/json"
-
 	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
+	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 )
 
 // NPC represents a non-player character in the game
@@ -34,7 +33,23 @@ func NewGameState() *GameState {
 
 const PromptHistoryLimit = 10
 
-func (gs *GameState) GetHistoryForPrompt() []byte {
-	data, _ := json.Marshal(gs.ChatHistory[len(gs.ChatHistory)-PromptHistoryLimit:])
-	return data
+// GetHistoryForPrompt truncatses the chat history to the last N messages
+func (gs *GameState) GetHistoryForPrompt() []chat.ChatMessage {
+	if len(gs.ChatHistory) == 0 {
+		return nil
+	}
+	if len(gs.ChatHistory) <= PromptHistoryLimit {
+		return gs.ChatHistory
+	}
+	// Return the last N messages for the prompt
+	return gs.ChatHistory[len(gs.ChatHistory)-PromptHistoryLimit:]
+}
+
+// GetClosingPrompt returns a closing prompt for the game state
+// This prompt could be customized based on the game state.
+func (gs *GameState) GetClosingPrompt() chat.ChatMessage {
+	return chat.ChatMessage{
+		Role:    chat.ChatRoleSystem,
+		Content: scenario.ClosingPromptGeneral,
+	}
 }

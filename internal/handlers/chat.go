@@ -142,16 +142,13 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	// Add chat history from game state
-	messages = append(messages, gs.ChatHistory...)
+	messages = append(messages, gs.GetHistoryForPrompt()...)
 	messages = append(messages, chat.ChatMessage{
 		Role:    chat.ChatRoleUser,
 		Content: request.Message,
 	})
-	// Explicit instructions about how to respond to user input last
-	messages = append(messages, chat.ChatMessage{
-		Role:    chat.ChatRoleSystem,
-		Content: scenario.LocationPrompt,
-	})
+	// Instructions about how to respond to user input
+	messages = append(messages, gs.GetClosingPrompt())
 
 	// Generate response using LLM
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)

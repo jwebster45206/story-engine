@@ -14,10 +14,7 @@ If the user tries to control the actions of NPCs, this is allowed. If the NPC ac
 
 Do not answer questions about the game mechanics or how to play. Remind the user to use the "help" command if they need assistance.`
 
-const LocationPrompt = `Describe the user's surroundings in second-person, using 1 or 2 sentences. If NPCs are present, include their actions or expressions briefly. Refer to the user as "you" in the text.`
+// Closing System prompts instructing the agent how to answer.
 
-const ConversationPrompt = `Write the NPC's response to the user, using 1 or 2 sentences. If appropriate, also describe the NPC's actions or expressions briefly.
-
-The following is an example of a response.
-User: I ask Davey about the treasure.
-Narrator: Davey looks at you with a glint in his one eye. "Ah, the treasure," he says.`
+const ClosingPromptGeneral = `Describe the user's surroundings in second-person, using 1 or 2 sentences. If NPCs are present, include their actions or expressions briefly. Refer to the user as "you" in the text.`
+const ClosingPromptConvo = `Write the NPC's response to the user, using 1 or 2 sentences. If appropriate, also describe the NPC's actions or expressions briefly.`
