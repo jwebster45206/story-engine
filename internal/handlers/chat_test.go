@@ -174,26 +174,30 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 					t.Errorf("Expected 1 GenerateResponse call, got %d", len(mockLLM.GenerateResponseCalls))
 				} else {
 					call := mockLLM.GenerateResponseCalls[0]
-					if len(call.Messages) != 3 {
-						t.Errorf("Expected 3 messages in call, got %d", len(call.Messages))
+					if len(call.Messages) != 4 {
+						t.Errorf("Expected 4 messages in call, got %d", len(call.Messages))
 					} else {
-						// Check system message
+						// Check first system message
 						if call.Messages[0].Role != chat.ChatRoleSystem {
 							t.Errorf("Expected first message role %s, got %s", chat.ChatRoleSystem, call.Messages[0].Role)
 						}
-						// Check user message
-						userMsg := call.Messages[1]
+						// Check second system message
+						if call.Messages[1].Role != chat.ChatRoleSystem {
+							t.Errorf("Expected second message role %s, got %s", chat.ChatRoleSystem, call.Messages[1].Role)
+						}
+						// Check user message (third)
+						userMsg := call.Messages[2]
 						if userMsg.Role != chat.ChatRoleUser {
-							t.Errorf("Expected second message role %s, got %s", chat.ChatRoleUser, userMsg.Role)
+							t.Errorf("Expected third message role %s, got %s", chat.ChatRoleUser, userMsg.Role)
 						}
 						if reqBody, ok := tt.body.(chat.ChatRequest); ok {
 							if userMsg.Content != reqBody.Message {
 								t.Errorf("Expected user message content '%s', got '%s'", reqBody.Message, userMsg.Content)
 							}
 						}
-						// Check second system message
-						if call.Messages[2].Role != chat.ChatRoleSystem {
-							t.Errorf("Expected third message role %s, got %s", chat.ChatRoleSystem, call.Messages[2].Role)
+						// Check fourth system message
+						if call.Messages[3].Role != chat.ChatRoleSystem {
+							t.Errorf("Expected fourth message role %s, got %s", chat.ChatRoleSystem, call.Messages[3].Role)
 						}
 					}
 				}
@@ -239,12 +243,12 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 		t.Fatalf("Expected status 200, got %d", rr.Code)
 	}
 
-	if len(capturedMessages) != 3 {
-		t.Fatalf("Expected 3 messages, got %d", len(capturedMessages))
+	if len(capturedMessages) != 4 {
+		t.Fatalf("Expected 4 messages, got %d", len(capturedMessages))
 	}
 
-	// Check that the user message (second message) is correct
-	userMsg := capturedMessages[1]
+	// Check that the user message (third message) is correct
+	userMsg := capturedMessages[2]
 	if userMsg.Role != chat.ChatRoleUser {
 		t.Errorf("Expected user message role %s, got %s", chat.ChatRoleUser, userMsg.Role)
 	}
@@ -253,12 +257,15 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 		t.Errorf("Expected user message content '%s', got '%s'", requestBody.Message, userMsg.Content)
 	}
 
-	// Check that we have system messages
+	// Check that we have system messages in the correct places
 	if capturedMessages[0].Role != chat.ChatRoleSystem {
 		t.Errorf("Expected first message to be system message, got %s", capturedMessages[0].Role)
 	}
-	if capturedMessages[2].Role != chat.ChatRoleSystem {
-		t.Errorf("Expected third message to be system message, got %s", capturedMessages[2].Role)
+	if capturedMessages[1].Role != chat.ChatRoleSystem {
+		t.Errorf("Expected second message to be system message, got %s", capturedMessages[1].Role)
+	}
+	if capturedMessages[3].Role != chat.ChatRoleSystem {
+		t.Errorf("Expected fourth message to be system message, got %s", capturedMessages[3].Role)
 	}
 }
 
@@ -300,4 +307,49 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 	if rr.Header().Get("Content-Type") != "application/json" {
 		t.Errorf("Expected response Content-Type application/json, got %s", rr.Header().Get("Content-Type"))
 	}
+}
+
+func TestParseAndApplyGameState(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+
+	t.Run("removes Gamestate block and applies JSON", func(t *testing.T) {
+		msg := "You see a dark cave.\n\nGamestate:\n```json\n{\n  \"location\": \"cave\",\n  \"flags\": {\"torch_lit\": true}\n}\n```\n"
+		gs := &state.GameState{}
+		err := parseAndApplyGameState(&msg, gs, logger)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if msg != "You see a dark cave." {
+			t.Errorf("expected message to be cleaned, got: %q", msg)
+		}
+		if gs.Location != "cave" {
+			t.Errorf("expected location to be 'cave', got: %q", gs.Location)
+		}
+		if gs.Flags == nil || gs.Flags["torch_lit"] != true {
+			t.Errorf("expected flags to contain torch_lit=true, got: %#v", gs.Flags)
+		}
+	})
+
+	t.Run("no code block returns nil and leaves message", func(t *testing.T) {
+		msg := "Just a normal message."
+		gs := &state.GameState{}
+		err := parseAndApplyGameState(&msg, gs, logger)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if msg != "Just a normal message." {
+			t.Errorf("expected message unchanged, got: %q", msg)
+		}
+	})
+
+	t.Run("malformed JSON returns error", func(t *testing.T) {
+		msg := "Gamestate:\n```json\n{not valid json}\n```"
+		gs := &state.GameState{}
+		err := parseAndApplyGameState(&msg, gs, logger)
+		if err == nil {
+			t.Error("expected error for malformed JSON, got nil")
+		}
+	})
 }

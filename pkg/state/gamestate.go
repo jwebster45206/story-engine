@@ -2,20 +2,31 @@ package state
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
+	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 )
+
+// NPC represents a non-player character in the game
+type NPC struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`                // e.g. "villager", "guard", "merchant"
+	Disposition string `json:"disposition"`         // e.g. "hostile", "neutral", "friendly"
+	Description string `json:"description"`         // short description or backstory
+	IsImportant bool   `json:"important,omitempty"` // whether this NPC is important to the story
+}
 
 // GameState is the current state of a roleplay game session.
 type GameState struct {
-	ID          uuid.UUID          `json:"id"`           // Unique ID per session
-	ChatHistory []chat.ChatMessage `json:"chat_history"` // Conversation history
-	// Flags       map[string]bool    `json:"flags"`        // e.g., "door_locked": true
-	// Location string `json:"location"` // e.g., "stone hallway"
-	// Inventory TODO
-
-	// Scenario TODO
+	ID          uuid.UUID          `json:"id"`                    // Unique ID per session
+	Location    string             `json:"location,omitempty"`    // Current location in the game world
+	Description string             `json:"description,omitempty"` // Description of the current scene
+	Flags       map[string]bool    `json:"flags,omitempty"`
+	NPCs        map[string]NPC     `json:"npcs,omitempty"`
+	Inventory   []string           `json:"inventory,omitempty"`
+	ChatHistory []chat.ChatMessage `json:"chat_history,omitempty"` // Conversation history
 }
 
 func NewGameState() *GameState {
@@ -25,7 +36,39 @@ func NewGameState() *GameState {
 	}
 }
 
-func (gs *GameState) CompressedHistory() []byte {
-	data, _ := json.Marshal(gs.ChatHistory)
-	return data
+const PromptHistoryLimit = 10
+
+// GetHistoryForPrompt truncatses the chat history to the last N messages
+func (gs *GameState) GetHistoryForPrompt() []chat.ChatMessage {
+	if len(gs.ChatHistory) == 0 {
+		return nil
+	}
+	if len(gs.ChatHistory) <= PromptHistoryLimit {
+		return gs.ChatHistory
+	}
+	// Return the last N messages for the prompt
+	return gs.ChatHistory[len(gs.ChatHistory)-PromptHistoryLimit:]
+}
+
+// GetClosingPrompt returns a closing prompt for the game state
+// This prompt could be customized based on the game state.
+func (gs *GameState) GetClosingPrompt() chat.ChatMessage {
+	return chat.ChatMessage{
+		Role:    chat.ChatRoleSystem,
+		Content: scenario.ClosingPromptGeneral,
+	}
+}
+
+func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error) {
+	if gs == nil {
+		return chat.ChatMessage{}, fmt.Errorf("game state is nil")
+	}
+	jsonData, err := json.Marshal(ToPromptState(gs))
+	if err != nil {
+		return chat.ChatMessage{}, err
+	}
+	return chat.ChatMessage{
+		Role:    chat.ChatRoleSystem,
+		Content: fmt.Sprintf("Use the following JSON game state as world context. Do not explain it.\n\nAfter your response, append a JSON object called `gamestate` with the current values. Add any new NPCs, update NPC dispositions as needed, update items in inventory, and update location.\n\nGame State:\n```json\n%s\n```", jsonData),
+	}, nil
 }
