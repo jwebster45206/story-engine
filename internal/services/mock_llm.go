@@ -176,8 +176,8 @@ func (m *MockLLMAPI) SetModelNotReady() {
 	}
 }
 
-// GetCallsSafely returns a copy of the call tracking data in a thread-safe way
-func (m *MockLLMAPI) GetCallsSafely() ([]string, []GenerateResponseCall, []string, []bool) {
+// GetCalls returns a copy of the call tracking data in a thread-safe way
+func (m *MockLLMAPI) GetCalls() ([]string, []GenerateResponseCall, []string, []bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
