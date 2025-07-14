@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +21,10 @@ type ChatHandler struct {
 	llmService services.LLMService
 	logger     *slog.Logger
 	storage    services.Storage
+
+	// For background meta update cancellation
+	metaCancelMu sync.Mutex
+	metaCancel   map[uuid.UUID]context.CancelFunc
 }
 
 // NewChatHandler creates a new chat handler
@@ -28,6 +33,7 @@ func NewChatHandler(llmService services.LLMService, logger *slog.Logger, storage
 		llmService: llmService,
 		logger:     logger,
 		storage:    storage,
+		metaCancel: make(map[uuid.UUID]context.CancelFunc),
 	}
 }
 
@@ -212,8 +218,17 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Cancel any in-process meta update for this game state
+	h.metaCancelMu.Lock()
+	if cancel, ok := h.metaCancel[gs.ID]; ok {
+		cancel()
+	}
+	metaCtx, metaCancel := context.WithCancel(context.Background())
+	h.metaCancel[gs.ID] = metaCancel
+	h.metaCancelMu.Unlock()
+
 	// Start background goroutine to update game meta (PromptState)
-	go h.updateGameMeta(context.Background(), gs, request, response)
+	go h.updateGameMeta(metaCtx, gs, request, response)
 
 	response.GameStateID = gs.ID
 	response.ChatHistory = gs.ChatHistory
@@ -226,6 +241,13 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // updateGameMeta runs in the background to extract and update game metadata
 func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, request chat.ChatRequest, response *chat.ChatResponse) {
 	h.logger.Debug("Starting background game meta update", "game_state_id", gs.ID.String())
+	defer func() {
+		h.metaCancelMu.Lock()
+		if _, ok := h.metaCancel[gs.ID]; ok && ctx.Err() == nil {
+			delete(h.metaCancel, gs.ID)
+		}
+		h.metaCancelMu.Unlock()
+	}()
 
 	// Create messages for the meta extraction request
 	currentStateJSON, err := json.Marshal(state.ToPromptState(gs))
