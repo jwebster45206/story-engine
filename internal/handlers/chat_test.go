@@ -9,11 +9,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/internal/services"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
+	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
@@ -38,6 +41,16 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			body:   chat.ChatRequest{Message: "Hello, world!"},
 			mockSetup: func(m *services.MockLLMAPI) {
 				m.GenerateResponseFunc = func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+					// Return valid JSON for meta extraction, otherwise normal test response
+					promptPrefix := scenario.PromptStateExtractionInstructions
+					if len(promptPrefix) > 50 {
+						promptPrefix = promptPrefix[:50]
+					}
+					if len(messages) > 0 && messages[0].Role == chat.ChatRoleSystem && strings.HasPrefix(messages[0].Content, promptPrefix) {
+						return &chat.ChatResponse{
+							Message: `{"location":"Test Location","flags":{"test_flag":true},"inventory":["test item"],"npcs":{"TestNPC":{"name":"TestNPC","type":"test","disposition":"neutral","description":"A test NPC.","important":true}}}`,
+						}, nil
+					}
 					return &chat.ChatResponse{Message: "Hello! How can I help you today?"}, nil
 				}
 			},
@@ -170,10 +183,12 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 
 			// Verify mock calls for successful requests
 			if tt.expectedStatus == http.StatusOK {
-				if len(mockLLM.GenerateResponseCalls) != 1 {
-					t.Errorf("Expected 1 GenerateResponse call, got %d", len(mockLLM.GenerateResponseCalls))
+				_, respCalls, _, _ := mockLLM.GetCallsSafely()
+
+				if len(respCalls) != 1 {
+					t.Errorf("Expected 1 GenerateResponse call, got %d", len(respCalls))
 				} else {
-					call := mockLLM.GenerateResponseCalls[0]
+					call := respCalls[0]
 					if len(call.Messages) != 4 {
 						t.Errorf("Expected 4 messages in call, got %d", len(call.Messages))
 					} else {
@@ -213,9 +228,22 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 
 	mockLLM := services.NewMockLLMAPI()
 	var capturedMessages []chat.ChatMessage
+	var mu sync.Mutex
 
 	mockLLM.GenerateResponseFunc = func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+		mu.Lock()
 		capturedMessages = messages
+		mu.Unlock()
+		// Return valid JSON for meta extraction, otherwise normal test response
+		promptPrefix := scenario.PromptStateExtractionInstructions
+		if len(promptPrefix) > 50 {
+			promptPrefix = promptPrefix[:50]
+		}
+		if len(messages) > 0 && messages[0].Role == chat.ChatRoleSystem && strings.HasPrefix(messages[0].Content, promptPrefix) {
+			return &chat.ChatResponse{
+				Message: `{"location":"Test Location","flags":{"test_flag":true},"inventory":["test item"],"npcs":{"TestNPC":{"name":"TestNPC","type":"test","disposition":"neutral","description":"A test NPC.","important":true}}}`,
+			}, nil
+		}
 		return &chat.ChatResponse{Message: "Response"}, nil
 	}
 	mockSto := services.NewMockStorage()
@@ -243,12 +271,17 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 		t.Fatalf("Expected status 200, got %d", rr.Code)
 	}
 
-	if len(capturedMessages) != 4 {
-		t.Fatalf("Expected 4 messages, got %d", len(capturedMessages))
+	mu.Lock()
+	capturedMessagesCopy := make([]chat.ChatMessage, len(capturedMessages))
+	copy(capturedMessagesCopy, capturedMessages)
+	mu.Unlock()
+
+	if len(capturedMessagesCopy) != 4 {
+		t.Fatalf("Expected 4 messages, got %d", len(capturedMessagesCopy))
 	}
 
 	// Check that the user message (third message) is correct
-	userMsg := capturedMessages[2]
+	userMsg := capturedMessagesCopy[2]
 	if userMsg.Role != chat.ChatRoleUser {
 		t.Errorf("Expected user message role %s, got %s", chat.ChatRoleUser, userMsg.Role)
 	}
@@ -258,14 +291,14 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 	}
 
 	// Check that we have system messages in the correct places
-	if capturedMessages[0].Role != chat.ChatRoleSystem {
-		t.Errorf("Expected first message to be system message, got %s", capturedMessages[0].Role)
+	if capturedMessagesCopy[0].Role != chat.ChatRoleSystem {
+		t.Errorf("Expected first message to be system message, got %s", capturedMessagesCopy[0].Role)
 	}
-	if capturedMessages[1].Role != chat.ChatRoleSystem {
-		t.Errorf("Expected second message to be system message, got %s", capturedMessages[1].Role)
+	if capturedMessagesCopy[1].Role != chat.ChatRoleSystem {
+		t.Errorf("Expected second message to be system message, got %s", capturedMessagesCopy[1].Role)
 	}
-	if capturedMessages[3].Role != chat.ChatRoleSystem {
-		t.Errorf("Expected fourth message to be system message, got %s", capturedMessages[3].Role)
+	if capturedMessagesCopy[3].Role != chat.ChatRoleSystem {
+		t.Errorf("Expected fourth message to be system message, got %s", capturedMessagesCopy[3].Role)
 	}
 }
 
