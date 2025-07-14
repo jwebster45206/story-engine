@@ -156,7 +156,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Role:    chat.ChatRoleSystem,
 			Content: scenario.BaseSystemPrompt + "\n\n" + scenario.PirateScenarioPrompt,
 		},
-		statePrompt,
+		statePrompt, // game state context json
 	}
 
 	// Add chat history from game state
@@ -189,15 +189,15 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Attempt to extract and apply Gamestate JSON from the LLM response
-	if err := parseAndApplyGameState(&response.Message, gs, h.logger); err != nil {
-		h.logger.Error("Failed to parse Gamestate JSON from LLM response", "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		errorResponse := ErrorResponse{
-			Error: "Failed to parse Gamestate JSON from LLM response.",
-		}
-		_ = json.NewEncoder(w).Encode(errorResponse)
-		return
-	}
+	// if err := parseAndApplyGameState(&response.Message, gs, h.logger); err != nil {
+	// 	h.logger.Error("Failed to parse Gamestate JSON from LLM response", "error", err)
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	errorResponse := ErrorResponse{
+	// 		Error: "Failed to parse Gamestate JSON from LLM response.",
+	// 	}
+	// 	_ = json.NewEncoder(w).Encode(errorResponse)
+	// 	return
+	// }
 
 	// Update game state with new chat message
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
@@ -222,6 +222,9 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	// Start background goroutine to update game meta (PromptState)
+	go h.updateGameMeta(context.Background(), gs, request, response)
 
 	response.GameStateID = gs.ID
 	response.ChatHistory = gs.ChatHistory

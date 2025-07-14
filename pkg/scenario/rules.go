@@ -16,5 +16,8 @@ Do not answer questions about the game mechanics or how to play. Remind the user
 
 // Closing System prompts instructing the agent how to answer.
 
-const ClosingPromptGeneral = `Describe the user's surroundings in second-person, using 1 or 2 sentences. If NPCs are present, include their actions or expressions briefly. Refer to the user as "you" in the text.`
-const ClosingPromptConvo = `Write the NPC's response to the user, using 1 or 2 sentences. If appropriate, also describe the NPC's actions or expressions briefly.`
+const npcPrompt = `Write the NPC's response to the user, using 1 or 2 sentences. If an NPC is in the same location as the user, usually describe their actions or expressions briefly. Refer to the user as "you" in the text.`
+
+const ClosingPromptGeneral = `Describe the user's surroundings in second-person, using 1 or 2 sentences. ` + npcPrompt
+
+const ClosingPromptConvo = `Write the NPC's response to the user, using 1 or 2 sentences. ` + npcPrompt
