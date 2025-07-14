@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -286,7 +287,15 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 
 	// Parse the JSON response
 	var ps state.PromptState
-	if err := json.Unmarshal([]byte(metaResponse.Message), &ps); err != nil {
+	jsonStr := metaResponse.Message
+	// Try to extract the first JSON object if surrounded by markdown or text
+	if i := strings.Index(jsonStr, "{"); i != -1 {
+		jsonStr = jsonStr[i:]
+		if j := strings.LastIndex(jsonStr, "}"); j != -1 {
+			jsonStr = jsonStr[:j+1]
+		}
+	}
+	if err := json.Unmarshal([]byte(jsonStr), &ps); err != nil {
 		h.logger.Error("Failed to unmarshal meta extraction JSON", "error", err, "response", metaResponse.Message, "game_state_id", gs.ID.String())
 		return
 	}
