@@ -3,9 +3,11 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +22,10 @@ type ChatHandler struct {
 	llmService services.LLMService
 	logger     *slog.Logger
 	storage    services.Storage
+
+	// For background meta update cancellation
+	metaCancelMu sync.Mutex
+	metaCancel   map[uuid.UUID]context.CancelFunc
 }
 
 // NewChatHandler creates a new chat handler
@@ -28,6 +34,7 @@ func NewChatHandler(llmService services.LLMService, logger *slog.Logger, storage
 		llmService: llmService,
 		logger:     logger,
 		storage:    storage,
+		metaCancel: make(map[uuid.UUID]context.CancelFunc),
 	}
 }
 
@@ -156,7 +163,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Role:    chat.ChatRoleSystem,
 			Content: scenario.BaseSystemPrompt + "\n\n" + scenario.PirateScenarioPrompt,
 		},
-		statePrompt,
+		statePrompt, // game state context json
 	}
 
 	// Add chat history from game state
@@ -188,17 +195,6 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Attempt to extract and apply Gamestate JSON from the LLM response
-	if err := parseAndApplyGameState(&response.Message, gs, h.logger); err != nil {
-		h.logger.Error("Failed to parse Gamestate JSON from LLM response", "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		errorResponse := ErrorResponse{
-			Error: "Failed to parse Gamestate JSON from LLM response.",
-		}
-		_ = json.NewEncoder(w).Encode(errorResponse)
-		return
-	}
-
 	// Update game state with new chat message
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
 		Role:    chat.ChatRoleUser,
@@ -223,6 +219,18 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Cancel any in-process meta update for this game state
+	h.metaCancelMu.Lock()
+	if cancel, ok := h.metaCancel[gs.ID]; ok {
+		cancel()
+	}
+	metaCtx, metaCancel := context.WithCancel(context.Background())
+	h.metaCancel[gs.ID] = metaCancel
+	h.metaCancelMu.Unlock()
+
+	// Start background goroutine to update game meta (PromptState)
+	go h.updateGameMeta(metaCtx, gs, request, response)
+
 	response.GameStateID = gs.ID
 	response.ChatHistory = gs.ChatHistory
 	w.WriteHeader(http.StatusOK)
@@ -231,63 +239,87 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// parseAndApplyGameState looks for a Gamestate JSON block in the response message, applies it to the game state, and removes it from the message.
-func parseAndApplyGameState(responseMsg *string, gs *state.GameState, log *slog.Logger) error {
-	msg := *responseMsg
-	prefix := "Gamestate:"
-	prefixIdx := strings.Index(msg, prefix)
-	// Accept both ```json, ```JSON, and plain ``` (case-insensitive)
-	codeIdx := strings.Index(strings.ToLower(msg), "```json")
-	codeMarker := "```json"
-	if codeIdx == -1 {
-		codeIdx = strings.Index(msg, "```")
-		codeMarker = "```"
-	}
-	if codeIdx == -1 {
-		log.Debug("No code block found in response", "msg", msg)
-		return nil // No code block, nothing to do
+// updateGameMeta runs in the background to extract and update game metadata
+func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, request chat.ChatRequest, response *chat.ChatResponse) {
+	h.logger.Debug("Starting background game meta update", "game_state_id", gs.ID.String())
+	defer func() {
+		h.metaCancelMu.Lock()
+		delete(h.metaCancel, gs.ID)
+		h.metaCancelMu.Unlock()
+	}()
+
+	// Create messages for the meta extraction request
+	currentStateJSON, err := json.Marshal(state.ToPromptState(gs))
+	if err != nil {
+		h.logger.Error("Failed to marshal current game state for meta update", "error", err, "game_state_id", gs.ID.String())
+		return
 	}
 
-	var blockStart int
-	if prefixIdx != -1 && prefixIdx < codeIdx {
-		blockStart = prefixIdx
-	} else {
-		blockStart = codeIdx
-	}
-	// Find the end of the code block
-	codeEnd := strings.Index(msg[codeIdx+len(codeMarker):], "```")
-	if codeEnd == -1 {
-		log.Debug("No closing code block found after code marker", "msg", msg[codeIdx:])
-		// Remove everything from blockStart to end of message
-		cleaned := strings.TrimSpace(msg[:blockStart])
-		*responseMsg = cleaned
-		return nil
+	messages := []chat.ChatMessage{
+		{
+			Role:    chat.ChatRoleSystem,
+			Content: scenario.PromptStateExtractionInstructions,
+		},
+		{
+			Role:    chat.ChatRoleSystem,
+			Content: fmt.Sprintf("Current game state: %s", string(currentStateJSON)),
+		},
+		{
+			Role:    chat.ChatRoleUser,
+			Content: request.Message,
+		},
+		{
+			Role:    chat.ChatRoleAgent,
+			Content: response.Message,
+		},
 	}
 
-	codeEnd = codeIdx + len(codeMarker) + codeEnd
-	jsonStr := strings.TrimSpace(msg[codeIdx+len(codeMarker) : codeEnd])
-	// If the block starts with '"gamestate":', wrap it in braces to make valid JSON
-	trimmed := strings.TrimSpace(jsonStr)
-	if strings.HasPrefix(trimmed, "\"gamestate\"") || strings.HasPrefix(trimmed, "'gamestate'") {
-		jsonStr = "{" + trimmed + "}"
-	} else if strings.HasPrefix(trimmed, "gamestate:") {
-		// Remove "gamestate:" and wrap in {"gamestate": ...}
-		rest := strings.TrimSpace(strings.TrimPrefix(trimmed, "gamestate:"))
-		jsonStr = "{\"gamestate\": " + rest + "}"
+	// Create a timeout context for the meta update
+	metaCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	// Send the extraction request to the LLM
+	metaResponse, err := h.llmService.GetChatResponse(metaCtx, messages)
+	if err != nil {
+		h.logger.Error("Failed to get meta extraction response from LLM", "error", err, "game_state_id", gs.ID.String())
+		return
 	}
-	log.Debug("Found Gamestate JSON block in response",
-		"gamestate_json", jsonStr,
-		"game_state_id", gs.ID.String(),
-	)
+
+	// Parse the JSON response
 	var ps state.PromptState
-	if err := json.Unmarshal([]byte(jsonStr), &ps); err != nil {
-		log.Debug("Failed to unmarshal Gamestate JSON", "jsonStr", jsonStr, "error", err)
-		return err
+	jsonStr := metaResponse.Message
+	// Try to extract the first JSON object if surrounded by markdown or text
+	if i := strings.Index(jsonStr, "{"); i != -1 {
+		jsonStr = jsonStr[i:]
+		if j := strings.LastIndex(jsonStr, "}"); j != -1 {
+			jsonStr = jsonStr[:j+1]
+		}
 	}
-	state.ApplyPromptStateToGameState(&ps, gs)
+	if err := json.Unmarshal([]byte(jsonStr), &ps); err != nil {
+		h.logger.Error("Failed to unmarshal meta extraction JSON", "error", err, "response", metaResponse.Message, "game_state_id", gs.ID.String())
+		return
+	}
 
-	// Remove everything from blockStart to end of message
-	cleaned := strings.TrimSpace(msg[:blockStart])
-	*responseMsg = cleaned
-	return nil
+	// Load the latest game state (to avoid race conditions)
+	latestGS, err := h.storage.LoadGameState(metaCtx, gs.ID)
+	if err != nil {
+		h.logger.Error("Failed to load latest game state for meta update", "error", err, "game_state_id", gs.ID.String())
+		return
+	}
+
+	if latestGS == nil {
+		h.logger.Warn("Game state not found during meta update", "game_state_id", gs.ID.String())
+		return
+	}
+
+	// Apply the extracted state to the latest game state
+	state.ApplyPromptStateToGameState(&ps, latestGS)
+
+	// Save the updated game state
+	if err := h.storage.SaveGameState(metaCtx, latestGS.ID, latestGS); err != nil {
+		h.logger.Error("Failed to save updated game state after meta extraction", "error", err, "game_state_id", latestGS.ID.String())
+		return
+	}
+
+	h.logger.Debug("Successfully updated game meta", "game_state_id", gs.ID.String(), "prompt_state", ps)
 }

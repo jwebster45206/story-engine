@@ -12,10 +12,11 @@ import (
 // NPC represents a non-player character in the game
 type NPC struct {
 	Name        string `json:"name"`
-	Type        string `json:"type"`                // e.g. "villager", "guard", "merchant"
-	Disposition string `json:"disposition"`         // e.g. "hostile", "neutral", "friendly"
-	Description string `json:"description"`         // short description or backstory
-	IsImportant bool   `json:"important,omitempty"` // whether this NPC is important to the story
+	Type        string `json:"type"`                  // e.g. "villager", "guard", "merchant"
+	Disposition string `json:"disposition"`           // e.g. "hostile", "neutral", "friendly"
+	Description string `json:"description,omitempty"` // short description or backstory
+	IsImportant bool   `json:"important,omitempty"`   // whether this NPC is important to the story
+	Location    string `json:"location,omitempty"`    // where the NPC is currently located
 }
 
 // GameState is the current state of a roleplay game session.
@@ -69,6 +70,6 @@ func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error) {
 	}
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf("Use the following JSON game state as world context. Do not explain it.\n\nAfter your response, append a JSON object called `gamestate` with the current values. Add any new NPCs, update NPC dispositions as needed, update items in inventory, and update location.\n\nGame State:\n```json\n%s\n```", jsonData),
+		Content: fmt.Sprintf("Use the following JSON game state as world context. Do not explain it.\n\nGame State:\n```json\n%s\n```", jsonData),
 	}, nil
 }

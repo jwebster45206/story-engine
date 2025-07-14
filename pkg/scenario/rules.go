@@ -16,5 +16,55 @@ Do not answer questions about the game mechanics or how to play. Remind the user
 
 // Closing System prompts instructing the agent how to answer.
 
-const ClosingPromptGeneral = `Describe the user's surroundings in second-person, using 1 or 2 sentences. If NPCs are present, include their actions or expressions briefly. Refer to the user as "you" in the text.`
-const ClosingPromptConvo = `Write the NPC's response to the user, using 1 or 2 sentences. If appropriate, also describe the NPC's actions or expressions briefly.`
+const npcPrompt = `Write the NPC's response to the user, using 1 or 2 sentences. If an NPC is in the same location as the user, usually describe their actions or expressions briefly. Refer to the user as "you" in the text.`
+
+const ClosingPromptGeneral = `Describe the user's surroundings in second-person, using 1 or 2 sentences. ` + npcPrompt
+
+const ClosingPromptConvo = `Write the NPC's response to the user, using 1 or 2 sentences. ` + npcPrompt
+
+// Prompt for extracting PromptState JSON from the LLM
+const PromptStateExtractionInstructions = `You are a backend system translating narrative state to json. Your task is to review the last agent response and the current game state, and output a single JSON object matching the following Go struct:
+
+type PromptState struct {
+  location  string          // The user's current location in the game world.
+  flags     map[string]bool // Any boolean flags relevant to the story or puzzles.
+  inventory []string        // The user's inventory items.
+  npcs      map[string]NPC  // All NPCs the user has met or that are present. Use the NPC's name as the key.
+}
+
+type NPC struct {
+  name        string // The NPC's name.
+  type        string // e.g. "villager", "guard", "merchant".
+  disposition string // e.g. "hostile", "neutral", "friendly".
+  description string // Short description or backstory.
+  important   bool   // Whether this NPC is important to the story.
+}
+
+Example JSON (omit fields if empty):
+{
+  "location": "Tortuga Docks",
+  "flags": {"torch_lit": true, "gate_open": false},
+  "inventory": ["rusty key", "map fragment"],
+  "npcs": {
+    "Davey": {
+      "name": "Davey",
+      "type": "pirate",
+      "disposition": "friendly",
+      "description": "A grizzled old pirate with a wooden leg.",
+      "important": true
+    },
+    "Molly": {
+      "name": "Molly",
+      "type": "merchant",
+      "disposition": "suspicious",
+      "description": "A shrewd trader with a sharp eye.",
+      "important": false
+    }
+  }
+}
+
+Instructions:
+- Only output the JSON object, with no extra text or explanation.
+- Use the most recent agent response and the current game state to infer the correct values.
+- If a field is not present, use an empty value (empty object, array, or string, or false for booleans).
+- Be precise and consistent with field names and types.`
