@@ -243,9 +243,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 	h.logger.Debug("Starting background game meta update", "game_state_id", gs.ID.String())
 	defer func() {
 		h.metaCancelMu.Lock()
-		if _, ok := h.metaCancel[gs.ID]; ok && ctx.Err() == nil {
-			delete(h.metaCancel, gs.ID)
-		}
+		delete(h.metaCancel, gs.ID)
 		h.metaCancelMu.Unlock()
 	}()
 
