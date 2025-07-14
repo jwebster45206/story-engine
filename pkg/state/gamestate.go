@@ -9,25 +9,15 @@ import (
 	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 )
 
-// NPC represents a non-player character in the game
-type NPC struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"`                  // e.g. "villager", "guard", "merchant"
-	Disposition string `json:"disposition"`           // e.g. "hostile", "neutral", "friendly"
-	Description string `json:"description,omitempty"` // short description or backstory
-	IsImportant bool   `json:"important,omitempty"`   // whether this NPC is important to the story
-	Location    string `json:"location,omitempty"`    // where the NPC is currently located
-}
-
 // GameState is the current state of a roleplay game session.
 type GameState struct {
-	ID          uuid.UUID          `json:"id"`                    // Unique ID per session
-	Location    string             `json:"location,omitempty"`    // Current location in the game world
-	Description string             `json:"description,omitempty"` // Description of the current scene
-	Flags       map[string]bool    `json:"flags,omitempty"`
-	NPCs        map[string]NPC     `json:"npcs,omitempty"`
-	Inventory   []string           `json:"inventory,omitempty"`
-	ChatHistory []chat.ChatMessage `json:"chat_history,omitempty"` // Conversation history
+	ID          uuid.UUID               `json:"id"`                    // Unique ID per session
+	Location    string                  `json:"location,omitempty"`    // Current location in the game world
+	Description string                  `json:"description,omitempty"` // Description of the current scene
+	Flags       map[string]bool         `json:"flags,omitempty"`
+	NPCs        map[string]scenario.NPC `json:"npcs,omitempty"`
+	Inventory   []string                `json:"inventory,omitempty"`
+	ChatHistory []chat.ChatMessage      `json:"chat_history,omitempty"` // Conversation history
 }
 
 func NewGameState() *GameState {

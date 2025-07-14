@@ -1,22 +1,24 @@
 package state
 
+import "github.com/jwebster45206/roleplay-agent/pkg/scenario"
+
 // PromptState is a simplified representation of the game state
 // packaged for sharing with a language model.
-// Use of PromptState assumes that the model is capable of understanding
+// Assumes that the model is capable of understanding
 // semantic json.
 type PromptState struct {
-	Location  string          `json:"location"`
-	Flags     map[string]bool `json:"flags"`
-	Inventory []string        `json:"inventory"`
-	NPCs      NPCMap          `json:"npcs"`
+	Location  string                  `json:"location"`
+	NPCs      map[string]scenario.NPC `json:"npcs"`
+	Flags     map[string]bool         `json:"flags"`
+	Inventory []string                `json:"inventory"`
 }
 
 func ToPromptState(gs *GameState) *PromptState {
 	return &PromptState{
 		Location:  gs.Location,
+		NPCs:      gs.NPCs,
 		Flags:     gs.Flags,
 		Inventory: gs.Inventory,
-		NPCs:      gs.NPCs,
 	}
 }
 

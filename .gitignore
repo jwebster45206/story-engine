@@ -36,7 +36,9 @@ config*.json
 # .idea/
 # .vscode/
 
-# builds
+# buildsx
 console
 !cmd/console
 api
+
+pkg/scenario/tmp.go
