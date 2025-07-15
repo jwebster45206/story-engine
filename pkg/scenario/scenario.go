@@ -1,5 +1,13 @@
 package scenario
 
+import (
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+)
+
 // NPC represents a non-player character in the game
 type NPC struct {
 	Name        string `json:"name"`
@@ -26,3 +34,32 @@ type Scenario struct {
 const PirateScenarioPrompt = `The user is the pirate captain in the Caribbean during the Golden Age of Piracy. The user's ship, The Black Pearl, has just docked at Tortuga, a notorious pirate haven. The crew is eager for adventure and treasure.`
 
 const MermaidLagoonPrompt = `The user is in a mermaid lagoon, a magical place filled with mermaids. The lagoon is surrounded by lush greenery and the sound of water splashing fills the air.`
+
+func LoadScenarios(dir string) (map[string]*Scenario, error) {
+	scenarios := make(map[string]*Scenario)
+
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || filepath.Ext(path) != ".json" {
+			return nil // skip non-json files
+		}
+
+		file, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read error: %w", err)
+		}
+
+		var s Scenario
+		if err := json.Unmarshal(file, &s); err != nil {
+			return fmt.Errorf("unmarshal error in %s: %w", path, err)
+		}
+
+		scenarios[s.Name] = &s
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return scenarios, nil
+}

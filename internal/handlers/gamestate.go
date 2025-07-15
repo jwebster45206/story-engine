@@ -101,13 +101,38 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Creating new game state")
 
-	gs := state.NewGameState()
+	// Parse request body into GameState struct
+	var gs state.GameState
+	if err := json.NewDecoder(r.Body).Decode(&gs); err != nil {
+		h.logger.Warn("Invalid JSON in request body", "error", err)
+		w.WriteHeader(http.StatusBadRequest)
+		response := ErrorResponse{
+			Error: "Invalid JSON in request body",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
+		return
+	}
 
-	// Parse request body if provided (optional for create)
-	// TODO: Not supported yet, but could be enabled later
+	// Validate scenario name
+	if gs.Scenario == "" {
+		h.logger.Warn("Scenario name is required")
+		w.WriteHeader(http.StatusBadRequest)
+		response := ErrorResponse{
+			Error: "Scenario name is required",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
+		return
+	}
+
+	// Assign a new ID to the game state
+	gs.ID = uuid.New()
 
 	// Save the new game state
-	if err := h.storage.SaveGameState(r.Context(), gs.ID, gs); err != nil {
+	if err := h.storage.SaveGameState(r.Context(), gs.ID, &gs); err != nil {
 		h.logger.Error("Failed to save new game state", "error", err, "id", gs.ID.String())
 		w.WriteHeader(http.StatusInternalServerError)
 		response := ErrorResponse{

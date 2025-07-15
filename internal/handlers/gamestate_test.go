@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -23,7 +24,8 @@ func TestGameStateHandler_Create(t *testing.T) {
 	handler := NewGameStateHandler(mockStorage, logger)
 
 	// Test creating a new game state
-	req := httptest.NewRequest(http.MethodPost, "/gamestate", nil)
+	reqBody := `{"scenario":"foo"}`
+	req := httptest.NewRequest(http.MethodPost, "/gamestate", strings.NewReader(reqBody))
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -59,7 +61,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 	handler := NewGameStateHandler(mockStorage, logger)
 
 	// Create a test game state
-	testGS := state.NewGameState()
+	testGS := state.NewGameState("FooScenario")
 	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
@@ -133,7 +135,7 @@ func TestGameStateHandler_Delete(t *testing.T) {
 	handler := NewGameStateHandler(mockStorage, logger)
 
 	// Create a test game state
-	testGS := state.NewGameState()
+	testGS := state.NewGameState("FooScenario")
 	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}

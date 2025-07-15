@@ -33,12 +33,6 @@ config*.json
 !config.template.json
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
 
-# buildsx
-console
-!cmd/console
-api
-
-pkg/scenario/tmp.go
