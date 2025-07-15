@@ -4,11 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
@@ -188,4 +192,64 @@ func (r *RedisService) DeleteGameState(ctx context.Context, uuid uuid.UUID) erro
 
 	r.logger.Debug("Gamestate deleted successfully", "uuid", uuid)
 	return nil
+}
+
+// ListScenarios returns a map of scenario names to filenames from the filesystem
+func (r *RedisService) ListScenarios(ctx context.Context) (map[string]string, error) {
+	scenariosDir := "./data/scenarios"
+	scenarios := make(map[string]string)
+
+	err := filepath.WalkDir(scenariosDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || filepath.Ext(path) != ".json" {
+			return nil // skip non-json files and errors
+		}
+
+		file, err := os.ReadFile(path)
+		if err != nil {
+			r.logger.Warn("Failed to read scenario file", "path", path, "error", err)
+			return nil
+		}
+
+		var s scenario.Scenario
+		if err := json.Unmarshal(file, &s); err != nil {
+			r.logger.Warn("Failed to unmarshal scenario file", "path", path, "error", err)
+			return nil
+		}
+
+		filename := filepath.Base(path)
+		scenarios[s.Name] = filename
+		return nil
+	})
+
+	if err != nil {
+		r.logger.Error("Failed to walk scenarios directory", "error", err)
+		return nil, fmt.Errorf("failed to list scenarios: %w", err)
+	}
+
+	r.logger.Debug("Listed scenarios", "count", len(scenarios))
+	return scenarios, nil
+}
+
+// GetScenario retrieves a scenario by its filename from the filesystem
+func (r *RedisService) GetScenario(ctx context.Context, filename string) (*scenario.Scenario, error) {
+	path := filepath.Join("./data/scenarios", filename)
+
+	file, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			r.logger.Debug("Scenario file not found", "filename", filename)
+			return nil, fmt.Errorf("scenario not found: %s", filename)
+		}
+		r.logger.Error("Failed to read scenario file", "filename", filename, "error", err)
+		return nil, fmt.Errorf("failed to read scenario file: %w", err)
+	}
+
+	var s scenario.Scenario
+	if err := json.Unmarshal(file, &s); err != nil {
+		r.logger.Error("Failed to unmarshal scenario", "filename", filename, "error", err)
+		return nil, fmt.Errorf("failed to unmarshal scenario: %w", err)
+	}
+
+	r.logger.Debug("Scenario loaded successfully", "filename", filename, "name", s.Name)
+	return &s, nil
 }

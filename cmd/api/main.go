@@ -54,6 +54,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// TODO: We might be able to remove this
 	scenarios, err := scenario.LoadScenarios("./data/scenarios")
 	if err != nil {
 		log.Error("Failed to load scenarios", "error", err.Error())

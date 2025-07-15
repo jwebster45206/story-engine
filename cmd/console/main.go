@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
+	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
@@ -278,7 +279,7 @@ func createGameState(client *http.Client, baseURL string) (uuid.UUID, error) {
 	// Create a new game state
 	gameState := &state.GameState{
 		ID:          uuid.New(),
-		Scenario:    "Pirate Captain",
+		Scenario:    scenario.Scenario{FileName: "pirate.json"},
 		Location:    "Tortuga",
 		ChatHistory: []chat.ChatMessage{},
 	}

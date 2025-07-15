@@ -115,18 +115,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Validate scenario name
-	if gs.Scenario == "" {
-		h.logger.Warn("Scenario name is required")
-		w.WriteHeader(http.StatusBadRequest)
-		response := ErrorResponse{
-			Error: "Scenario name is required",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
-		return
-	}
+	// TODO: Validate Scenario
 
 	// Assign a new ID to the game state
 	gs.ID = uuid.New()

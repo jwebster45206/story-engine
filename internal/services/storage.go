@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
@@ -33,4 +34,10 @@ type Storage interface {
 
 	// DeleteGameState removes a gamestate by UUID
 	DeleteGameState(ctx context.Context, uuid uuid.UUID) error
+
+	// ListScenarios returns a map of scenario names to filenames
+	ListScenarios(ctx context.Context) (map[string]string, error)
+
+	// GetScenario retrieves a scenario by its filename
+	GetScenario(ctx context.Context, filename string) (*scenario.Scenario, error)
 }

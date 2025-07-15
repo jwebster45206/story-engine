@@ -21,6 +21,7 @@ type NPC struct {
 // Scenario is the template for a roleplay game session.
 type Scenario struct {
 	Name          string            `json:"name"`           // Name of the scenario
+	FileName      string            `json:"file_name"`      // Name of the file containing the scenario
 	Story         string            `json:"story"`          // Brief description of the scenario
 	Locations     map[string]string `json:"locations"`      // Map of location names to descriptions
 	Inventory     []string          `json:"inventory"`      // Initial inventory items available to the user

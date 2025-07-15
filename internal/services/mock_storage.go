@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
@@ -70,4 +71,45 @@ func (m *MockStorage) LoadGameState(ctx context.Context, uuid uuid.UUID) (*state
 func (m *MockStorage) DeleteGameState(ctx context.Context, uuid uuid.UUID) error {
 	delete(m.gamestates, uuid)
 	return nil
+}
+
+// ListScenarios mocks listing scenarios
+func (m *MockStorage) ListScenarios(ctx context.Context) (map[string]string, error) {
+	// Return a mock list of scenarios
+	scenarios := map[string]string{
+		"Pirate Adventure": "pirate_scenario.json",
+		"Mermaid Lagoon":   "mermaid_scenario.json",
+	}
+	return scenarios, nil
+}
+
+// GetScenario mocks getting a scenario by filename
+func (m *MockStorage) GetScenario(ctx context.Context, filename string) (*scenario.Scenario, error) {
+	// Return a mock scenario based on filename
+	switch filename {
+	case "pirate_scenario.json":
+		return &scenario.Scenario{
+			Name:          "Pirate Adventure",
+			Story:         "A thrilling pirate adventure in the Caribbean",
+			Locations:     map[string]string{"Tortuga": "A notorious pirate haven"},
+			Inventory:     []string{"cutlass", "treasure map"},
+			NPCs:          map[string]scenario.NPC{"BlackBeard": {Name: "BlackBeard", Type: "pirate", Disposition: "hostile"}},
+			Flags:         map[string]string{"ship_status": "docked"},
+			Triggers:      []string{"treasure_found"},
+			OpeningPrompt: "Welcome to the Caribbean, captain!",
+		}, nil
+	case "mermaid_scenario.json":
+		return &scenario.Scenario{
+			Name:          "Mermaid Lagoon",
+			Story:         "A magical underwater adventure",
+			Locations:     map[string]string{"Lagoon": "A crystal clear lagoon"},
+			Inventory:     []string{"pearl", "seashell"},
+			NPCs:          map[string]scenario.NPC{"Marina": {Name: "Marina", Type: "mermaid", Disposition: "friendly"}},
+			Flags:         map[string]string{"water_breathing": "true"},
+			Triggers:      []string{"mermaid_song"},
+			OpeningPrompt: "You dive into the magical lagoon...",
+		}, nil
+	default:
+		return nil, errors.New("scenario not found")
+	}
 }
