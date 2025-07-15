@@ -278,6 +278,8 @@ func createGameState(client *http.Client, baseURL string) (uuid.UUID, error) {
 	// Create a new game state
 	gameState := &state.GameState{
 		ID:          uuid.New(),
+		Scenario:    "Pirate Captain",
+		Location:    "Tortuga",
 		ChatHistory: []chat.ChatMessage{},
 	}
 

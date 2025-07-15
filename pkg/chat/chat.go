@@ -40,5 +40,8 @@ func (cr *ChatRequest) Validate() error {
 	if cr.Message == "" {
 		return fmt.Errorf("message cannot be empty")
 	}
+	if cr.GameStateID == uuid.Nil {
+		return fmt.Errorf("game state ID cannot be empty")
+	}
 	return nil
 }
