@@ -33,7 +33,7 @@
       "type": "bartender",
       "disposition": "teasing and tricky",
       "description": "A bartender at the Sleepy Mermaid, known for her enchanting stories and elusive nature.",
-      "important": false,
+      "important": true,
       "location": "Sleepy Mermaid"
     }
   },
