@@ -124,9 +124,9 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get Scenario for the chat
-	scenario, err := h.storage.GetScenario(r.Context(), gs.Scenario.FileName)
+	scenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
 	if err != nil {
-		h.logger.Error("Error loading scenario for chat", "error", err, "scenario_filename", gs.Scenario.FileName)
+		h.logger.Error("Error loading scenario for chat", "error", err, "scenario_filename", gs.Scenario)
 		w.WriteHeader(http.StatusInternalServerError)
 		response := ErrorResponse{
 			Error: "Failed to load scenario for chat.",

@@ -12,7 +12,7 @@ import (
 // GameState is the current state of a roleplay game session.
 type GameState struct {
 	ID          uuid.UUID               `json:"id"`                    // Unique ID per session
-	Scenario    *scenario.Scenario      `json:"scenario,omitempty"`    // Name of the scenario being played
+	Scenario    string                  `json:"scenario,omitempty"`    // Filename of the scenario being played. Ex: "foo_scenario.json"
 	Location    string                  `json:"location,omitempty"`    // Current location in the game world
 	Description string                  `json:"description,omitempty"` // Description of the current scene
 	Flags       map[string]bool         `json:"flags,omitempty"`
@@ -24,13 +24,13 @@ type GameState struct {
 func NewGameState(scenarioFileName string) *GameState {
 	return &GameState{
 		ID:          uuid.New(),
-		Scenario:    &scenario.Scenario{FileName: scenarioFileName},
+		Scenario:    scenarioFileName,
 		ChatHistory: make([]chat.ChatMessage, 0),
 	}
 }
 
 func (gs *GameState) Validate() error {
-	if gs.Scenario.FileName == "" {
+	if gs.Scenario == "" {
 		return fmt.Errorf("scenario.file_name is required")
 	}
 	return nil
@@ -56,7 +56,9 @@ func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, err
 	if err != nil {
 		return chat.ChatMessage{}, fmt.Errorf("failed to copy game state: %w", err)
 	}
-	gsCopy.Scenario = nil
+
+	// Exclude details that are not needed for the prompt
+	gsCopy.Scenario = ""
 
 	jsonState, err := json.Marshal(ToPromptState(gs))
 	if err != nil {
@@ -89,7 +91,7 @@ func (gs *GameState) GetChatMessages(requestMessage string, s *scenario.Scenario
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: scenario.BaseSystemPrompt + "\n\n" + gs.Scenario.Story,
+			Content: scenario.BaseSystemPrompt + "\n\n" + s.Story,
 		},
 		statePrompt, // game state context json
 	}

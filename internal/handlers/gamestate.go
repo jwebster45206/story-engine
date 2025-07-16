@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/internal/services"
+	"github.com/jwebster45206/roleplay-agent/pkg/chat"
 	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
@@ -130,8 +131,8 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Load the scenario file
-	s, err := h.storage.GetScenario(r.Context(), gs.Scenario.FileName)
+	// Get initial gamestate values from scenario
+	s, err := h.storage.GetScenario(r.Context(), gs.Scenario)
 	if err != nil {
 		h.logger.Warn("Failed to load scenario", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -143,7 +144,15 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-	gs.Scenario = s
+
+	// Add the opening prompt to chat history
+	if s.OpeningPrompt != "" {
+		gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
+			Role:    chat.ChatRoleAgent,
+			Content: s.OpeningPrompt,
+		})
+	}
+
 	gs.Location = s.OpeningLocation
 	gs.Inventory = s.OpeningInventory
 	gs.ID = uuid.New()
