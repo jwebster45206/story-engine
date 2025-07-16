@@ -24,7 +24,7 @@ func TestGameStateHandler_Create(t *testing.T) {
 	handler := NewGameStateHandler(mockStorage, logger)
 
 	// Test creating a new game state
-	reqBody := `{"scenario":{"file_name":"pirate_scenario.json"}}`
+	reqBody := `{"scenario":{"file_name":"foo_scenario.json"}}`
 	req := httptest.NewRequest(http.MethodPost, "/gamestate", strings.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json") // This was missing!
 	rr := httptest.NewRecorder()

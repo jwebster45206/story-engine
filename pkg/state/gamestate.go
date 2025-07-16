@@ -12,7 +12,7 @@ import (
 // GameState is the current state of a roleplay game session.
 type GameState struct {
 	ID          uuid.UUID               `json:"id"`                    // Unique ID per session
-	Scenario    scenario.Scenario       `json:"scenario,omitempty"`    // Name of the scenario being played
+	Scenario    *scenario.Scenario      `json:"scenario,omitempty"`    // Name of the scenario being played
 	Location    string                  `json:"location,omitempty"`    // Current location in the game world
 	Description string                  `json:"description,omitempty"` // Description of the current scene
 	Flags       map[string]bool         `json:"flags,omitempty"`
@@ -24,7 +24,7 @@ type GameState struct {
 func NewGameState(scenarioFileName string) *GameState {
 	return &GameState{
 		ID:          uuid.New(),
-		Scenario:    scenario.Scenario{FileName: scenarioFileName},
+		Scenario:    &scenario.Scenario{FileName: scenarioFileName},
 		ChatHistory: make([]chat.ChatMessage, 0),
 	}
 }
@@ -47,7 +47,7 @@ func (gs *GameState) GetClosingPrompt() chat.ChatMessage {
 
 // GetStatePrompt provides gameplay and story instructions to the LLM.
 // It also provides scenario context and current game state context.
-func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error) {
+func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, error) {
 	if gs == nil {
 		return chat.ChatMessage{}, fmt.Errorf("game state is nil")
 	}
@@ -56,9 +56,7 @@ func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error) {
 	if err != nil {
 		return chat.ChatMessage{}, fmt.Errorf("failed to copy game state: %w", err)
 	}
-
-	s := gsCopy.Scenario
-	gsCopy.Scenario = scenario.Scenario{}
+	gsCopy.Scenario = nil
 
 	jsonState, err := json.Marshal(ToPromptState(gs))
 	if err != nil {
@@ -76,13 +74,13 @@ func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error) {
 	}, nil
 }
 
-func (gs *GameState) GetChatMessages(requestMessage string, count int) ([]chat.ChatMessage, error) {
+func (gs *GameState) GetChatMessages(requestMessage string, s *scenario.Scenario, count int) ([]chat.ChatMessage, error) {
 	if gs == nil {
 		return nil, fmt.Errorf("game state is nil")
 	}
 
 	// Translate game state to a chat prompt
-	statePrompt, err := gs.GetStatePrompt()
+	statePrompt, err := gs.GetStatePrompt(s)
 	if err != nil {
 		return nil, fmt.Errorf("error generating state prompt: %w", err)
 	}

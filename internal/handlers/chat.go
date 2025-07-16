@@ -123,7 +123,21 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	messages, err := gs.GetChatMessages(request.Message, PromptHistoryLimit)
+	// Get Scenario for the chat
+	scenario, err := h.storage.GetScenario(r.Context(), gs.Scenario.FileName)
+	if err != nil {
+		h.logger.Error("Error loading scenario for chat", "error", err, "scenario_filename", gs.Scenario.FileName)
+		w.WriteHeader(http.StatusInternalServerError)
+		response := ErrorResponse{
+			Error: "Failed to load scenario for chat.",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
+		return
+	}
+
+	messages, err := gs.GetChatMessages(request.Message, scenario, PromptHistoryLimit)
 	if err != nil {
 		h.logger.Error("Error getting chat messages", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)

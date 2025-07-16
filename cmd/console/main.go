@@ -283,7 +283,7 @@ func testConnection(client *http.Client, baseURL string) bool {
 func createGameState(client *http.Client, baseURL string) (*state.GameState, error) {
 	// Create a new game state
 	gameState := &state.GameState{
-		Scenario: scenario.Scenario{FileName: "pirate.json"},
+		Scenario: &scenario.Scenario{FileName: "pirate.json"},
 	}
 
 	jsonData, err := json.Marshal(gameState)

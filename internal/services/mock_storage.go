@@ -12,6 +12,7 @@ import (
 // MockStorage is a mock implementation of Storage for testing
 type MockStorage struct {
 	gamestates map[uuid.UUID]*state.GameState
+	scenarios  map[string]*scenario.Scenario
 	pingError  error
 }
 
@@ -22,6 +23,7 @@ var _ Storage = (*MockStorage)(nil)
 func NewMockStorage() *MockStorage {
 	return &MockStorage{
 		gamestates: make(map[uuid.UUID]*state.GameState),
+		scenarios:  make(map[string]*scenario.Scenario),
 	}
 }
 
@@ -86,27 +88,16 @@ func (m *MockStorage) ListScenarios(ctx context.Context) (map[string]string, err
 func (m *MockStorage) GetScenario(ctx context.Context, filename string) (*scenario.Scenario, error) {
 	// Return a mock scenario based on filename
 	switch filename {
-	case "pirate_scenario.json":
+	case "foo_scenario.json":
 		return &scenario.Scenario{
-			Name:          "Pirate Adventure",
-			Story:         "A thrilling pirate adventure in the Caribbean",
-			Locations:     map[string]string{"Tortuga": "A notorious pirate haven"},
-			Inventory:     []string{"cutlass", "treasure map"},
-			NPCs:          map[string]scenario.NPC{"BlackBeard": {Name: "BlackBeard", Type: "pirate", Disposition: "hostile"}},
-			Flags:         map[string]string{"ship_status": "docked"},
-			Triggers:      []string{"treasure_found"},
-			OpeningPrompt: "Welcome to the Caribbean, captain!",
-		}, nil
-	case "mermaid_scenario.json":
-		return &scenario.Scenario{
-			Name:          "Mermaid Lagoon",
-			Story:         "A magical underwater adventure",
-			Locations:     map[string]string{"Lagoon": "A crystal clear lagoon"},
-			Inventory:     []string{"pearl", "seashell"},
-			NPCs:          map[string]scenario.NPC{"Marina": {Name: "Marina", Type: "mermaid", Disposition: "friendly"}},
-			Flags:         map[string]string{"water_breathing": "true"},
-			Triggers:      []string{"mermaid_song"},
-			OpeningPrompt: "You dive into the magical lagoon...",
+			Name:          "FooScenario",
+			Story:         "A test scenario story",
+			Locations:     map[string]string{"TestLocation": "A location for testing"},
+			Inventory:     []string{"test_item1", "test_item2"},
+			NPCs:          map[string]scenario.NPC{"TestNPC": {Name: "TestNPC", Type: "human", Disposition: "neutral"}},
+			Flags:         map[string]string{"test_flag": "true"},
+			Triggers:      []string{"test_trigger"},
+			OpeningPrompt: "Welcome to the FooScenario!",
 		}, nil
 	default:
 		return nil, errors.New("scenario not found")

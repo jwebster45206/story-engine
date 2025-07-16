@@ -143,7 +143,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-	gs.Scenario = *s
+	gs.Scenario = s
 	gs.Location = s.OpeningLocation
 	gs.Inventory = s.OpeningInventory
 	gs.ID = uuid.New()
