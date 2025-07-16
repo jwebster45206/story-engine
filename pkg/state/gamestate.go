@@ -45,6 +45,8 @@ func (gs *GameState) GetClosingPrompt() chat.ChatMessage {
 	}
 }
 
+// GetStatePrompt provides gameplay and story instructions to the LLM.
+// It also provides scenario context and current game state context.
 func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error) {
 	if gs == nil {
 		return chat.ChatMessage{}, fmt.Errorf("game state is nil")
