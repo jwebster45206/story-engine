@@ -148,7 +148,7 @@ func (r *RedisService) SaveGameState(ctx context.Context, uuid uuid.UUID, gamest
 
 	// Use gamestate: prefix for gamestate keys
 	key := "gamestate:" + uuid.String()
-	if err := r.Set(ctx, key, string(data), 0); err != nil {
+	if err := r.Set(ctx, key, string(data), time.Hour); err != nil {
 		r.logger.Error("Failed to save gamestate", "uuid", uuid, "error", err)
 		return fmt.Errorf("failed to save gamestate: %w", err)
 	}
@@ -232,24 +232,40 @@ func (r *RedisService) ListScenarios(ctx context.Context) (map[string]string, er
 
 // GetScenario retrieves a scenario by its filename from the filesystem
 func (r *RedisService) GetScenario(ctx context.Context, filename string) (*scenario.Scenario, error) {
-	path := filepath.Join("./data/scenarios", filename)
+	key := "scenario:" + filename
+	data, err := r.Get(ctx, key)
+	if err != nil && err != redis.Nil {
+		return nil, fmt.Errorf("failed to get scenario: %w", err)
+	}
 
+	if data != "" {
+		var cachedScenario scenario.Scenario
+		if err := json.Unmarshal([]byte(data), &cachedScenario); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal cached scenario: %w", err)
+		}
+		r.logger.Debug("Cache hit:", "filename", filename)
+		return &cachedScenario, nil
+	}
+	r.logger.Debug("Cache miss:", "filename", filename)
+
+	path := filepath.Join("./data/scenarios", filename)
 	file, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			r.logger.Debug("Scenario file not found", "filename", filename)
 			return nil, fmt.Errorf("scenario not found: %s", filename)
 		}
-		r.logger.Error("Failed to read scenario file", "filename", filename, "error", err)
 		return nil, fmt.Errorf("failed to read scenario file: %w", err)
 	}
 
 	var s scenario.Scenario
 	if err := json.Unmarshal(file, &s); err != nil {
-		r.logger.Error("Failed to unmarshal scenario", "filename", filename, "error", err)
 		return nil, fmt.Errorf("failed to unmarshal scenario: %w", err)
 	}
 
-	r.logger.Debug("Scenario loaded successfully", "filename", filename, "name", s.Name)
+	// Cache the scenario
+	if err := r.Set(ctx, key, string(file), 24*time.Hour); err != nil {
+		// Log the error but allow a successful return
+		r.logger.Error("Failed to cache scenario", "filename", filename, "error", err)
+	}
 	return &s, nil
 }

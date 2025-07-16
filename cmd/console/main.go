@@ -13,7 +13,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
-	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
@@ -228,9 +227,12 @@ func main() {
 	fmt.Println("")
 
 	// Print initial scenario description
-	printWrapped(gs.Scenario.OpeningPrompt)
-	fmt.Println("")
-	fmt.Println("")
+	// It should be the first item in the chat history.
+	if len(gs.ChatHistory) > 0 {
+		printWrapped(gs.ChatHistory[0].Content)
+		fmt.Println("")
+		fmt.Println("")
+	}
 
 	// Main chat loop
 	scanner := bufio.NewScanner(os.Stdin)
@@ -283,7 +285,7 @@ func testConnection(client *http.Client, baseURL string) bool {
 func createGameState(client *http.Client, baseURL string) (*state.GameState, error) {
 	// Create a new game state
 	gameState := &state.GameState{
-		Scenario: scenario.Scenario{FileName: "pirate.json"},
+		Scenario: "pirate.json", // Example scenario
 	}
 
 	jsonData, err := json.Marshal(gameState)
