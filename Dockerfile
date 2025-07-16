@@ -37,6 +37,9 @@ COPY --from=builder /app/main .
 # Copy config files
 COPY config.docker.json .
 
+# Copy scenario files
+COPY data/scenarios /app/data/scenarios
+
 # Change ownership of all files to appuser
 RUN chown -R appuser:appgroup /app
 

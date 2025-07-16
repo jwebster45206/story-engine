@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -23,14 +24,16 @@ func TestGameStateHandler_Create(t *testing.T) {
 	handler := NewGameStateHandler(mockStorage, logger)
 
 	// Test creating a new game state
-	req := httptest.NewRequest(http.MethodPost, "/gamestate", nil)
+	reqBody := `{"scenario":{"file_name":"pirate_scenario.json"}}`
+	req := httptest.NewRequest(http.MethodPost, "/gamestate", strings.NewReader(reqBody))
+	req.Header.Set("Content-Type", "application/json") // This was missing!
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
 
 	// Check status code
 	if rr.Code != http.StatusCreated {
-		t.Errorf("Expected status 201, got %d", rr.Code)
+		t.Errorf("Expected status 201, got %d. Response body: %s", rr.Code, rr.Body.String())
 	}
 
 	// Check content type
@@ -59,7 +62,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 	handler := NewGameStateHandler(mockStorage, logger)
 
 	// Create a test game state
-	testGS := state.NewGameState()
+	testGS := state.NewGameState("FooScenario")
 	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
@@ -133,7 +136,7 @@ func TestGameStateHandler_Delete(t *testing.T) {
 	handler := NewGameStateHandler(mockStorage, logger)
 
 	// Create a test game state
-	testGS := state.NewGameState()
+	testGS := state.NewGameState("FooScenario")
 	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}

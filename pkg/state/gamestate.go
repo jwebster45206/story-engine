@@ -9,46 +9,31 @@ import (
 	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 )
 
-// NPC represents a non-player character in the game
-type NPC struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"`                  // e.g. "villager", "guard", "merchant"
-	Disposition string `json:"disposition"`           // e.g. "hostile", "neutral", "friendly"
-	Description string `json:"description,omitempty"` // short description or backstory
-	IsImportant bool   `json:"important,omitempty"`   // whether this NPC is important to the story
-	Location    string `json:"location,omitempty"`    // where the NPC is currently located
-}
-
 // GameState is the current state of a roleplay game session.
 type GameState struct {
-	ID          uuid.UUID          `json:"id"`                    // Unique ID per session
-	Location    string             `json:"location,omitempty"`    // Current location in the game world
-	Description string             `json:"description,omitempty"` // Description of the current scene
-	Flags       map[string]bool    `json:"flags,omitempty"`
-	NPCs        map[string]NPC     `json:"npcs,omitempty"`
-	Inventory   []string           `json:"inventory,omitempty"`
-	ChatHistory []chat.ChatMessage `json:"chat_history,omitempty"` // Conversation history
+	ID          uuid.UUID               `json:"id"`                    // Unique ID per session
+	Scenario    scenario.Scenario       `json:"scenario,omitempty"`    // Name of the scenario being played
+	Location    string                  `json:"location,omitempty"`    // Current location in the game world
+	Description string                  `json:"description,omitempty"` // Description of the current scene
+	Flags       map[string]bool         `json:"flags,omitempty"`
+	NPCs        map[string]scenario.NPC `json:"npcs,omitempty"`
+	Inventory   []string                `json:"inventory,omitempty"`
+	ChatHistory []chat.ChatMessage      `json:"chat_history,omitempty"` // Conversation history
 }
 
-func NewGameState() *GameState {
+func NewGameState(scenarioFileName string) *GameState {
 	return &GameState{
 		ID:          uuid.New(),
+		Scenario:    scenario.Scenario{FileName: scenarioFileName},
 		ChatHistory: make([]chat.ChatMessage, 0),
 	}
 }
 
-const PromptHistoryLimit = 10
-
-// GetHistoryForPrompt truncatses the chat history to the last N messages
-func (gs *GameState) GetHistoryForPrompt() []chat.ChatMessage {
-	if len(gs.ChatHistory) == 0 {
-		return nil
+func (gs *GameState) Validate() error {
+	if gs.Scenario.FileName == "" {
+		return fmt.Errorf("scenario.file_name is required")
 	}
-	if len(gs.ChatHistory) <= PromptHistoryLimit {
-		return gs.ChatHistory
-	}
-	// Return the last N messages for the prompt
-	return gs.ChatHistory[len(gs.ChatHistory)-PromptHistoryLimit:]
+	return nil
 }
 
 // GetClosingPrompt returns a closing prompt for the game state
@@ -60,16 +45,94 @@ func (gs *GameState) GetClosingPrompt() chat.ChatMessage {
 	}
 }
 
+// GetStatePrompt provides gameplay and story instructions to the LLM.
+// It also provides scenario context and current game state context.
 func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error) {
 	if gs == nil {
 		return chat.ChatMessage{}, fmt.Errorf("game state is nil")
 	}
-	jsonData, err := json.Marshal(ToPromptState(gs))
+
+	gsCopy, err := gs.DeepCopy()
+	if err != nil {
+		return chat.ChatMessage{}, fmt.Errorf("failed to copy game state: %w", err)
+	}
+
+	s := gsCopy.Scenario
+	gsCopy.Scenario = scenario.Scenario{}
+
+	jsonState, err := json.Marshal(ToPromptState(gs))
 	if err != nil {
 		return chat.ChatMessage{}, err
 	}
+
+	jsonScenario, err := json.Marshal(s)
+	if err != nil {
+		return chat.ChatMessage{}, err
+	}
+
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf("Use the following JSON game state as world context. Do not explain it.\n\nGame State:\n```json\n%s\n```", jsonData),
+		Content: fmt.Sprintf("Use the following JSON as overall story context. During storytelling, use only the locations defined in the scenario json. Restrict inventory to the items defined in scenario.inventory. Restrict primary NPCs to those defined in scenario.npcs.\n\nScenario:\n```json\n%s\n```\n\nUse the following JSON as current status. \n\nGame State:\n```json\n%s\n```", jsonScenario, jsonState),
 	}, nil
+}
+
+func (gs *GameState) GetChatMessages(requestMessage string, count int) ([]chat.ChatMessage, error) {
+	if gs == nil {
+		return nil, fmt.Errorf("game state is nil")
+	}
+
+	// Translate game state to a chat prompt
+	statePrompt, err := gs.GetStatePrompt()
+	if err != nil {
+		return nil, fmt.Errorf("error generating state prompt: %w", err)
+	}
+
+	// System prompt first
+	messages := []chat.ChatMessage{
+		{
+			Role:    chat.ChatRoleSystem,
+			Content: scenario.BaseSystemPrompt + "\n\n" + gs.Scenario.Story,
+		},
+		statePrompt, // game state context json
+	}
+
+	// Add chat history from game state
+	if len(gs.ChatHistory) > 0 {
+		if len(gs.ChatHistory) <= count {
+			messages = append(messages, gs.ChatHistory...)
+		} else {
+			messages = append(messages, gs.ChatHistory[len(gs.ChatHistory)-count:]...)
+		}
+	}
+
+	// Add user message
+	messages = append(messages, chat.ChatMessage{
+		Role:    chat.ChatRoleUser,
+		Content: requestMessage,
+	})
+
+	// Add closing prompt
+	messages = append(messages, gs.GetClosingPrompt())
+
+	return messages, nil
+}
+
+func (gs *GameState) DeepCopy() (*GameState, error) {
+	if gs == nil {
+		return nil, fmt.Errorf("game state is nil")
+	}
+
+	// Marshal the original GameState to JSON
+	data, err := json.Marshal(gs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal game state: %w", err)
+	}
+
+	// Unmarshal the JSON back into a new GameState instance
+	var copy GameState
+	if err := json.Unmarshal(data, &copy); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal game state: %w", err)
+	}
+
+	return &copy, nil
 }

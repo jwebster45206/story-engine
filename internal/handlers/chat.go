@@ -38,18 +38,10 @@ func NewChatHandler(llmService services.LLMService, logger *slog.Logger, storage
 	}
 }
 
-// ServeHTTP handles HTTP requests for chat
-// TODO:
-//   - Load the gamestate (chat history) from Redis by UUID
-//   - Create system prompt using
-//   - Construct the Ollama chat prompt by combining the gamestate (just chat history
-//     for now), user message, system prompt, and character description.
-//   - Call the LLM service to generate a response
-//   - Save updated gamestate
-//   - Return the response as JSON
-//
-// Next steps: Add redis to docker compose, and add redis client to the service layer.
-// Refine prompt construction, based on both gameplay requirements and LLM capabilities.
+const PromptHistoryLimit = 10
+
+// ServeHTTP handles HTTP requests for chat.
+// This is the primary endpoint for user interaction with the LLM.
 func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -79,7 +71,6 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"path", r.URL.Path,
 		"remote_addr", r.RemoteAddr)
 
-	// Parse request body
 	var request chat.ChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		h.logger.Warn("Invalid request body", "error", err)
@@ -106,18 +97,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if request.GameStateID == uuid.Nil {
-		w.WriteHeader(http.StatusBadRequest)
-		response := ErrorResponse{
-			Error: "Game state ID is required.",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Error encoding error response", "error", err)
-		}
-		return
-	}
-
-	// Load existing game state from Redis
+	// Load game state
 	gs, err := h.storage.LoadGameState(r.Context(), request.GameStateID)
 	if err != nil {
 		h.logger.Error("Error loading game state", "error", err)
@@ -143,37 +123,18 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Translate game state to a chat prompt
-	statePrompt, err := gs.GetStatePrompt()
+	messages, err := gs.GetChatMessages(request.Message, PromptHistoryLimit)
 	if err != nil {
-		h.logger.Error("Error generating state prompt", "error", err, "game_state_id", gs.ID.String())
+		h.logger.Error("Error getting chat messages", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		response := ErrorResponse{
-			Error: "Failed to generate state prompt. ",
+			Error: "Failed to get chat messages.",
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Error encoding error response", "error", err)
 		}
 		return
 	}
-
-	// System prompt first
-	messages := []chat.ChatMessage{
-		{
-			Role:    chat.ChatRoleSystem,
-			Content: scenario.BaseSystemPrompt + "\n\n" + scenario.PirateScenarioPrompt,
-		},
-		statePrompt, // game state context json
-	}
-
-	// Add chat history from game state
-	messages = append(messages, gs.GetHistoryForPrompt()...)
-	messages = append(messages, chat.ChatMessage{
-		Role:    chat.ChatRoleUser,
-		Content: request.Message,
-	})
-	// Instructions about how to respond to user input
-	messages = append(messages, gs.GetClosingPrompt())
 
 	// Generate response using LLM
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)

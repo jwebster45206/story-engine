@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/roleplay-agent/pkg/chat"
+	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 	"github.com/jwebster45206/roleplay-agent/pkg/state"
 )
 
@@ -211,19 +212,24 @@ func main() {
 	printGreen("Connected to API successfully. ")
 
 	// Create a new game state for this session
-	gameStateID, err := createGameState(client, consoleConfig.APIBaseURL)
+	gs, err := createGameState(client, consoleConfig.APIBaseURL)
 	if err != nil {
 		printRed("Failed to create game state: " + err.Error())
 		os.Exit(1)
 	}
 
-	printGreen("Game state created: " + gameStateID.String())
+	printGreen("Game state created: " + gs.ID.String())
 
 	// Print welcome message
 	printGreen("\nWelcome to Roleplay Agent Console.")
 	printGreen("Type your messages and press Enter. Type 'help' for instructions, or 'quit' to stop.")
 
 	printDivider()
+	fmt.Println("")
+
+	// Print initial scenario description
+	printWrapped(gs.Scenario.OpeningPrompt)
+	fmt.Println("")
 	fmt.Println("")
 
 	// Main chat loop
@@ -247,7 +253,7 @@ func main() {
 		if handleCommand(input) {
 			continue
 		} // Send message to API with progress dots
-		response, err := sendChatMessageWithProgress(client, consoleConfig.APIBaseURL, gameStateID, input)
+		response, err := sendChatMessageWithProgress(client, consoleConfig.APIBaseURL, gs.ID, input)
 		if err != nil {
 			printRed(err.Error())
 			continue
@@ -274,16 +280,15 @@ func testConnection(client *http.Client, baseURL string) bool {
 	return resp.StatusCode == http.StatusOK
 }
 
-func createGameState(client *http.Client, baseURL string) (uuid.UUID, error) {
+func createGameState(client *http.Client, baseURL string) (*state.GameState, error) {
 	// Create a new game state
 	gameState := &state.GameState{
-		ID:          uuid.New(),
-		ChatHistory: []chat.ChatMessage{},
+		Scenario: scenario.Scenario{FileName: "pirate.json"},
 	}
 
 	jsonData, err := json.Marshal(gameState)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to marshal game state: %w", err)
+		return nil, fmt.Errorf("failed to marshal game state: %w", err)
 	}
 
 	// Send POST request to create game state
@@ -293,32 +298,32 @@ func createGameState(client *http.Client, baseURL string) (uuid.UUID, error) {
 		bytes.NewBuffer(jsonData),
 	)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to send request: %w", err)
+		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// Read response body for potential error messages
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to read response: %w", err)
+		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
 	// Check if request was successful
 	if resp.StatusCode != http.StatusCreated {
 		var errorResp ErrorResponse
 		if err := json.Unmarshal(body, &errorResp); err != nil {
-			return uuid.Nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+			return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 		}
-		return uuid.Nil, fmt.Errorf("failed to create game state: %s", errorResp.Error)
+		return nil, fmt.Errorf("failed to create game state: %s", errorResp.Error)
 	}
 
 	// Parse successful response to get the created game state
 	var createdGameState state.GameState
 	if err := json.Unmarshal(body, &createdGameState); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to parse game state response: %w", err)
+		return nil, fmt.Errorf("failed to parse game state response: %w", err)
 	}
 
-	return createdGameState.ID, nil
+	return &createdGameState, nil
 }
 
 func sendChatMessageWithProgress(client *http.Client, baseURL string, gameStateID uuid.UUID, message string) (*chat.ChatResponse, error) {

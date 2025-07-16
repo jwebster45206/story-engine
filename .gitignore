@@ -33,10 +33,6 @@ config*.json
 !config.template.json
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
 
-# builds
-console
-!cmd/console
-api

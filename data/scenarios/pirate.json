@@ -1,0 +1,49 @@
+{
+  "name": "Pirate Captain",
+  "story": "You are the captain of The Black Pearl, a legendary pirate ship. Your crew has just docked at Tortuga, a notorious pirate haven. Adventure and treasure await as you explore the Caribbean during the Golden Age of Piracy.",
+  "locations": {
+    "Tortuga": "A bustling pirate port filled with taverns, traders, and trouble.",
+    "Black Pearl": "Your ship, moored at the docks, ready for the next voyage.",
+    "Sleepy Mermaid": "A rowdy tavery filled with pirates and rumors of treasure."
+  },
+  "inventory": [
+    "cutlass",
+    "pistol",
+    "spyglass"
+  ],
+  "npcs": {
+    "Davey": {
+      "name": "Davey",
+      "type": "pirate",
+      "disposition": "friendly",
+      "description": "A grizzled old pirate with a wooden leg.",
+      "important": true,
+      "location": "Tortuga"
+    },
+    "Gibbs": {
+      "name": "Gibbs",
+      "type": "pirate",
+      "disposition": "loyal",
+      "description": "Your loyal first mate with a keen sense of duty.",
+      "important": true,
+      "location": "Black Pearl"
+    },
+    "Calypso": {
+      "name": "Calypso",
+      "type": "bartender",
+      "disposition": "teasing and tricky",
+      "description": "A bartender at the Sleepy Mermaid, known for her enchanting stories and elusive nature.",
+      "important": false,
+      "location": "Sleepy Mermaid"
+    }
+  },
+  "flags": {
+    "treasure_map_found": "no",
+    "black_pearl_repaired": "no"
+  },
+  "triggers": [
+    "The black_pearl_repaired flag must be set to 'yes' before setting sail. Attempting to set sail before will prompt the player to repair the ship first. ",
+    "The user must talk to Calypso to receive the treasure map. The user cannot find any treasure map or leave Tortuga without doing this. "
+  ],
+  "opening_prompt": "You stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your crew awaits your orders, and the Black Pearl is ready to set sail. What will you do next?"
+}
