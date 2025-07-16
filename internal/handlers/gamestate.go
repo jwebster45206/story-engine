@@ -60,6 +60,7 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
 		h.handleCreate(w, r)
+
 	case http.MethodGet:
 		if gameStateID == uuid.Nil {
 			h.logger.Warn("GET request without game state ID")
@@ -73,6 +74,7 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.handleRead(w, r, gameStateID)
+
 	case http.MethodDelete:
 		if gameStateID == uuid.Nil {
 			h.logger.Warn("DELETE request without game state ID")
@@ -86,6 +88,7 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.handleDelete(w, r, gameStateID)
+
 	default:
 		h.logger.Warn("Method not allowed for game state endpoint", "method", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -115,12 +118,36 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// TODO: Validate Scenario
+	if gs.Validate() != nil {
+		h.logger.Warn("Invalid game state data", "error", gs.Validate())
+		w.WriteHeader(http.StatusBadRequest)
+		response := ErrorResponse{
+			Error: "Invalid game state data: " + gs.Validate().Error(),
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
+		return
+	}
 
-	// Assign a new ID to the game state
+	// Load the scenario file
+	s, err := h.storage.GetScenario(r.Context(), gs.Scenario.FileName)
+	if err != nil {
+		h.logger.Warn("Failed to load scenario", "error", err)
+		w.WriteHeader(http.StatusBadRequest)
+		response := ErrorResponse{
+			Error: "Failed to load scenario: " + err.Error(),
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
+		return
+	}
+	gs.Scenario = *s
+	gs.Location = s.OpeningLocation
+	gs.Inventory = s.OpeningInventory
 	gs.ID = uuid.New()
 
-	// Save the new game state
 	if err := h.storage.SaveGameState(r.Context(), gs.ID, &gs); err != nil {
 		h.logger.Error("Failed to save new game state", "error", err, "id", gs.ID.String())
 		w.WriteHeader(http.StatusInternalServerError)

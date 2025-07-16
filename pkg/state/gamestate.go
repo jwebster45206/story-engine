@@ -29,6 +29,13 @@ func NewGameState(scenarioFileName string) *GameState {
 	}
 }
 
+func (gs *GameState) Validate() error {
+	if gs.Scenario.FileName == "" {
+		return fmt.Errorf("scenario.file_name is required")
+	}
+	return nil
+}
+
 // GetClosingPrompt returns a closing prompt for the game state
 // This prompt could be customized based on the game state.
 func (gs *GameState) GetClosingPrompt() chat.ChatMessage {
@@ -42,13 +49,28 @@ func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error) {
 	if gs == nil {
 		return chat.ChatMessage{}, fmt.Errorf("game state is nil")
 	}
-	jsonData, err := json.Marshal(ToPromptState(gs))
+
+	gsCopy, err := gs.DeepCopy()
+	if err != nil {
+		return chat.ChatMessage{}, fmt.Errorf("failed to copy game state: %w", err)
+	}
+
+	s := gsCopy.Scenario
+	gsCopy.Scenario = scenario.Scenario{}
+
+	jsonState, err := json.Marshal(ToPromptState(gs))
 	if err != nil {
 		return chat.ChatMessage{}, err
 	}
+
+	jsonScenario, err := json.Marshal(s)
+	if err != nil {
+		return chat.ChatMessage{}, err
+	}
+
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf("Use the following JSON game state as world context. Do not explain it.\n\nGame State:\n```json\n%s\n```", jsonData),
+		Content: fmt.Sprintf("Use the following JSON as overall story context. During storytelling, use only the locations defined in the scenario json. Restrict inventory to the items defined in scenario.inventory. Restrict primary NPCs to those defined in scenario.npcs.\n\nScenario:\n```json\n%s\n```\n\nUse the following JSON as current status. \n\nGame State:\n```json\n%s\n```", jsonScenario, jsonState),
 	}, nil
 }
 
@@ -67,7 +89,7 @@ func (gs *GameState) GetChatMessages(requestMessage string, count int) ([]chat.C
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: scenario.BaseSystemPrompt + "\n\n" + scenario.PirateScenarioPrompt,
+			Content: scenario.BaseSystemPrompt + "\n\n" + gs.Scenario.Story,
 		},
 		statePrompt, // game state context json
 	}
@@ -91,4 +113,24 @@ func (gs *GameState) GetChatMessages(requestMessage string, count int) ([]chat.C
 	messages = append(messages, gs.GetClosingPrompt())
 
 	return messages, nil
+}
+
+func (gs *GameState) DeepCopy() (*GameState, error) {
+	if gs == nil {
+		return nil, fmt.Errorf("game state is nil")
+	}
+
+	// Marshal the original GameState to JSON
+	data, err := json.Marshal(gs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal game state: %w", err)
+	}
+
+	// Unmarshal the JSON back into a new GameState instance
+	var copy GameState
+	if err := json.Unmarshal(data, &copy); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal game state: %w", err)
+	}
+
+	return &copy, nil
 }

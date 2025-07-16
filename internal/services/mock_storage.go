@@ -78,7 +78,6 @@ func (m *MockStorage) ListScenarios(ctx context.Context) (map[string]string, err
 	// Return a mock list of scenarios
 	scenarios := map[string]string{
 		"Pirate Adventure": "pirate_scenario.json",
-		"Mermaid Lagoon":   "mermaid_scenario.json",
 	}
 	return scenarios, nil
 }

@@ -14,7 +14,6 @@ import (
 	"github.com/jwebster45206/roleplay-agent/internal/logger"
 	"github.com/jwebster45206/roleplay-agent/internal/middleware"
 	"github.com/jwebster45206/roleplay-agent/internal/services"
-	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
 )
 
 func main() {
@@ -53,18 +52,6 @@ func main() {
 		log.Error("Failed to initialize LLM model", "error", err, "model", cfg.ModelName)
 		os.Exit(1)
 	}
-
-	// TODO: We might be able to remove this
-	scenarios, err := scenario.LoadScenarios("./data/scenarios")
-	if err != nil {
-		log.Error("Failed to load scenarios", "error", err.Error())
-		os.Exit(1)
-	}
-	if len(scenarios) == 0 {
-		log.Error("No scenarios found in ./data/scenarios")
-		os.Exit(1)
-	}
-	log.Debug("Loaded scenarios:", "count", len(scenarios))
 
 	mux := http.NewServeMux()
 
