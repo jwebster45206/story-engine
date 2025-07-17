@@ -210,13 +210,10 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 	}))
 
 	mockLLM := services.NewMockLLMAPI()
-	var capturedMessages []chat.ChatMessage
+	var capturedMainChatMessages []chat.ChatMessage
 	var mu sync.Mutex
 
 	mockLLM.GenerateResponseFunc = func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
-		mu.Lock()
-		capturedMessages = messages
-		mu.Unlock()
 		// Return valid JSON for meta extraction, otherwise normal test response
 		promptPrefix := scenario.PromptStateExtractionInstructions
 		if len(promptPrefix) > 50 {
@@ -227,6 +224,13 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 				Message: `{"location":"Test Location","flags":{"test_flag":true},"inventory":["test item"],"npcs":{"TestNPC":{"name":"TestNPC","type":"test","disposition":"neutral","description":"A test NPC.","important":true}}}`,
 			}, nil
 		}
+
+		// This is the main chat call - capture its messages
+		mu.Lock()
+		capturedMainChatMessages = make([]chat.ChatMessage, len(messages))
+		copy(capturedMainChatMessages, messages)
+		mu.Unlock()
+
 		return &chat.ChatResponse{Message: "Response"}, nil
 	}
 	mockSto := services.NewMockStorage()
@@ -255,8 +259,8 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 	}
 
 	mu.Lock()
-	capturedMessagesCopy := make([]chat.ChatMessage, len(capturedMessages))
-	copy(capturedMessagesCopy, capturedMessages)
+	capturedMessagesCopy := make([]chat.ChatMessage, len(capturedMainChatMessages))
+	copy(capturedMessagesCopy, capturedMainChatMessages)
 	mu.Unlock()
 
 	if len(capturedMessagesCopy) != 4 {
