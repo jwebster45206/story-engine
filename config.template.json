@@ -1,9 +1,9 @@
 {
   "port": "8080",
-  "environment": "development",
-  "log_level": "info",
+  "environment": "dev",
+  "log_level": "debug",
   "ollama_url": "http://localhost:11434",
-  "venice_api_key": "YOUR_VENICE_API_KEY_HERE",
-  "model_name": "venice-uncensored",
+  "venice_api_key": "API_KEY_HERE",
+  "model_name": "llama-3.3-70b",
   "redis_url": "localhost:6379"
 }

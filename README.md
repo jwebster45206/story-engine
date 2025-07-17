@@ -1,20 +1,8 @@
-# Roleplay Agent
-API and console app for LLM-powered text roleplay
-
-Gameplay uses elements of 80's text adventure games, augmented with a modern LLM's conversational capabilities. 
+# Story Engine
+A lightweight narrative engine for immersive, structured text adventures. Game engine inspired by text adventure games of the 70's and 80's, augmented with a modern LLM's conversational capabilities. 
 
 ## Architecture
 Project includes a Go microservice API and a console app. Console app is lightweight, to demonstrate a barebones gameplay session. 
-
-### GameState
-
-The GameState represents the complete state of a roleplay session, including conversation history and session metadata. Each game state is uniquely identified by a UUID and contains:
-
-- **Session ID**: Unique identifier for tracking individual gameplay sessions
-- **Chat History**: Complete conversation log between user and AI agent
-- **Serialization**: JSON-based storage format for persistence and retrieval
-
-Game states are created at session start and maintained throughout the roleplay experience. Future enhancements may include location tracking, inventory systems, and game flags.
 
 ### Storage Interface
 
@@ -22,9 +10,6 @@ The project uses Redis as the primary storage backend for game state persistence
 
 - **Game State Management**: Create, read, update, and delete operations for game sessions
 - **Redis Integration**: High-performance in-memory storage with optional persistence
-- **Idempotent Operations**: RESTful design with safe delete operations 
-
-The storage interface is abstracted to allow for future backend implementations.
 
 ### LLM Interface
 
@@ -35,27 +20,28 @@ The LLM interface provides an abstraction layer for Large Language Model integra
 - **Chat Integration**: Handles conversation context and message formatting
 - **Model Management**: API for model initialization and readiness checks
 
-**Note**: Ollama integration exists but is not actively developed due to performance constraints on macOS development environments. 
+### Scenario and Rules
 
-### Scenario Model
-
-Scenarios define the template and rules for roleplay sessions:
+Scenarios define the template and rules for storytelling sessions:
 
 - **Narrative Foundation**: Each scenario provides the story context and setting for gameplay
 - **Character Definitions**: Clear descriptions of main characters and NPCs
-- **LLM Prompt Rules**: Foundational guidelines that shape the AI's roleplay behavior
+- **LLM Prompt Rules**: Foundational guidelines that shape the AI's storytelling behavior
 - **Conversation Formatting**: Rules for character dialogue presentation (double line breaks, character names with colons)
 - **Game Boundaries**: Guidelines for staying in character and handling player actions
 
-**Current Scenarios**:
-- Pirate Captain in Caribbean (Golden Age of Piracy setting)
+### GameState
 
-**Planned Features**:
-- Dynamic scenario loading from JSON files
-- Redis caching for scenario data
-- Key-value gauge metrics for game progress
-- Inventory management system
-- Room/location system for spatial gameplay
+GameState is a storytelling session, including conversation history and session metadata. Each game state is uniquely identified by a UUID and contains:
+
+- **Session ID**: Unique identifier for tracking individual gameplay sessions
+- **Chat History**: Complete conversation log between user and AI agent
+- **Serialization**: JSON-based storage format for persistence and retrieval
+
+Game states are created at session start and maintained throughout the storytelling experience. Future enhancements may include location tracking, inventory systems, and game flags.
+
+
+
 
 ## Endpoints
 
@@ -127,14 +113,42 @@ All endpoints return consistent error format:
 
 ## Running the Project
 
-#### API
+### Config
+
+Create a json config file. Example:
+
+```json
+{
+  "port": "8080",
+  "environment": "dev",
+  "log_level": "debug",
+  "ollama_url": "http://localhost:11434",
+  "venice_api_key": "API_KEY_HERE",
+  "model_name": "llama-3.3-70b",
+  "redis_url": "localhost:6379"
+}
+```
+
+*Note: Currently only Venice LLM provider is supported.* 
+
+#### Venice LLM Provider
+
+Venice provides low-cost access to models that are good at storytelling. Recommended models:
+- llama-3.3-70b
+- dolphin-2.9.2-qwen2-72b
+
+#### Ollama LLM Provider
+
+TODO: Re-enable Ollama support with a proper model. Local performance constraints may block testing. 
+
+### API
 
 ````bash
-ROLEPLAY_CONFIG=config.docker.json go run cmd/api/main.go &
+GAME_CONFIG=config.docker.json go run cmd/api/main.go &
 ````
 
-#### Console Client
+### Console Client
 
 ````bash
-ROLEPLAY_CONFIG=config.docker.json go run cmd/console/main.go
+GAME_CONFIG=config.docker.json go run cmd/console/main.go
 ````

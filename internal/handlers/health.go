@@ -58,7 +58,7 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	response := HealthResponse{
 		Status:     overallStatus,
 		Timestamp:  time.Now(),
-		Service:    "roleplay-agent",
+		Service:    "story-engine",
 		Components: components,
 	}
 

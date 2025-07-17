@@ -364,7 +364,7 @@ func getGameState(client *http.Client, baseURL string, gameStateID uuid.UUID) (*
 func createGameState(client *http.Client, baseURL string) (*state.GameState, error) {
 	// Create a new game state
 	gameState := &state.GameState{
-		Scenario: "test.json", // Example scenario
+		Scenario: "pirate.json", // Example scenario
 	}
 
 	jsonData, err := json.Marshal(gameState)

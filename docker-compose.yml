@@ -1,13 +1,13 @@
 services:
-  roleplay-agent:
+  story-engine:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: roleplay-agent
+    container_name: story-engine
     ports:
       - "8080:8080"
     environment:
-      - ROLEPLAY_CONFIG=/app/config.docker.json
+      - GAME_CONFIG=/app/config.docker.json
     depends_on:
       - redis
     healthcheck:
@@ -17,7 +17,7 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - roleplay-network
+      - story-engine-network
 
   # ollama:
   #     image: ollama/ollama
@@ -35,20 +35,20 @@ services:
   #       retries: 3
   #       start_period: 60s
   #     networks:
-  #       - roleplay-network
+  #       - story-engine-network
 
   redis:
     image: redis:7-alpine
-    container_name: roleplay-redis
+    container_name: redis
     ports:
       - "6379:6379"
     networks:
-      - roleplay-network
+      - story-engine-network
 
 # Ollama data volume to persist models and configurations (commented out)
 # volumes:
   # ollama_data:
 
 networks:
-  roleplay-network:
+  story-engine-network:
     driver: bridge

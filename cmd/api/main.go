@@ -24,11 +24,12 @@ func main() {
 
 	log := logger.Setup(cfg)
 
-	log.Info("Starting roleplay-agent",
+	log.Info("Starting Story Engine API",
 		"port", cfg.Port,
 		"environment", cfg.Environment,
 		"model_name", cfg.ModelName)
 
+	// TODO: Restore support for Ollama in config
 	if cfg.VeniceAPIKey == "" {
 		log.Error("Venice API key is required")
 		os.Exit(1)

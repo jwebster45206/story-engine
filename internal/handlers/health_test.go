@@ -83,8 +83,8 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 			}
 
 			// Check service name
-			if response.Service != "roleplay-agent" {
-				t.Errorf("Expected service 'roleplay-agent', got '%s'", response.Service)
+			if response.Service != "story-engine" {
+				t.Errorf("Expected service 'story-engine', got '%s'", response.Service)
 			}
 
 			// Check storage component status
