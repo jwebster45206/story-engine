@@ -1,0 +1,71 @@
+{
+  "name": "Egyptian Expedition",
+  "story": "The year is 1923. You are Dr. Alexandra Kane, a renowned archaeologist who has just received a cryptic telegram about an extraordinary discovery in the Egyptian desert. The sender claims to have found something that will 'rewrite history itself.' Armed with your expertise and a thirst for knowledge, you must navigate the mysteries of ancient secrets and modern dangers.",
+  "locations": {
+    "Cairo Hotel": "A grand colonial hotel where foreign expeditions gather. The lobby buzzes with whispered conversations and shadowy figures.",
+    "Desert Camp": "Your temporary archaeological camp, surrounded by endless dunes and the remnants of ancient civilizations.",
+    "Hidden Temple": "A recently uncovered temple complex, its hieroglyphs still vibrant despite millennia of burial.",
+    "Underground Chamber": "A mysterious chamber deep beneath the temple, filled with artifacts that shouldn't exist.",
+    "Local Market": "A bustling bazaar where information, supplies, and ancient artifacts change hands."
+  },
+  "inventory": [
+    "archaeological tools",
+    "research journal",
+    "vintage camera",
+    "oil lamp"
+  ],
+  "npcs": {
+    "Hassan": {
+      "name": "Hassan",
+      "type": "guide",
+      "disposition": "cautious",
+      "description": "A weathered Bedouin guide with knowledge of the desert's hidden secrets. His eyes hold ancient wisdom.",
+      "important": true,
+      "location": "Desert Camp"
+    },
+    "Professor Blackwood": {
+      "name": "Professor Blackwood",
+      "type": "rival archaeologist",
+      "disposition": "competitive",
+      "description": "A brilliant but ruthless colleague who seems to know more about your expedition than he should.",
+      "important": true,
+      "location": "Cairo Hotel"
+    },
+    "Amara": {
+      "name": "Amara",
+      "type": "antiquities dealer",
+      "disposition": "mysterious",
+      "description": "A enigmatic trader who deals in both legal artifacts and forbidden knowledge. She speaks in riddles.",
+      "important": true,
+      "location": "Local Market"
+    },
+    "The Messenger": {
+      "name": "The Messenger",
+      "type": "informant",
+      "disposition": "nervous",
+      "description": "A hooded figure who sent the original telegram. Their identity remains hidden behind shadows.",
+      "important": true,
+      "location": "Cairo Hotel"
+    }
+  },
+  "flags": {
+    "telegram_decoded": "no",
+    "temple_entrance_found": "no",
+    "ancient_device_activated": "no",
+    "blackwood_alliance": "neutral",
+    "chamber_sealed": "yes"
+  },
+  "triggers": [
+    "The telegram must be decoded before the temple entrance can be found. Hassan holds crucial information.",
+    "The ancient device in the Underground Chamber cannot be activated until three specific artifacts are collected from different locations.",
+    "Professor Blackwood's true intentions are revealed only after the temple entrance is discovered.",
+    "The chamber can only be unsealed by solving a puzzle that requires knowledge from Amara's riddles."
+  ],
+  "opening_prompt": "The desert wind carries whispers of ancient secrets as you arrive at your hotel in Cairo. The cryptic telegram burns in your pocket, its mysterious message haunting your thoughts: 'The stars align as they did when the old gods walked among mortals. What was lost shall be found, but beware - some knowledge comes at a price.' Your adventure into the unknown begins now.",
+  "opening_location": "Cairo Hotel",
+  "opening_inventory": [
+    "archaeological tools",
+    "research journal",
+    "cryptic telegram"
+  ]
+}

@@ -72,7 +72,7 @@ func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, err
 
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf("Use the following JSON as overall story context. During storytelling, use only the locations defined in the scenario json. Restrict inventory to the items defined in scenario.inventory. Restrict primary NPCs to those defined in scenario.npcs.\n\nScenario:\n```json\n%s\n```\n\nUse the following JSON as current status. \n\nGame State:\n```json\n%s\n```", jsonScenario, jsonState),
+		Content: fmt.Sprintf("Use the following JSON as story boundaries. The user may only move to the locations defined in the scenario. Inventory may only contain the items defined in the scenario. All key NPCs for the story are pre-defined in the scenario.\n\nScenario:\n```json\n%s\n```\n\nUse the following JSON to understand current game state. \n\nGame State:\n```json\n%s\n```", jsonScenario, jsonState),
 	}, nil
 }
 
