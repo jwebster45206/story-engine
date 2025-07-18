@@ -74,3 +74,9 @@ Use the most recent user request and agent response.
 - If a new NPC is mentioned, add or update their entry in the "npcs" map.
 - If the NPC is not in the gamestate, they are not important.
 `
+
+// Content rating prompts
+const ContentRatingG = `Rated G. Child-friendly storytelling with no violence, no drugs or alcohol, and no adult situations.`
+const ContentRatingPG = `Rated PG. Some child-appropriate conflict is ok. No graphic violence, no drugs or alcohol, no explicit adult situations. `
+const ContentRatingPG13 = `Rated PG13. Minor violence and brief adult situations ok. If the story calls for more, it will happen off-screen and not be described in detail.`
+const ContentRatingR = `Rated R. There are no content restrictions, but the focus of the story is on adventure and exploration, not graphic or adult content. `
