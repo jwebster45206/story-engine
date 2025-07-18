@@ -85,6 +85,21 @@ DELETE /gamestate/{id}
 # Response: 204 No Content (idempotent)
 ```
 
+### Scenario Management
+
+**Get Scenario by Filename**
+```bash
+GET /scenario/pirate.json
+
+# Response: 200 OK
+{
+  "title": "Pirate Adventure",
+  "description": "A swashbuckling adventure on the high seas...",
+  "characters": [...],
+  "rules": [...]
+}
+```
+
 ### Chat Interaction
 
 **Send Chat Message**
