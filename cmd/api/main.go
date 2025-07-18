@@ -66,6 +66,9 @@ func main() {
 	mux.Handle("/gamestate", gameStateHandler)
 	mux.Handle("/gamestate/", gameStateHandler)
 
+	scenarioHandler := handlers.NewScenarioHandler(log, storage)
+	mux.Handle("/scenario/", scenarioHandler)
+
 	handler := middleware.Logger(mux)
 	server := &http.Server{
 		Addr:         ":" + cfg.Port,
