@@ -42,12 +42,12 @@ func NewMockLLMAPI() *MockLLMAPI {
 // InitModel mocks model initialization
 func (m *MockLLMAPI) InitModel(ctx context.Context, modelName string) error {
 	m.mu.Lock()
-	m.InitModelCalls = append(m.InitModelCalls, modelName)
-	fn := m.InitModelFunc
-	m.mu.Unlock()
+	defer m.mu.Unlock()
 
-	if fn != nil {
-		return fn(ctx, modelName)
+	m.InitModelCalls = append(m.InitModelCalls, modelName)
+
+	if m.InitModelFunc != nil {
+		return m.InitModelFunc(ctx, modelName)
 	}
 
 	// Default behavior - success
@@ -57,17 +57,14 @@ func (m *MockLLMAPI) InitModel(ctx context.Context, modelName string) error {
 // GetChatResponse mocks response generation
 func (m *MockLLMAPI) GetChatResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.GenerateResponseCalls = append(m.GenerateResponseCalls, GenerateResponseCall{
 		Messages: messages,
 	})
-	fn := m.GenerateResponseFunc
-	m.mu.Unlock()
 
-	if fn != nil {
-		// Lock around fn to prevent race if fn is swapped during test
-		m.mu.Lock()
-		defer m.mu.Unlock()
-		return fn(ctx, messages)
+	if m.GenerateResponseFunc != nil {
+		return m.GenerateResponseFunc(ctx, messages)
 	}
 
 	// Detect if this is a PromptState extraction request (meta update)
@@ -90,6 +87,9 @@ func (m *MockLLMAPI) GetChatResponse(ctx context.Context, messages []chat.ChatMe
 
 // ListModels mocks model listing
 func (m *MockLLMAPI) ListModels(ctx context.Context) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.ListModelsCalls = append(m.ListModelsCalls, true)
 
 	if m.ListModelsFunc != nil {
@@ -102,6 +102,9 @@ func (m *MockLLMAPI) ListModels(ctx context.Context) ([]string, error) {
 
 // IsModelReady mocks model readiness check
 func (m *MockLLMAPI) IsModelReady(ctx context.Context, modelName string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.IsModelReadyCalls = append(m.IsModelReadyCalls, modelName)
 
 	if m.IsModelReadyFunc != nil {

@@ -39,8 +39,9 @@ func TestMockLLMService(t *testing.T) {
 		t.Errorf("Expected 'Mock response', got '%s'", response.Message)
 	}
 
-	if len(mockService.GenerateResponseCalls) != 1 {
-		t.Errorf("Expected 1 GenerateResponse call, got %d", len(mockService.GenerateResponseCalls))
+	_, generateCalls, _, _ := mockService.GetCalls()
+	if len(generateCalls) != 1 {
+		t.Errorf("Expected 1 GenerateResponse call, got %d", len(generateCalls))
 	}
 
 	// Test IsModelReady
