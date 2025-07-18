@@ -9,7 +9,14 @@
   "inventory": [
     "cutlass",
     "pistol",
-    "spyglass"
+    "spyglass",
+    "Davey's half of the treasure map",
+    "Calypso's half of the treasure map",
+    "assembled treasure map",
+    "bag of pieces of eight",
+    "ship repair ledger",
+    "Prickles the parrot",
+    "chest of 510 gold doubloons"
   ],
   "npcs": {
     "Davey": {
@@ -35,6 +42,22 @@
       "description": "A bartender at the Sleepy Mermaid, known for her enchanting stories and elusive nature.",
       "important": true,
       "location": "Sleepy Mermaid"
+    },
+    "Blacksmith": {
+      "name": "Blacksmith",
+      "type": "blacksmith",
+      "disposition": "gruff but helpful",
+      "description": "A burly blacksmith who will repair your ship, but requires 500 gold doubloons.",
+      "important": false,
+      "location": "Tortuga"
+    },
+    "Charming Marvin": {
+      "name": "Charming Marvin",
+      "type": "merchant",
+      "disposition": "shrewd and cunning",
+      "description": "A merchant who deals in common items necessary for life at sea. Unpleasant to deal with, but has what you need.",
+      "important": false,
+      "location": "Tortuga"
     }
   },
   "flags": {
@@ -45,5 +68,11 @@
     "The black_pearl_repaired flag must be set to 'yes' before setting sail. Attempting to set sail before will prompt the player to repair the ship first. ",
     "The user must talk to Calypso to receive the treasure map. The user cannot find any treasure map or leave Tortuga without doing this. "
   ],
-  "opening_prompt": "You stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your crew awaits your orders, and the Black Pearl is ready to set sail. What will you do next?"
+  "opening_prompt": "You stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your crew awaits your orders, and the Black Pearl is ready to set sail. What will you do next?",
+  "opening_location": "Tortuga",
+  "opening_inventory": [
+    "cutlass",
+    "pistol",
+    "spyglass"
+  ]
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
@@ -23,6 +24,8 @@ const (
 	ColorGreen = "\033[32m"
 	ColorBlue  = "\033[36m"
 	AgentName  = "Narrator"
+
+	ScenarioFile = "pirate.json" // TODO: Allow user to select scenario file
 )
 
 type ConsoleConfig struct {
@@ -159,6 +162,18 @@ func confirmQuit() bool {
 func handleCommand(cfg *ConsoleConfig, input string, gsID uuid.UUID, client *http.Client) bool {
 	command := strings.ToLower(strings.TrimSpace(input))
 
+	switch command {
+	case "help", "h":
+		printHelp()
+		return true
+
+	case "quit", "q", "exit":
+		if confirmQuit() {
+			os.Exit(0)
+		}
+		return true
+	}
+
 	// Get GameState from API
 	var gs *state.GameState
 	if (command != "help" && command != "h") && (command != "quit" && command != "q" && command != "exit") {
@@ -171,16 +186,15 @@ func handleCommand(cfg *ConsoleConfig, input string, gsID uuid.UUID, client *htt
 		}
 	}
 
-	switch command {
-	case "help", "h":
-		printHelp()
+	// Get Scenario from API
+	var s *scenario.Scenario
+	s, err := getScenario(client, cfg.APIBaseURL, gs.Scenario)
+	if err != nil {
+		printRed("Failed to get scenario: " + err.Error())
 		return true
+	}
 
-	case "quit", "q", "exit":
-		if confirmQuit() {
-			os.Exit(0)
-		}
-		return true
+	switch command {
 
 	case "i", "inventory":
 		if len(gs.Inventory) == 0 {
@@ -200,7 +214,11 @@ func handleCommand(cfg *ConsoleConfig, input string, gsID uuid.UUID, client *htt
 			println("")
 			return true
 		}
-		printGreen(fmt.Sprintf("%s: %s", AgentName, gs.Location))
+		if s, ok := s.Locations[gs.Location]; ok {
+			printGreen(fmt.Sprintf("%s: %s, %s", AgentName, gs.Location, s))
+		} else {
+			printGreen(fmt.Sprintf("%s: %s", AgentName, gs.Location))
+		}
 		println("")
 		return true
 
@@ -256,7 +274,6 @@ func main() {
 		printRed("Failed to create game state: " + err.Error())
 		os.Exit(1)
 	}
-
 	printGreen("Game state created: " + gs.ID.String())
 
 	// Print welcome message
@@ -354,7 +371,7 @@ func getGameState(client *http.Client, baseURL string, gameStateID uuid.UUID) (*
 func createGameState(client *http.Client, baseURL string) (*state.GameState, error) {
 	// Create a new game state
 	gameState := &state.GameState{
-		Scenario: "pirate.json", // Example scenario
+		Scenario: ScenarioFile,
 	}
 
 	jsonData, err := json.Marshal(gameState)
@@ -489,6 +506,33 @@ func sendChatMessageWithProgress(client *http.Client, baseURL string, gameStateI
 			fmt.Print(".")
 		}
 	}
+}
+
+func getScenario(client *http.Client, baseURL string, filename string) (*scenario.Scenario, error) {
+	resp, err := client.Get(fmt.Sprintf("%s/scenario/%s", baseURL, filename))
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		var errorResp ErrorResponse
+		if err := json.Unmarshal(body, &errorResp); err != nil {
+			return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+		}
+		return nil, fmt.Errorf("failed to get scenario: %s", errorResp.Error)
+	}
+
+	var s scenario.Scenario
+	if err := json.Unmarshal(body, &s); err != nil {
+		return nil, fmt.Errorf("failed to parse scenario response: %w", err)
+	}
+	return &s, nil
 }
 
 func getEnv(key, defaultValue string) string {
