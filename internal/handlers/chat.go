@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/roleplay-agent/internal/services"
-	"github.com/jwebster45206/roleplay-agent/pkg/chat"
-	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
-	"github.com/jwebster45206/roleplay-agent/pkg/state"
+	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 // ChatHandler handles chat requests

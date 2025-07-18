@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jwebster45206/roleplay-agent/internal/services"
+	"github.com/jwebster45206/story-engine/internal/services"
 )
 
 type HealthResponse struct {
@@ -58,7 +58,7 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	response := HealthResponse{
 		Status:     overallStatus,
 		Timestamp:  time.Now(),
-		Service:    "roleplay-agent",
+		Service:    "story-engine",
 		Components: components,
 	}
 

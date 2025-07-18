@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 
-	"github.com/jwebster45206/roleplay-agent/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/chat"
 )
 
 // LLMService defines the interface for interacting with the LLM API

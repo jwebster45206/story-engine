@@ -5,8 +5,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/jwebster45206/roleplay-agent/pkg/chat"
-	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
 // MockLLMAPI is a mock implementation of LLMService for testing

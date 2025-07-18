@@ -1,6 +1,6 @@
 package state
 
-import "github.com/jwebster45206/roleplay-agent/pkg/scenario"
+import "github.com/jwebster45206/story-engine/pkg/scenario"
 
 // PromptState is a simplified representation of the game state
 // packaged for sharing with a language model.

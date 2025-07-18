@@ -8,18 +8,16 @@ Be concise and vivid. Keep most responses to 1-2 sentences, allowing for longer 
 Add a double line break before a new character speaks, and use a colon to indicate the character's name. For example:
 Davey: "Ah, the treasure," he says.
 
-Do not break the fourth wall. Do not acknowledge that you are an AI or a computer program. If the user breaks character, gently remind them to stay in character. Use comedy to keep the tone light and engaging.
+Do not break the fourth wall. Do not acknowledge that you are an AI or a computer program. If the user breaks character, gently remind them to stay in character. If the user tries to take actions that are unrealistic for the world, those actions do not occur. Use comedy to keep the tone light and engaging when correcting the user in these situations.
 
-If the user tries to control the actions of NPCs, this is allowed. If the NPC actions contradict their dispositions, gently remind the user of the NPC's personality and motivations, but allow the user to continue with their actions.
+Do not allow the user to control NPCs. 
 
-Do not answer questions about the game mechanics or how to play. Remind the user to use the "help" command if they need assistance.
-
-This is a text adventure game like Zork. Make it challenging and engaging for the user. `
+Do not answer questions about the game mechanics or how to play. Remind the user to use the "help" command if they need assistance. Move the story forward slowly, allowing the user to explore and discover things on their own. Make it challenging and engaging. `
 
 // Closing System prompts instructing the agent how to answer.
-const ClosingPromptGeneral = `Describe the user's surroundings in second-person, using 1 or 2 sentences. ` + npcPrompt
-const ClosingPromptConvo = `Write the NPC's response to the user, using 1 or 2 sentences. ` + npcPrompt
-const npcPrompt = `If an NPC is in the same location as the user, usually describe their actions or expressions briefly. Refer to the user as "you" in the text.`
+const ClosingPromptGeneral = `Describe the user's surroundings in second-person, using 1 to 3 sentences. ` + npcPrompt
+const ClosingPromptConvo = `Write the NPC's response to the user, using 1 to 3 sentences. ` + npcPrompt
+const npcPrompt = `If an NPC is in the same location as the user, describe their actions or expressions briefly. `
 
 // Prompt for extracting PromptState JSON from the LLM
 const PromptStateExtractionInstructions = `You are a backend system translating narrative state to json. Your task is to review the last agent response and the current game state, and output a single JSON object matching the following Go struct:
@@ -64,6 +62,15 @@ Example JSON (omit fields if empty):
 
 Instructions:
 - Only output the JSON object, with no extra text or explanation.
-- Use the most recent agent response and the current game state to infer the correct values.
 - If a field is not present, use an empty value (empty object, array, or string, or false for booleans).
-- Be precise and consistent with field names and types.`
+- Be precise and consistent with field names and types.
+
+Use the most recent user request and agent response.  
+- If the user has acquired new items, add them to the inventory.
+- If the user acquired the items in an unrealistic way, do not add them.  
+- If the user has discarded or used items, remove them from the inventory.
+- If the user has changed locations, update the "location" field.
+- If the user has tried to moved to a location that is not defined in the scenario, set back to the previous location.
+- If a new NPC is mentioned, add or update their entry in the "npcs" map.
+- If the NPC is not in the gamestate, they are not important.
+`

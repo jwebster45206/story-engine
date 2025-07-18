@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
-	"github.com/jwebster45206/roleplay-agent/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 // MockStorage is a mock implementation of Storage for testing

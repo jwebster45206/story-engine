@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jwebster45206/roleplay-agent/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/chat"
 )
 
 const (

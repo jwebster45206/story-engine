@@ -21,9 +21,9 @@ type Config struct {
 
 func Load() (*Config, error) {
 
-	configFile := getEnv("ROLEPLAY_CONFIG", "")
+	configFile := getEnv("GAME_CONFIG", "")
 	if configFile == "" {
-		return nil, fmt.Errorf("ROLEPLAY_CONFIG environment variable is not set")
+		return nil, fmt.Errorf("GAME_CONFIG environment variable is not set")
 	}
 
 	// Read config file

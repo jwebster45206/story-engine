@@ -7,13 +7,13 @@ import (
 )
 
 // ChatRequest represents a chat message request made by the user
-// to the roleplay-agent api.
+// to the story engine api.
 type ChatRequest struct {
 	GameStateID uuid.UUID `json:"gamestate_id"` // Unique ID for the game state
 	Message     string    `json:"message"`
 }
 
-// ChatResponse represents a chat message response returned by the roleplay-agent api.
+// ChatResponse represents a chat message response returned by the story engine api.
 // It omits GameState currently, but GameState should be updated
 // within the chat handler.
 type ChatResponse struct {

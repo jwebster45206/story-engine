@@ -12,8 +12,8 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
-	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
-	"github.com/jwebster45206/roleplay-agent/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 // RedisService implements the Storage interface using Redis

@@ -9,11 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jwebster45206/roleplay-agent/internal/config"
-	"github.com/jwebster45206/roleplay-agent/internal/handlers"
-	"github.com/jwebster45206/roleplay-agent/internal/logger"
-	"github.com/jwebster45206/roleplay-agent/internal/middleware"
-	"github.com/jwebster45206/roleplay-agent/internal/services"
+	"github.com/jwebster45206/story-engine/internal/config"
+	"github.com/jwebster45206/story-engine/internal/handlers"
+	"github.com/jwebster45206/story-engine/internal/logger"
+	"github.com/jwebster45206/story-engine/internal/middleware"
+	"github.com/jwebster45206/story-engine/internal/services"
 )
 
 func main() {
@@ -24,11 +24,12 @@ func main() {
 
 	log := logger.Setup(cfg)
 
-	log.Info("Starting roleplay-agent",
+	log.Info("Starting Story Engine API",
 		"port", cfg.Port,
 		"environment", cfg.Environment,
 		"model_name", cfg.ModelName)
 
+	// TODO: Restore support for Ollama in config
 	if cfg.VeniceAPIKey == "" {
 		log.Error("Venice API key is required")
 		os.Exit(1)
