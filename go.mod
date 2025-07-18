@@ -1,4 +1,4 @@
-module github.com/jwebster45206/roleplay-agent
+module github.com/jwebster45206/story-engine
 
 go 1.24.3
 

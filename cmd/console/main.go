@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/roleplay-agent/pkg/chat"
-	"github.com/jwebster45206/roleplay-agent/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 // ANSI color codes

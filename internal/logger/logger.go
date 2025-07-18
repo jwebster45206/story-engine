@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/jwebster45206/roleplay-agent/internal/config"
+	"github.com/jwebster45206/story-engine/internal/config"
 )
 
 // Setup configures the global slog logger with JSON format

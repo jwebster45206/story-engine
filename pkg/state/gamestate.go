@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/roleplay-agent/pkg/chat"
-	"github.com/jwebster45206/roleplay-agent/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
 // GameState is the current state of a roleplay game session.

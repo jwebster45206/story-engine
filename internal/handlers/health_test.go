@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jwebster45206/roleplay-agent/internal/services"
+	"github.com/jwebster45206/story-engine/internal/services"
 )
 
 func TestHealthHandler_ServeHTTP(t *testing.T) {

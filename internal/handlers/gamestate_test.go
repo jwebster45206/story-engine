@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/roleplay-agent/internal/services"
-	"github.com/jwebster45206/roleplay-agent/pkg/state"
+	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 func TestGameStateHandler_Create(t *testing.T) {

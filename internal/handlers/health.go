@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jwebster45206/roleplay-agent/internal/services"
+	"github.com/jwebster45206/story-engine/internal/services"
 )
 
 type HealthResponse struct {

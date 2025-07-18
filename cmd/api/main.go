@@ -9,11 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jwebster45206/roleplay-agent/internal/config"
-	"github.com/jwebster45206/roleplay-agent/internal/handlers"
-	"github.com/jwebster45206/roleplay-agent/internal/logger"
-	"github.com/jwebster45206/roleplay-agent/internal/middleware"
-	"github.com/jwebster45206/roleplay-agent/internal/services"
+	"github.com/jwebster45206/story-engine/internal/config"
+	"github.com/jwebster45206/story-engine/internal/handlers"
+	"github.com/jwebster45206/story-engine/internal/logger"
+	"github.com/jwebster45206/story-engine/internal/middleware"
+	"github.com/jwebster45206/story-engine/internal/services"
 )
 
 func main() {
