@@ -31,19 +31,9 @@ type ConsoleConfig struct {
 }
 
 func printBanner() {
-	banner := `   ___     ___   _       _____   ____   _         _    __   __ 
- |  _ \   / _ \ | |     | ____| |  _ \ | |       / \  |  \ / / 
- | |_) | | | | || |     |  _|   | |_) || |      / _ \  \ \/ /  
- |  _ <  | |_| || |___  | |___  |  __/ | |___  / ___ \  \  /   
- |_| \_\  \___/ |_____| |_____| |_|    |_____||_|   \_|  |_|                                                                 
-       _       ____   _____  _   _   _____ 
-      / \     / ___| | ____|| \ | | |_   _|
-     / _ \   | |  _  |  _|  |  \| |   | |  
-    / ___ \  | |_| | | |___ | |\  |   | |  
-   /_/   \_\  \____| |_____||_| \_|   |_|  
-                                          
-`
-	fmt.Print(banner)
+	fmt.Println("Welcome to STORY ENGINE console!\nThis is a text-based adventure game.  Follow the prompts to solve the scenario. \nYou can type commands like 'help' for instructions, or 'quit' to exit.")
+	printDivider()
+	println()
 }
 
 func printGreen(text string) {
