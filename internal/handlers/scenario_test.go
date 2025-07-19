@@ -62,8 +62,16 @@ func TestScenarioHandler_ServeHTTP(t *testing.T) {
 				Story:           "A swashbuckling adventure on the high seas",
 				OpeningPrompt:   "Welcome to the pirate adventure!",
 				OpeningLocation: "ship_deck",
-				Locations: map[string]string{
-					"ship_deck": "You are on the deck of a pirate ship",
+				Locations: map[string]scenario.Location{
+					"ship_deck": {
+						Name:        "ship_deck",
+						Description: "You are on the deck of a pirate ship",
+						Exits:       map[string]string{"north": "captain_cabin"},
+					},
+					"captain_cabin": {
+						Name:        "captain_cabin",
+						Description: "The private cabin of the pirate captain.",
+					},
 				},
 				NPCs: map[string]scenario.NPC{
 					"Captain Blackbeard": {

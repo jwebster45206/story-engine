@@ -90,14 +90,26 @@ func (m *MockStorage) GetScenario(ctx context.Context, filename string) (*scenar
 	switch filename {
 	case "foo_scenario.json":
 		return &scenario.Scenario{
-			Name:      "FooScenario",
-			Story:     "A test scenario story",
-			Locations: map[string]string{"TestLocation": "A location for testing"},
+			Name:  "FooScenario",
+			Story: "A test scenario story",
+			Locations: map[string]scenario.Location{
+				"TestLocation": {
+					Name:         "TestLocation",
+					Description:  "A location for testing",
+					Exits:        map[string]string{"north": "OtherLocation"},
+					BlockedExits: map[string]string{"south": "The way is blocked by a locked door."},
+				},
+				"OtherLocation": {
+					Name:        "OtherLocation",
+					Description: "Another test location",
+				},
+			},
 			Inventory: []string{"test_item1", "test_item2"},
 			NPCs:      map[string]scenario.NPC{"TestNPC": {Name: "TestNPC", Type: "human", Disposition: "neutral"}},
 			Flags:     map[string]string{"test_flag": "true"},
 			// Triggers:      []string{"test_trigger"},
-			OpeningPrompt: "Welcome to the FooScenario!",
+			OpeningPrompt:   "Welcome to the FooScenario!",
+			OpeningLocation: "TestLocation",
 		}, nil
 	default:
 		return nil, errors.New("scenario not found")
