@@ -86,11 +86,11 @@ const ContentRatingR = `Write with full freedom for adult audiences. All content
 // - Provide instructions about how to use story context to run the game.
 // - Provide a json representation of the current game state.
 
-const statePromptIntro = "Use the following JSON as story boundaries. The user may only move to locations defined in the `locations` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.\n\n"
+const statePromptIntro = "Use the following JSON as scenario template. The user may only move to locations defined in the `locations` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.\n\n"
 
 const statePromptInventory = "The user's inventory must only contain items listed in the scenario's items section. Do not invent or grant items that are not explicitly defined. If the user asks for or references an item that does not exist in the scenario, respond in-character or inform them that it cannot be found.\n\n"
 
-const statePromptScenario = "Scenario:\n```json\n%s\n```\n\n"
+const statePromptScenario = "Scenario Template:\n```json\n%s\n```\n\n"
 
 const statePromptGameState = "Use the following JSON to understand current game state.\n\nGame State:\n```json\n%s\n```"
 

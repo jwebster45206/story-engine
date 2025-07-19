@@ -76,6 +76,8 @@ func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, err
 	}, nil
 }
 
+// GetChatMessages generates a "chat message" slice for LLM.
+// This slice includes all prompts and instructions to run the game.
 func (gs *GameState) GetChatMessages(requestMessage string, s *scenario.Scenario, count int) ([]chat.ChatMessage, error) {
 	if gs == nil {
 		return nil, fmt.Errorf("game state is nil")
