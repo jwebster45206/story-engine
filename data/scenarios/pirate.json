@@ -3,9 +3,50 @@
   "story": "You are the captain of The Black Pearl, a legendary pirate ship. Your crew has just docked at Tortuga, a notorious pirate haven. Adventure and treasure await as you explore the Caribbean during the Golden Age of Piracy.",
   "rating": "PG13",
   "locations": {
-    "Tortuga": "A bustling pirate port filled with taverns, traders, and trouble.",
-    "Black Pearl": "Your ship, moored at the docks, ready for the next voyage.",
-    "Sleepy Mermaid": "A rowdy tavery filled with pirates and rumors of treasure."
+    "Tortuga": {
+      "name": "Tortuga",
+      "description": "A bustling pirate port filled with taverns, traders, and trouble.",
+      "exits": {
+        "east": "Black Pearl",
+        "south": "Sleepy Mermaid"
+      },
+      "blocked_exits": {
+        "north": "The British Navy patrols this area.",
+        "west": "A dense and impenetrable jungle blocks the way."
+      }
+    },
+    "Black Pearl": {
+      "name": "Black Pearl",
+      "description": "Your ship, moored at the docks, ready for the next voyage.",
+      "exits": {
+        "west": "Tortuga",
+        "cabin door": "Captain's Cabin"
+      },
+      "blocked_exits": {
+        "sea": "The Black Pearl is not seaworthy until it is repaired."
+      },
+      "items": [
+        "ship repair ledger",
+        "prickles the parrot"
+      ]
+    },
+    "Captain's Cabin": {
+      "name": "Captain's Cabin",
+      "description": "Your personal quarters on the ship, filled with maps and treasures.",
+      "exits": {
+        "cabin door": "Black Pearl"
+      },
+      "items": [
+        "bag of pieces of eight"
+      ]
+    },
+    "Sleepy Mermaid": {
+      "name": "Sleepy Mermaid",
+      "description": "A rowdy inn filled with pirates and rumors of treasure.",
+      "exits": {
+        "north": "Tortuga"
+      }
+    }
   },
   "inventory": [
     "cutlass",
@@ -24,9 +65,9 @@
       "name": "Davey",
       "type": "pirate",
       "disposition": "friendly",
-      "description": "A grizzled old pirate with a wooden leg.",
+      "description": "A grizzled old pirate with a wooden leg. Fellow captain and sometimes ally.",
       "important": true,
-      "location": "Tortuga"
+      "location": "Tortuga "
     },
     "Gibbs": {
       "name": "Gibbs",
@@ -50,7 +91,7 @@
       "disposition": "gruff but helpful",
       "description": "A burly blacksmith who will repair your ship, but requires 500 gold doubloons.",
       "important": false,
-      "location": "Tortuga"
+      "location": "Sleepy Mermaid"
     },
     "Charming Marvin": {
       "name": "Charming Marvin",

@@ -2,11 +2,60 @@
   "name": "Egyptian Expedition",
   "story": "The year is 1923. You are Dr. Alexandra Kane, a renowned archaeologist who has just received a cryptic telegram about an extraordinary discovery in the Egyptian desert. The sender claims to have found something that will 'rewrite history itself.' Armed with your expertise and a thirst for knowledge, you must navigate the mysteries of ancient secrets and modern dangers.",
   "locations": {
-    "Cairo Hotel": "A grand colonial hotel where foreign expeditions gather. The lobby buzzes with whispered conversations and shadowy figures.",
-    "Desert Camp": "Your temporary archaeological camp, surrounded by endless dunes and the remnants of ancient civilizations.",
-    "Hidden Temple": "A recently uncovered temple complex, its hieroglyphs still vibrant despite millennia of burial.",
-    "Underground Chamber": "A mysterious chamber deep beneath the temple, filled with artifacts that shouldn't exist.",
-    "Local Market": "A bustling bazaar where information, supplies, and ancient artifacts change hands."
+    "Cairo Hotel": {
+      "name": "Cairo Hotel",
+      "description": "A grand colonial hotel where foreign expeditions gather. The lobby buzzes with whispered conversations and shadowy figures.",
+      "exits": {
+        "east": "Local Market",
+        "south": "Desert Camp"
+      },
+      "blocked_exits": {
+        "south": "You must decode the telegram before leaving for the desert.",
+        "west": "The way is blocked by a security guard."
+      }
+    },
+    "Desert Camp": {
+      "name": "Desert Camp",
+      "description": "Your temporary archaeological camp, surrounded by endless dunes and the remnants of ancient civilizations.",
+      "exits": {
+        "north": "Cairo Hotel",
+        "east": "Hidden Temple"
+      },
+      "blocked_exits": {
+        "east": "Hassan must guide you to the temple entrance."
+      }
+    },
+    "Hidden Temple": {
+      "name": "Hidden Temple",
+      "description": "A recently uncovered temple complex, its hieroglyphs still vibrant despite millennia of burial.",
+      "exits": {
+        "west": "Desert Camp",
+        "down": "Underground Chamber"
+      },
+      "blocked_exits": {
+        "down": "The entrance to the chamber is sealed by an ancient puzzle."
+      }
+    },
+    "Underground Chamber": {
+      "name": "Underground Chamber",
+      "description": "A mysterious chamber deep beneath the temple, filled with artifacts that shouldn't exist.",
+      "exits": {
+        "up": "Hidden Temple"
+      },
+      "blocked_exits": {
+        "up": "The chamber can only be unsealed by solving Amara's riddle."
+      }
+    },
+    "Local Market": {
+      "name": "Local Market",
+      "description": "A bustling bazaar where information, supplies, and ancient artifacts change hands.",
+      "exits": {
+        "west": "Cairo Hotel"
+      },
+      "blocked_exits": {
+        "west": "You must speak to Amara before returning to the hotel."
+      }
+    }
   },
   "inventory": [
     "archaeological tools",

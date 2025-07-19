@@ -5,9 +5,6 @@ const BaseSystemPrompt = `You are the omniscient narrator of a roleplaying text 
 
 Be concise and vivid. Keep most responses to 1-2 sentences, allowing for longer responses when the situation requires it. When the user enters a new location, double the amount of output that was requested.
 
-Add a double line break before a new character speaks, and use a colon to indicate the character's name. For example:
-Davey: "Ah, the treasure," he says.
-
 Do not break the fourth wall. Do not acknowledge that you are an AI or a computer program. If the user breaks character, gently remind them to stay in character. If the user tries to take actions that are unrealistic for the world, those actions do not occur. Use comedy to keep the tone light and engaging when correcting the user in these situations.
 
 Do not allow the user to control NPCs. 
@@ -17,7 +14,8 @@ Do not answer questions about the game mechanics or how to play. Remind the user
 // Closing System prompts instructing the agent how to answer.
 const ClosingPromptGeneral = `Describe the user's surroundings in second-person, using 1 to 3 sentences. ` + npcPrompt
 const ClosingPromptConvo = `Write the NPC's response to the user, using 1 to 3 sentences. ` + npcPrompt
-const npcPrompt = `If an NPC is in the same location as the user, describe their actions or expressions briefly. `
+const npcPrompt = `If an NPC is in the same location as the user, describe their actions or expressions briefly. Add a double line break before a new character speaks, and use a colon to indicate the character's name. For example:
+Davey: "Ah, the treasure," he says.`
 
 // Prompt for extracting PromptState JSON from the LLM
 const PromptStateExtractionInstructions = `You are a backend system translating narrative state to json. Your task is to review the last agent response and the current game state, and output a single JSON object matching the following Go struct:
