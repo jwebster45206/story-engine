@@ -72,7 +72,7 @@ func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, err
 
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf("Use the following JSON as story boundaries. The user may only move to the locations defined in the scenario. Inventory may only contain the items defined in the scenario. All key NPCs for the story are pre-defined in the scenario.\n\nScenario:\n```json\n%s\n```\n\nUse the following JSON to understand current game state. \n\nGame State:\n```json\n%s\n```", jsonScenario, jsonState),
+		Content: fmt.Sprintf(scenario.StatePromptTemplate, jsonScenario, jsonState),
 	}, nil
 }
 
@@ -88,10 +88,21 @@ func (gs *GameState) GetChatMessages(requestMessage string, s *scenario.Scenario
 	}
 
 	// System prompt first
+	ratingPrompt := ""
+	switch s.Rating {
+	case scenario.RatingG:
+		ratingPrompt = "\n\n" + scenario.ContentRatingG
+	case scenario.RatingPG:
+		ratingPrompt = "\n\n" + scenario.ContentRatingPG
+	case scenario.RatingPG13:
+		ratingPrompt = "\n\n" + scenario.ContentRatingPG13
+	case scenario.RatingR:
+		ratingPrompt = "\n\n" + scenario.ContentRatingR
+	}
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: scenario.BaseSystemPrompt + "\n\n" + s.Story,
+			Content: scenario.BaseSystemPrompt + "\n\n" + s.Story + ratingPrompt,
 		},
 		statePrompt, // game state context json
 	}

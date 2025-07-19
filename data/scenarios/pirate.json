@@ -1,6 +1,7 @@
 {
   "name": "Pirate Captain",
   "story": "You are the captain of The Black Pearl, a legendary pirate ship. Your crew has just docked at Tortuga, a notorious pirate haven. Adventure and treasure await as you explore the Caribbean during the Golden Age of Piracy.",
+  "rating": "PG13",
   "locations": {
     "Tortuga": "A bustling pirate port filled with taverns, traders, and trouble.",
     "Black Pearl": "Your ship, moored at the docks, ready for the next voyage.",

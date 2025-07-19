@@ -76,7 +76,22 @@ Use the most recent user request and agent response.
 `
 
 // Content rating prompts
-const ContentRatingG = `Rated G. Child-friendly storytelling with no violence, no drugs or alcohol, and no adult situations.`
-const ContentRatingPG = `Rated PG. Some child-appropriate conflict is ok. No graphic violence, no drugs or alcohol, no explicit adult situations. `
-const ContentRatingPG13 = `Rated PG13. Minor violence and brief adult situations ok. If the story calls for more, it will happen off-screen and not be described in detail.`
-const ContentRatingR = `Rated R. There are no content restrictions, but the focus of the story is on adventure and exploration, not graphic or adult content. `
+const ContentRatingG = `Write content suitable for young children. Avoid violence, romance and scary elements. Use simple language and positive messages. `
+const ContentRatingPG = `Write content suitable for children and families. Mild peril or tension is okay, but avoid strong language, explicit violence, or dark themes. `
+const ContentRatingPG13 = `Write content appropriate for teenagers. You may include mild swearing, romantic tension, action scenes, and complex emotional themes, but avoid explicit adult situations, graphic violence, or drug use. `
+const ContentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
+
+// State prompt templates
+// - Provide a rich story context, and discourage the LLM from being overly creative.
+// - Provide instructions about how to use story context to run the game.
+// - Provide a json representation of the current game state.
+
+const statePromptIntro = "Use the following JSON as story boundaries. The user may only move to locations defined in the `locations` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.\n\n"
+
+const statePromptInventory = "The user's inventory must only contain items listed in the scenario's items section. Do not invent or grant items that are not explicitly defined. If the user asks for or references an item that does not exist in the scenario, respond in-character or inform them that it cannot be found.\n\n"
+
+const statePromptScenario = "Scenario:\n```json\n%s\n```\n\n"
+
+const statePromptGameState = "Use the following JSON to understand current game state.\n\nGame State:\n```json\n%s\n```"
+
+const StatePromptTemplate = statePromptIntro + statePromptInventory + statePromptScenario + statePromptGameState
