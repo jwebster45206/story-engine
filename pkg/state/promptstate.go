@@ -4,8 +4,7 @@ import "github.com/jwebster45206/story-engine/pkg/scenario"
 
 // PromptState is a simplified representation of the game state
 // packaged for sharing with a language model.
-// Assumes that the model is capable of understanding
-// semantic json.
+// Assumes that the model is capable of understanding semantic json.
 type PromptState struct {
 	Location  string                  `json:"location"`
 	NPCs      map[string]scenario.NPC `json:"npcs"`

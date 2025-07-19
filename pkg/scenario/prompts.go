@@ -74,3 +74,24 @@ Use the most recent user request and agent response.
 - If a new NPC is mentioned, add or update their entry in the "npcs" map.
 - If the NPC is not in the gamestate, they are not important.
 `
+
+// Content rating prompts
+const ContentRatingG = `Write content suitable for young children. Avoid violence, romance and scary elements. Use simple language and positive messages. `
+const ContentRatingPG = `Write content suitable for children and families. Mild peril or tension is okay, but avoid strong language, explicit violence, or dark themes. `
+const ContentRatingPG13 = `Write content appropriate for teenagers. You may include mild swearing, romantic tension, action scenes, and complex emotional themes, but avoid explicit adult situations, graphic violence, or drug use. `
+const ContentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
+
+// State prompt templates
+// - Provide a rich story context, and discourage the LLM from being overly creative.
+// - Provide instructions about how to use story context to run the game.
+// - Provide a json representation of the current game state.
+
+const statePromptIntro = "Use the following JSON as scenario template. The user may only move to locations defined in the `locations` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.\n\n"
+
+const statePromptInventory = "The user's inventory must only contain items listed in the scenario's items section. Do not invent or grant items that are not explicitly defined. If the user asks for or references an item that does not exist in the scenario, respond in-character or inform them that it cannot be found.\n\n"
+
+const statePromptScenario = "Scenario Template:\n```json\n%s\n```\n\n"
+
+const statePromptGameState = "Use the following JSON to understand current game state.\n\nGame State:\n```json\n%s\n```"
+
+const StatePromptTemplate = statePromptIntro + statePromptInventory + statePromptScenario + statePromptGameState
