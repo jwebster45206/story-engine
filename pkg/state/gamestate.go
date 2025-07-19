@@ -11,14 +11,17 @@ import (
 
 // GameState is the current state of a roleplay game session.
 type GameState struct {
-	ID          uuid.UUID               `json:"id"`                    // Unique ID per session
-	Scenario    string                  `json:"scenario,omitempty"`    // Filename of the scenario being played. Ex: "foo_scenario.json"
-	Location    string                  `json:"location,omitempty"`    // Current location in the game world
-	Description string                  `json:"description,omitempty"` // Description of the current scene
-	Flags       map[string]bool         `json:"flags,omitempty"`
-	NPCs        map[string]scenario.NPC `json:"npcs,omitempty"`
-	Inventory   []string                `json:"inventory,omitempty"`
-	ChatHistory []chat.ChatMessage      `json:"chat_history,omitempty"` // Conversation history
+	ID       uuid.UUID `json:"id"`                 // Unique ID per session
+	Scenario string    `json:"scenario,omitempty"` // Filename of the scenario being played. Ex: "foo_scenario.json"
+
+	NPCs           map[string]scenario.NPC      `json:"world_npcs,omitempty"`
+	WorldLocations map[string]scenario.Location `json:"world_locations,omitempty"` // Current locations in the game world
+
+	Location  string   `json:"user_location,omitempty"` // Current location in the game world
+	Inventory []string `json:"user_inventory,omitempty"`
+
+	ChatHistory []chat.ChatMessage `json:"chat_history,omitempty"` // Conversation history
+	// Flags       map[string]bool         `json:"game_flags,omitempty"`
 }
 
 func NewGameState(scenarioFileName string) *GameState {
@@ -65,14 +68,9 @@ func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, err
 		return chat.ChatMessage{}, err
 	}
 
-	jsonScenario, err := json.Marshal(s)
-	if err != nil {
-		return chat.ChatMessage{}, err
-	}
-
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf(scenario.StatePromptTemplate, jsonScenario, jsonState),
+		Content: fmt.Sprintf(scenario.StatePromptTemplate, s.Story, jsonState),
 	}, nil
 }
 
@@ -104,7 +102,7 @@ func (gs *GameState) GetChatMessages(requestMessage string, s *scenario.Scenario
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: scenario.BaseSystemPrompt + "\n\n" + s.Story + ratingPrompt,
+			Content: scenario.BaseSystemPrompt + "\n\n" + ratingPrompt,
 		},
 		statePrompt, // game state context json
 	}
