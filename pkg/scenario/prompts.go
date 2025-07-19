@@ -18,90 +18,17 @@ const npcPrompt = `If an NPC is in the same location as the user, describe their
 Davey: "Ah, the treasure," he says.`
 
 // Prompt for extracting PromptState JSON from the LLM
-const PromptStateExtractionInstructions = `You are a backend system translating narrative state to json. Your task is to review the agent's most recent narrative response and the current game state, and output a single JSON object matching the following structure:
-
-{
-    "id": "11111111-1111-1111-1111-111111111111",
-    "world_npcs": {
-        "Blacksmith": {
-            "name": "Blacksmith",
-            "type": "blacksmith",
-            "disposition": "gruff but helpful",
-            "description": "A burly blacksmith who will repair your ship, but requires 500 gold doubloons.",
-            "location": "Sleepy Mermaid"
-        },
-        "Gibbs": {
-            "name": "Gibbs",
-            "type": "pirate",
-            "disposition": "loyal",
-            "description": "Your loyal first mate with a keen sense of duty.",
-            "important": true,
-            "location": "Black Pearl"
-        }
-    },
-    "world_locations": {
-        "Black Pearl": {
-            "name": "Black Pearl",
-            "description": "Your ship, moored at the docks, ready for the next voyage.",
-            "exits": {
-                "cabin door": "Captain's Cabin",
-                "west": "Tortuga"
-            },
-            "blocked_exits": {
-                "sea": "The Black Pearl is not seaworthy until it is repaired."
-            },
-            "items": [
-                "ship repair ledger",
-                "prickles the parrot"
-            ]
-        },
-        "Captain's Cabin": {
-            "name": "Captain's Cabin",
-            "description": "Your personal quarters on the ship, filled with maps and treasures.",
-            "exits": {
-                "cabin door": "Black Pearl"
-            },
-            "items": [
-                "bag of pieces of eight"
-            ]
-        },
-        "Sleepy Mermaid": {
-            "name": "Sleepy Mermaid",
-            "description": "A rowdy inn filled with pirates and rumors of treasure.",
-            "exits": {
-                "north": "Tortuga"
-            }
-        },
-        "Tortuga": {
-            "name": "Tortuga",
-            "description": "A bustling pirate port filled with taverns, traders, and trouble.",
-            "exits": {
-                "east": "Black Pearl",
-                "south": "Sleepy Mermaid"
-            },
-            "blocked_exits": {
-                "north": "The British Navy patrols this area.",
-                "west": "A dense and impenetrable jungle blocks the way."
-            }
-        }
-    },
-    "user_location": "Tortuga",
-    "user_inventory": [
-        "cutlass",
-        "pistol",
-        "spyglass"
-    ]
-}
+const PromptStateExtractionInstructions = `You are a backend system translating narrative state to json. Your task is to review the agent's most recent narrative response and the current game state, and output a single JSON object matching the input game state format.
 
 Instructions:
 - Only output the JSON object, with no extra text or explanation.
-- If a field is not present, use an empty value (empty object, array, or string, or false for booleans).
 - Be precise and consistent with field names and types.
 
-Use the most recent user request and agent response.  
-- If the user has acquired a new item through logical in-game means, add it to the user's inventory.
-- If a user has acquired an item from an NPC or location, it is no longer in that NPC's or location's items array.
-- If the user has discarded items, remove them from the inventory.
+Update state for consistency with all changes from the most recent agent response.
+- Whenever the user holds or acquires an item, add it to user_inventory.
+- If the item was acquired from an NPC or location, remove it from that NPC's or location's items.
+- Whenever the user discards or gives away an item, remove it from user_inventory.
+- Use an in-game word for the user's inventory, such as "utility belt".
 - If the user has changed locations, update the "location" field.
 - Do not allow movement to locations that are not defined in the scenario.
 - Do not allow movement through blocked exits.
@@ -116,7 +43,6 @@ const ContentRatingR = `Write with full freedom for adult audiences. All content
 
 const statePromptGameState = "The following JSON describes the complete world and current state.\n\nGame State:\n```json\n%s\n```"
 const locationRules = "The user may only move to locations defined in the `locations` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable."
-const inventoryRules = "The user's inventory must only contain items listed in the `inventory` array. Do not grant items that are not explicitly defined. If an item is acquired from a location, it is no longer in that location's `items` array."
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
-const StatePromptTemplate = "You and the user are roleplaying this scenario: %s\n\n" + statePromptGameState + "\n\n" + locationRules + "\n\n" + inventoryRules + "\n\n"
+const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\n" + statePromptGameState + "\n\n" + locationRules + "\n\n"
