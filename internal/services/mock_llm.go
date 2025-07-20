@@ -54,8 +54,8 @@ func (m *MockLLMAPI) InitModel(ctx context.Context, modelName string) error {
 	return nil
 }
 
-// GetChatResponse mocks response generation
-func (m *MockLLMAPI) GetChatResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+// Chat mocks response generation
+func (m *MockLLMAPI) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

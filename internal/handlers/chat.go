@@ -154,7 +154,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	response, err := h.llmService.GetChatResponse(ctx, messages)
+	response, err := h.llmService.Chat(ctx, messages)
 	if err != nil {
 		h.logger.Error("Error generating chat response",
 			"error", err,
@@ -216,6 +216,12 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // updateGameMeta runs in the background to extract and update game metadata
 func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, request chat.ChatRequest, response *chat.ChatResponse) {
+	start := time.Now()
+	defer func() {
+		h.logger.Debug("Background meta update completed",
+			"game_state_id", gs.ID.String(),
+			"duration_s", time.Since(start).Seconds())
+	}()
 	h.logger.Debug("Starting background game meta update", "game_state_id", gs.ID.String())
 	defer func() {
 		h.metaCancelMu.Lock()
@@ -233,11 +239,11 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: scenario.PromptStateExtractionInstructions,
+			Content: scenario.PromptStateExtractionInstructions2,
 		},
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: fmt.Sprintf("Current game state: %s", string(currentStateJSON)),
+			Content: fmt.Sprintf("BEFORE game state: %s", string(currentStateJSON)),
 		},
 		{
 			Role:    chat.ChatRoleUser,
@@ -254,7 +260,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 	defer cancel()
 
 	// Send the extraction request to the LLM
-	metaResponse, err := h.llmService.GetChatResponse(metaCtx, messages)
+	metaResponse, err := h.llmService.Chat(metaCtx, messages)
 	if err != nil {
 		h.logger.Error("Failed to get meta extraction response from LLM", "error", err, "game_state_id", gs.ID.String())
 		return
@@ -275,6 +281,9 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 		return
 	}
 
+	fmt.Println("Messages:", messages)
+	fmt.Println("Returned PromptState:", ps)
+
 	// Load the latest game state (to avoid race conditions)
 	latestGS, err := h.storage.LoadGameState(metaCtx, gs.ID)
 	if err != nil {
@@ -288,7 +297,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 	}
 
 	// Apply the extracted state to the latest game state
-	state.ApplyPromptStateToGameState(&ps, latestGS)
+	// state.ApplyPromptStateToGameState(&ps, latestGS)
 
 	// Save the updated game state
 	if err := h.storage.SaveGameState(metaCtx, latestGS.ID, latestGS); err != nil {
