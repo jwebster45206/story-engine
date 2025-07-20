@@ -15,6 +15,9 @@ import (
 const (
 	veniceBaseURL = "https://api.venice.ai/api/v1"
 	msgNoResponse = "(no response)"
+
+	DefaultVeniceTemperature = 0.7
+	DefaultVeniceMaxTokens   = 2048
 )
 
 // VeniceService implements LLMService for Venice AI
@@ -148,18 +151,13 @@ func (v *VeniceService) ListModels(ctx context.Context) ([]string, error) {
 	return models, nil
 }
 
-// GetChatResponse generates a chat response using Venice AI
-func (v *VeniceService) GetChatResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
-	return v.GetChatResponseWithModel(ctx, messages, v.modelName)
-}
-
-// GetChatResponseWithModel generates a chat response using Venice AI with a specific model
-func (v *VeniceService) GetChatResponseWithModel(ctx context.Context, messages []chat.ChatMessage, modelName string) (*chat.ChatResponse, error) {
+// Chat generates a chat response using Venice AI
+func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 	veniceReq := VeniceChatRequest{
-		Model:       modelName,
+		Model:       v.modelName,
 		Messages:    messages,
-		Temperature: 0.7,
-		MaxTokens:   2048,
+		Temperature: DefaultVeniceTemperature,
+		MaxTokens:   DefaultVeniceMaxTokens,
 		Stream:      false,
 	}
 
@@ -209,4 +207,49 @@ func (v *VeniceService) GetChatResponseWithModel(ctx context.Context, messages [
 	return &chat.ChatResponse{
 		Message: veniceResp.Choices[0].Message.Content,
 	}, nil
+}
+
+func (v *VeniceService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, error) {
+
+	veniceReq := VeniceChatRequest{
+		Model:       v.modelName,
+		Messages:    messages,
+		Temperature: DefaultVeniceTemperature,
+		MaxTokens:   DefaultVeniceMaxTokens,
+		Stream:      false,
+	}
+
+	reqBody, err := json.Marshal(veniceReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", veniceBaseURL+"/chat/completions", bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+v.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := v.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var veniceResp chat.MetaUpdate
+	if err := json.Unmarshal(body, &veniceResp); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+	return &veniceResp, nil
 }

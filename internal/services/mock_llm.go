@@ -25,6 +25,39 @@ type MockLLMAPI struct {
 	mu sync.Mutex // protects all fields above
 }
 
+// MetaUpdate mocks the MetaUpdate functionality
+func (m *MockLLMAPI) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, error) {
+	// For testing, return a simple mock MetaUpdate
+	return &chat.MetaUpdate{
+		UserLocation:        "mock_location",
+		AddToInventory:      []string{"mock_item"},
+		RemoveFromInventory: []string{"old_item"},
+		MovedItems: []struct {
+			Item       string `json:"item"`
+			From       string `json:"from"`
+			ToLocation string `json:"to_location,omitempty"`
+			To         string `json:"to,omitempty"`
+		}{
+			{
+				Item:       "mock_item",
+				From:       "start",
+				ToLocation: "inventory",
+			},
+		},
+		UpdatedNPCs: []struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+			Location    string `json:"location"`
+		}{
+			{
+				Name:        "Mock NPC",
+				Description: "A mock NPC for testing.",
+				Location:    "mock_location",
+			},
+		},
+	}, nil
+}
+
 type GenerateResponseCall struct {
 	Messages []chat.ChatMessage
 }
