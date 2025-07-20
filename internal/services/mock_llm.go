@@ -33,15 +33,14 @@ func (m *MockLLMAPI) MetaUpdate(ctx context.Context, messages []chat.ChatMessage
 		AddToInventory:      []string{"mock_item"},
 		RemoveFromInventory: []string{"old_item"},
 		MovedItems: []struct {
-			Item       string `json:"item"`
-			From       string `json:"from"`
-			ToLocation string `json:"to_location,omitempty"`
-			To         string `json:"to,omitempty"`
+			Item string `json:"item"`
+			From string `json:"from"`
+			To   string `json:"to,omitempty"`
 		}{
 			{
-				Item:       "mock_item",
-				From:       "start",
-				ToLocation: "inventory",
+				Item: "mock_item",
+				From: "start",
+				To:   "user_inventory",
 			},
 		},
 		UpdatedNPCs: []struct {

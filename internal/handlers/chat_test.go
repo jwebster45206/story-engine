@@ -18,6 +18,7 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestChatHandler_ServeHTTP(t *testing.T) {
@@ -327,4 +328,43 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 	if rr.Header().Get("Content-Type") != "application/json" {
 		t.Errorf("Expected response Content-Type application/json, got %s", rr.Header().Get("Content-Type"))
 	}
+}
+
+func TestApplyMetaUpdate(t *testing.T) {
+	// Prepare initial game state
+	loc1 := scenario.Location{Name: "Tavern", Items: []string{"Apple", "Shield"}}
+	loc2 := scenario.Location{Name: "Forest", Items: []string{}}
+	// npc := scenario.NPC{Name: "Goblin", Items: []string{"Dagger"}}
+
+	gs := &state.GameState{
+		ID:             uuid.New(),
+		Location:       "Tavern",
+		Inventory:      []string{"Gold"},
+		WorldLocations: map[string]scenario.Location{"Tavern": loc1, "Forest": loc2},
+		// You can include NPCs if you implement the TODO NPC logic later
+	}
+
+	meta := &chat.MetaUpdate{
+		UserLocation:        "Forest",
+		AddToInventory:      []string{"Apple"},
+		RemoveFromInventory: []string{"Gold"},
+		MovedItems: []struct {
+			Item string `json:"item"`
+			From string `json:"from"`
+			To   string `json:"to,omitempty"`
+		}{
+			{Item: "Apple", From: "Tavern", To: "user_inventory"},
+			{Item: "Gold", From: "user_inventory", To: "Tavern"},
+		},
+	}
+
+	applyMetaUpdate(gs, meta)
+
+	// Assertions
+	assert.Equal(t, "Forest", gs.Location, "user location should be updated")
+	assert.Contains(t, gs.Inventory, "Apple", "new item should be added to inventory")
+	assert.NotContains(t, gs.Inventory, "Gold", "removed item should not be in inventory")
+	tavern := gs.WorldLocations["Tavern"]
+	assert.NotContains(t, tavern.Items, "Apple", "item should be removed from Tavern")
+	assert.Contains(t, tavern.Items, "Gold", "new item should be added to Tavern items")
 }
