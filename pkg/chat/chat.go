@@ -65,3 +65,12 @@ type MetaUpdate struct {
 		Location    string `json:"location"`
 	} `json:"updated_npcs,omitempty"`
 }
+
+// IsEmpty checks if the MetaUpdate is empty
+func (mu *MetaUpdate) IsEmpty() bool {
+	return mu == nil || (mu.UserLocation == "" &&
+		len(mu.AddToInventory) == 0 &&
+		len(mu.RemoveFromInventory) == 0 &&
+		len(mu.MovedItems) == 0 &&
+		len(mu.UpdatedNPCs) == 0)
+}

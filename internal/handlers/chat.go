@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -217,11 +216,6 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // updateGameMeta runs in the background to extract and update game metadata
 func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, request chat.ChatRequest, response *chat.ChatResponse) {
 	start := time.Now()
-	defer func() {
-		h.logger.Debug("Background meta update completed",
-			"game_state_id", gs.ID.String(),
-			"duration_s", time.Since(start).Seconds())
-	}()
 	h.logger.Debug("Starting background game meta update", "game_state_id", gs.ID.String())
 	defer func() {
 		h.metaCancelMu.Lock()
@@ -229,7 +223,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 		h.metaCancelMu.Unlock()
 	}()
 
-	// Create messages for the meta extraction request
+	// Create messages for meta update
 	currentStateJSON, err := json.Marshal(state.ToPromptState(gs))
 	if err != nil {
 		h.logger.Error("Failed to marshal current game state for meta update", "error", err, "game_state_id", gs.ID.String())
@@ -255,34 +249,34 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 		},
 	}
 
-	// Create a timeout context for the meta update
+	// Create a timeout context for meta update
 	metaCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Send the extraction request to the LLM
-	metaResponse, err := h.llmService.Chat(metaCtx, messages)
+	// Send the meta update request to the LLM
+	metaResponse, err := h.llmService.MetaUpdate(metaCtx, messages)
 	if err != nil {
 		h.logger.Error("Failed to get meta extraction response from LLM", "error", err, "game_state_id", gs.ID.String())
 		return
 	}
 
 	// Parse the JSON response
-	var ps state.PromptState
-	jsonStr := metaResponse.Message
-	// Try to extract the first JSON object if surrounded by markdown or text
-	if i := strings.Index(jsonStr, "{"); i != -1 {
-		jsonStr = jsonStr[i:]
-		if j := strings.LastIndex(jsonStr, "}"); j != -1 {
-			jsonStr = jsonStr[:j+1]
-		}
-	}
-	if err := json.Unmarshal([]byte(jsonStr), &ps); err != nil {
-		h.logger.Error("Failed to unmarshal meta extraction JSON", "error", err, "response", metaResponse.Message, "game_state_id", gs.ID.String())
-		return
-	}
+	// var ps state.PromptState
+	// jsonStr := metaResponse.Message
+	// // Try to extract the first JSON object if surrounded by markdown or text
+	// if i := strings.Index(jsonStr, "{"); i != -1 {
+	// 	jsonStr = jsonStr[i:]
+	// 	if j := strings.LastIndex(jsonStr, "}"); j != -1 {
+	// 		jsonStr = jsonStr[:j+1]
+	// 	}
+	// }
+	// if err := json.Unmarshal([]byte(jsonStr), &ps); err != nil {
+	// 	h.logger.Error("Failed to unmarshal meta extraction JSON", "error", err, "response", metaResponse.Message, "game_state_id", gs.ID.String())
+	// 	return
+	// }
 
-	fmt.Println("Messages:", messages)
-	fmt.Println("Returned PromptState:", ps)
+	// fmt.Println("Messages:", messages)
+	// fmt.Println("Returned PromptState:", ps)
 
 	// Load the latest game state (to avoid race conditions)
 	latestGS, err := h.storage.LoadGameState(metaCtx, gs.ID)
@@ -305,5 +299,8 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 		return
 	}
 
-	h.logger.Debug("Successfully updated game meta", "game_state_id", gs.ID.String(), "prompt_state", ps)
+	h.logger.Debug("Successfully updated game meta",
+		"game_state_id", gs.ID.String(),
+		"meta_response", metaResponse,
+		"duration_s", time.Since(start).Seconds())
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
@@ -210,46 +211,19 @@ func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (
 }
 
 func (v *VeniceService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, error) {
-
-	veniceReq := VeniceChatRequest{
-		Model:       v.modelName,
-		Messages:    messages,
-		Temperature: DefaultVeniceTemperature,
-		MaxTokens:   DefaultVeniceMaxTokens,
-		Stream:      false,
-	}
-
-	reqBody, err := json.Marshal(veniceReq)
+	cr, err := v.Chat(ctx, messages)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return nil, fmt.Errorf("failed to get chat response: %w", err)
 	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", veniceBaseURL+"/chat/completions", bytes.NewBuffer(reqBody))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+	if cr.Message == "" {
+		return nil, nil
 	}
-
-	req.Header.Set("Authorization", "Bearer "+v.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := v.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make request: %w", err)
+	mTxt := cr.Message
+	mTxt = strings.TrimPrefix(mTxt, "```json\n")
+	mTxt = strings.TrimSuffix(mTxt, "\n```")
+	var metaUpdate chat.MetaUpdate
+	if err := json.Unmarshal([]byte(mTxt), &metaUpdate); err != nil {
+		return nil, fmt.Errorf("failed to parse meta update: %w", err)
 	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var veniceResp chat.MetaUpdate
-	if err := json.Unmarshal(body, &veniceResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-	return &veniceResp, nil
+	return &metaUpdate, nil
 }
