@@ -18,59 +18,51 @@ const npcPrompt = `If an NPC is in the same location as the user, describe their
 Davey: "Ah, the treasure," he says.`
 
 // Prompt for extracting PromptState JSON from the LLM
-const PromptStateExtractionInstructions = `You are a backend system translating narrative state to json. Your task is to review the last agent response and the current game state, and output a single JSON object matching the following Go struct:
+const PromptStateExtractionInstructions = `
+You are a backend system translating narrative into structured JSON changes.
 
-type PromptState struct {
-  location  string          // The user's current location in the game world.
-  flags     map[string]bool // Any boolean flags relevant to the story or puzzles.
-  inventory []string        // The user's inventory items.
-  npcs      map[string]NPC  // All NPCs the user has met or that are present. Use the NPC's name as the key.
-}
-
-type NPC struct {
-  name        string // The NPC's name.
-  type        string // e.g. "villager", "guard", "merchant".
-  disposition string // e.g. "hostile", "neutral", "friendly".
-  description string // Short description or backstory.
-  important   bool   // Whether this NPC is important to the story.
-}
-
-Example JSON (omit fields if empty):
-{
-  "location": "Tortuga Docks",
-  "flags": {"torch_lit": true, "gate_open": false},
-  "inventory": ["rusty key", "map fragment"],
-  "npcs": {
-    "Davey": {
-      "name": "Davey",
-      "type": "pirate",
-      "disposition": "friendly",
-      "description": "A grizzled old pirate with a wooden leg.",
-      "important": true
-    },
-    "Molly": {
-      "name": "Molly",
-      "type": "merchant",
-      "disposition": "suspicious",
-      "description": "A shrewd trader with a sharp eye.",
-      "important": false
-    }
-  }
-}
+Your task is to read the most recent agent narrative response and the current game state,
+then output a compact JSON object that contains only the changes resulting from the agent's response.
 
 Instructions:
 - Only output the JSON object, with no extra text or explanation.
-- If a field is not present, use an empty value (empty object, array, or string, or false for booleans).
 - Be precise and consistent with field names and types.
+- If nothing changed, return an empty object: {}.
 
-Use the most recent user request and agent response.  
-- If the user has acquired new items, add them to the inventory.
-- If the user acquired the items in an unrealistic way, do not add them.  
-- If the user has discarded or used items, remove them from the inventory.
-- If the user has changed locations, update the "location" field.
-- If the user has tried to moved to a location that is not defined in the scenario, set back to the previous location.
-- If a new NPC is mentioned, add or update their entry in the "npcs" map.
-- If the NPC is not in the gamestate, they are not important.
+Output Format (example):
+{
+  "user_location": "forest",
+  "add_to_inventory": ["gold coin"],
+  "remove_from_inventory": ["torch"],
+  "moved_items": [
+    {
+      "item": "gold coin",
+      "from": "Captain's Cabin",
+      "to_location": "user_inventory"
+    },
+    {
+      "item": "torch",
+      "from": "user_inventory",
+      "to": "Captain's Cabin"
+    }
+  ],
+  "updated_npcs": [
+    {
+      "name": "Old Hermit",
+      "description": "A reclusive figure in a tattered cloak.",
+      "location": "forest"
+    }
+  ]
+}
+
+Update Rules:
+- If the agent clearly says the player moved, set "user_location" to the new location.
+- Do not allow movement to locations not in the scenario.
+- Do not allow movement through blocked exits.
+- If the agent describes the player acquiring an item, add it to "add_to_inventory".
+- If the item came from a location, u.
+- If the player gives away or discards an item, include it in \"remove_from_inventory\".
+- If the agent introduces a new NPC, add it to \"updated_npcs\" with only name, description, and location. 
 `
 
 // Content rating prompts
@@ -79,17 +71,8 @@ const ContentRatingPG = `Write content suitable for children and families. Mild 
 const ContentRatingPG13 = `Write content appropriate for teenagers. You may include mild swearing, romantic tension, action scenes, and complex emotional themes, but avoid explicit adult situations, graphic violence, or drug use. `
 const ContentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
 
-// State prompt templates
-// - Provide a rich story context, and discourage the LLM from being overly creative.
-// - Provide instructions about how to use story context to run the game.
-// - Provide a json representation of the current game state.
+const statePromptGameState = "The following JSON describes the complete world and current state.\n\nGame State:\n```json\n%s\n```"
+const locationRules = "The user may only move to locations defined in the `locations` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable."
 
-const statePromptIntro = "Use the following JSON as scenario template. The user may only move to locations defined in the `locations` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.\n\n"
-
-const statePromptInventory = "The user's inventory must only contain items listed in the scenario's items section. Do not invent or grant items that are not explicitly defined. If the user asks for or references an item that does not exist in the scenario, respond in-character or inform them that it cannot be found.\n\n"
-
-const statePromptScenario = "Scenario Template:\n```json\n%s\n```\n\n"
-
-const statePromptGameState = "Use the following JSON to understand current game state.\n\nGame State:\n```json\n%s\n```"
-
-const StatePromptTemplate = statePromptIntro + statePromptInventory + statePromptScenario + statePromptGameState
+// StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
+const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\n" + statePromptGameState + "\n\n" + locationRules + "\n\n"

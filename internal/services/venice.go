@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
@@ -15,6 +16,9 @@ import (
 const (
 	veniceBaseURL = "https://api.venice.ai/api/v1"
 	msgNoResponse = "(no response)"
+
+	DefaultVeniceTemperature = 0.7
+	DefaultVeniceMaxTokens   = 2048
 )
 
 // VeniceService implements LLMService for Venice AI
@@ -148,18 +152,13 @@ func (v *VeniceService) ListModels(ctx context.Context) ([]string, error) {
 	return models, nil
 }
 
-// GetChatResponse generates a chat response using Venice AI
-func (v *VeniceService) GetChatResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
-	return v.GetChatResponseWithModel(ctx, messages, v.modelName)
-}
-
-// GetChatResponseWithModel generates a chat response using Venice AI with a specific model
-func (v *VeniceService) GetChatResponseWithModel(ctx context.Context, messages []chat.ChatMessage, modelName string) (*chat.ChatResponse, error) {
+// Chat generates a chat response using Venice AI
+func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 	veniceReq := VeniceChatRequest{
-		Model:       modelName,
+		Model:       v.modelName,
 		Messages:    messages,
-		Temperature: 0.7,
-		MaxTokens:   2048,
+		Temperature: DefaultVeniceTemperature,
+		MaxTokens:   DefaultVeniceMaxTokens,
 		Stream:      false,
 	}
 
@@ -209,4 +208,22 @@ func (v *VeniceService) GetChatResponseWithModel(ctx context.Context, messages [
 	return &chat.ChatResponse{
 		Message: veniceResp.Choices[0].Message.Content,
 	}, nil
+}
+
+func (v *VeniceService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, error) {
+	cr, err := v.Chat(ctx, messages)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chat response: %w", err)
+	}
+	if cr.Message == "" {
+		return nil, nil
+	}
+	mTxt := cr.Message
+	mTxt = strings.TrimPrefix(mTxt, "```json\n")
+	mTxt = strings.TrimSuffix(mTxt, "\n```")
+	var metaUpdate chat.MetaUpdate
+	if err := json.Unmarshal([]byte(mTxt), &metaUpdate); err != nil {
+		return nil, fmt.Errorf("failed to parse meta update: %w", err)
+	}
+	return &metaUpdate, nil
 }

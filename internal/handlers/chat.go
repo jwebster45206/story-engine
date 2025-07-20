@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -154,7 +153,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	response, err := h.llmService.GetChatResponse(ctx, messages)
+	response, err := h.llmService.Chat(ctx, messages)
 	if err != nil {
 		h.logger.Error("Error generating chat response",
 			"error", err,
@@ -216,6 +215,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // updateGameMeta runs in the background to extract and update game metadata
 func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, request chat.ChatRequest, response *chat.ChatResponse) {
+	start := time.Now()
 	h.logger.Debug("Starting background game meta update", "game_state_id", gs.ID.String())
 	defer func() {
 		h.metaCancelMu.Lock()
@@ -223,7 +223,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 		h.metaCancelMu.Unlock()
 	}()
 
-	// Create messages for the meta extraction request
+	// Create messages for meta update
 	currentStateJSON, err := json.Marshal(state.ToPromptState(gs))
 	if err != nil {
 		h.logger.Error("Failed to marshal current game state for meta update", "error", err, "game_state_id", gs.ID.String())
@@ -237,7 +237,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 		},
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: fmt.Sprintf("Current game state: %s", string(currentStateJSON)),
+			Content: fmt.Sprintf("BEFORE game state: %s", string(currentStateJSON)),
 		},
 		{
 			Role:    chat.ChatRoleUser,
@@ -249,31 +249,34 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 		},
 	}
 
-	// Create a timeout context for the meta update
+	// Create a timeout context for meta update
 	metaCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Send the extraction request to the LLM
-	metaResponse, err := h.llmService.GetChatResponse(metaCtx, messages)
+	// Send the meta update request to the LLM
+	metaResponse, err := h.llmService.MetaUpdate(metaCtx, messages)
 	if err != nil {
 		h.logger.Error("Failed to get meta extraction response from LLM", "error", err, "game_state_id", gs.ID.String())
 		return
 	}
 
 	// Parse the JSON response
-	var ps state.PromptState
-	jsonStr := metaResponse.Message
-	// Try to extract the first JSON object if surrounded by markdown or text
-	if i := strings.Index(jsonStr, "{"); i != -1 {
-		jsonStr = jsonStr[i:]
-		if j := strings.LastIndex(jsonStr, "}"); j != -1 {
-			jsonStr = jsonStr[:j+1]
-		}
-	}
-	if err := json.Unmarshal([]byte(jsonStr), &ps); err != nil {
-		h.logger.Error("Failed to unmarshal meta extraction JSON", "error", err, "response", metaResponse.Message, "game_state_id", gs.ID.String())
-		return
-	}
+	// var ps state.PromptState
+	// jsonStr := metaResponse.Message
+	// // Try to extract the first JSON object if surrounded by markdown or text
+	// if i := strings.Index(jsonStr, "{"); i != -1 {
+	// 	jsonStr = jsonStr[i:]
+	// 	if j := strings.LastIndex(jsonStr, "}"); j != -1 {
+	// 		jsonStr = jsonStr[:j+1]
+	// 	}
+	// }
+	// if err := json.Unmarshal([]byte(jsonStr), &ps); err != nil {
+	// 	h.logger.Error("Failed to unmarshal meta extraction JSON", "error", err, "response", metaResponse.Message, "game_state_id", gs.ID.String())
+	// 	return
+	// }
+
+	// fmt.Println("Messages:", messages)
+	// fmt.Println("Returned PromptState:", ps)
 
 	// Load the latest game state (to avoid race conditions)
 	latestGS, err := h.storage.LoadGameState(metaCtx, gs.ID)
@@ -288,7 +291,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 	}
 
 	// Apply the extracted state to the latest game state
-	state.ApplyPromptStateToGameState(&ps, latestGS)
+	// state.ApplyPromptStateToGameState(&ps, latestGS)
 
 	// Save the updated game state
 	if err := h.storage.SaveGameState(metaCtx, latestGS.ID, latestGS); err != nil {
@@ -296,5 +299,8 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 		return
 	}
 
-	h.logger.Debug("Successfully updated game meta", "game_state_id", gs.ID.String(), "prompt_state", ps)
+	h.logger.Debug("Successfully updated game meta",
+		"game_state_id", gs.ID.String(),
+		"meta_response", metaResponse,
+		"duration_s", time.Since(start).Seconds())
 }
