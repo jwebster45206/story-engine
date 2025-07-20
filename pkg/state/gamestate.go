@@ -3,6 +3,7 @@ package state
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/pkg/chat"
@@ -22,6 +23,8 @@ type GameState struct {
 
 	ChatHistory []chat.ChatMessage `json:"chat_history,omitempty"` // Conversation history
 	// Flags       map[string]bool         `json:"game_flags,omitempty"`
+
+	Mu sync.RWMutex
 }
 
 func NewGameState(scenarioFileName string) *GameState {

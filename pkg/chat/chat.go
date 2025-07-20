@@ -54,10 +54,9 @@ type MetaUpdate struct {
 	AddToInventory      []string `json:"add_to_inventory,omitempty"`
 	RemoveFromInventory []string `json:"remove_from_inventory,omitempty"`
 	MovedItems          []struct {
-		Item       string `json:"item"`
-		From       string `json:"from"`
-		ToLocation string `json:"to_location,omitempty"`
-		To         string `json:"to,omitempty"`
+		Item string `json:"item"`
+		From string `json:"from"`
+		To   string `json:"to,omitempty"`
 	} `json:"moved_items,omitempty"`
 	UpdatedNPCs []struct {
 		Name        string `json:"name"`

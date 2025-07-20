@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -213,6 +214,131 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
+
+	if metaUpdate == nil {
+		return
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(5)
+	go func() {
+		defer wg.Done()
+		// Handle location change
+		if metaUpdate.UserLocation != "" {
+			// Loook for a location with this name in the game state
+			for _, loc := range gs.WorldLocations {
+				if loc.Name == metaUpdate.UserLocation {
+					gs.Mu.Lock()
+					gs.Location = loc.Name
+					gs.Mu.Unlock()
+					return
+				}
+			}
+			// If not found, do a best-effort match for world location
+			// names as substrings of the user location
+			for _, loc := range gs.WorldLocations {
+				if strings.Contains(strings.ToLower(metaUpdate.UserLocation), strings.ToLower(loc.Name)) {
+					gs.Mu.Lock()
+					gs.Location = loc.Name
+					gs.Mu.Unlock()
+					return
+				}
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for _, item := range metaUpdate.AddToInventory {
+			// add to inventory if not already present
+			for _, invItem := range gs.Inventory {
+				if invItem == item {
+					return // Item already in inventory, skip adding
+				}
+			}
+			// Item not found, add it
+			gs.Mu.Lock()
+			if gs.Inventory == nil {
+				gs.Inventory = make([]string, 0)
+			}
+			gs.Inventory = append(gs.Inventory, item)
+			gs.Mu.Unlock()
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for _, item := range metaUpdate.RemoveFromInventory {
+			for i, invItem := range gs.Inventory {
+				if invItem == item {
+					gs.Mu.Lock()
+					gs.Inventory = append(gs.Inventory[:i], gs.Inventory[i+1:]...)
+					gs.Mu.Unlock()
+					break
+				}
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for _, movedItem := range metaUpdate.MovedItems {
+			fmt.Println("Processing moved item:", movedItem.Item, "from:", movedItem.From, "to:", movedItem.To)
+			// Handle move FROM
+			if movedItem.From != "" && movedItem.From != "user_inventory" {
+				// check for a matching name in locations
+				found := false
+				for key, loc := range gs.WorldLocations {
+					if loc.Name == movedItem.From {
+						for i, invItem := range loc.Items {
+							if invItem == movedItem.Item {
+								loc.Items = append(loc.Items[:i], loc.Items[i+1:]...)
+								gs.Mu.Lock()
+								gs.WorldLocations[key] = loc // Write back
+								gs.Mu.Unlock()
+								found = true
+								break
+							}
+						}
+					}
+				}
+				if !found {
+					fmt.Println("Warning: Item", movedItem.Item, "not found in location", movedItem.From)
+				}
+			}
+
+			// Handle move TO
+			if movedItem.To == "" || movedItem.To == "user_inventory" {
+				continue
+			}
+			// check for a matching name in locations
+			for key, loc := range gs.WorldLocations {
+				fmt.Println("Checking location:", loc.Name, "for moved item:", movedItem.Item, "to:", movedItem.To)
+				if loc.Name == movedItem.To {
+					gs.Mu.Lock()
+					if loc.Items == nil {
+						loc.Items = make([]string, 0)
+					}
+					loc.Items = append(loc.Items, movedItem.Item)
+					gs.WorldLocations[key] = loc // Save the updated struct
+					gs.Mu.Unlock()
+					break
+				}
+			}
+			// TODO: check for a matching NPC name
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		// TODO: NPC changes
+	}()
+
+	// Let goroutines finish
+	wg.Wait()
+}
+
 // updateGameMeta runs in the background to extract and update game metadata
 func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, request chat.ChatRequest, response *chat.ChatResponse) {
 	start := time.Now()
@@ -223,7 +349,6 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 		h.metaCancelMu.Unlock()
 	}()
 
-	// Create messages for meta update
 	currentStateJSON, err := json.Marshal(state.ToPromptState(gs))
 	if err != nil {
 		h.logger.Error("Failed to marshal current game state for meta update", "error", err, "game_state_id", gs.ID.String())
@@ -249,7 +374,6 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 		},
 	}
 
-	// Create a timeout context for meta update
 	metaCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -259,39 +383,22 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 		h.logger.Error("Failed to get meta extraction response from LLM", "error", err, "game_state_id", gs.ID.String())
 		return
 	}
+	if metaResponse == nil {
+		return
+	}
 
-	// Parse the JSON response
-	// var ps state.PromptState
-	// jsonStr := metaResponse.Message
-	// // Try to extract the first JSON object if surrounded by markdown or text
-	// if i := strings.Index(jsonStr, "{"); i != -1 {
-	// 	jsonStr = jsonStr[i:]
-	// 	if j := strings.LastIndex(jsonStr, "}"); j != -1 {
-	// 		jsonStr = jsonStr[:j+1]
-	// 	}
-	// }
-	// if err := json.Unmarshal([]byte(jsonStr), &ps); err != nil {
-	// 	h.logger.Error("Failed to unmarshal meta extraction JSON", "error", err, "response", metaResponse.Message, "game_state_id", gs.ID.String())
-	// 	return
-	// }
-
-	// fmt.Println("Messages:", messages)
-	// fmt.Println("Returned PromptState:", ps)
-
-	// Load the latest game state (to avoid race conditions)
 	latestGS, err := h.storage.LoadGameState(metaCtx, gs.ID)
 	if err != nil {
 		h.logger.Error("Failed to load latest game state for meta update", "error", err, "game_state_id", gs.ID.String())
 		return
 	}
-
 	if latestGS == nil {
 		h.logger.Warn("Game state not found during meta update", "game_state_id", gs.ID.String())
 		return
 	}
 
-	// Apply the extracted state to the latest game state
-	// state.ApplyPromptStateToGameState(&ps, latestGS)
+	// Apply the calculated state to the latest game state
+	applyMetaUpdate(latestGS, metaResponse)
 
 	// Save the updated game state
 	if err := h.storage.SaveGameState(metaCtx, latestGS.ID, latestGS); err != nil {
