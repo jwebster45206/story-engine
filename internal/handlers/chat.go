@@ -239,7 +239,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: scenario.PromptStateExtractionInstructions2,
+			Content: scenario.PromptStateExtractionInstructions,
 		},
 		{
 			Role:    chat.ChatRoleSystem,

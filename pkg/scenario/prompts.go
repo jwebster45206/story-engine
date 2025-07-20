@@ -18,21 +18,51 @@ const npcPrompt = `If an NPC is in the same location as the user, describe their
 Davey: "Ah, the treasure," he says.`
 
 // Prompt for extracting PromptState JSON from the LLM
-const PromptStateExtractionInstructions = `You are a backend system translating narrative state to json. Your task is to review the agent's most recent narrative response and the current game state, and output a single JSON object matching the input game state format.
+const PromptStateExtractionInstructions = `
+You are a backend system translating narrative into structured JSON changes.
+
+Your task is to read the most recent agent narrative response and the current game state,
+then output a compact JSON object that contains only the changes resulting from the agent's response.
 
 Instructions:
 - Only output the JSON object, with no extra text or explanation.
 - Be precise and consistent with field names and types.
+- If nothing changed, return an empty object: {}.
 
-Update state for consistency with all changes from the most recent agent response.
-- Whenever the user holds or acquires an item, add it to user_inventory.
-- If the item was acquired from an NPC or location, remove it from that NPC's or location's items.
-- Whenever the user discards or gives away an item, remove it from user_inventory.
-- Use an in-game word for the user's inventory, such as "utility belt".
-- If the user has changed locations, update the "location" field.
-- Do not allow movement to locations that are not defined in the scenario.
+Output Format (example):
+{
+  "user_location": "forest",
+  "add_to_inventory": ["gold coin"],
+  "remove_from_inventory": ["torch"],
+  "moved_items": [
+    {
+      "item": "gold coin",
+      "from": "Captain's Cabin",
+      "to_location": "user_inventory"
+    },
+    {
+      "item": "torch",
+      "from": "user_inventory",
+      "to": "Captain's Cabin"
+    }
+  ],
+  "updated_npcs": [
+    {
+      "name": "Old Hermit",
+      "description": "A reclusive figure in a tattered cloak.",
+      "location": "forest"
+    }
+  ]
+}
+
+Update Rules:
+- If the agent clearly says the player moved, set "user_location" to the new location.
+- Do not allow movement to locations not in the scenario.
 - Do not allow movement through blocked exits.
-- If a new NPC is mentioned in the agent's response, add them to world_npcs with only name, description, and location. Set important to false by default.
+- If the agent describes the player acquiring an item, add it to "add_to_inventory".
+- If the item came from a location, u.
+- If the player gives away or discards an item, include it in \"remove_from_inventory\".
+- If the agent introduces a new NPC, add it to \"updated_npcs\" with only name, description, and location. 
 `
 
 // Content rating prompts
