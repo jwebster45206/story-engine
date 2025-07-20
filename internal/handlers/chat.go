@@ -220,6 +220,7 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 		return
 	}
 
+	mu := sync.Mutex{}
 	wg := sync.WaitGroup{}
 	wg.Add(5)
 	go func() {
@@ -229,9 +230,9 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 			// Loook for a location with this name in the game state
 			for _, loc := range gs.WorldLocations {
 				if loc.Name == metaUpdate.UserLocation {
-					gs.Mu.Lock()
+					mu.Lock()
 					gs.Location = loc.Name
-					gs.Mu.Unlock()
+					mu.Unlock()
 					return
 				}
 			}
@@ -239,9 +240,9 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 			// names as substrings of the user location
 			for _, loc := range gs.WorldLocations {
 				if strings.Contains(strings.ToLower(metaUpdate.UserLocation), strings.ToLower(loc.Name)) {
-					gs.Mu.Lock()
+					mu.Lock()
 					gs.Location = loc.Name
-					gs.Mu.Unlock()
+					mu.Unlock()
 					return
 				}
 			}
@@ -258,12 +259,12 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 				}
 			}
 			// Item not found, add it
-			gs.Mu.Lock()
+			mu.Lock()
 			if gs.Inventory == nil {
 				gs.Inventory = make([]string, 0)
 			}
 			gs.Inventory = append(gs.Inventory, item)
-			gs.Mu.Unlock()
+			mu.Unlock()
 		}
 	}()
 
@@ -272,9 +273,9 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 		for _, item := range metaUpdate.RemoveFromInventory {
 			for i, invItem := range gs.Inventory {
 				if invItem == item {
-					gs.Mu.Lock()
+					mu.Lock()
 					gs.Inventory = append(gs.Inventory[:i], gs.Inventory[i+1:]...)
-					gs.Mu.Unlock()
+					mu.Unlock()
 					break
 				}
 			}
@@ -294,9 +295,9 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 						for i, invItem := range loc.Items {
 							if invItem == movedItem.Item {
 								loc.Items = append(loc.Items[:i], loc.Items[i+1:]...)
-								gs.Mu.Lock()
+								mu.Lock()
 								gs.WorldLocations[key] = loc // Write back
-								gs.Mu.Unlock()
+								mu.Unlock()
 								found = true
 								break
 							}
@@ -316,13 +317,13 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 			for key, loc := range gs.WorldLocations {
 				fmt.Println("Checking location:", loc.Name, "for moved item:", movedItem.Item, "to:", movedItem.To)
 				if loc.Name == movedItem.To {
-					gs.Mu.Lock()
+					mu.Lock()
 					if loc.Items == nil {
 						loc.Items = make([]string, 0)
 					}
 					loc.Items = append(loc.Items, movedItem.Item)
 					gs.WorldLocations[key] = loc // Save the updated struct
-					gs.Mu.Unlock()
+					mu.Unlock()
 					break
 				}
 			}
