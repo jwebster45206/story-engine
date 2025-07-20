@@ -215,129 +215,99 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
-
 	if metaUpdate == nil {
 		return
 	}
 
-	mu := sync.Mutex{}
-	wg := sync.WaitGroup{}
-	wg.Add(5)
-	go func() {
-		defer wg.Done()
-		// Handle location change
-		if metaUpdate.UserLocation != "" {
-			// Loook for a location with this name in the game state
-			for _, loc := range gs.WorldLocations {
-				if loc.Name == metaUpdate.UserLocation {
-					mu.Lock()
-					gs.Location = loc.Name
-					mu.Unlock()
-					return
-				}
+	// Handle location change
+	userLocationFound := false
+	if metaUpdate.UserLocation != "" {
+		// Loook for a location with this name in the game state
+		for _, loc := range gs.WorldLocations {
+			if loc.Name == metaUpdate.UserLocation {
+				gs.Location = loc.Name
+				userLocationFound = true
+				break
 			}
-			// If not found, do a best-effort match for world location
-			// names as substrings of the user location
+		}
+		// If not found, do a best-effort match for world location
+		// names as substrings of the user location
+		if !userLocationFound {
 			for _, loc := range gs.WorldLocations {
 				if strings.Contains(strings.ToLower(metaUpdate.UserLocation), strings.ToLower(loc.Name)) {
-					mu.Lock()
 					gs.Location = loc.Name
-					mu.Unlock()
-					return
-				}
-			}
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		for _, item := range metaUpdate.AddToInventory {
-			// add to inventory if not already present
-			for _, invItem := range gs.Inventory {
-				if invItem == item {
-					return // Item already in inventory, skip adding
-				}
-			}
-			// Item not found, add it
-			mu.Lock()
-			if gs.Inventory == nil {
-				gs.Inventory = make([]string, 0)
-			}
-			gs.Inventory = append(gs.Inventory, item)
-			mu.Unlock()
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		for _, item := range metaUpdate.RemoveFromInventory {
-			for i, invItem := range gs.Inventory {
-				if invItem == item {
-					mu.Lock()
-					gs.Inventory = append(gs.Inventory[:i], gs.Inventory[i+1:]...)
-					mu.Unlock()
+					userLocationFound = true
 					break
 				}
 			}
 		}
-	}()
+	}
 
-	go func() {
-		defer wg.Done()
-		for _, movedItem := range metaUpdate.MovedItems {
-			fmt.Println("Processing moved item:", movedItem.Item, "from:", movedItem.From, "to:", movedItem.To)
-			// Handle move FROM
-			if movedItem.From != "" && movedItem.From != "user_inventory" {
-				// check for a matching name in locations
-				found := false
-				for key, loc := range gs.WorldLocations {
-					if loc.Name == movedItem.From {
-						for i, invItem := range loc.Items {
-							if invItem == movedItem.Item {
-								loc.Items = append(loc.Items[:i], loc.Items[i+1:]...)
-								mu.Lock()
-								gs.WorldLocations[key] = loc // Write back
-								mu.Unlock()
-								found = true
-								break
-							}
+	for _, item := range metaUpdate.AddToInventory {
+		// add to inventory if not already present
+		for _, invItem := range gs.Inventory {
+			if invItem == item {
+				return // Item already in inventory, skip adding
+			}
+		}
+		// Item not found, add it
+		if gs.Inventory == nil {
+			gs.Inventory = make([]string, 0)
+		}
+		gs.Inventory = append(gs.Inventory, item)
+	}
+
+	for _, item := range metaUpdate.RemoveFromInventory {
+		for i, invItem := range gs.Inventory {
+			if invItem == item {
+				gs.Inventory = append(gs.Inventory[:i], gs.Inventory[i+1:]...)
+				break
+			}
+		}
+	}
+
+	for _, movedItem := range metaUpdate.MovedItems {
+		fmt.Println("Processing moved item:", movedItem.Item, "from:", movedItem.From, "to:", movedItem.To)
+		// Handle move FROM
+		if movedItem.From != "" && movedItem.From != "user_inventory" {
+			// check for a matching name in locations
+			found := false
+			for key, loc := range gs.WorldLocations {
+				if loc.Name == movedItem.From {
+					for i, invItem := range loc.Items {
+						if invItem == movedItem.Item {
+							loc.Items = append(loc.Items[:i], loc.Items[i+1:]...)
+							gs.WorldLocations[key] = loc // Write back
+							found = true
+							break
 						}
 					}
 				}
-				if !found {
-					fmt.Println("Warning: Item", movedItem.Item, "not found in location", movedItem.From)
-				}
 			}
-
-			// Handle move TO
-			if movedItem.To == "" || movedItem.To == "user_inventory" {
-				continue
+			if !found {
+				fmt.Println("Warning: Item", movedItem.Item, "not found in location", movedItem.From)
 			}
-			// check for a matching name in locations
-			for key, loc := range gs.WorldLocations {
-				fmt.Println("Checking location:", loc.Name, "for moved item:", movedItem.Item, "to:", movedItem.To)
-				if loc.Name == movedItem.To {
-					mu.Lock()
-					if loc.Items == nil {
-						loc.Items = make([]string, 0)
-					}
-					loc.Items = append(loc.Items, movedItem.Item)
-					gs.WorldLocations[key] = loc // Save the updated struct
-					mu.Unlock()
-					break
-				}
-			}
-			// TODO: check for a matching NPC name
 		}
-	}()
 
-	go func() {
-		defer wg.Done()
-		// TODO: NPC changes
-	}()
-
-	// Let goroutines finish
-	wg.Wait()
+		// Handle move TO
+		if movedItem.To == "" || movedItem.To == "user_inventory" {
+			continue
+		}
+		// check for a matching name in locations
+		for key, loc := range gs.WorldLocations {
+			fmt.Println("Checking location:", loc.Name, "for moved item:", movedItem.Item, "to:", movedItem.To)
+			if loc.Name == movedItem.To {
+				if loc.Items == nil {
+					loc.Items = make([]string, 0)
+				}
+				loc.Items = append(loc.Items, movedItem.Item)
+				gs.WorldLocations[key] = loc // Save the updated struct
+				break
+			}
+		}
+		// TODO: check for a matching NPC name
+	}
+	// TODO: NPC changes
 }
 
 // updateGameMeta runs in the background to extract and update game metadata
