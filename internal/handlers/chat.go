@@ -236,7 +236,6 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 			for _, loc := range gs.WorldLocations {
 				if strings.Contains(strings.ToLower(metaUpdate.UserLocation), strings.ToLower(loc.Name)) {
 					gs.Location = loc.Name
-					userLocationFound = true
 					break
 				}
 			}
