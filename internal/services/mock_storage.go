@@ -106,7 +106,6 @@ func (m *MockStorage) GetScenario(ctx context.Context, filename string) (*scenar
 			},
 			Inventory: []string{"test_item1", "test_item2"},
 			NPCs:      map[string]scenario.NPC{"TestNPC": {Name: "TestNPC", Type: "human", Disposition: "neutral"}},
-			Flags:     map[string]string{"test_flag": "true"},
 			// Triggers:      []string{"test_trigger"},
 			OpeningPrompt:   "Welcome to the FooScenario!",
 			OpeningLocation: "TestLocation",

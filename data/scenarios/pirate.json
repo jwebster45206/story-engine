@@ -8,22 +8,40 @@
       "description": "A bustling pirate port filled with taverns, traders, and trouble.",
       "exits": {
         "east": "Black Pearl",
-        "south": "Sleepy Mermaid"
+        "south": "Sleepy Mermaid",
+        "north": "British Docks"
       },
       "blocked_exits": {
         "north": "The British Navy patrols this area.",
         "west": "A dense and impenetrable jungle blocks the way."
       }
     },
+    "British Docks": {
+      "name": "British Docks",
+      "description": "A heavily guarded area where British ships are docked.",
+      "exits": {
+        "south": "Tortuga",
+        "open sea": "The open sea. It calls to a pirate's heart."
+      },
+      "blocked_exits": {
+        "open sea": "Pirates don't swim well, and the British Navy is always on the lookout."
+      },
+      "items": [
+        "wanted poster with a handsome scoundrel's face",
+        "chest of 510 gold doubloons",
+        "british naval uniform"
+      ]
+    },
     "Black Pearl": {
       "name": "Black Pearl",
       "description": "Your ship, moored at the docks, ready for the next voyage.",
       "exits": {
         "west": "Tortuga",
-        "cabin door": "Captain's Cabin"
+        "cabin door": "Captain's Cabin",
+        "open sea": "The open sea. It calls to a pirate's heart."
       },
       "blocked_exits": {
-        "sea": "The Black Pearl is not seaworthy until it is repaired."
+        "open sea": "The Black Pearl is not seaworthy until it is repaired."
       },
       "items": [
         "ship repair ledger",
@@ -50,7 +68,6 @@
   },
   "inventory": [
     "cutlass",
-    "pistol",
     "spyglass",
     "Davey's half of the treasure map",
     "Calypso's half of the treasure map",
@@ -58,7 +75,8 @@
     "bag of pieces of eight",
     "ship repair ledger",
     "Prickles the parrot",
-    "chest of 510 gold doubloons"
+    "chest containing 510 gold doubloons",
+    "lockpicks"
   ],
   "npcs": {
     "Davey": {
@@ -102,19 +120,35 @@
       "location": "Tortuga"
     }
   },
-  "flags": {
-    "treasure_map_found": "no",
-    "black_pearl_repaired": "no"
+  "vars": {
+    "treasure_map_assembled": "false",
+    "black_pearl_repairs_started": "false",
+    "blacksmith_paid": "false",
+    "calypso_met": "false",
+    "british_docks_accessed": "false"
   },
-  "triggers": [
-    "The black_pearl_repaired flag must be set to 'yes' before setting sail. Attempting to set sail before will prompt the player to repair the ship first. ",
-    "The user must talk to Calypso to receive the treasure map. The user cannot find any treasure map or leave Tortuga without doing this. "
+  "contingency_prompts": [
+    "When the player first enters the Sleepy Mermaid, he will be greeted by Calypso. ",
+    "The player must use persuasion or charm to convince Calypso to give them her half of the treasure map. ",
+    "Allow the player to access the British Docks through creative in-world solutions. .",
+    "Stealth is required to access the gold doubloons in the British Docks. The player must use stealth to avoid soldiers and lockpicking to open a chest. ",
+    "Davey does not appear in the story until the player obtains Calypso's half of the treasure map."
+  ],
+  "contingency_rules": [
+    "When the player meets Calypso, set the var `calypso_met` to `true`.",
+    "When the player assembles the treasure map, remove both halves from inventory and add the assembled treasure map. Set var `treasure_map_assembled` to `true`.",
+    "When the player accesses British Docks, remove `north` from `blocked_exits` in the Tortuga location. Set var `british_docks_accessed` to `true`.",
+    "When the player successfully accesses the gold doubloons, add 510 gold doubloons to inventory. Do not add the chest.",
+    "When the player convinces the blacksmith to start repairs on the Black Pearl, set `black_pearl_repairs_started` to true and remove the ship repair ledger from inventory.",
+    "When the player pays the blacksmith 500 gold doubloons, set `blacksmith_paid` to true and remove the 500 gold doubloons from inventory.",
+    "The game ends when the following are complete: `treasure_map_assembled` is true, `black_pearl_repairs_started` is true, and `blacksmith_paid` is true.",
+    "The game also ends if the player repeatedly breaks character."
   ],
   "opening_prompt": "You stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your crew awaits your orders, and the Black Pearl is ready to set sail. What will you do next?",
   "opening_location": "Tortuga",
   "opening_inventory": [
     "cutlass",
-    "pistol",
-    "spyglass"
+    "spyglass",
+    "lockpicks"
   ]
 }

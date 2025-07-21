@@ -50,14 +50,17 @@ func (cr *ChatRequest) Validate() error {
 // after processing a chat message. A MetaUpdate is much faster
 // for the LLM to generate than a full game state.
 type MetaUpdate struct {
-	UserLocation        string   `json:"user_location,omitempty"`
-	AddToInventory      []string `json:"add_to_inventory,omitempty"`
-	RemoveFromInventory []string `json:"remove_from_inventory,omitempty"`
-	MovedItems          []struct {
+	UserLocation        string            `json:"user_location,omitempty"`
+	AddToInventory      []string          `json:"add_to_inventory,omitempty"`
+	RemoveFromInventory []string          `json:"remove_from_inventory,omitempty"`
+	SetVars             map[string]string `json:"set_vars,omitempty"`
+
+	MovedItems []struct {
 		Item string `json:"item"`
 		From string `json:"from"`
 		To   string `json:"to,omitempty"`
 	} `json:"moved_items,omitempty"`
+
 	UpdatedNPCs []struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`

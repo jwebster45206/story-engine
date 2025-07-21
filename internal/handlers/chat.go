@@ -306,10 +306,51 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 		}
 		// TODO: check for a matching NPC name
 	}
+
+	// Handle SetVars
+	for k, v := range metaUpdate.SetVars {
+		// Convert var name to lower case snake case
+		snake := toSnakeCase(strings.ToLower(k))
+		if gs.Vars == nil {
+			gs.Vars = make(map[string]string)
+		}
+		gs.Vars[snake] = v
+	}
+
+}
+
+// toSnakeCase converts a string to lower snake_case
+func toSnakeCase(s string) string {
+	var out strings.Builder
+	prevUnderscore := false
+	for i, r := range s {
+		if r >= 'A' && r <= 'Z' {
+			r = r + ('a' - 'A')
+		}
+		if r == ' ' || r == '-' || r == '.' {
+			if !prevUnderscore && i > 0 {
+				out.WriteRune('_')
+				prevUnderscore = true
+			}
+			continue
+		}
+		if r == '_' {
+			if !prevUnderscore && i > 0 {
+				out.WriteRune('_')
+				prevUnderscore = true
+			}
+			continue
+		}
+		out.WriteRune(r)
+		prevUnderscore = false
+	}
+	return out.String()
+
 	// TODO: NPC changes
 }
 
-// updateGameMeta runs in the background to extract and update game metadata
+// updateGameMeta runs in the background to extract and update the stateful parts
+// of gamestate. This feels like the domain of gamestate. Might need to refactor.
 func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, request chat.ChatRequest, response *chat.ChatResponse) {
 	start := time.Now()
 	h.logger.Debug("Starting background game meta update", "game_state_id", gs.ID.String())
@@ -325,10 +366,16 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 		return
 	}
 
+	s, err := h.storage.GetScenario(ctx, gs.Scenario)
+	if err != nil {
+		h.logger.Error("Failed to get scenario from storage", "error", err, "game_state_id", gs.ID.String())
+		return
+	}
+
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: scenario.PromptStateExtractionInstructions,
+			Content: fmt.Sprintf(scenario.PromptStateExtractionInstructions, strings.Join(s.ContingencyRules, "\n- ")),
 		},
 		{
 			Role:    chat.ChatRoleSystem,

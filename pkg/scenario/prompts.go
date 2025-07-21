@@ -52,7 +52,11 @@ Output Format (example):
       "description": "A reclusive figure in a tattered cloak.",
       "location": "forest"
     }
-  ]
+  ],
+  "set_vars": {
+    "map_assembled": "true",
+    "crew_loyalty": "low"
+  }
 }
 
 Update Rules:
@@ -63,6 +67,8 @@ Update Rules:
 - If the item came from a location, u.
 - If the player gives away or discards an item, include it in \"remove_from_inventory\".
 - If the agent introduces a new NPC, add it to \"updated_npcs\" with only name, description, and location. 
+- It is ok to create new vars. Use snake_case for variable names, and keep names concise.
+-%s 
 `
 
 // Content rating prompts

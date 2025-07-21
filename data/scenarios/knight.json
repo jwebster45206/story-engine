@@ -1,0 +1,114 @@
+{
+  "name": "Last Knight of Camelot",
+  "story": "You are the final living knight of King Arthur’s Round Table. With Camelot fallen and the realm divided, you ride forth on a sacred quest to recover the Holy Grail and restore your kingdom. Your journey will take you across lands holy and heathen, testing your faith, your sword, and your soul.",
+  "rating": "PG13",
+  "locations": {
+    "Ruins of Camelot": {
+      "name": "Ruins of Camelot",
+      "description": "The broken remains of a once-great kingdom. Crumbling towers, empty halls, and faded glory. Your quest begins here.",
+      "exits": {
+        "north": "Enchanted Forest"
+      },
+      "blocked_exits": {
+        "south": "Only ghosts remain in the tombs below. You have no reason to go there."
+      },
+      "items": [
+        "rusted shield",
+        "banner of Camelot"
+      ]
+    },
+    "Enchanted Forest": {
+      "name": "Enchanted Forest",
+      "description": "A dense wood alive with whispered voices and ancient magic. Paths twist of their own will.",
+      "exits": {
+        "south": "Ruins of Camelot",
+        "east": "Hermit's Cave",
+        "west": "Witch's Glade",
+        "north": "Dragon's Peak"
+      }
+    },
+    "Hermit's Cave": {
+      "name": "Hermit's Cave",
+      "description": "A humble cave where a Christian hermit offers wisdom and healing, if you prove yourself worthy.",
+      "exits": {
+        "west": "Enchanted Forest"
+      }
+    },
+    "Witch's Glade": {
+      "name": "Witch's Glade",
+      "description": "A clearing lit by strange fire. A Pagan enchantress dwells here, neither enemy nor friend.",
+      "exits": {
+        "east": "Enchanted Forest"
+      }
+    },
+    "Dragon's Peak": {
+      "name": "Dragon's Peak",
+      "description": "A jagged mountain shrouded in mist. A terrible dragon guards a secret sacred to the Grail.",
+      "exits": {
+        "south": "Enchanted Forest"
+      },
+      "items": [
+        "dragon scale",
+        "fragment of the grail map"
+      ]
+    },
+    "Sanctum of the Grail": {
+      "name": "Sanctum of the Grail",
+      "description": "A hidden shrine of light and silence. The Holy Grail rests here—if you are worthy.",
+      "exits": {},
+      "blocked_exits": {
+        "any": "The path opens only to the pure of heart and bearer of the Grail Map."
+      },
+      "items": [
+        "holy grail"
+      ]
+    }
+  },
+  "inventory": [
+    "rusted shield",
+    "longsword",
+    "banner of Camelot"
+  ],
+  "npcs": {
+    "Hermit": {
+      "name": "Hermit",
+      "type": "hermit",
+      "disposition": "wise and cautious",
+      "description": "An old monk who survived the fall of Camelot. He offers cryptic guidance and healing, but tests your humility first.",
+      "important": true,
+      "location": "Hermit's Cave"
+    },
+    "Enchantress": {
+      "name": "Enchantress",
+      "type": "sorceress",
+      "disposition": "mysterious",
+      "description": "A powerful woman of the old ways. Her aid may come at a price, and she may change her mind tomorrow.",
+      "important": true,
+      "location": "Witch's Glade"
+    },
+    "Dragon of the Peak": {
+      "name": "Dragon of the Peak",
+      "type": "dragon",
+      "disposition": "hostile",
+      "description": "A fire-breathing beast who slumbers atop the grail’s final clue. It must be defeated or outwitted.",
+      "important": true,
+      "location": "Dragon's Peak"
+    }
+  },
+  "flags": {
+    "grail_map_complete": "no",
+    "dragon_defeated": "no",
+    "grail_acquired": "no"
+  },
+  "triggers": [
+    "The dragon must be defeated to claim the grail map fragment at Dragon's Peak.",
+    "The Sanctum of the Grail is only revealed when the grail_map_complete flag is set to 'yes'.",
+    "The grail_acquired flag is set when the player enters the Sanctum of the Grail and chooses to take the Holy Grail."
+  ],
+  "opening_prompt": "The wind howls through the broken walls of Camelot. You kneel one last time at Arthur's throne. With sword in hand and hope in your heart, you rise to begin your quest. Will you seek the Grail and restore what was lost?",
+  "opening_location": "Ruins of Camelot",
+  "opening_inventory": [
+    "rusted shield",
+    "longsword"
+  ]
+}

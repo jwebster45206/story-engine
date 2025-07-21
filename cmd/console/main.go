@@ -24,8 +24,6 @@ const (
 	ColorGreen = "\033[32m"
 	ColorBlue  = "\033[36m"
 	AgentName  = "Narrator"
-
-	ScenarioFile = "pirate.json" // TODO: Allow user to select scenario file
 )
 
 type ConsoleConfig struct {

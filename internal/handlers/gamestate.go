@@ -157,6 +157,8 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	gs.Location = s.OpeningLocation
 	gs.WorldLocations = s.Locations
 	gs.Inventory = s.OpeningInventory
+	gs.Vars = s.Vars
+	gs.ContingencyPrompts = s.ContingencyPrompts
 	gs.ID = uuid.New()
 
 	if err := h.storage.SaveGameState(r.Context(), gs.ID, &gs); err != nil {
