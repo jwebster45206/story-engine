@@ -64,7 +64,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			body:           nil,
 			mockSetup:      func(m *services.MockLLMAPI) {},
 			expectedStatus: http.StatusMethodNotAllowed,
-			expectedError:  "Method not allowed. Only POST is supported.",
+			expectedError:  "Method not allowed. Only POST is supported at /v1/chat.",
 		},
 		{
 			name:           "invalid JSON body",
@@ -137,7 +137,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			}
 
 			// Create HTTP request
-			req := httptest.NewRequest(tt.method, "/chat", bytes.NewBuffer(body))
+			req := httptest.NewRequest(tt.method, "/v1/chat", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
 
 			// Create response recorder
@@ -249,7 +249,7 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 	}
 	body, _ := json.Marshal(requestBody)
 
-	req := httptest.NewRequest(http.MethodPost, "/chat", bytes.NewBuffer(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
@@ -313,7 +313,7 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 	}
 	body, _ := json.Marshal(requestBody)
 
-	req := httptest.NewRequest(http.MethodPost, "/chat", bytes.NewBuffer(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat", bytes.NewBuffer(body))
 	// Intentionally not setting Content-Type
 
 	rr := httptest.NewRecorder()
