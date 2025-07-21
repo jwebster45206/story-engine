@@ -45,8 +45,8 @@ const PromptHistoryLimit = 10
 func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Only allow POST method
-	if r.Method != http.MethodPost {
+	// Only allow POST method and check for /v1/chat path
+	if r.Method != http.MethodPost || !strings.HasPrefix(r.URL.Path, "/v1/chat") {
 		h.logger.Warn("Method not allowed for chat endpoint",
 			"method", r.Method,
 			"path", r.URL.Path,
@@ -54,7 +54,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		response := ErrorResponse{
-			Error: "Method not allowed. Only POST is supported.",
+			Error: "Method not allowed. Only POST is supported at /v1/chat.",
 		}
 
 		if err := json.NewEncoder(w).Encode(response); err != nil {

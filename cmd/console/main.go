@@ -268,16 +268,65 @@ func main() {
 
 	printGreen("Connected to API successfully. ")
 
+	// List scenarios and allow user to select
+	scenarios, err := listScenarios(client, cfg.APIBaseURL)
+	if err != nil || len(scenarios) == 0 {
+		printRed("Failed to list scenarios: " + err.Error())
+		os.Exit(1)
+	}
+	printGreen("Available Scenarios:")
+	for i, s := range scenarios {
+		displayName := s
+		if strings.Contains(strings.ToLower(s), "egypt") {
+			displayName = "Egyptian Expedition"
+		} else if strings.Contains(strings.ToLower(s), "pirate") {
+			displayName = "Pirate Captain"
+		}
+		fmt.Printf("  %d - %s (%s)\n", i+1, displayName, s)
+	}
+	fmt.Println("\nSelect a scenario by number or enter the JSON filename:")
+	fmt.Print("Scenario: ")
+	var scenarioChoice string
+	scanner := bufio.NewScanner(os.Stdin)
+	for {
+		if !scanner.Scan() {
+			printRed("No scenario selected.")
+			os.Exit(1)
+		}
+		scenarioChoice = strings.TrimSpace(scanner.Text())
+		if scenarioChoice == "" {
+			fmt.Print("Scenario: ")
+			continue
+		}
+		// If number, map to filename
+		idx := -1
+		n, _ := fmt.Sscanf(scenarioChoice, "%d", &idx)
+		if n == 1 && idx > 0 && idx <= len(scenarios) {
+			scenarioChoice = scenarios[idx-1]
+		}
+		// Validate filename exists
+		found := false
+		for _, s := range scenarios {
+			if s == scenarioChoice {
+				found = true
+				break
+			}
+		}
+		if found {
+			break
+		}
+		printRed("Invalid selection. Please enter a valid number or filename.")
+		fmt.Print("Scenario: ")
+	}
+
 	// Create a new game state for this session
-	gs, err := createGameState(client, cfg.APIBaseURL)
+	gs, err := createGameState(client, cfg.APIBaseURL, scenarioChoice)
 	if err != nil {
 		printRed("Failed to create game state: " + err.Error())
 		os.Exit(1)
 	}
 	printGreen("Game state created: " + gs.ID.String())
 
-	// Print welcome message
-	printGreen("\nWelcome to Roleplay Agent Console.")
 	printGreen("Type your messages and press Enter. Type 'help' for instructions, or 'quit' to stop.")
 
 	printDivider()
@@ -292,7 +341,6 @@ func main() {
 	}
 
 	// Main chat loop
-	scanner := bufio.NewScanner(os.Stdin)
 	for {
 		printBlue("You: ")
 
@@ -342,7 +390,7 @@ func testConnection(client *http.Client, baseURL string) bool {
 }
 
 func getGameState(client *http.Client, baseURL string, gameStateID uuid.UUID) (*state.GameState, error) {
-	resp, err := client.Get(fmt.Sprintf("%s/gamestate/%s", baseURL, gameStateID))
+	resp, err := client.Get(fmt.Sprintf("%s/v1/gamestate/%s", baseURL, gameStateID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -368,10 +416,10 @@ func getGameState(client *http.Client, baseURL string, gameStateID uuid.UUID) (*
 	return &gameState, nil
 }
 
-func createGameState(client *http.Client, baseURL string) (*state.GameState, error) {
+func createGameState(client *http.Client, baseURL string, scenarioFile string) (*state.GameState, error) {
 	// Create a new game state
 	gameState := &state.GameState{
-		Scenario: ScenarioFile,
+		Scenario: scenarioFile,
 	}
 
 	jsonData, err := json.Marshal(gameState)
@@ -381,7 +429,7 @@ func createGameState(client *http.Client, baseURL string) (*state.GameState, err
 
 	// Send POST request to create game state
 	resp, err := client.Post(
-		baseURL+"/gamestate",
+		baseURL+"/v1/gamestate",
 		"application/json",
 		bytes.NewBuffer(jsonData),
 	)
@@ -436,7 +484,7 @@ func sendChatMessageWithProgress(client *http.Client, baseURL string, gameStateI
 	go func() {
 		// Send POST request
 		resp, err := client.Post(
-			baseURL+"/chat",
+			baseURL+"/v1/chat",
 			"application/json",
 			bytes.NewBuffer(jsonData),
 		)
@@ -509,7 +557,7 @@ func sendChatMessageWithProgress(client *http.Client, baseURL string, gameStateI
 }
 
 func getScenario(client *http.Client, baseURL string, filename string) (*scenario.Scenario, error) {
-	resp, err := client.Get(fmt.Sprintf("%s/scenario/%s", baseURL, filename))
+	resp, err := client.Get(fmt.Sprintf("%s/v1/scenarios/%s", baseURL, filename))
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -533,6 +581,31 @@ func getScenario(client *http.Client, baseURL string, filename string) (*scenari
 		return nil, fmt.Errorf("failed to parse scenario response: %w", err)
 	}
 	return &s, nil
+}
+
+func listScenarios(client *http.Client, baseURL string) ([]string, error) {
+	resp, err := client.Get(baseURL + "/v1/scenarios")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+	var scenarioMap map[string]string
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(body, &scenarioMap); err != nil {
+		return nil, err
+	}
+	// Return the filenames as a slice
+	scenarios := make([]string, 0, len(scenarioMap))
+	for _, filename := range scenarioMap {
+		scenarios = append(scenarios, filename)
+	}
+	return scenarios, nil
 }
 
 func getEnv(key, defaultValue string) string {

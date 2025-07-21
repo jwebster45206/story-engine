@@ -25,7 +25,7 @@ func TestGameStateHandler_Create(t *testing.T) {
 
 	// Test creating a new game state
 	reqBody := `{"scenario":"foo_scenario.json"}`
-	req := httptest.NewRequest(http.MethodPost, "/gamestate", strings.NewReader(reqBody))
+	req := httptest.NewRequest(http.MethodPost, "/v1/gamestate", strings.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json") // This was missing!
 	rr := httptest.NewRecorder()
 
@@ -95,7 +95,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/gamestate/"+tt.gameStateID, nil)
+			req := httptest.NewRequest(http.MethodGet, "/v1/gamestate/"+tt.gameStateID, nil)
 			rr := httptest.NewRecorder()
 
 			handler.ServeHTTP(rr, req)
@@ -169,7 +169,7 @@ func TestGameStateHandler_Delete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodDelete, "/gamestate/"+tt.gameStateID, nil)
+			req := httptest.NewRequest(http.MethodDelete, "/v1/gamestate/"+tt.gameStateID, nil)
 			rr := httptest.NewRecorder()
 
 			handler.ServeHTTP(rr, req)
@@ -210,7 +210,7 @@ func TestGameStateHandler_MethodNotAllowed(t *testing.T) {
 
 	for _, method := range methods {
 		t.Run(method, func(t *testing.T) {
-			req := httptest.NewRequest(method, "/gamestate", nil)
+			req := httptest.NewRequest(method, "/v1/gamestate", nil)
 			rr := httptest.NewRecorder()
 
 			handler.ServeHTTP(rr, req)
@@ -258,7 +258,9 @@ func TestGameStateHandler_MissingID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, tt.path, nil)
+			// Update path to use v1 prefix
+			v1Path := strings.Replace(tt.path, "/gamestate", "/v1/gamestate", 1)
+			req := httptest.NewRequest(tt.method, v1Path, nil)
 			rr := httptest.NewRecorder()
 
 			handler.ServeHTTP(rr, req)

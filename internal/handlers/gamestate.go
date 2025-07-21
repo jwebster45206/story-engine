@@ -37,7 +37,7 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// Parse the path to extract ID for GET/DELETE operations
-	path := strings.TrimPrefix(r.URL.Path, "/gamestate")
+	path := strings.TrimPrefix(r.URL.Path, "/v1/gamestate")
 	var gameStateID uuid.UUID
 	var err error
 

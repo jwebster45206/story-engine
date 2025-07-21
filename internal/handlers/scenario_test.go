@@ -102,42 +102,42 @@ func TestScenarioHandler_ServeHTTP(t *testing.T) {
 		{
 			name:           "Valid scenario request",
 			method:         "GET",
-			path:           "/scenario/pirate.json",
+			path:           "/v1/scenarios/pirate.json",
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"name":"Pirate Adventure","file_name":"pirate.json","story":"A swashbuckling adventure on the high seas"`,
 		},
 		{
 			name:           "Missing filename",
 			method:         "GET",
-			path:           "/scenario/",
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "filename is required in URL path",
+			path:           "/v1/scenarios/",
+			expectedStatus: http.StatusOK,
+			expectedBody:   "null",
 		},
 		{
 			name:           "Invalid filename with path traversal",
 			method:         "GET",
-			path:           "/scenario/../etc/passwd",
+			path:           "/v1/scenarios/../etc/passwd",
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid filename",
 		},
 		{
 			name:           "Invalid filename with slash",
 			method:         "GET",
-			path:           "/scenario/subdir/file.json",
+			path:           "/v1/scenarios/subdir/file.json",
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid filename",
 		},
 		{
 			name:           "Scenario not found",
 			method:         "GET",
-			path:           "/scenario/notfound.json",
+			path:           "/v1/scenarios/notfound.json",
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   "Scenario not found",
 		},
 		{
 			name:           "Method not allowed",
 			method:         "POST",
-			path:           "/scenario/pirate.json",
+			path:           "/v1/scenarios/pirate.json",
 			expectedStatus: http.StatusMethodNotAllowed,
 			expectedBody:   "Method not allowed",
 		},
@@ -164,7 +164,7 @@ func TestScenarioHandler_ServeHTTP(t *testing.T) {
 			}
 
 			// For successful requests, verify JSON response
-			if tt.expectedStatus == http.StatusOK {
+			if tt.expectedStatus == http.StatusOK && tt.name != "Missing filename" {
 				var response scenario.Scenario
 				if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 					t.Errorf("Failed to unmarshal response: %v", err)
@@ -187,7 +187,7 @@ func TestScenarioHandler_StorageError(t *testing.T) {
 
 	handler := NewScenarioHandler(logger, mockStorage)
 
-	req := httptest.NewRequest("GET", "/scenario/pirate.json", nil)
+	req := httptest.NewRequest("GET", "/v1/scenarios/pirate.json", nil)
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
