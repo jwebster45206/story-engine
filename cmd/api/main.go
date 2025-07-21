@@ -60,14 +60,15 @@ func main() {
 	mux.Handle("/health", healthHandler)
 
 	chatHandler := handlers.NewChatHandler(llmService, log, storage)
-	mux.Handle("/chat", chatHandler)
+	mux.Handle("/v1/chat", chatHandler)
 
 	gameStateHandler := handlers.NewGameStateHandler(storage, log)
-	mux.Handle("/gamestate", gameStateHandler)
-	mux.Handle("/gamestate/", gameStateHandler)
+	mux.Handle("/v1/gamestate", gameStateHandler)
+	mux.Handle("/v1/gamestate/", gameStateHandler)
 
 	scenarioHandler := handlers.NewScenarioHandler(log, storage)
-	mux.Handle("/scenario/", scenarioHandler)
+	mux.Handle("/v1/scenarios", scenarioHandler)
+	mux.Handle("/v1/scenarios/", scenarioHandler)
 
 	handler := middleware.Logger(mux)
 	server := &http.Server{

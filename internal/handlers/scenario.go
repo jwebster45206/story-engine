@@ -14,6 +14,28 @@ type ScenarioHandler struct {
 	storage services.Storage
 }
 
+// ListScenarios lists all available scenario files
+func (h *ScenarioHandler) ListScenarios(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	scenarios, err := h.storage.ListScenarios(ctx)
+	if err != nil {
+		h.log.Error("Failed to list scenarios", "error", err)
+		http.Error(w, "Failed to list scenarios", http.StatusInternalServerError)
+		return
+	}
+	data, err := json.Marshal(scenarios)
+	if err != nil {
+		h.log.Error("Failed to marshal scenario list", "error", err)
+		http.Error(w, "Failed to process scenario list", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write(data); err != nil {
+		h.log.Error("Failed to write scenario list response", "error", err)
+	}
+}
+
 func NewScenarioHandler(log *slog.Logger, storage services.Storage) *ScenarioHandler {
 	return &ScenarioHandler{
 		log:     log,
@@ -24,18 +46,22 @@ func NewScenarioHandler(log *slog.Logger, storage services.Storage) *ScenarioHan
 func (h *ScenarioHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		h.handleGet(w, r)
+		if r.URL.Path == "/v1/scenarios" || r.URL.Path == "/v1/scenarios/" {
+			h.ListScenarios(w, r)
+		} else {
+			h.handleGet(w, r)
+		}
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
 func (h *ScenarioHandler) handleGet(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/scenario/")
+	path := strings.TrimPrefix(r.URL.Path, "/v1/scenarios/")
 	filename := strings.TrimSpace(path)
 
-	if filename == "" || filename == "/scenario" {
-		http.Error(w, "filename is required in URL path (e.g., /scenario/pirate.json)", http.StatusBadRequest)
+	if filename == "" || filename == "/scenarios" {
+		http.Error(w, "filename is required in URL path (e.g., /scenarios/pirate.json)", http.StatusBadRequest)
 		return
 	}
 
