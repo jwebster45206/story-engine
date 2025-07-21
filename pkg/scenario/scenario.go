@@ -19,11 +19,13 @@ type Scenario struct {
 	Locations        map[string]Location `json:"locations,omitempty"`         // Map of location names to Location objects
 	Inventory        []string            `json:"inventory,omitempty"`         // Potential inventory items throughout the scenario
 	NPCs             map[string]NPC      `json:"npcs,omitempty"`              // Map of NPC names to their data
-	Flags            map[string]string   `json:"flags,omitempty"`             // Map of flags and their values
 	OpeningPrompt    string              `json:"opening_prompt,omitempty"`    // Initial prompt to start the scenario
 	OpeningLocation  string              `json:"opening_location,omitempty"`  // Initial location for the user
 	OpeningInventory []string            `json:"opening_inventory,omitempty"` // Initial inventory items for the user
-	// TODO: Triggers
+
+	Vars               map[string]string `json:"vars,omitempty"`                // Custom variables for the scenario
+	ContingencyPrompts []string          `json:"contingency_prompts,omitempty"` // Conditional prompts for LLM
+	ContingencyRules   []string          `json:"contingency_rules,omitempty"`   // Backend rules for LLM to follow
 }
 
 type ContentRating string

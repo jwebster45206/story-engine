@@ -21,7 +21,9 @@ type GameState struct {
 	Inventory []string `json:"user_inventory,omitempty"`
 
 	ChatHistory []chat.ChatMessage `json:"chat_history,omitempty"` // Conversation history
-	// Flags       map[string]bool         `json:"game_flags,omitempty"`
+
+	Vars               map[string]string `json:"vars,omitempty"` // Game variables (e.g. flags, counters)
+	ContingencyPrompts []string          `json:"contingency_prompts,omitempty"`
 }
 
 func NewGameState(scenarioFileName string) *GameState {

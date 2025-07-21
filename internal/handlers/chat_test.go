@@ -356,6 +356,10 @@ func TestApplyMetaUpdate(t *testing.T) {
 			{Item: "Apple", From: "Tavern", To: "user_inventory"},
 			{Item: "Gold", From: "user_inventory", To: "Tavern"},
 		},
+		SetVars: map[string]string{
+			"test Var":    "value1",
+			"another_var": "value2",
+		},
 	}
 
 	applyMetaUpdate(gs, meta)
@@ -367,4 +371,10 @@ func TestApplyMetaUpdate(t *testing.T) {
 	tavern := gs.WorldLocations["Tavern"]
 	assert.NotContains(t, tavern.Items, "Apple", "item should be removed from Tavern")
 	assert.Contains(t, tavern.Items, "Gold", "new item should be added to Tavern items")
+
+	// SetVars assertions
+	if assert.NotNil(t, gs.Vars, "Vars map should be initialized") {
+		assert.Equal(t, "value1", gs.Vars["test_var"], "test Var should be upserted as test_var")
+		assert.Equal(t, "value2", gs.Vars["another_var"], "another var should be upserted as another_var")
+	}
 }
