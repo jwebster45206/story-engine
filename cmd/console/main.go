@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -595,10 +596,16 @@ func listScenarios(client *http.Client, baseURL string) ([]string, error) {
 	if err := json.Unmarshal(body, &scenarioMap); err != nil {
 		return nil, err
 	}
-	// Return the filenames as a slice
-	scenarios := make([]string, 0, len(scenarioMap))
-	for _, filename := range scenarioMap {
-		scenarios = append(scenarios, filename)
+
+	// Sort scenario names
+	var names []string
+	for name := range scenarioMap {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	scenarios := make([]string, 0, len(names))
+	for _, name := range names {
+		scenarios = append(scenarios, scenarioMap[name])
 	}
 	return scenarios, nil
 }
