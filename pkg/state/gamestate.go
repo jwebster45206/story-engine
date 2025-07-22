@@ -41,15 +41,6 @@ func (gs *GameState) Validate() error {
 	return nil
 }
 
-// GetClosingPrompt returns a closing prompt for the game state
-// This prompt could be customized based on the game state.
-func (gs *GameState) GetClosingPrompt() chat.ChatMessage {
-	return chat.ChatMessage{
-		Role:    chat.ChatRoleSystem,
-		Content: scenario.ClosingPromptGeneral,
-	}
-}
-
 // GetStatePrompt provides gameplay and story instructions to the LLM.
 // It also provides scenario context and current game state context.
 func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, error) {
@@ -123,9 +114,6 @@ func (gs *GameState) GetChatMessages(requestMessage string, s *scenario.Scenario
 		Role:    chat.ChatRoleUser,
 		Content: requestMessage,
 	})
-
-	// Add closing prompt
-	messages = append(messages, gs.GetClosingPrompt())
 
 	return messages, nil
 }

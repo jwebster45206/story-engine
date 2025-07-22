@@ -175,7 +175,9 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Role:    chat.ChatRoleUser,
 		Content: request.Message,
 	})
+
 	// Add the LLM's response to the game state
+	response.Message = strings.TrimRight(response.Message, "\n")
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
 		Role:    chat.ChatRoleAgent,
 		Content: response.Message,

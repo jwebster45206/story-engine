@@ -264,8 +264,8 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 	copy(capturedMessagesCopy, capturedMainChatMessages)
 	mu.Unlock()
 
-	if len(capturedMessagesCopy) != 4 {
-		t.Fatalf("Expected 4 messages, got %d", len(capturedMessagesCopy))
+	if len(capturedMessagesCopy) != 3 {
+		t.Fatalf("Expected 3 messages, got %d", len(capturedMessagesCopy))
 	}
 
 	// Check that the user message (third message) is correct
@@ -284,9 +284,6 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 	}
 	if capturedMessagesCopy[1].Role != chat.ChatRoleSystem {
 		t.Errorf("Expected second message to be system message, got %s", capturedMessagesCopy[1].Role)
-	}
-	if capturedMessagesCopy[3].Role != chat.ChatRoleSystem {
-		t.Errorf("Expected fourth message to be system message, got %s", capturedMessagesCopy[3].Role)
 	}
 }
 

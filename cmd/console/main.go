@@ -19,11 +19,12 @@ import (
 
 // ANSI color codes
 const (
-	ColorReset = "\033[0m"
-	ColorRed   = "\033[31m"
-	ColorGreen = "\033[32m"
-	ColorBlue  = "\033[36m"
-	AgentName  = "Narrator"
+	ColorReset    = "\033[0m"
+	ColorRed      = "\033[31m"
+	ColorGreen    = "\033[32m"
+	ColorBlue     = "\033[36m"
+	ColorLavender = "\033[35m"
+	AgentName     = "Narrator"
 )
 
 type ConsoleConfig struct {
@@ -118,8 +119,25 @@ func wrapText(text string, width int) string {
 }
 
 func printWrapped(text string) {
-	wrapped := wrapText(text, 80) // 80 characters is a good default for most terminals
-	fmt.Print(wrapped)
+	wrapped := wrapText(text, 80)
+	lines := strings.Split(wrapped, "\n")
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		// Detect speaker: start of line, word(s), colon, then space or text
+		if len(trimmed) > 0 {
+			if idx := strings.Index(trimmed, ":"); idx > 0 && idx <= 20 {
+				// Only color if colon is after 1-2 words (not a paragraph)
+				speaker := trimmed[:idx]
+				rest := trimmed[idx+1:]
+				// Only color if speaker is a single word or two
+				if len(strings.Fields(speaker)) <= 2 {
+					fmt.Printf("%s%s:%s%s\n", ColorLavender, speaker, ColorReset, rest)
+					continue
+				}
+			}
+		}
+		fmt.Println(line)
+	}
 }
 
 func printHelp() {
@@ -219,18 +237,6 @@ func handleCommand(cfg *ConsoleConfig, input string, gsID uuid.UUID, client *htt
 		}
 		println("")
 		return true
-
-	case "gs":
-		jsonData, err := json.MarshalIndent(gs, "", "  ")
-		if err != nil {
-			printRed("Failed to serialize game state: " + err.Error())
-			return true
-		} else {
-			printGreen("Game state:")
-			printWrapped(string(jsonData))
-			println("")
-			return true
-		}
 
 	default:
 		return false
