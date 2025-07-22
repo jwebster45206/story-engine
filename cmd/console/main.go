@@ -13,7 +13,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/pkg/chat"
-	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
@@ -143,15 +142,17 @@ func printWrapped(text string) {
 }
 
 func printHelp() {
-	printGreen("=== ROLEPLAY AGENT COMMANDS ===")
+	printGreen("=== STORY ENGINE COMMANDS ===")
 	fmt.Println()
 	printGreen("Game Commands:")
-	fmt.Println("  help     - Show this help message")
-	fmt.Println("  quit     - Exit the game")
+	fmt.Println("  help      - Show this help message")
+	fmt.Println("  quit      - Exit the game")
+	fmt.Println("  inventory - List your current inventory")
+	fmt.Println("  location  - Show your current location")
 	fmt.Println()
 	printGreen("How to Play:")
 	fmt.Println("  - Type your message and press Enter to interact with the AI agent")
-	fmt.Println("  - The agent will respond in character based on the roleplay scenario")
+	fmt.Println("  - The narrator will respond in character based on the scenario")
 	fmt.Println("  - Use natural language to describe actions, ask questions, or continue the story")
 	fmt.Println()
 	printGreen("Tips:")
@@ -204,39 +205,42 @@ func handleCommand(cfg *ConsoleConfig, input string, gsID uuid.UUID, client *htt
 		}
 	}
 
-	// Get Scenario from API
-	var s *scenario.Scenario
-	s, err := getScenario(client, cfg.APIBaseURL, gs.Scenario)
-	if err != nil {
-		printRed("Failed to get scenario: " + err.Error())
-		return true
-	}
-
 	switch command {
 
 	case "i", "inventory":
 		if len(gs.Inventory) == 0 {
-			printGreen(AgentName + ": Your inventory is empty.")
+			printGreen("Your inventory is empty.")
 			println("")
 		} else {
 			items := strings.Join(gs.Inventory, "\n- ")
-			printGreen(AgentName + ": Your inventory contains:")
+			printGreen("Your inventory contains:")
 			printGreen("- " + items)
+			println("")
+		}
+		return true
+
+	case "v", "vars":
+		if len(gs.Vars) == 0 {
+			printGreen("No variables are set.")
+			println("")
+		} else {
+			var varLines []string
+			for k, v := range gs.Vars {
+				varLines = append(varLines, fmt.Sprintf("%s = %v", k, v))
+			}
+			printGreen("Current variables:")
+			printGreen("- " + strings.Join(varLines, "\n- "))
 			println("")
 		}
 		return true
 
 	case "l", "location":
 		if gs.Location == "" {
-			printGreen(AgentName + ": You are in an unknown location.")
+			printGreen("You are in an unknown location.")
 			println("")
 			return true
 		}
-		if s, ok := s.Locations[gs.Location]; ok {
-			printGreen(fmt.Sprintf("%s: %s, %s", AgentName, gs.Location, s))
-		} else {
-			printGreen(fmt.Sprintf("%s: %s", AgentName, gs.Location))
-		}
+		printGreen("Current location: " + gs.Location)
 		println("")
 		return true
 
@@ -385,7 +389,7 @@ func main() {
 			}
 		}
 		if showPrefix {
-			fmt.Printf("\n%sNarrator:%s ", ColorGreen, ColorReset)
+			fmt.Printf("\n%s%s:%s ", ColorGreen, AgentName, ColorReset)
 		} else {
 			fmt.Println()
 		}
@@ -572,33 +576,6 @@ func sendChatMessageWithProgress(client *http.Client, baseURL string, gameStateI
 			fmt.Print(".")
 		}
 	}
-}
-
-func getScenario(client *http.Client, baseURL string, filename string) (*scenario.Scenario, error) {
-	resp, err := client.Get(fmt.Sprintf("%s/v1/scenarios/%s", baseURL, filename))
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		var errorResp ErrorResponse
-		if err := json.Unmarshal(body, &errorResp); err != nil {
-			return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
-		}
-		return nil, fmt.Errorf("failed to get scenario: %s", errorResp.Error)
-	}
-
-	var s scenario.Scenario
-	if err := json.Unmarshal(body, &s); err != nil {
-		return nil, fmt.Errorf("failed to parse scenario response: %w", err)
-	}
-	return &s, nil
 }
 
 func listScenarios(client *http.Client, baseURL string) ([]string, error) {
