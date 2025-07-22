@@ -62,7 +62,9 @@ Update Rules:
 - If the item came from a location, u.
 - If the player gives away or discards an item, include it in \"remove_from_inventory\".
 - If the agent introduces a new NPC, add it to \"updated_npcs\" with only name, description, and location. 
-- It is ok to create new vars. Use snake_case for variable names, and keep names concise.
+- Never invent new vars. 
+
+Only apply the following contingency_rules if the most recent narrative clearly shows that the condition has been met. Do not set vars to true unless the agent explicitly confirms that the condition happened. If a rule does not clearly apply in the most recent narrative, ignore it. Rules:
 -%s 
 `
 
