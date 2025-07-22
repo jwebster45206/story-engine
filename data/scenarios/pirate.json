@@ -9,11 +9,11 @@
       "exits": {
         "east": "Black Pearl",
         "south": "Sleepy Mermaid",
-        "north": "British Docks"
+        "north": "British Docks",
+        "west": "Tortuga Market"
       },
       "blocked_exits": {
-        "north": "The British Navy patrols this area.",
-        "west": "A dense and impenetrable jungle blocks the way."
+        "north": "The British Navy patrols this area."
       }
     },
     "British Docks": {
@@ -62,8 +62,21 @@
       "name": "Sleepy Mermaid",
       "description": "A rowdy inn filled with pirates and rumors of treasure.",
       "exits": {
-        "north": "Tortuga"
+        "north": "Tortuga",
+        "back door": "Tortuga Market"
       }
+    },
+    "Tortuga Market": {
+      "name": "Tortuga Market",
+      "description": "A bustling market filled with merchants, pirates, and rare goods. The air is thick with the scent of spices and the sound of haggling.",
+      "exits": {
+        "main street": "Tortuga",
+        "Sleepy Mermaid back door": "Sleepy Mermaid"
+      },
+      "items": [
+        "forged documents",
+        "rare spices"
+      ]
     }
   },
   "inventory": [
@@ -85,7 +98,7 @@
       "disposition": "friendly",
       "description": "A grizzled old pirate with a wooden leg. Fellow captain and sometimes ally.",
       "important": true,
-      "location": "Tortuga "
+      "location": "Tortuga Market"
     },
     "Gibbs": {
       "name": "Gibbs",
@@ -117,7 +130,7 @@
       "disposition": "shrewd and cunning",
       "description": "A merchant who deals in common items necessary for life at sea. Unpleasant to deal with, but has what you need.",
       "important": false,
-      "location": "Tortuga"
+      "location": "Tortuga Market"
     }
   },
   "vars": {
@@ -128,11 +141,11 @@
     "british_docks_accessed": "false"
   },
   "contingency_prompts": [
-    "When the player first enters the Sleepy Mermaid, he will be greeted by Calypso. ",
-    "The player must use persuasion or charm to convince Calypso to give them her half of the treasure map. ",
-    "Allow the player to access the British Docks through creative in-world solutions. .",
-    "Stealth is required to access the gold doubloons in the British Docks. The player must use stealth to avoid soldiers and lockpicking to open a chest. ",
-    "Davey does not appear in the story until the player obtains Calypso's half of the treasure map."
+    "When the player first enters the Sleepy Mermaid, Calypso greets him. ",
+    "Calypso never leaves the Sleepy Mermaid, so the player must find her there.",
+    "The player must use persuasion or charm to convince Calypso to give them her half of the treasure map.",
+    "Allow the player to access the British Docks through creative in-world solutions.",
+    "Stealth is required to access the gold doubloons in the British Docks. The player must use stealth to avoid soldiers and lockpicking to open a chest."
   ],
   "contingency_rules": [
     "When the player meets Calypso, set the var `calypso_met` to `true`.",
@@ -142,7 +155,8 @@
     "When the player convinces the blacksmith to start repairs on the Black Pearl, set `black_pearl_repairs_started` to true and remove the ship repair ledger from inventory.",
     "When the player pays the blacksmith 500 gold doubloons, set `blacksmith_paid` to true and remove the 500 gold doubloons from inventory.",
     "The game ends when the following are complete: `treasure_map_assembled` is true, `black_pearl_repairs_started` is true, and `blacksmith_paid` is true.",
-    "The game also ends if the player repeatedly breaks character."
+    "The game also ends if the player repeatedly breaks character.",
+    "Charming Marvin knows about the chest with 510 gold doubloons in the British Docks. The player must assist Marvin with a debt collection job to obtain this information."
   ],
   "opening_prompt": "You stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your crew awaits your orders, and the Black Pearl is ready to set sail. What will you do next?",
   "opening_location": "Tortuga",
