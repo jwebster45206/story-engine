@@ -25,6 +25,8 @@ const (
 	ColorBlue     = "\033[36m"
 	ColorLavender = "\033[35m"
 	AgentName     = "Narrator"
+
+	speakerTextLen = 20 // Max length of speaker text before we stop coloring
 )
 
 type ConsoleConfig struct {
@@ -125,7 +127,7 @@ func printWrapped(text string) {
 		trimmed := strings.TrimSpace(line)
 		// Detect speaker: start of line, word(s), colon, then space or text
 		if len(trimmed) > 0 {
-			if idx := strings.Index(trimmed, ":"); idx > 0 && idx <= 20 {
+			if idx := strings.Index(trimmed, ":"); idx > 0 && idx <= speakerTextLen {
 				// Only color if colon is after 1-2 words (not a paragraph)
 				speaker := trimmed[:idx]
 				rest := trimmed[idx+1:]
@@ -372,8 +374,22 @@ func main() {
 		}
 
 		// Print the narrator response
-		fmt.Printf("\n%sNarrator:%s ", ColorGreen, ColorReset)
-		printWrapped(response.Message)
+		msg := response.Message
+		// Detect if the first line is a speaker line (assume not blank)
+		firstLine := strings.TrimSpace(strings.Split(msg, "\n")[0])
+		showPrefix := true
+		if idx := strings.Index(firstLine, ":"); idx > 0 && idx <= speakerTextLen {
+			speaker := firstLine[:idx]
+			if len(strings.Fields(speaker)) <= 2 {
+				showPrefix = false
+			}
+		}
+		if showPrefix {
+			fmt.Printf("\n%sNarrator:%s ", ColorGreen, ColorReset)
+		} else {
+			fmt.Println()
+		}
+		printWrapped(msg)
 		fmt.Println()
 	}
 
