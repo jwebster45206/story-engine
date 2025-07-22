@@ -341,7 +341,6 @@ func main() {
 	if len(gs.ChatHistory) > 0 {
 		printWrapped(gs.ChatHistory[0].Content)
 		fmt.Println("")
-		fmt.Println("")
 	}
 
 	// Main chat loop
@@ -375,7 +374,6 @@ func main() {
 		// Print the narrator response
 		fmt.Printf("\n%sNarrator:%s ", ColorGreen, ColorReset)
 		printWrapped(response.Message)
-		fmt.Println()
 		fmt.Println()
 	}
 
