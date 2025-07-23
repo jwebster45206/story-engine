@@ -372,7 +372,18 @@ func main() {
 		}
 
 		// Send message to API with progress dots
-		response, err := sendChatMessageWithProgress(client, cfg.APIBaseURL, gs.ID, input)
+		var response *chat.ChatResponse
+		var err error
+		for attempt := 0; attempt < 2; attempt++ {
+			response, err = sendChatMessageWithProgress(client, cfg.APIBaseURL, gs.ID, input)
+			if err == nil {
+				break
+			}
+			if attempt == 0 {
+				printRed("retrying...")
+				time.Sleep(1 * time.Second)
+			}
+		}
 		if err != nil {
 			printRed(err.Error())
 			continue
