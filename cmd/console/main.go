@@ -280,22 +280,25 @@ func main() {
 	printGreen("Connected to API successfully. ")
 
 	// List scenarios and allow user to select
-	scenarios, err := listScenarios(client, cfg.APIBaseURL)
-	if err != nil || len(scenarios) == 0 {
+	scenarioMap, err := listScenarios(client, cfg.APIBaseURL)
+	if err != nil || len(scenarioMap) == 0 {
 		printRed("Failed to list scenarios: " + err.Error())
 		os.Exit(1)
 	}
-	printGreen("Available Scenarios:")
-	for i, s := range scenarios {
-		displayName := s
-		if strings.Contains(strings.ToLower(s), "egypt") {
-			displayName = "Egyptian Expedition"
-		} else if strings.Contains(strings.ToLower(s), "pirate") {
-			displayName = "Pirate Captain"
-		}
-		fmt.Printf("  %d - %s (%s)\n", i+1, displayName, s)
+
+	// Sort scenario scenarioNames (keys)
+	var scenarioNames []string
+	for name := range scenarioMap {
+		scenarioNames = append(scenarioNames, name)
 	}
-	fmt.Println("\nSelect a scenario by number or enter the JSON filename:")
+	sort.Strings(scenarioNames)
+
+	printGreen("Available Scenarios:")
+	for i, name := range scenarioNames {
+		fmt.Printf("  %d - %s (%s)\n", i+1, name, scenarioMap[name])
+	}
+
+	fmt.Println("\nSelect a scenario by number.")
 	fmt.Print("Scenario: ")
 	var scenarioChoice string
 	scanner := bufio.NewScanner(os.Stdin)
@@ -309,25 +312,22 @@ func main() {
 			fmt.Print("Scenario: ")
 			continue
 		}
-		// If number, map to filename
+
+		// if entry isn't an integer, error
+		if _, err := fmt.Sscanf(scenarioChoice, "%d", new(int)); err != nil {
+			printRed("Invalid selection. Please enter a valid number.")
+			fmt.Print("Scenario: ")
+			continue
+		}
+
 		idx := -1
 		n, _ := fmt.Sscanf(scenarioChoice, "%d", &idx)
-		if n == 1 && idx > 0 && idx <= len(scenarios) {
-			scenarioChoice = scenarios[idx-1]
-		}
-		// Validate filename exists
-		found := false
-		for _, s := range scenarios {
-			if s == scenarioChoice {
-				found = true
-				break
-			}
-		}
-		if found {
+		if n == 1 && idx > 0 && idx <= len(scenarioNames) {
+			k := scenarioMap[scenarioNames[idx-1]]
+			scenarioChoice = k
+			printGreen("You selected: " + scenarioChoice)
 			break
 		}
-		printRed("Invalid selection. Please enter a valid number or filename.")
-		fmt.Print("Scenario: ")
 	}
 
 	// Create a new game state for this session
@@ -590,7 +590,7 @@ func sendChatMessageWithProgress(client *http.Client, baseURL string, gameStateI
 	}
 }
 
-func listScenarios(client *http.Client, baseURL string) ([]string, error) {
+func listScenarios(client *http.Client, baseURL string) (map[string]string, error) {
 	resp, err := client.Get(baseURL + "/v1/scenarios")
 	if err != nil {
 		return nil, err
@@ -607,18 +607,7 @@ func listScenarios(client *http.Client, baseURL string) ([]string, error) {
 	if err := json.Unmarshal(body, &scenarioMap); err != nil {
 		return nil, err
 	}
-
-	// Sort scenario names
-	var names []string
-	for name := range scenarioMap {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	scenarios := make([]string, 0, len(names))
-	for _, name := range names {
-		scenarios = append(scenarios, scenarioMap[name])
-	}
-	return scenarios, nil
+	return scenarioMap, nil
 }
 
 func getEnv(key, defaultValue string) string {
