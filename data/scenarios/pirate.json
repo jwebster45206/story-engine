@@ -98,7 +98,10 @@
       "disposition": "friendly",
       "description": "A grizzled old pirate with a wooden leg. Fellow captain and sometimes ally.",
       "important": true,
-      "location": "Tortuga Market"
+      "location": "Tortuga Market",
+      "items": [
+        "Davey's half of the treasure map"
+      ]
     },
     "Gibbs": {
       "name": "Gibbs",
@@ -106,7 +109,8 @@
       "disposition": "loyal",
       "description": "Your loyal first mate with a keen sense of duty.",
       "important": true,
-      "location": "Black Pearl"
+      "location": "Black Pearl",
+      "items": []
     },
     "Calypso": {
       "name": "Calypso",
@@ -114,15 +118,20 @@
       "disposition": "teasing and tricky",
       "description": "A bartender at the Sleepy Mermaid, known for her enchanting stories and elusive nature.",
       "important": true,
-      "location": "Sleepy Mermaid"
+      "location": "Sleepy Mermaid",
+      "items": [
+        "Calypso's half of the treasure map",
+        "Bottle of rum"
+      ]
     },
-    "Blacksmith": {
-      "name": "Blacksmith",
-      "type": "blacksmith",
+    "Shipwright": {
+      "name": "Shipwright",
+      "type": "shipwright",
       "disposition": "gruff but helpful",
-      "description": "A burly blacksmith who will repair your ship, but requires 500 gold doubloons.",
+      "description": "A burly shipwright who will repair your ship, for a fee of 500 gold doubloons.",
       "important": false,
-      "location": "Sleepy Mermaid"
+      "location": "Sleepy Mermaid",
+      "items": []
     },
     "Charming Marvin": {
       "name": "Charming Marvin",
@@ -130,7 +139,15 @@
       "disposition": "shrewd and cunning",
       "description": "A merchant who deals in common items necessary for life at sea. Unpleasant to deal with, but has what you need.",
       "important": false,
-      "location": "Tortuga Market"
+      "location": "Tortuga Market",
+      "items": [
+        "forged documents",
+        "rare spices",
+        "british naval uniform",
+        "bottle of rum",
+        "black powder",
+        "flintlock pistol"
+      ]
     }
   },
   "vars": {

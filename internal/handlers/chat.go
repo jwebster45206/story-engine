@@ -271,22 +271,23 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 		fmt.Println("Processing moved item:", movedItem.Item, "from:", movedItem.From, "to:", movedItem.To)
 		// Handle move FROM
 		if movedItem.From != "" && movedItem.From != "user_inventory" {
-			// check for a matching name in locations
-			found := false
-			for key, loc := range gs.WorldLocations {
-				if loc.Name == movedItem.From {
-					for i, invItem := range loc.Items {
-						if invItem == movedItem.Item {
-							loc.Items = append(loc.Items[:i], loc.Items[i+1:]...)
-							gs.WorldLocations[key] = loc // Write back
-							found = true
-							break
-						}
+			if loc, ok := gs.WorldLocations[movedItem.From]; ok {
+				for i, invItem := range loc.Items {
+					if invItem == movedItem.Item {
+						loc.Items = append(loc.Items[:i], loc.Items[i+1:]...)
+						gs.WorldLocations[movedItem.From] = loc // Write back
+						break
 					}
 				}
-			}
-			if !found {
-				fmt.Println("Warning: Item", movedItem.Item, "not found in location", movedItem.From)
+			} else if npc, ok := gs.NPCs[movedItem.From]; ok {
+				// If it's an NPC, remove the item from their inventory
+				for i, invItem := range npc.Items {
+					if invItem == movedItem.Item {
+						npc.Items = append(npc.Items[:i], npc.Items[i+1:]...)
+						gs.NPCs[movedItem.From] = npc // Write back
+						break
+					}
+				}
 			}
 		}
 
@@ -306,7 +307,13 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 				break
 			}
 		}
-		// TODO: check for a matching NPC name
+		if npc, ok := gs.NPCs[movedItem.To]; ok {
+			if npc.Items == nil {
+				npc.Items = make([]string, 0)
+			}
+			npc.Items = append(npc.Items, movedItem.Item)
+			gs.NPCs[movedItem.To] = npc // Save the updated struct
+		}
 	}
 
 	// Handle SetVars
