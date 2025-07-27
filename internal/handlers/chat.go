@@ -215,11 +215,12 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Error encoding chat response", "error", err)
 		}
+		return
 	}
 
 	// Update game state with new chat message
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
-		Role:    chat.ChatRoleUser,
+		Role:    cmdResult.Role,
 		Content: request.Message,
 	})
 

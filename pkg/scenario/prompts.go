@@ -79,7 +79,3 @@ const locationRules = "The user may only move to locations defined in the `locat
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
 const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\n" + statePromptGameState + "\n\n" + locationRules + "\n\n"
-
-const CmdLocationPrompt = "Describe the user's location in 3 paragraphs of 2-3 sentences each. Consider the current state of the game world. Briefly describe exits, items that can be obtained. Succinctly describe any NPCs that are in this location. Do not describe NPCs that are not present in this location. Do not advance the story at all."
-
-const CmdInventoryPrompt = "Describe the items in the user's inventory in a narrative manner, using 2-3 sentences. Do not advance the story at all."

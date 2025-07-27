@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
-	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
 type CommandType string
@@ -90,16 +89,16 @@ func (gs *GameState) TryHandleCommand(input string) (*CommandResult, error) {
 	switch cmd {
 	case CmdLook:
 		return &CommandResult{
-			Handled: false,
-			Message: scenario.CmdLocationPrompt,
-			Role:    chat.ChatRoleSystem,
+			Handled: true,
+			Message: gs.DescribeLocation(),
+			Role:    chat.ChatRoleAgent,
 		}, nil
 
 	case CmdInventory:
 		return &CommandResult{
-			Handled: false,
-			Message: scenario.CmdInventoryPrompt,
-			Role:    chat.ChatRoleSystem,
+			Handled: true,
+			Message: gs.DescribeInventory(),
+			Role:    chat.ChatRoleAgent,
 		}, nil
 
 	default:
@@ -111,16 +110,16 @@ func (gs *GameState) TryHandleCommand(input string) (*CommandResult, error) {
 	}
 }
 
-// func (gs *GameState) DescribeLocation() string {
-// 	if loc, ok := gs.WorldLocations[gs.Location]; ok {
-// 		return loc.Description
-// 	}
-// 	return "You are in an unknown location."
-// }
+func (gs *GameState) DescribeLocation() string {
+	if loc, ok := gs.WorldLocations[gs.Location]; ok {
+		return loc.Description
+	}
+	return "You are in an unknown location."
+}
 
-// func (gs *GameState) DescribeInventory() string {
-// 	if len(gs.Inventory) == 0 {
-// 		return "Your inventory is empty."
-// 	}
-// 	return "You have: - " + strings.Join(gs.Inventory, "\n- ")
-// }
+func (gs *GameState) DescribeInventory() string {
+	if len(gs.Inventory) == 0 {
+		return "Your inventory is empty."
+	}
+	return "You have: - " + strings.Join(gs.Inventory, "\n- ")
+}
