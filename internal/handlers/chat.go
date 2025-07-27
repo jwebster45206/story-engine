@@ -137,7 +137,32 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	messages, err := gs.GetChatMessages(request.Message, scenario, PromptHistoryLimit)
+	cmdResult, err := gs.TryHandleCommand(request.Message)
+	if err != nil {
+		h.logger.Error("Error handling command in chat", "error", err, "command", request.Message)
+		w.WriteHeader(http.StatusInternalServerError)
+		response := ErrorResponse{
+			Error: "Failed to handle command in chat.",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
+		return
+	}
+	if cmdResult.Handled {
+		h.logger.Debug("Command handled in chat", "command", request.Message, "response", cmdResult.Message)
+		response := chat.ChatResponse{
+			Message:     cmdResult.Message,
+			GameStateID: gs.ID,
+			ChatHistory: gs.ChatHistory,
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding chat response", "error", err)
+		}
+		return
+	}
+
+	messages, err := gs.GetChatMessages(cmdResult.Message, scenario, PromptHistoryLimit)
 	if err != nil {
 		h.logger.Error("Error getting chat messages", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)

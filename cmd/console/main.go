@@ -208,18 +208,6 @@ func handleCommand(cfg *ConsoleConfig, input string, gsID uuid.UUID, client *htt
 
 	switch command {
 
-	case "i", "inventory":
-		if len(gs.Inventory) == 0 {
-			printGreen("Your inventory is empty.")
-			println("")
-		} else {
-			items := strings.Join(gs.Inventory, "\n- ")
-			printGreen("Your inventory contains:")
-			printGreen("- " + items)
-			println("")
-		}
-		return true
-
 	case "v", "vars":
 		if len(gs.Vars) == 0 {
 			printGreen("No variables are set.")
@@ -233,16 +221,6 @@ func handleCommand(cfg *ConsoleConfig, input string, gsID uuid.UUID, client *htt
 			printGreen("- " + strings.Join(varLines, "\n- "))
 			println("")
 		}
-		return true
-
-	case "l", "location":
-		if gs.Location == "" {
-			printGreen("You are in an unknown location.")
-			println("")
-			return true
-		}
-		printGreen("Current location: " + gs.Location)
-		println("")
 		return true
 
 	default:
