@@ -67,13 +67,11 @@ func parseCommand(input string) (CommandType, string) {
 	return cmd, arg
 }
 
-// CommandResult represents an early evaluation of a chat prompt
-// to determine if it can be handled by a command without calling the LLM,
-// or to generate the prompt from a template.
+// CommandResult is an early evaluation of a chat prompt.
 type CommandResult struct {
-	Handled     bool   // True if the command was fully resolved and no LLM call is needed
-	Message     string // Message or prompt to return
-	MessageRole string // Role for the message, e.g. "user", "assistant", "system"
+	Handled bool   // True if the command was fully resolved and no LLM call is needed
+	Message string // Message or prompt to return
+	Role    string // Role for the message, e.g. "user", "assistant", "system"
 }
 
 // TryHandleCommand looks for shortcut commands and handles them without LLM if possible.
@@ -82,26 +80,34 @@ func (gs *GameState) TryHandleCommand(input string) (*CommandResult, error) {
 
 	if cmd == "" {
 		// Pass the input through if not a recognized command.
-		return &CommandResult{Handled: false, Message: input, MessageRole: chat.ChatRoleUser}, nil
+		return &CommandResult{
+			Handled: false,
+			Message: input,
+			Role:    chat.ChatRoleUser,
+		}, nil
 	}
 
 	switch cmd {
 	case CmdLook:
 		return &CommandResult{
-			Handled:     false,
-			Message:     scenario.CmdLocationPrompt,
-			MessageRole: chat.ChatRoleSystem,
+			Handled: false,
+			Message: scenario.CmdLocationPrompt,
+			Role:    chat.ChatRoleSystem,
 		}, nil
 
 	case CmdInventory:
 		return &CommandResult{
-			Handled:     false,
-			Message:     scenario.CmdInventoryPrompt,
-			MessageRole: chat.ChatRoleSystem,
+			Handled: false,
+			Message: scenario.CmdInventoryPrompt,
+			Role:    chat.ChatRoleSystem,
 		}, nil
 
 	default:
-		return &CommandResult{Handled: false, Message: input, MessageRole: chat.ChatRoleUser}, nil
+		return &CommandResult{
+			Handled: false,
+			Message: input,
+			Role:    chat.ChatRoleUser,
+		}, nil
 	}
 }
 

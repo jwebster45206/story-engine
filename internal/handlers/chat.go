@@ -162,7 +162,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	messages, err := gs.GetChatMessages(cmdResult.Message, scenario, PromptHistoryLimit)
+	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, scenario, PromptHistoryLimit)
 	if err != nil {
 		h.logger.Error("Error getting chat messages", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -195,6 +195,28 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Cancel any in-process meta update for this game state
+	h.metaCancelMu.Lock()
+	if cancel, ok := h.metaCancel[gs.ID]; ok {
+		cancel()
+	}
+	metaCtx, metaCancel := context.WithCancel(context.Background())
+	h.metaCancel[gs.ID] = metaCancel
+	h.metaCancelMu.Unlock()
+
+	// Start background goroutine to update game meta (PromptState)
+	go h.updateGameMeta(metaCtx, gs, request, response)
+
+	// Exit early if the prompt is a system message
+	if cmdResult.Role == chat.ChatRoleSystem {
+		response.GameStateID = gs.ID
+		//response.ChatHistory = gs.ChatHistory
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding chat response", "error", err)
+		}
+	}
+
 	// Update game state with new chat message
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
 		Role:    chat.ChatRoleUser,
@@ -221,20 +243,8 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Cancel any in-process meta update for this game state
-	h.metaCancelMu.Lock()
-	if cancel, ok := h.metaCancel[gs.ID]; ok {
-		cancel()
-	}
-	metaCtx, metaCancel := context.WithCancel(context.Background())
-	h.metaCancel[gs.ID] = metaCancel
-	h.metaCancelMu.Unlock()
-
-	// Start background goroutine to update game meta (PromptState)
-	go h.updateGameMeta(metaCtx, gs, request, response)
-
 	response.GameStateID = gs.ID
-	response.ChatHistory = gs.ChatHistory
+	//response.ChatHistory = gs.ChatHistory
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		h.logger.Error("Error encoding chat response", "error", err)
