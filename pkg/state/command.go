@@ -11,15 +11,15 @@ type CommandType string
 const (
 	CmdLook      CommandType = "look"
 	CmdInventory CommandType = "inventory"
-	CmdMove      CommandType = "move"
-	CmdGet       CommandType = "get"
-	CmdDrop      CommandType = "drop"
-	CmdTalk      CommandType = "talk"
-	CmdAsk       CommandType = "ask"
-	CmdUse       CommandType = "use"
-	CmdHelp      CommandType = "help"
-	CmdQuit      CommandType = "quit"
-	CmdNone      CommandType = "" // No command, used for fallback
+	// CmdMove      CommandType = "move"
+	// CmdGet       CommandType = "get"
+	// CmdDrop      CommandType = "drop"
+	// CmdTalk      CommandType = "talk"
+	// CmdAsk       CommandType = "ask"
+	// CmdUse       CommandType = "use"
+	// CmdHelp      CommandType = "help"
+	// CmdQuit CommandType = "quit"
+	CmdNone CommandType = "" // No command, used for fallback
 )
 
 // parseCommand parses the input string and returns the command type and argument if recognized.
@@ -31,39 +31,30 @@ func parseCommand(input string) (CommandType, string) {
 		"l":         CmdLook,
 		"inventory": CmdInventory,
 		"i":         CmdInventory,
-		"move":      CmdMove,
-		"m":         CmdMove,
-		"get":       CmdGet,
-		"g":         CmdGet,
-		"drop":      CmdDrop,
-		"d":         CmdDrop,
-		"talk":      CmdTalk,
-		"t":         CmdTalk,
-		"ask":       CmdAsk,
-		"use":       CmdUse,
-		"help":      CmdHelp,
-		"h":         CmdHelp,
-		"quit":      CmdQuit,
-		"q":         CmdQuit,
+		// "move":      CmdMove,
+		// "m":         CmdMove,
+		// "get":       CmdGet,
+		// "g":         CmdGet,
+		// "drop":      CmdDrop,
+		// "d":         CmdDrop,
+		// "talk": CmdTalk,
+		// "t":    CmdTalk,
+		// "ask":  CmdAsk,
+		// "use":  CmdUse,
+		// "help": CmdHelp,
+		// "h":    CmdHelp,
+		// "quit": CmdQuit,
+		// "q":    CmdQuit,
 	}
 	trimmed := strings.TrimSpace(strings.ToLower(input))
 	if trimmed == "" {
 		return CmdNone, ""
 	}
-	parts := strings.Fields(trimmed)
-	if len(parts) == 0 {
-		return CmdNone, ""
-	}
-	cmdStr := parts[0]
-	cmd, ok := known[cmdStr]
+	cmd, ok := known[trimmed]
 	if !ok {
 		return CmdNone, ""
 	}
-	arg := ""
-	if len(parts) > 1 {
-		arg = strings.Join(parts[1:], " ")
-	}
-	return cmd, arg
+	return cmd, ""
 }
 
 // CommandResult is an early evaluation of a chat prompt.

@@ -38,7 +38,7 @@ func NewChatHandler(llmService services.LLMService, logger *slog.Logger, storage
 	}
 }
 
-const PromptHistoryLimit = 10
+const PromptHistoryLimit = 6
 
 // ServeHTTP handles HTTP requests for chat.
 // This is the primary endpoint for user interaction with the LLM.
