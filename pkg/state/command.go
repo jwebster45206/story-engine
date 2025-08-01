@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
@@ -103,7 +104,7 @@ func (gs *GameState) TryHandleCommand(input string) (*CommandResult, error) {
 
 func (gs *GameState) DescribeLocation() string {
 	if loc, ok := gs.WorldLocations[gs.Location]; ok {
-		return loc.Description
+		return fmt.Sprintf("%s: %s", loc.Name, loc.Description)
 	}
 	return "You are in an unknown location."
 }
