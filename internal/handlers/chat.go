@@ -205,7 +205,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.metaCancelMu.Unlock()
 
 	// Start background goroutine to update game meta (PromptState)
-	go h.updateGameMeta(metaCtx, gs, request, response)
+	go h.updateGameMeta(metaCtx, gs, request.Message, response.Message)
 
 	// Exit early if the prompt is a system message
 	if cmdResult.Role == chat.ChatRoleSystem {
@@ -396,7 +396,7 @@ func toSnakeCase(s string) string {
 
 // updateGameMeta runs in the background to extract and update the stateful parts
 // of gamestate. This feels like the domain of gamestate. Might need to refactor.
-func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, request chat.ChatRequest, response *chat.ChatResponse) {
+func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, userMessage string, responseMessage string) {
 	start := time.Now()
 	h.logger.Debug("Starting background game meta update", "game_state_id", gs.ID.String())
 	defer func() {
@@ -428,11 +428,11 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, r
 		},
 		{
 			Role:    chat.ChatRoleUser,
-			Content: request.Message,
+			Content: userMessage,
 		},
 		{
 			Role:    chat.ChatRoleAgent,
-			Content: response.Message,
+			Content: responseMessage,
 		},
 	}
 

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
@@ -11,6 +12,7 @@ import (
 
 // MockStorage is a mock implementation of Storage for testing
 type MockStorage struct {
+	mu         sync.RWMutex
 	gamestates map[uuid.UUID]*state.GameState
 	scenarios  map[string]*scenario.Scenario
 	pingError  error
@@ -29,16 +31,22 @@ func NewMockStorage() *MockStorage {
 
 // SetPingSuccess configures the mock to succeed on ping
 func (m *MockStorage) SetPingSuccess() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.pingError = nil
 }
 
 // SetPingError configures the mock to fail on ping with the given error
 func (m *MockStorage) SetPingError(err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.pingError = err
 }
 
 // Ping mocks storage ping
 func (m *MockStorage) Ping(ctx context.Context) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if m.pingError != nil {
 		return m.pingError
 	}
@@ -56,12 +64,16 @@ func (m *MockStorage) SaveGameState(ctx context.Context, uuid uuid.UUID, gamesta
 	if gamestate == nil {
 		return errors.New("gamestate cannot be nil")
 	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.gamestates[uuid] = gamestate
 	return nil
 }
 
 // LoadGameState mocks loading a gamestate
 func (m *MockStorage) LoadGameState(ctx context.Context, uuid uuid.UUID) (*state.GameState, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	gamestate, exists := m.gamestates[uuid]
 	if !exists {
 		return nil, nil // Return nil for not found
@@ -71,6 +83,8 @@ func (m *MockStorage) LoadGameState(ctx context.Context, uuid uuid.UUID) (*state
 
 // DeleteGameState mocks deleting a gamestate
 func (m *MockStorage) DeleteGameState(ctx context.Context, uuid uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	delete(m.gamestates, uuid)
 	return nil
 }
