@@ -208,18 +208,6 @@ func handleCommand(cfg *ConsoleConfig, input string, gsID uuid.UUID, client *htt
 
 	switch command {
 
-	case "i", "inventory":
-		if len(gs.Inventory) == 0 {
-			printGreen("Your inventory is empty.")
-			println("")
-		} else {
-			items := strings.Join(gs.Inventory, "\n- ")
-			printGreen("Your inventory contains:")
-			printGreen("- " + items)
-			println("")
-		}
-		return true
-
 	case "v", "vars":
 		if len(gs.Vars) == 0 {
 			printGreen("No variables are set.")
@@ -233,16 +221,6 @@ func handleCommand(cfg *ConsoleConfig, input string, gsID uuid.UUID, client *htt
 			printGreen("- " + strings.Join(varLines, "\n- "))
 			println("")
 		}
-		return true
-
-	case "l", "location":
-		if gs.Location == "" {
-			printGreen("You are in an unknown location.")
-			println("")
-			return true
-		}
-		printGreen("Current location: " + gs.Location)
-		println("")
 		return true
 
 	default:
@@ -280,20 +258,14 @@ func main() {
 	printGreen("Connected to API successfully. ")
 
 	// List scenarios and allow user to select
-	scenarios, err := listScenarios(client, cfg.APIBaseURL)
-	if err != nil || len(scenarios) == 0 {
+	orderedNames, scenarioMap, err := listScenarios(client, cfg.APIBaseURL)
+	if err != nil || len(orderedNames) == 0 {
 		printRed("Failed to list scenarios: " + err.Error())
 		os.Exit(1)
 	}
 	printGreen("Available Scenarios:")
-	for i, s := range scenarios {
-		displayName := s
-		if strings.Contains(strings.ToLower(s), "egypt") {
-			displayName = "Egyptian Expedition"
-		} else if strings.Contains(strings.ToLower(s), "pirate") {
-			displayName = "Pirate Captain"
-		}
-		fmt.Printf("  %d - %s (%s)\n", i+1, displayName, s)
+	for i := range orderedNames {
+		fmt.Printf("  %d - %s (%s)\n", i+1, orderedNames[i], scenarioMap[orderedNames[i]])
 	}
 	fmt.Println("\nSelect a scenario by number or enter the JSON filename:")
 	fmt.Print("Scenario: ")
@@ -312,22 +284,13 @@ func main() {
 		// If number, map to filename
 		idx := -1
 		n, _ := fmt.Sscanf(scenarioChoice, "%d", &idx)
-		if n == 1 && idx > 0 && idx <= len(scenarios) {
-			scenarioChoice = scenarios[idx-1]
-		}
-		// Validate filename exists
-		found := false
-		for _, s := range scenarios {
-			if s == scenarioChoice {
-				found = true
-				break
-			}
-		}
-		if found {
+		if n == 1 && idx > 0 && idx <= len(orderedNames) {
+			scenarioName := orderedNames[idx-1]
+			scenarioChoice = scenarioMap[scenarioName]
 			break
 		}
-		printRed("Invalid selection. Please enter a valid number or filename.")
-		fmt.Print("Scenario: ")
+		fmt.Println("Invalid selection. ")
+		os.Exit(1)
 	}
 
 	// Create a new game state for this session
@@ -579,22 +542,22 @@ func sendChatMessageWithProgress(client *http.Client, baseURL string, gameStateI
 	}
 }
 
-func listScenarios(client *http.Client, baseURL string) ([]string, error) {
+func listScenarios(client *http.Client, baseURL string) ([]string, map[string]string, error) {
 	resp, err := client.Get(baseURL + "/v1/scenarios")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+		return nil, nil, fmt.Errorf("API returned status %d", resp.StatusCode)
 	}
 	var scenarioMap map[string]string
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := json.Unmarshal(body, &scenarioMap); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Sort scenario names
@@ -603,11 +566,7 @@ func listScenarios(client *http.Client, baseURL string) ([]string, error) {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	scenarios := make([]string, 0, len(names))
-	for _, name := range names {
-		scenarios = append(scenarios, scenarioMap[name])
-	}
-	return scenarios, nil
+	return names, scenarioMap, nil
 }
 
 func getEnv(key, defaultValue string) string {

@@ -128,7 +128,7 @@
       "name": "Shipwright",
       "type": "shipwright",
       "disposition": "gruff but helpful",
-      "description": "A burly shipwright who will repair your ship, for a fee of 500 gold doubloons.",
+      "description": "A burly shipwright who will repair your ship. He requires a ship repair ledger to begin the work, and a payment of 500 gold doubloons to complete the repairs.",
       "important": false,
       "location": "Sleepy Mermaid",
       "items": []
@@ -137,7 +137,7 @@
       "name": "Charming Marvin",
       "type": "merchant",
       "disposition": "shrewd and cunning",
-      "description": "A merchant who deals in common items necessary for life at sea. Unpleasant to deal with, but has what you need.",
+      "description": "A merchant who deals in common items necessary for life at sea. Unpleasant smell and unpleasant demeanor, but has what you need.",
       "important": false,
       "location": "Tortuga Market",
       "items": [
@@ -160,20 +160,19 @@
   "contingency_prompts": [
     "When the player first enters the Sleepy Mermaid, Calypso greets him. ",
     "Calypso never leaves the Sleepy Mermaid, so the player must find her there.",
-    "The player must use persuasion or charm to convince Calypso to give them her half of the treasure map.",
-    "Allow the player to access the British Docks through creative in-world solutions.",
-    "Stealth is required to access the gold doubloons in the British Docks. The player must use stealth to avoid soldiers and lockpicking to open a chest."
+    "Davey never enters the story until after the player has received Calypso's half of the treasure map.",
+    "Allow the player to access the British Docks through creative in-world solutions only.",
+    "The shipwright can begin work for a small deposit, but require payment of 500 gold doubloons to complete the repairs.",
+    "The chest on the British Docks is too heavy for one person to carry."
   ],
   "contingency_rules": [
-    "When the player meets Calypso, set the var `calypso_met` to `true`.",
-    "When the player assembles the treasure map, remove both halves from inventory and add the assembled treasure map. Set var `treasure_map_assembled` to `true`.",
-    "When the player accesses British Docks, remove `north` from `blocked_exits` in the Tortuga location. Set var `british_docks_accessed` to `true`.",
-    "When the player successfully accesses the gold doubloons, add 510 gold doubloons to inventory. Do not add the chest.",
-    "When the player convinces the blacksmith to start repairs on the Black Pearl, set `black_pearl_repairs_started` to true and remove the ship repair ledger from inventory.",
-    "When the player pays the blacksmith 500 gold doubloons, set `blacksmith_paid` to true and remove the 500 gold doubloons from inventory.",
-    "The game ends when the following are complete: `treasure_map_assembled` is true, `black_pearl_repairs_started` is true, and `blacksmith_paid` is true.",
-    "The game also ends if the player repeatedly breaks character.",
-    "Charming Marvin knows about the chest with 510 gold doubloons in the British Docks. The player must assist Marvin with a debt collection job to obtain this information."
+    "Only when the player meets Calypso, set the var `calypso_met` to `true`.",
+    "Only when the player accesses British Docks, remove `north` from `blocked_exits` in the Tortuga location. Set var `british_docks_accessed` to `true`.",
+    "Only when the player successfully accesses the gold doubloons, add 510 gold doubloons to inventory. Do not add the chest.",
+    "Only when the player asks the shipwright to start repairs on the Black Pearl, set `black_pearl_repairs_started` to true and remove the ship repair ledger from inventory.",
+    "Only when the player pays the shipwright 500 gold doubloons, set `blacksmith_paid` to true and remove the 500 gold doubloons from inventory.",
+    "Only when the player's inventory contains both Calypso's half and Davey's half of the treasure map, set `treasure_map_assembled` to true. Also remove both halves from inventory and add 'assembled treasure map'.",
+    "The game ends when the following are complete: `treasure_map_assembled` is true, `black_pearl_repairs_started` is true, and `blacksmith_paid` is true."
   ],
   "opening_prompt": "You stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your crew awaits your orders, and the Black Pearl is ready to set sail. What will you do next?",
   "opening_location": "Tortuga",

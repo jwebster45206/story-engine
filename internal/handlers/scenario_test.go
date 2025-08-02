@@ -53,43 +53,43 @@ func TestScenarioHandler_ServeHTTP(t *testing.T) {
 	// Create a test logger that discards output
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 
-	// Create mock storage with test data
-	mockStorage := &MockStorage{
-		scenarios: map[string]*scenario.Scenario{
-			"pirate.json": {
-				Name:            "Pirate Adventure",
-				FileName:        "pirate.json",
-				Story:           "A swashbuckling adventure on the high seas",
-				OpeningPrompt:   "Welcome to the pirate adventure!",
-				OpeningLocation: "ship_deck",
-				Locations: map[string]scenario.Location{
-					"ship_deck": {
-						Name:        "ship_deck",
-						Description: "You are on the deck of a pirate ship",
-						Exits:       map[string]string{"north": "captain_cabin"},
+	// Create a function to generate mock storage with test data for each test
+	createMockStorage := func() *MockStorage {
+		return &MockStorage{
+			scenarios: map[string]*scenario.Scenario{
+				"pirate.json": {
+					Name:            "Pirate Adventure",
+					FileName:        "pirate.json",
+					Story:           "A swashbuckling adventure on the high seas",
+					OpeningPrompt:   "Welcome to the pirate adventure!",
+					OpeningLocation: "ship_deck",
+					Locations: map[string]scenario.Location{
+						"ship_deck": {
+							Name:        "ship_deck",
+							Description: "You are on the deck of a pirate ship",
+							Exits:       map[string]string{"north": "captain_cabin"},
+						},
+						"captain_cabin": {
+							Name:        "captain_cabin",
+							Description: "The private cabin of the pirate captain.",
+						},
 					},
-					"captain_cabin": {
-						Name:        "captain_cabin",
-						Description: "The private cabin of the pirate captain.",
+					NPCs: map[string]scenario.NPC{
+						"Captain Blackbeard": {
+							Name:        "Captain Blackbeard",
+							Type:        "captain",
+							Disposition: "neutral",
+							Description: "A fearsome pirate captain",
+							IsImportant: true,
+							Location:    "ship_deck",
+						},
 					},
+					Inventory:        []string{"sword", "compass", "map"},
+					OpeningInventory: []string{"sword"},
 				},
-				NPCs: map[string]scenario.NPC{
-					"Captain Blackbeard": {
-						Name:        "Captain Blackbeard",
-						Type:        "captain",
-						Disposition: "neutral",
-						Description: "A fearsome pirate captain",
-						IsImportant: true,
-						Location:    "ship_deck",
-					},
-				},
-				Inventory:        []string{"sword", "compass", "map"},
-				OpeningInventory: []string{"sword"},
 			},
-		},
+		}
 	}
-
-	handler := NewScenarioHandler(logger, mockStorage)
 
 	tests := []struct {
 		name           string
@@ -145,7 +145,12 @@ func TestScenarioHandler_ServeHTTP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create a fresh mock storage instance for each subtest to avoid race conditions
+			mockStorage := createMockStorage()
 			mockStorage.shouldErr = tt.shouldErr
+
+			// Create handler with this test's mock storage
+			handler := NewScenarioHandler(logger, mockStorage)
 
 			req := httptest.NewRequest(tt.method, tt.path, nil)
 			w := httptest.NewRecorder()
