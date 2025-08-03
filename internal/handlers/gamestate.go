@@ -153,6 +153,10 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		})
 	}
 
+	if s.OpeningScene != "" {
+		gs.SceneName = s.OpeningScene
+	}
+
 	gs.NPCs = s.NPCs
 	gs.Location = s.OpeningLocation
 	gs.WorldLocations = s.Locations

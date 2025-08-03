@@ -11,8 +11,9 @@ import (
 
 // GameState is the current state of a roleplay game session.
 type GameState struct {
-	ID       uuid.UUID `json:"id"`                 // Unique ID per session
-	Scenario string    `json:"scenario,omitempty"` // Filename of the scenario being played. Ex: "foo_scenario.json"
+	ID        uuid.UUID `json:"id"`                   // Unique ID per session
+	Scenario  string    `json:"scenario,omitempty"`   // Filename of the scenario being played. Ex: "foo_scenario.json"
+	SceneName string    `json:"scene_name,omitempty"` // Current scene name in the scenario, if applicable
 
 	NPCs           map[string]scenario.NPC      `json:"world_npcs,omitempty"`
 	WorldLocations map[string]scenario.Location `json:"world_locations,omitempty"` // Current locations in the game world
