@@ -4,7 +4,7 @@
   "rating": "PG13",
   "scenes": {
     "shipwright": {
-      "story": "Your ship needs repairs before you can set sail again. You must find the shipwright and hire him to fix The Black Pearl. You'll also encounter the mysterious Calypso at the Sleepy Mermaid.",
+      "story": "Your ship needs repairs before you can set sail again. You must find the shipwright and hire him to fix The Black Pearl. ",
       "locations": {
         "Tortuga": {
           "name": "Tortuga",
@@ -114,19 +114,13 @@
       "contingency_prompts": [
         "When the player first enters the Sleepy Mermaid, Calypso greets him.",
         "Calypso never leaves the Sleepy Mermaid, so the player must find her there.",
-        "The shipwright can begin work for a small deposit, but requires payment of 500 gold doubloons to complete the repairs."
+        "The shipwright can BEGIN work for a small deposit. To FINISH the repairs, he requires payment of 500 gold doubloons."
       ],
       "contingency_rules": [
         "Only when the player meets Calypso, set the var `calypso_met` to `true`.",
         "Only when the player asks the shipwright to start repairs on the Black Pearl, set `black_pearl_repairs_started` to true and remove the ship repair ledger from inventory.",
-        "Scene advances to 'british_docks' when `black_pearl_repairs_started` is true and `calypso_met` is true."
-      ],
-      "opening_prompt": "You stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your ship, The Black Pearl, needs repairs before you can set sail. What will you do next?",
-      "opening_location": "Tortuga",
-      "opening_inventory": [
-        "cutlass",
-        "spyglass",
-        "lockpicks"
+        "Scene advances to 'british_docks' when `black_pearl_repairs_started` is true and `calypso_met` is true.",
+        "Use Calypso to drop hints about the British Docks and gold."
       ]
     },
     "british_docks": {
@@ -257,27 +251,22 @@
       },
       "vars": {
         "british_docks_accessed": "false",
-        "gold_stolen": "false"
+        "gold_stolen": "false",
+        "shipright_paid": "false"
       },
       "contingency_prompts": [
-        "Allow the player to access the British Docks through creative in-world solutions only.",
+        "Allow the player to access the British Docks through creative in-world solutions, but not brute force.",
         "The chest on the British Docks is too heavy for one person to carry.",
         "British naval uniforms and forged documents might be useful for infiltrating the British Docks."
       ],
       "contingency_rules": [
-        "Only when the player successfully accesses the gold doubloons, add 510 gold doubloons to inventory. Do not add the chest. Set `gold_stolen` to true.",
-        "Only when the player accesses British Docks, set var `british_docks_accessed` to `true`.",
-        "Scene advances to 'calypsos_map' when `gold_stolen` is true."
-      ],
-      "opening_prompt": "The shipwright has started work on The Black Pearl, but you need 500 gold doubloons to pay him. You've heard rumors of a chest of gold at the British Docks, but it's heavily guarded. How will you get the gold?",
-      "opening_location": "Tortuga",
-      "opening_inventory": [
-        "cutlass",
-        "spyglass",
-        "lockpicks"
+        "Only when the player accesses the British Docks, set `british_docks_accessed` to true.",
+        "Only when the player steals the chest of gold doubloons, set `gold_stolen` to true and add '510 gold doubloons' to inventory.",
+        "When the player has returned to the Black Pearl and paid the shipwright, remove 500 gold doubloons from inventory, leaving 10 gold doubloons, and set shipright_paid to true.",
+        "When shipwright_paid is true, the scene advances to 'calypsos_map'."
       ]
     },
-    "calypsos_map": {
+     "calypsos_map": {
       "story": "With gold in hand, you can pay the shipwright. But Calypso has something special for you - a treasure map that will lead to even greater riches. Complete your business and claim the map.",
       "locations": {
         "Tortuga": {
@@ -369,23 +358,26 @@
         "map_obtained": "false"
       },
       "contingency_prompts": [
-        "Calypso will only give the treasure map to someone she trusts - someone who has proven themselves worthy.",
-        "The shipwright must be paid before the ship repairs are complete."
+        "Calypso will only give the treasure map to someone she trusts - someone who has proven themselves worthy."
       ],
       "contingency_rules": [
-        "Only when the player pays the shipwright 500 gold doubloons, set `blacksmith_paid` to true and remove the 500 gold doubloons from inventory.",
         "Only when the player receives the treasure map from Calypso, set `map_obtained` to true and add 'treasure map' to inventory.",
-        "The game ends successfully when both `blacksmith_paid` is true and `map_obtained` is true."
-      ],
-      "opening_prompt": "You return to Tortuga with a chest full of gold doubloons. The shipwright awaits payment, and Calypso has hinted she has something special for a worthy pirate captain. Time to complete your business and claim your rewards.",
-      "opening_location": "Tortuga",
-      "opening_inventory": [
-        "cutlass",
-        "spyglass",
-        "lockpicks",
-        "510 gold doubloons"
+        "When the player returns to the Black Pearl, with `map_obtained` true, the game ends successfully."
       ]
     }
   },
-  "opening_scene": "shipwright"
+  "opening_scene": "shipwright",
+  "opening_prompt": "You stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your ship, The Black Pearl, needs repairs before you can set sail. What will you do next?",
+  "opening_location": "Tortuga",
+  "opening_inventory": [
+    "cutlass",
+    "spyglass",
+    "lockpicks"
+  ],
+  "contingency_prompts": [
+    "Use some humor and piratical voicing in responses."
+  ],
+  "contingency_rules": [
+    "Never let Gibbs leave the player's side. He is always ready to assist and will follow the player wherever they go."
+  ]
 }
