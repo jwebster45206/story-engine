@@ -15,15 +15,14 @@ func TestGameState_GetStatePrompt(t *testing.T) {
 		name        string
 		gameState   *GameState
 		scenario    *scenario.Scenario
+		expected    chat.ChatMessage
 		expectError bool
-		description string
 	}{
 		{
 			name:        "nil gamestate",
 			gameState:   nil,
 			scenario:    &scenario.Scenario{},
 			expectError: true,
-			description: "should return error when gamestate is nil",
 		},
 		{
 			name: "traditional scenario without scenes",
@@ -54,8 +53,20 @@ func TestGameState_GetStatePrompt(t *testing.T) {
 				Name:  "Test Scenario",
 				Story: "A test adventure",
 			},
-			expectError: false,
-			description: "should handle traditional scenario without scenes",
+			expected: chat.ChatMessage{
+				Role: chat.ChatRoleSystem,
+				Content: `The user is roleplaying this scenario: A test adventure
+
+The following JSON describes the complete world and current state.
+
+Game State:
+` + "```json\n" + `{"world_npcs":{"Gibbs":{"name":"Gibbs","type":"pirate","disposition":"loyal","location":"Black Pearl"}},"world_locations":{"Tortuga":{"name":"Tortuga","description":"A pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass","spyglass"],"vars":{"test_var":"true"},"contingency_prompts":["Test prompt"]}
+` + "```" + `
+
+The user may only move to locations defined in the ` + "`locations`" + ` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.
+
+`,
+			},
 		},
 		{
 			name: "scene-based scenario with valid scene",
@@ -93,8 +104,20 @@ func TestGameState_GetStatePrompt(t *testing.T) {
 					},
 				},
 			},
-			expectError: false,
-			description: "should handle scene-based scenario correctly",
+			expected: chat.ChatMessage{
+				Role: chat.ChatRoleSystem,
+				Content: `The user is roleplaying this scenario: Find the shipwright
+
+The following JSON describes the complete world and current state.
+
+Game State:
+` + "```json\n" + `{"world_npcs":{"Shipwright":{"name":"Shipwright","type":"craftsman","disposition":"gruff","location":"Tortuga"}},"world_locations":{"Tortuga":{"name":"Tortuga","description":"A bustling pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass"],"vars":{"scene_var":"false"},"contingency_prompts":["Scene-specific prompt"]}
+` + "```" + `
+
+The user may only move to locations defined in the ` + "`locations`" + ` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.
+
+`,
+			},
 		},
 		{
 			name: "scene-based scenario with invalid scene",
@@ -110,7 +133,6 @@ func TestGameState_GetStatePrompt(t *testing.T) {
 				Scenes: map[string]scenario.Scene{},
 			},
 			expectError: true,
-			description: "should return error when scene not found",
 		},
 	}
 
@@ -130,37 +152,14 @@ func TestGameState_GetStatePrompt(t *testing.T) {
 				return
 			}
 
-			// Validate the result structure
-			if result.Role != chat.ChatRoleSystem {
-				t.Errorf("Expected role %s, got %s", chat.ChatRoleSystem, result.Role)
+			// Compare role
+			if result.Role != tt.expected.Role {
+				t.Errorf("Expected role %s, got %s", tt.expected.Role, result.Role)
 			}
 
-			if result.Content == "" {
-				t.Errorf("Expected non-empty content")
-			}
-
-			// For traditional scenarios, verify it uses the scenario story
-			if tt.gameState != nil && tt.gameState.SceneName == "" {
-				if !strings.Contains(result.Content, tt.scenario.Story) {
-					t.Errorf("Expected content to contain scenario story '%s'", tt.scenario.Story)
-				}
-			}
-
-			// For scene-based scenarios, verify it uses the scene story
-			if tt.gameState != nil && tt.gameState.SceneName != "" {
-				scene := tt.scenario.Scenes[tt.gameState.SceneName]
-				expectedStory := scene.Story
-				if expectedStory == "" {
-					expectedStory = tt.scenario.Story // fallback
-				}
-				if !strings.Contains(result.Content, expectedStory) {
-					t.Errorf("Expected content to contain story '%s'", expectedStory)
-				}
-			}
-
-			// Verify JSON is present in the content
-			if !strings.Contains(result.Content, "```json") {
-				t.Errorf("Expected content to contain JSON block")
+			// Compare content directly
+			if result.Content != tt.expected.Content {
+				t.Errorf("Expected content:\n%s\n\nGot content:\n%s", tt.expected.Content, result.Content)
 			}
 		})
 	}
