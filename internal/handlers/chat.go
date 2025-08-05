@@ -257,6 +257,13 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 		return
 	}
 
+	// Handle scene change
+	if metaUpdate.SceneName != "" && metaUpdate.SceneName != gs.SceneName {
+		gs.SceneName = metaUpdate.SceneName
+		// TODO: When changing scenes, we might want to reset location, inventory, etc.
+		// For now, we just change the scene name.
+	}
+
 	// Handle location change
 	userLocationFound := false
 	if metaUpdate.UserLocation != "" {

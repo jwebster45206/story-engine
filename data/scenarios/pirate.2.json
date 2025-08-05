@@ -120,7 +120,8 @@
         "Only when the player meets Calypso, set the var `calypso_met` to `true`.",
         "Only when the player asks the shipwright to start repairs on the Black Pearl, set `black_pearl_repairs_started` to true and remove the ship repair ledger from inventory.",
         "Scene advances to 'british_docks' when `black_pearl_repairs_started` is true and `calypso_met` is true.",
-        "Use Calypso to drop hints about the British Docks and gold."
+        "Use Calypso to drop hints about the British Docks and gold.",
+        "As soon as black_pearl_repairs_started is true and calypso_met is true, advance to the next scene: 'british_docks'."
       ]
     },
     "british_docks": {
@@ -263,7 +264,7 @@
         "Only when the player accesses the British Docks, set `british_docks_accessed` to true.",
         "Only when the player steals the chest of gold doubloons, set `gold_stolen` to true and add '510 gold doubloons' to inventory.",
         "When the player has returned to the Black Pearl and paid the shipwright, remove 500 gold doubloons from inventory, leaving 10 gold doubloons, and set shipright_paid to true.",
-        "When shipwright_paid is true, the scene advances to 'calypsos_map'."
+        "As soon as `shipwright_paid` is true, the scene advances to 'calypsos_map'."
       ]
     },
      "calypsos_map": {

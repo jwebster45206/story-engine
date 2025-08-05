@@ -27,6 +27,7 @@ Instructions:
 Output Format (example):
 {
   "user_location": "forest",
+  "scene_name": "Enchanted Forest",
   "add_to_inventory": ["gold coin"],
   "remove_from_inventory": ["torch"],
   "moved_items": [

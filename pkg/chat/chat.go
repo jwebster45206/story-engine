@@ -51,6 +51,7 @@ func (cr *ChatRequest) Validate() error {
 // for the LLM to generate than a full game state.
 type MetaUpdate struct {
 	UserLocation        string            `json:"user_location,omitempty"`
+	SceneName           string            `json:"scene_name,omitempty"`
 	AddToInventory      []string          `json:"add_to_inventory,omitempty"`
 	RemoveFromInventory []string          `json:"remove_from_inventory,omitempty"`
 	SetVars             map[string]string `json:"set_vars,omitempty"`
