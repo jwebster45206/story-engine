@@ -153,10 +153,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		})
 	}
 
-	if s.OpeningScene != "" {
-		gs.SceneName = s.OpeningScene
-	}
-
+	// Initialize game state with scenario-level values
 	gs.NPCs = s.NPCs
 	gs.Location = s.OpeningLocation
 	gs.WorldLocations = s.Locations
@@ -164,6 +161,22 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	gs.Vars = s.Vars
 	gs.ContingencyPrompts = s.ContingencyPrompts
 	gs.ID = uuid.New()
+
+	// If scenes are used, load the first scene
+	if s.OpeningScene != "" {
+		err = gs.LoadScene(s, s.OpeningScene)
+		if err != nil {
+			h.logger.Warn("Failed to load opening scene", "error", err)
+			w.WriteHeader(http.StatusBadRequest)
+			response := ErrorResponse{
+				Error: "Failed to load opening scene: " + err.Error(),
+			}
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				h.logger.Error("Failed to encode error response", "error", err)
+			}
+			return
+		}
+	}
 
 	if err := h.storage.SaveGameState(r.Context(), gs.ID, &gs); err != nil {
 		h.logger.Error("Failed to save new game state", "error", err, "id", gs.ID.String())

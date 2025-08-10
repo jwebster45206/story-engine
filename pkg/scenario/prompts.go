@@ -60,9 +60,11 @@ Update Rules:
 - Do not allow movement to locations not in the scenario.
 - Do not allow movement through blocked exits.
 - If the agent describes the player acquiring an item, add it to "add_to_inventory".
-- If the item came from a location, u.
+- If the item came from a location, add it to "moved_items".
 - If the player gives away or discards an item, include it in \"remove_from_inventory\".
-- If the agent introduces a new NPC, add it to \"updated_npcs\" with only name, description, and location. 
+- If a NPC changes, add him or her to \"updated_npcs\" with only name, description, and location. 
+- Use only scenes that are defined in the scenario. Don't invent new scenes.
+- Whenever scene change conditions are met, set \"scene_name\" to the new scene.
 - Never invent new vars. 
 
 Only apply the following contingency_rules if the most recent narrative clearly shows that the condition has been met. Do not set vars to true unless the agent explicitly confirms that the condition happened. If a rule does not clearly apply in the most recent narrative, ignore it. Rules:

@@ -167,3 +167,26 @@ func (gs *GameState) DeepCopy() (*GameState, error) {
 
 	return &copy, nil
 }
+
+// LoadScene prepares game state with a new scene.
+func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
+	scene, ok := s.Scenes[sceneName]
+	if !ok {
+		return fmt.Errorf("scene %s not found in scenario %s", sceneName, s.Name)
+	}
+	gs.SceneName = sceneName
+
+	// Initialize Vars map if it's nil
+	if gs.Vars == nil {
+		gs.Vars = make(map[string]string)
+	}
+
+	// copy stateful elements to gamestate
+	for k, v := range scene.Vars {
+		if _, exists := gs.Vars[k]; !exists {
+			gs.Vars[k] = v
+		}
+	}
+
+	return nil
+}

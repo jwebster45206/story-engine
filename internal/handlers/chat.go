@@ -252,9 +252,9 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
+func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdate *chat.MetaUpdate) error {
 	if metaUpdate == nil {
-		return
+		return nil
 	}
 
 	// Handle scene change
@@ -291,7 +291,7 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 		// add to inventory if not already present
 		for _, invItem := range gs.Inventory {
 			if invItem == item {
-				return // Item already in inventory, skip adding
+				continue
 			}
 		}
 		// Item not found, add it
@@ -369,6 +369,14 @@ func applyMetaUpdate(gs *state.GameState, metaUpdate *chat.MetaUpdate) {
 		gs.Vars[snake] = v
 	}
 
+	// Update Scene
+	if metaUpdate.SceneName != "" && metaUpdate.SceneName != gs.SceneName {
+		err := gs.LoadScene(scenario, metaUpdate.SceneName)
+		if err != nil {
+			return fmt.Errorf("failed to load scene: %w", err)
+		}
+	}
+	return nil
 }
 
 // toSnakeCase converts a string to lower snake_case
@@ -467,7 +475,10 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 	}
 
 	// Apply the calculated state to the latest game state
-	applyMetaUpdate(latestGS, metaResponse)
+	if err := applyMetaUpdate(latestGS, s, metaResponse); err != nil {
+		h.logger.Error("Failed to apply meta update", "error", err, "game_state_id", latestGS.ID.String())
+		return
+	}
 
 	// Save the updated game state
 	if err := h.storage.SaveGameState(metaCtx, latestGS.ID, latestGS); err != nil {

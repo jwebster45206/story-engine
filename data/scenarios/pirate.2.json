@@ -117,11 +117,10 @@
         "The shipwright can BEGIN work for a small deposit. To FINISH the repairs, he requires payment of 500 gold doubloons."
       ],
       "contingency_rules": [
-        "Only when the player meets Calypso, set the var `calypso_met` to `true`.",
-        "Only when the player asks the shipwright to start repairs on the Black Pearl, set `black_pearl_repairs_started` to true and remove the ship repair ledger from inventory.",
-        "Scene advances to 'british_docks' when `black_pearl_repairs_started` is true and `calypso_met` is true.",
-        "Use Calypso to drop hints about the British Docks and gold.",
-        "As soon as black_pearl_repairs_started is true and calypso_met is true, advance to the next scene: 'british_docks'."
+        "If the player has met Calypso, set the var `calypso_met` to `true`.",
+        "If the shipwright agrees to start repairs on the Black Pearl, set `black_pearl_repairs_started` to true and remove the ship repair ledger from inventory.",
+        "Scene changes to 'british_docks' when `black_pearl_repairs_started` is true.",
+        "If black_pearl_repairs_started is true and calypso_met is true, advance to the next scene: 'british_docks'."
       ]
     },
     "british_docks": {
@@ -376,7 +375,7 @@
     "lockpicks"
   ],
   "contingency_prompts": [
-    "Use some humor and piratical voicing in responses."
+    "Use some humor in responses."
   ],
   "contingency_rules": [
     "Never let Gibbs leave the player's side. He is always ready to assist and will follow the player wherever they go."
