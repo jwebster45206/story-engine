@@ -260,11 +260,13 @@ func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdat
 		return nil
 	}
 
-	// Handle scene change
-	if metaUpdate.SceneName != "" && metaUpdate.SceneName != gs.SceneName {
+	// Update Scene (invalid scene name fails silently for now)
+	if metaUpdate.SceneName != "" && metaUpdate.SceneName != gs.SceneName && scenario.HasScene(metaUpdate.SceneName) {
+		err := gs.LoadScene(scenario, metaUpdate.SceneName)
+		if err != nil {
+			return fmt.Errorf("failed to load scene: %w", err)
+		}
 		gs.SceneName = metaUpdate.SceneName
-		// TODO: When changing scenes, we might want to reset location, inventory, etc.
-		// For now, we just change the scene name.
 	}
 
 	// Handle location change
@@ -372,16 +374,6 @@ func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdat
 		gs.Vars[snake] = v
 	}
 
-	// Update Scene
-	if metaUpdate.SceneName != "" && metaUpdate.SceneName != gs.SceneName {
-		if !scenario.HasScene(metaUpdate.SceneName) {
-			return errSceneNotFound
-		}
-		err := gs.LoadScene(scenario, metaUpdate.SceneName)
-		if err != nil {
-			return fmt.Errorf("failed to load scene: %w", err)
-		}
-	}
 	return nil
 }
 
