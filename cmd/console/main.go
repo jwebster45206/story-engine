@@ -98,16 +98,16 @@ func wrapText(text string, width int) string {
 			if len(testLine) <= width {
 				// Word fits on current line
 				if currentLine.Len() > 0 {
-					currentLine.WriteString(" ")
+					_, _ = currentLine.WriteString(" ")
 				}
-				currentLine.WriteString(word)
+				_, _ = currentLine.WriteString(word)
 			} else {
 				// Word doesn't fit, finish current line and start new one
 				if currentLine.Len() > 0 {
 					wrappedLines = append(wrappedLines, currentLine.String())
 					currentLine.Reset()
 				}
-				currentLine.WriteString(word)
+				_, _ = currentLine.WriteString(word)
 			}
 		}
 
@@ -371,7 +371,9 @@ func testConnection(client *http.Client, baseURL string) bool {
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close() // Ignore error in defer
+	}()
 	return resp.StatusCode == http.StatusOK
 }
 
@@ -380,7 +382,9 @@ func getGameState(client *http.Client, baseURL string, gameStateID uuid.UUID) (*
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close() // Ignore error in defer
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -422,7 +426,9 @@ func createGameState(client *http.Client, baseURL string, scenarioFile string) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close() // Ignore error in defer
+	}()
 
 	// Read response body for potential error messages
 	body, err := io.ReadAll(resp.Body)
@@ -481,7 +487,9 @@ func sendChatMessageWithProgress(client *http.Client, baseURL string, gameStateI
 			}{nil, fmt.Errorf("failed to send request: %w", err)}
 			return
 		}
-		defer resp.Body.Close()
+		defer func() {
+			_ = resp.Body.Close() // Ignore error in defer
+		}()
 
 		// Read response
 		body, err := io.ReadAll(resp.Body)
@@ -547,7 +555,9 @@ func listScenarios(client *http.Client, baseURL string) ([]string, map[string]st
 	if err != nil {
 		return nil, nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close() // Ignore error in defer
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return nil, nil, fmt.Errorf("API returned status %d", resp.StatusCode)
 	}

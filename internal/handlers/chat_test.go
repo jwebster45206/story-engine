@@ -341,6 +341,17 @@ func TestApplyMetaUpdate(t *testing.T) {
 		// You can include NPCs if you implement the TODO NPC logic later
 	}
 
+	s := &scenario.Scenario{
+		Name: "Test Scenario",
+		Locations: map[string]scenario.Location{
+			"Tavern": loc1,
+			"Forest": loc2,
+		},
+		NPCs: map[string]scenario.NPC{
+			"TestNPC": {Name: "TestNPC", Type: "human", Disposition: "neutral"},
+		},
+	}
+
 	meta := &chat.MetaUpdate{
 		UserLocation:        "Forest",
 		AddToInventory:      []string{"Apple"},
@@ -359,7 +370,10 @@ func TestApplyMetaUpdate(t *testing.T) {
 		},
 	}
 
-	applyMetaUpdate(gs, meta)
+	err := applyMetaUpdate(gs, s, meta)
+	if err != nil {
+		t.Fatalf("Failed to apply meta update: %v", err)
+	}
 
 	// Assertions
 	assert.Equal(t, "Forest", gs.Location, "user location should be updated")

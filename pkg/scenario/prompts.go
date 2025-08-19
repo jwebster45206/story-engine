@@ -27,6 +27,7 @@ Instructions:
 Output Format (example):
 {
   "user_location": "forest",
+  "scene_name": "Enchanted Forest",
   "add_to_inventory": ["gold coin"],
   "remove_from_inventory": ["torch"],
   "moved_items": [
@@ -54,17 +55,32 @@ Output Format (example):
   }
 }
 
-Update Rules:
-- If the agent clearly says the player moved, set "user_location" to the new location.
-- Do not allow movement to locations not in the scenario.
-- Do not allow movement through blocked exits.
-- If the agent describes the player acquiring an item, add it to "add_to_inventory".
-- If the item came from a location, u.
-- If the player gives away or discards an item, include it in \"remove_from_inventory\".
-- If the agent introduces a new NPC, add it to \"updated_npcs\" with only name, description, and location. 
-- Never invent new vars. 
+## Update Rules
+Rules for Location Updates:
+- If the agent clearly says the player moved, set "user_location" to the most similar location in the scenario.
+- Never permit movement to locations not in the scenario.
+- Never permit movement through blocked exits.
+- Never invent new locations.
 
-Only apply the following contingency_rules if the most recent narrative clearly shows that the condition has been met. Do not set vars to true unless the agent explicitly confirms that the condition happened. If a rule does not clearly apply in the most recent narrative, ignore it. Rules:
+### Item Updates:
+- If the agent describes the player picking up, holding, or storing an item on their person, add it to "add_to_inventory". If the item came from a location, add it to "moved_items".
+- Whenever the agent describes the player using an item, add it to "used_items".
+- If the player gives away or discards an item, list it in \"remove_from_inventory\".
+- Never invent new items.
+
+### NPC Updates:
+- If the agent describes the NPC moving to a new location, add the NPC to \"updated_npcs\" with only name, description, and location (updating location). Only use locations that are defined in the scenario.
+- If the agent describes a change in the NPC's demeanor, add the NPC to \"updated_npcs\" with only name, description, and location (updating description).
+- Never invent new NPCs.
+
+### Scene Updates:
+- Scenes are sections of the story. SCENES ARE NOT LOCATIONS.  
+- Use only scenes that are defined in the scenario. 
+- NEVER INVENT NEW SCENES.
+
+### Contingency Rules:
+Apply the following rules IF AND ONLY IF the most recent narrative shows that the condition has been met. If a rule does not clearly apply in the most recent narrative, ignore it. Rules:
+- ONLY WHEN the contingency rules for scene change are met, set \"scene_name\" to the scene indicated by the rule.
 -%s 
 `
 

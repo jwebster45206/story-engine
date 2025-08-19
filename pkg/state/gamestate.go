@@ -11,8 +11,9 @@ import (
 
 // GameState is the current state of a roleplay game session.
 type GameState struct {
-	ID       uuid.UUID `json:"id"`                 // Unique ID per session
-	Scenario string    `json:"scenario,omitempty"` // Filename of the scenario being played. Ex: "foo_scenario.json"
+	ID        uuid.UUID `json:"id"`                   // Unique ID per session
+	Scenario  string    `json:"scenario,omitempty"`   // Filename of the scenario being played. Ex: "foo_scenario.json"
+	SceneName string    `json:"scene_name,omitempty"` // Current scene name in the scenario, if applicable
 
 	NPCs           map[string]scenario.NPC      `json:"world_npcs,omitempty"`
 	WorldLocations map[string]scenario.Location `json:"world_locations,omitempty"` // Current locations in the game world
@@ -48,13 +49,13 @@ func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, err
 		return chat.ChatMessage{}, fmt.Errorf("game state is nil")
 	}
 
-	gsCopy, err := gs.DeepCopy()
-	if err != nil {
-		return chat.ChatMessage{}, fmt.Errorf("failed to copy game state: %w", err)
+	if gs.SceneName != "" {
+		scene, ok := s.Scenes[gs.SceneName]
+		if !ok {
+			return chat.ChatMessage{}, fmt.Errorf("scene %s not found in scenario %s", gs.SceneName, s.Name)
+		}
+		return gs.GetScenePrompt(s, &scene)
 	}
-
-	// Exclude details that are not needed for the prompt
-	gsCopy.Scenario = ""
 
 	jsonState, err := json.Marshal(ToPromptState(gs))
 	if err != nil {
@@ -64,6 +65,35 @@ func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, err
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
 		Content: fmt.Sprintf(scenario.StatePromptTemplate, s.Story, jsonState),
+	}, nil
+}
+
+func (gs *GameState) GetScenePrompt(s *scenario.Scenario, scene *scenario.Scene) (chat.ChatMessage, error) {
+	if gs == nil || scene == nil {
+		return chat.ChatMessage{}, fmt.Errorf("game state or scene is nil")
+	}
+
+	ps := PromptState{
+		NPCs:               scene.NPCs,
+		WorldLocations:     scene.Locations,
+		Location:           gs.Location,
+		Inventory:          gs.Inventory,
+		Vars:               gs.Vars, // TODO: Scene vars should be added to gamestate vars during the background gamestate update
+		ContingencyPrompts: append(gs.ContingencyPrompts, scene.ContingencyPrompts...),
+	}
+	jsonScene, err := json.Marshal(ps)
+	if err != nil {
+		return chat.ChatMessage{}, err
+	}
+
+	story := scene.Story
+	if story == "" {
+		story = s.Story // Fallback to scenario story if scene story is empty
+	}
+
+	return chat.ChatMessage{
+		Role:    chat.ChatRoleSystem,
+		Content: fmt.Sprintf(scenario.StatePromptTemplate, story, jsonScene),
 	}, nil
 }
 
@@ -136,4 +166,27 @@ func (gs *GameState) DeepCopy() (*GameState, error) {
 	}
 
 	return &copy, nil
+}
+
+// LoadScene prepares game state with a new scene.
+func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
+	scene, ok := s.Scenes[sceneName]
+	if !ok {
+		return fmt.Errorf("scene %s not found in scenario %s", sceneName, s.Name)
+	}
+	gs.SceneName = sceneName
+
+	// Initialize Vars map if it's nil
+	if gs.Vars == nil {
+		gs.Vars = make(map[string]string)
+	}
+
+	// copy stateful elements to gamestate
+	for k, v := range scene.Vars {
+		if _, exists := gs.Vars[k]; !exists {
+			gs.Vars[k] = v
+		}
+	}
+
+	return nil
 }

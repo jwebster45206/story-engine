@@ -20,7 +20,11 @@ func TestRedisService_Basic(t *testing.T) {
 
 	// Create Redis service (assumes Redis is running on localhost:6379)
 	redisService := NewRedisService("localhost:6379", logger)
-	defer redisService.Close()
+	defer func() {
+		if err := redisService.Close(); err != nil {
+			t.Errorf("Failed to close Redis service: %v", err)
+		}
+	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -94,7 +98,11 @@ func TestRedisService_WaitForConnection(t *testing.T) {
 		}
 
 		redisService := NewRedisService("localhost:6379", logger)
-		defer redisService.Close()
+		defer func() {
+			if err := redisService.Close(); err != nil {
+				t.Errorf("Failed to close Redis service: %v", err)
+			}
+		}()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -108,7 +116,11 @@ func TestRedisService_WaitForConnection(t *testing.T) {
 	t.Run("connection timeout", func(t *testing.T) {
 		// Use a non-existent Redis instance
 		redisService := NewRedisService("localhost:9999", logger)
-		defer redisService.Close()
+		defer func() {
+			if err := redisService.Close(); err != nil {
+				t.Errorf("Failed to close Redis service: %v", err)
+			}
+		}()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
@@ -126,7 +138,9 @@ func TestRedisService_GetClient(t *testing.T) {
 	}))
 
 	redisService := NewRedisService("localhost:6379", logger)
-	defer redisService.Close()
+	defer func() {
+		_ = redisService.Close() // Ignore error in defer for test
+	}()
 
 	client := redisService.GetClient()
 	if client == nil {
