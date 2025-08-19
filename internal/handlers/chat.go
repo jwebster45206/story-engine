@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -252,6 +253,8 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var errSceneNotFound = errors.New("scene not found")
+
 func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdate *chat.MetaUpdate) error {
 	if metaUpdate == nil {
 		return nil
@@ -371,6 +374,9 @@ func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdat
 
 	// Update Scene
 	if metaUpdate.SceneName != "" && metaUpdate.SceneName != gs.SceneName {
+		if !scenario.HasScene(metaUpdate.SceneName) {
+			return errSceneNotFound
+		}
 		err := gs.LoadScene(scenario, metaUpdate.SceneName)
 		if err != nil {
 			return fmt.Errorf("failed to load scene: %w", err)
@@ -476,8 +482,12 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 
 	// Apply the calculated state to the latest game state
 	if err := applyMetaUpdate(latestGS, s, metaResponse); err != nil {
-		h.logger.Error("Failed to apply meta update", "error", err, "game_state_id", latestGS.ID.String())
-		return
+		if errors.Is(err, errSceneNotFound) {
+			h.logger.Warn("Scene not found during meta update", "error", err, "game_state_id", latestGS.ID.String())
+		} else {
+			h.logger.Error("Failed to apply meta update", "error", err, "game_state_id", latestGS.ID.String())
+			return
+		}
 	}
 
 	// Save the updated game state

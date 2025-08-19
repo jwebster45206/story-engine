@@ -39,3 +39,12 @@ const (
 	RatingPG13 ContentRating = "PG-13" // Parents strongly cautioned
 	RatingR    ContentRating = "R"     // Restricted to adults
 )
+
+// HasScene checks if a scene with the given name exists in the scenario
+func (s *Scenario) HasScene(sceneName string) bool {
+	if s.Scenes == nil {
+		return false
+	}
+	_, exists := s.Scenes[sceneName]
+	return exists
+}

@@ -62,7 +62,7 @@ Rules for Location Updates:
 - Never permit movement through blocked exits.
 - Never invent new locations.
 
-### Item Updates
+### Item Updates:
 - If the agent describes the player picking up, holding, or storing an item on their person, add it to "add_to_inventory". If the item came from a location, add it to "moved_items".
 - Whenever the agent describes the player using an item, add it to "used_items".
 - If the player gives away or discards an item, list it in \"remove_from_inventory\".
@@ -74,11 +74,13 @@ Rules for Location Updates:
 - Never invent new NPCs.
 
 ### Scene Updates:
-- Whenever scene change conditions are met, set \"scene_name\" to the new scene.
-- Use only scenes that are defined in the scenario. Never invent new scenes.
+- Scenes are sections of the story. SCENES ARE NOT LOCATIONS.  
+- Use only scenes that are defined in the scenario. 
+- NEVER INVENT NEW SCENES.
 
 ### Contingency Rules:
 Apply the following rules IF AND ONLY IF the most recent narrative shows that the condition has been met. If a rule does not clearly apply in the most recent narrative, ignore it. Rules:
+- ONLY WHEN the contingency rules for scene change are met, set \"scene_name\" to the scene indicated by the rule.
 -%s 
 `
 
