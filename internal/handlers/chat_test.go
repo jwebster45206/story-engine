@@ -370,7 +370,10 @@ func TestApplyMetaUpdate(t *testing.T) {
 		},
 	}
 
-	applyMetaUpdate(gs, s, meta)
+	err := applyMetaUpdate(gs, s, meta)
+	if err != nil {
+		t.Fatalf("Failed to apply meta update: %v", err)
+	}
 
 	// Assertions
 	assert.Equal(t, "Forest", gs.Location, "user location should be updated")

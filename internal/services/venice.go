@@ -124,7 +124,7 @@ func (v *VeniceService) ListModels(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -179,7 +179,7 @@ func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

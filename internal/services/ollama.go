@@ -92,7 +92,9 @@ func (s *OllamaService) GetChatResponse(ctx context.Context, messages []chat.Cha
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close() // Ignore error in defer
+	}()
 
 	// Read the full response body for logging
 	var responseBody bytes.Buffer
@@ -138,7 +140,9 @@ func (s *OllamaService) ListModels(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close() // Ignore error in defer
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
@@ -173,7 +177,7 @@ func (s *OllamaService) IsModelReady(ctx context.Context, modelName string) (boo
 	if err != nil {
 		return false, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return false, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
@@ -225,7 +229,7 @@ func (s *OllamaService) pullModel(ctx context.Context, modelName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("API request failed with status: %d", resp.StatusCode)
@@ -253,7 +257,7 @@ func (s *OllamaService) waitForOllamaReady(ctx context.Context) error {
 			time.Sleep(retryDelay)
 			continue
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if resp.StatusCode == http.StatusOK {
 			s.logger.Info("Ollama service is ready")
