@@ -433,7 +433,8 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 		return
 	}
 
-	contingencyRules := s.ContingencyRules
+	contingencyRules := scenario.GlobalContingencyRules
+	contingencyRules = append(contingencyRules, s.ContingencyRules...)
 	if gs.SceneName != "" {
 		contingencyRules = append(contingencyRules, s.Scenes[gs.SceneName].ContingencyRules...)
 	}
