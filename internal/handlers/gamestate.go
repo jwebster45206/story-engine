@@ -161,6 +161,8 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	gs.Vars = s.Vars
 	gs.ContingencyPrompts = s.ContingencyPrompts
 	gs.ID = uuid.New()
+	gs.TurnCounter = 0
+	gs.SceneTurnCounter = 0
 
 	// If scenes are used, load the first scene
 	if s.OpeningScene != "" {
