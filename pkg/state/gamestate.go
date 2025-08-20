@@ -220,6 +220,17 @@ func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 		gs.Vars = make(map[string]string)
 	}
 
+	// Copy scene-specific elements to gamestate
+	// Copy locations from scene
+	if scene.Locations != nil {
+		gs.WorldLocations = scene.Locations
+	}
+
+	// Copy NPCs from scene
+	if scene.NPCs != nil {
+		gs.NPCs = scene.NPCs
+	}
+
 	// copy stateful elements to gamestate
 	for k, v := range scene.Vars {
 		if _, exists := gs.Vars[k]; !exists {
