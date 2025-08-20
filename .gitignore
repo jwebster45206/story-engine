@@ -35,4 +35,5 @@ config*.json
 # Editor/IDE
 .idea/
 .vscode/
+.crush/
 
