@@ -23,15 +23,20 @@ type GameState struct {
 
 	ChatHistory []chat.ChatMessage `json:"chat_history,omitempty"` // Conversation history
 
+	TurnCounter      int `json:"turn_counter"`       // Total number of successful chat interactions
+	SceneTurnCounter int `json:"scene_turn_counter"` // Number of successful chat interactions in current scene
+
 	Vars               map[string]string `json:"vars,omitempty"` // Game variables (e.g. flags, counters)
 	ContingencyPrompts []string          `json:"contingency_prompts,omitempty"`
 }
 
 func NewGameState(scenarioFileName string) *GameState {
 	return &GameState{
-		ID:          uuid.New(),
-		Scenario:    scenarioFileName,
-		ChatHistory: make([]chat.ChatMessage, 0),
+		ID:               uuid.New(),
+		Scenario:         scenarioFileName,
+		ChatHistory:      make([]chat.ChatMessage, 0),
+		TurnCounter:      0,
+		SceneTurnCounter: 0,
 	}
 }
 
@@ -207,9 +212,23 @@ func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 	}
 	gs.SceneName = sceneName
 
+	// Reset scene turn counter when loading a new scene
+	gs.SceneTurnCounter = 0
+
 	// Initialize Vars map if it's nil
 	if gs.Vars == nil {
 		gs.Vars = make(map[string]string)
+	}
+
+	// Copy scene-specific elements to gamestate
+	// Copy locations from scene
+	if scene.Locations != nil {
+		gs.WorldLocations = scene.Locations
+	}
+
+	// Copy NPCs from scene
+	if scene.NPCs != nil {
+		gs.NPCs = scene.NPCs
 	}
 
 	// copy stateful elements to gamestate
@@ -220,4 +239,11 @@ func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 	}
 
 	return nil
+}
+
+// IncrementTurnCounters increments both the turn counter and scene turn counter
+// after a successful chat interaction.
+func (gs *GameState) IncrementTurnCounters() {
+	gs.TurnCounter++
+	gs.SceneTurnCounter++
 }

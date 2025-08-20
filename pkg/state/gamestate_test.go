@@ -65,7 +65,7 @@ Game State:
 
 The user may only move to locations defined in the ` + "`locations`" + ` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.
 
-`,
+The user may only interact with items defined in the ` + "`inventory`" + ` object. Do not invent new items. If the user tries to use an item that is not in the inventory, inform them it is unavailable.`,
 			},
 		},
 		{
@@ -116,7 +116,7 @@ Game State:
 
 The user may only move to locations defined in the ` + "`locations`" + ` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.
 
-`,
+The user may only interact with items defined in the ` + "`inventory`" + ` object. Do not invent new items. If the user tries to use an item that is not in the inventory, inform them it is unavailable.`,
 			},
 		},
 		{
@@ -451,12 +451,12 @@ func TestGameState_GetContingencyPrompts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.gameState.GetContingencyPrompts(tt.scenario)
-			
+
 			if len(result) != len(tt.expected) {
 				t.Errorf("Expected %d prompts, got %d", len(tt.expected), len(result))
 				return
 			}
-			
+
 			for i, expected := range tt.expected {
 				if result[i] != expected {
 					t.Errorf("Expected prompt %d to be '%s', got '%s'", i, expected, result[i])

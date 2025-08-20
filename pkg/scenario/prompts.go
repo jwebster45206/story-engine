@@ -84,6 +84,10 @@ Apply the following rules IF AND ONLY IF the most recent narrative shows that th
 -%s 
 `
 
+var GlobalContingencyRules []string = []string{
+	"When \"turn_counter\" or \"scene_turn_counter\" are less than 10, the story should progress slowly. ",
+}
+
 // Content rating prompts
 const ContentRatingG = `Write content suitable for young children. Avoid violence, romance and scary elements. Use simple language and positive messages. `
 const ContentRatingPG = `Write content suitable for children and families. Mild peril or tension is okay, but avoid strong language, explicit violence, or dark themes. `
@@ -91,7 +95,8 @@ const ContentRatingPG13 = `Write content appropriate for teenagers. You may incl
 const ContentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
 
 const statePromptGameState = "The following JSON describes the complete world and current state.\n\nGame State:\n```json\n%s\n```"
-const locationRules = "The user may only move to locations defined in the `locations` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable."
+const locationPrompt = "The user may only move to locations defined in the `locations` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable."
+const inventoryPrompt = "The user may only interact with items defined in the `inventory` object. Do not invent new items. If the user tries to use an item that is not in the inventory, inform them it is unavailable."
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
-const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\n" + statePromptGameState + "\n\n" + locationRules + "\n\n"
+const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\n" + statePromptGameState + "\n\n" + locationPrompt + "\n\n" + inventoryPrompt

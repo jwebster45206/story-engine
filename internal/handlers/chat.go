@@ -206,6 +206,8 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.metaCancel[gs.ID] = metaCancel
 	h.metaCancelMu.Unlock()
 
+	// Update turn counters before background updates
+	gs.IncrementTurnCounters()
 	// Start background goroutine to update game meta (PromptState)
 	go h.updateGameMeta(metaCtx, gs, request.Message, response.Message)
 
@@ -431,7 +433,8 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 		return
 	}
 
-	contingencyRules := make([]string, 0, len(s.ContingencyRules))
+	contingencyRules := scenario.GlobalContingencyRules
+	contingencyRules = append(contingencyRules, s.ContingencyRules...)
 	if gs.SceneName != "" {
 		contingencyRules = append(contingencyRules, s.Scenes[gs.SceneName].ContingencyRules...)
 	}

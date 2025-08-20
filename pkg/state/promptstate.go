@@ -6,11 +6,13 @@ import "github.com/jwebster45206/story-engine/pkg/scenario"
 // For user-facing prompts, only core world state is included.
 // For background processing, Vars are also populated.
 type PromptState struct {
-	NPCs           map[string]scenario.NPC      `json:"world_npcs,omitempty"`
-	WorldLocations map[string]scenario.Location `json:"world_locations,omitempty"` // Current locations in the game world
-	Location       string                       `json:"user_location"`
-	Inventory      []string                     `json:"user_inventory"`
-	Vars           map[string]string            `json:"vars,omitempty"` // Only populated for background processing
+	NPCs             map[string]scenario.NPC      `json:"world_npcs,omitempty"`         // Map of key NPCs
+	WorldLocations   map[string]scenario.Location `json:"world_locations,omitempty"`    // Current locations in the game world
+	Location         string                       `json:"user_location,omitempty"`      // User's current location
+	Inventory        []string                     `json:"user_inventory,omitempty"`     // Inventory items
+	Vars             map[string]string            `json:"vars,omitempty"`               // Only populated for background processing
+	TurnCounter      int                          `json:"turn_counter,omitempty"`       // Total number of successful chat interactions
+	SceneTurnCounter int                          `json:"scene_turn_counter,omitempty"` // Number of successful chat interactions in
 }
 
 func ToPromptState(gs *GameState) *PromptState {
@@ -19,17 +21,19 @@ func ToPromptState(gs *GameState) *PromptState {
 		WorldLocations: gs.WorldLocations,
 		Location:       gs.Location,
 		Inventory:      gs.Inventory,
-		// Vars intentionally excluded for user-facing prompts
+		// Vars and counters intentionally excluded for user-facing prompts
 	}
 }
 
 func ToBackgroundPromptState(gs *GameState) *PromptState {
 	return &PromptState{
-		NPCs:           gs.NPCs,
-		WorldLocations: gs.WorldLocations,
-		Location:       gs.Location,
-		Inventory:      gs.Inventory,
-		Vars:           gs.Vars,
+		NPCs:             gs.NPCs,
+		WorldLocations:   gs.WorldLocations,
+		Location:         gs.Location,
+		Inventory:        gs.Inventory,
+		Vars:             gs.Vars,
+		TurnCounter:      gs.TurnCounter,
+		SceneTurnCounter: gs.SceneTurnCounter,
 		// ContingencyPrompts are handled as separate system messages, not JSON data
 	}
 }
