@@ -177,9 +177,10 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate response using LLM
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
+	h.logger.Debug("Sending chat request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
 	response, err := h.llmService.Chat(ctx, messages)
 	if err != nil {
 		h.logger.Error("Error generating chat response",
@@ -418,7 +419,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 		h.metaCancelMu.Unlock()
 	}()
 
-	currentStateJSON, err := json.Marshal(state.ToPromptState(gs))
+	currentStateJSON, err := json.Marshal(state.ToBackgroundPromptState(gs))
 	if err != nil {
 		h.logger.Error("Failed to marshal current game state for meta update", "error", err, "game_state_id", gs.ID.String())
 		return
@@ -430,10 +431,15 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 		return
 	}
 
+	contingencyRules := make([]string, 0, len(s.ContingencyRules))
+	if gs.SceneName != "" {
+		contingencyRules = append(contingencyRules, s.Scenes[gs.SceneName].ContingencyRules...)
+	}
+
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: fmt.Sprintf(scenario.PromptStateExtractionInstructions, strings.Join(s.ContingencyRules, "\n- ")),
+			Content: fmt.Sprintf(scenario.PromptStateExtractionInstructions, strings.Join(contingencyRules, "\n- ")),
 		},
 		{
 			Role:    chat.ChatRoleSystem,
@@ -453,6 +459,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 	defer cancel()
 
 	// Send the meta update request to the LLM
+	h.logger.Debug("Sending meta update request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
 	metaResponse, err := h.llmService.MetaUpdate(metaCtx, messages)
 	if err != nil {
 		h.logger.Error("Failed to get meta extraction response from LLM", "error", err, "game_state_id", gs.ID.String())

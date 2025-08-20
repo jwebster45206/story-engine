@@ -60,7 +60,7 @@ func TestGameState_GetStatePrompt(t *testing.T) {
 The following JSON describes the complete world and current state.
 
 Game State:
-` + "```json\n" + `{"world_npcs":{"Gibbs":{"name":"Gibbs","type":"pirate","disposition":"loyal","location":"Black Pearl"}},"world_locations":{"Tortuga":{"name":"Tortuga","description":"A pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass","spyglass"],"vars":{"test_var":"true"},"contingency_prompts":["Test prompt"]}
+` + "```json\n" + `{"world_npcs":{"Gibbs":{"name":"Gibbs","type":"pirate","disposition":"loyal","location":"Black Pearl"}},"world_locations":{"Tortuga":{"name":"Tortuga","description":"A pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass","spyglass"]}
 ` + "```" + `
 
 The user may only move to locations defined in the ` + "`locations`" + ` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.
@@ -111,7 +111,7 @@ The user may only move to locations defined in the ` + "`locations`" + ` object.
 The following JSON describes the complete world and current state.
 
 Game State:
-` + "```json\n" + `{"world_npcs":{"Shipwright":{"name":"Shipwright","type":"craftsman","disposition":"gruff","location":"Tortuga"}},"world_locations":{"Tortuga":{"name":"Tortuga","description":"A bustling pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass"],"vars":{"scene_var":"false"},"contingency_prompts":["Scene-specific prompt"]}
+` + "```json\n" + `{"world_npcs":{"Shipwright":{"name":"Shipwright","type":"craftsman","disposition":"gruff","location":"Tortuga"}},"world_locations":{"Tortuga":{"name":"Tortuga","description":"A bustling pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass"]}
 ` + "```" + `
 
 The user may only move to locations defined in the ` + "`locations`" + ` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.
@@ -318,12 +318,6 @@ func TestGameState_GetScenePrompt(t *testing.T) {
 						t.Errorf("Expected scene location '%s' to be in prompt state", locName)
 					}
 				}
-
-				// Check that contingency prompts are combined
-				expectedPrompts := len(tt.gameState.ContingencyPrompts) + len(tt.scene.ContingencyPrompts)
-				if len(promptState.ContingencyPrompts) != expectedPrompts {
-					t.Errorf("Expected %d contingency prompts, got %d", expectedPrompts, len(promptState.ContingencyPrompts))
-				}
 			}
 		})
 	}
@@ -397,10 +391,77 @@ func TestGameState_GetStatePrompt_JSONStructure(t *testing.T) {
 	if len(promptState.WorldLocations) != len(scene.Locations) {
 		t.Errorf("Expected %d locations from scene, got %d", len(scene.Locations), len(promptState.WorldLocations))
 	}
+}
 
-	// Contingency prompts should be combined
-	expectedPrompts := len(gameState.ContingencyPrompts) + len(scene.ContingencyPrompts)
-	if len(promptState.ContingencyPrompts) != expectedPrompts {
-		t.Errorf("Expected %d total contingency prompts, got %d", expectedPrompts, len(promptState.ContingencyPrompts))
+func TestGameState_GetContingencyPrompts(t *testing.T) {
+	tests := []struct {
+		name      string
+		gameState *GameState
+		scenario  *scenario.Scenario
+		expected  []string
+	}{
+		{
+			name:      "nil gamestate",
+			gameState: nil,
+			scenario:  &scenario.Scenario{},
+			expected:  nil,
+		},
+		{
+			name:      "nil scenario",
+			gameState: &GameState{},
+			scenario:  nil,
+			expected:  nil,
+		},
+		{
+			name: "scenario-level prompts only",
+			gameState: &GameState{
+				ContingencyPrompts: []string{"Scenario prompt 1", "Scenario prompt 2"},
+			},
+			scenario: &scenario.Scenario{},
+			expected: []string{"Scenario prompt 1", "Scenario prompt 2"},
+		},
+		{
+			name: "scene-level prompts added",
+			gameState: &GameState{
+				SceneName:          "test_scene",
+				ContingencyPrompts: []string{"Scenario prompt"},
+			},
+			scenario: &scenario.Scenario{
+				Scenes: map[string]scenario.Scene{
+					"test_scene": {
+						ContingencyPrompts: []string{"Scene prompt 1", "Scene prompt 2"},
+					},
+				},
+			},
+			expected: []string{"Scenario prompt", "Scene prompt 1", "Scene prompt 2"},
+		},
+		{
+			name: "scene not found",
+			gameState: &GameState{
+				SceneName:          "nonexistent_scene",
+				ContingencyPrompts: []string{"Scenario prompt"},
+			},
+			scenario: &scenario.Scenario{
+				Scenes: map[string]scenario.Scene{},
+			},
+			expected: []string{"Scenario prompt"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.gameState.GetContingencyPrompts(tt.scenario)
+			
+			if len(result) != len(tt.expected) {
+				t.Errorf("Expected %d prompts, got %d", len(tt.expected), len(result))
+				return
+			}
+			
+			for i, expected := range tt.expected {
+				if result[i] != expected {
+					t.Errorf("Expected prompt %d to be '%s', got '%s'", i, expected, result[i])
+				}
+			}
+		})
 	}
 }

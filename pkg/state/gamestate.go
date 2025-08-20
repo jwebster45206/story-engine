@@ -74,12 +74,10 @@ func (gs *GameState) GetScenePrompt(s *scenario.Scenario, scene *scenario.Scene)
 	}
 
 	ps := PromptState{
-		NPCs:               scene.NPCs,
-		WorldLocations:     scene.Locations,
-		Location:           gs.Location,
-		Inventory:          gs.Inventory,
-		Vars:               gs.Vars, // TODO: Scene vars should be added to gamestate vars during the background gamestate update
-		ContingencyPrompts: append(gs.ContingencyPrompts, scene.ContingencyPrompts...),
+		NPCs:           scene.NPCs,
+		WorldLocations: scene.Locations,
+		Location:       gs.Location,
+		Inventory:      gs.Inventory,
 	}
 	jsonScene, err := json.Marshal(ps)
 	if err != nil {
@@ -95,6 +93,26 @@ func (gs *GameState) GetScenePrompt(s *scenario.Scenario, scene *scenario.Scene)
 		Role:    chat.ChatRoleSystem,
 		Content: fmt.Sprintf(scenario.StatePromptTemplate, story, jsonScene),
 	}, nil
+}
+
+// GetContingencyPrompts returns all applicable contingency prompts for the current game state
+func (gs *GameState) GetContingencyPrompts(s *scenario.Scenario) []string {
+	if gs == nil || s == nil {
+		return nil
+	}
+
+	// Start with scenario-level contingency prompts
+	prompts := make([]string, len(gs.ContingencyPrompts))
+	copy(prompts, gs.ContingencyPrompts)
+
+	// Add scene-level contingency prompts if in a scene
+	if gs.SceneName != "" {
+		if scene, ok := s.Scenes[gs.SceneName]; ok {
+			prompts = append(prompts, scene.ContingencyPrompts...)
+		}
+	}
+
+	return prompts
 }
 
 // GetChatMessages generates a "chat message" slice for LLM.
@@ -144,6 +162,19 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 		Role:    requestRole,
 		Content: requestMessage,
 	})
+
+	// Add contingency prompts as a system message after user input
+	contingencyPrompts := gs.GetContingencyPrompts(s)
+	if len(contingencyPrompts) > 0 {
+		promptText := "Apply the following conditional rules if their conditions are met:\n\n"
+		for i, prompt := range contingencyPrompts {
+			promptText += fmt.Sprintf("%d. %s\n", i+1, prompt)
+		}
+		messages = append(messages, chat.ChatMessage{
+			Role:    chat.ChatRoleSystem,
+			Content: promptText,
+		})
+	}
 
 	return messages, nil
 }
