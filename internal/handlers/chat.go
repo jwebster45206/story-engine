@@ -177,9 +177,10 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate response using LLM
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
+	h.logger.Debug("Sending chat request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
 	response, err := h.llmService.Chat(ctx, messages)
 	if err != nil {
 		h.logger.Error("Error generating chat response",
