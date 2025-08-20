@@ -418,7 +418,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 		h.metaCancelMu.Unlock()
 	}()
 
-	currentStateJSON, err := json.Marshal(state.ToPromptState(gs))
+	currentStateJSON, err := json.Marshal(state.ToBackgroundPromptState(gs))
 	if err != nil {
 		h.logger.Error("Failed to marshal current game state for meta update", "error", err, "game_state_id", gs.ID.String())
 		return
