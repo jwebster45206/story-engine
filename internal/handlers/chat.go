@@ -430,10 +430,15 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 		return
 	}
 
+	contingencyRules := make([]string, 0, len(s.ContingencyRules))
+	if gs.SceneName != "" {
+		contingencyRules = append(contingencyRules, s.Scenes[gs.SceneName].ContingencyRules...)
+	}
+
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: fmt.Sprintf(scenario.PromptStateExtractionInstructions, strings.Join(s.ContingencyRules, "\n- ")),
+			Content: fmt.Sprintf(scenario.PromptStateExtractionInstructions, strings.Join(contingencyRules, "\n- ")),
 		},
 		{
 			Role:    chat.ChatRoleSystem,
@@ -453,6 +458,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 	defer cancel()
 
 	// Send the meta update request to the LLM
+	h.logger.Debug("Sending meta update request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
 	metaResponse, err := h.llmService.MetaUpdate(metaCtx, messages)
 	if err != nil {
 		h.logger.Error("Failed to get meta extraction response from LLM", "error", err, "game_state_id", gs.ID.String())

@@ -80,7 +80,7 @@ Rules for Location Updates:
 
 ### Contingency Rules:
 Apply the following rules IF AND ONLY IF the most recent narrative shows that the condition has been met. If a rule does not clearly apply in the most recent narrative, ignore it. Rules:
-- ONLY WHEN the contingency rules for scene change are met, set \"scene_name\" to the scene indicated by the rule.
+- ONLY WHEN the contingency rules for scene change are met, set \"scene_name\" to the scene name indicated by the rule.
 -%s 
 `
 
