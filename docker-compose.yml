@@ -45,7 +45,19 @@ services:
     networks:
       - story-engine-network
 
-# Ollama data volume to persist models and configurations (commented out)
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    ports:
+      - "8081:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      DOZZLE_LEVEL: "debug"
+    networks:
+      - story-engine-network
+
+# Ollama data volume to persist models and configurations
 # volumes:
   # ollama_data:
 
