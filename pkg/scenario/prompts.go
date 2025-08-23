@@ -84,10 +84,13 @@ Apply the following rules IF AND ONLY IF the most recent narrative shows that th
 -%s 
 `
 
+// GlobalContingencyRules contains the contingency rules that apply to all scenes.
+// Contingency rules are non-user-facing rules that affect background updates of gamestate.
 var GlobalContingencyRules []string = []string{
 	"When \"turn_counter\" or \"scene_turn_counter\" are less than 10, the story should progress slowly. ",
 }
 
+// The following are user-facing rules that affect storytelling responses.
 // Content rating prompts
 const ContentRatingG = `Write content suitable for young children. Avoid violence, romance and scary elements. Use simple language and positive messages. `
 const ContentRatingPG = `Write content suitable for children and families. Mild peril or tension is okay, but avoid strong language, explicit violence, or dark themes. `
