@@ -39,34 +39,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	orderedNames, scenarioMap, err := listScenarios(client, cfg.APIBaseURL)
-	if err != nil || len(orderedNames) == 0 {
-		fmt.Fprintf(os.Stderr, "Failed to list scenarios: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Println("Available Scenarios:")
-	for i := range orderedNames {
-		fmt.Printf("  %d - %s (%s)\n", i+1, orderedNames[i], scenarioMap[orderedNames[i]])
-	}
-	fmt.Print("\nSelect a scenario by number: ")
-
-	var choice int
-	if _, err := fmt.Scanf("%d", &choice); err != nil || choice < 1 || choice > len(orderedNames) {
-		fmt.Fprintf(os.Stderr, "Invalid selection\n")
-		os.Exit(1)
-	}
-
-	scenarioName := orderedNames[choice-1]
-	scenarioFile := scenarioMap[scenarioName]
-
-	gs, err := createGameState(client, cfg.APIBaseURL, scenarioFile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create game state: %v\n", err)
-		os.Exit(1)
-	}
-
-	p := tea.NewProgram(NewConsoleUI(cfg, client, gs),
+	p := tea.NewProgram(NewConsoleUI(cfg, client),
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion(),
 		tea.WithMouseAllMotion())
