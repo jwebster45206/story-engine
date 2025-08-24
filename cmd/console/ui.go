@@ -253,11 +253,11 @@ func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 	}
 }
 
-func writeInitialContent(gs *state.GameState, chatWidth int) string {
+func writeInitialContent(gs *state.GameState, scenarioName string, chatWidth int) string {
 	var content strings.Builder
-	content.WriteString(titleStyle.Render("STORY ENGINE") + "\n\n")
-	content.WriteString("Type your messages below to interact with the story.\n\n")
-	content.WriteString(separatorStyle.Render(strings.Repeat("─", chatWidth-6)) + "\n\n")
+	content.WriteString("Welcome to " + titleStyle.Render(scenarioName) + "...\n\n")
+	// content.WriteString("Type your messages below to interact with the story.\n\n")
+	content.WriteString(separatorStyle.Render(strings.Repeat("─ ", chatWidth/2-6)) + "\n\n")
 
 	if gs != nil && len(gs.ChatHistory) > 0 {
 		// Use the same formatting as writeChatContent for consistency
@@ -269,6 +269,12 @@ func writeInitialContent(gs *state.GameState, chatWidth int) string {
 
 func writeMetadata(gs *state.GameState, width int) string {
 	var content strings.Builder
+
+	castle := " _   |>  _\n[_]--'--[_]\n|'|\"\"`\"\"|'|\n| | /^\\ | |\n|_|_|I|_|_|"
+
+	content.WriteString(titleStyle.Render("STORY ENGINE") + "\n")
+	content.WriteString(titleStyle.Render(castle) + "\n\n")
+
 	content.WriteString(titleStyle.Render("GAME STATE") + "\n")
 	width = max(8, width) // min width of 8
 	idStr := gs.ID.String()
@@ -325,7 +331,7 @@ func (m *ConsoleUI) writeChatContent() {
 	prevOffset := m.chatViewport.YOffset
 
 	if m.gameState == nil || len(m.gameState.ChatHistory) == 0 {
-		m.chatViewport.SetContent(writeInitialContent(m.gameState, chatWidth))
+		m.chatViewport.SetContent(writeInitialContent(m.gameState, m.gameState.Scenario, chatWidth))
 		if wasBottom {
 			m.chatViewport.GotoBottom()
 		} else {
@@ -744,7 +750,7 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.metaViewport.Height = m.height - 4
 				m.textarea.SetWidth(chatWidth - 4)
 			}
-			m.chatViewport.SetContent(writeInitialContent(m.gameState, m.chatViewport.Width-6))
+			m.chatViewport.SetContent(writeInitialContent(m.gameState, m.gameState.Scenario, m.chatViewport.Width-6))
 			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width))
 			m.textarea.Focus() // Ensure textarea gets focus when modal closes
 			m.ready = true
