@@ -3,6 +3,7 @@ package state
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/pkg/chat"
@@ -11,32 +12,35 @@ import (
 
 // GameState is the current state of a roleplay game session.
 type GameState struct {
-	ID        uuid.UUID `json:"id"`                   // Unique ID per session
-	Scenario  string    `json:"scenario,omitempty"`   // Filename of the scenario being played. Ex: "foo_scenario.json"
-	SceneName string    `json:"scene_name,omitempty"` // Current scene name in the scenario, if applicable
-
-	NPCs           map[string]scenario.NPC      `json:"world_npcs,omitempty"`
-	WorldLocations map[string]scenario.Location `json:"world_locations,omitempty"` // Current locations in the game world
-
-	Location  string   `json:"user_location,omitempty"` // Current location in the game world
-	Inventory []string `json:"user_inventory,omitempty"`
-
-	ChatHistory []chat.ChatMessage `json:"chat_history,omitempty"` // Conversation history
-
-	TurnCounter      int `json:"turn_counter"`       // Total number of successful chat interactions
-	SceneTurnCounter int `json:"scene_turn_counter"` // Number of successful chat interactions in current scene
-
-	Vars               map[string]string `json:"vars,omitempty"` // Game variables (e.g. flags, counters)
-	ContingencyPrompts []string          `json:"contingency_prompts,omitempty"`
+	ID                 uuid.UUID                    `json:"id"`                        // Unique ID per session
+	Scenario           string                       `json:"scenario,omitempty"`        // Filename of the scenario being played. Ex: "foo_scenario.json"
+	SceneName          string                       `json:"scene_name,omitempty"`      // Current scene name in the scenario, if applicable
+	NPCs               map[string]scenario.NPC      `json:"world_npcs,omitempty"`      // All NPCs in the game world
+	WorldLocations     map[string]scenario.Location `json:"world_locations,omitempty"` // Current locations in the game world
+	Location           string                       `json:"user_location,omitempty"`   // Current location in the game world
+	Inventory          []string                     `json:"user_inventory,omitempty"`  // User's inventory items
+	ChatHistory        []chat.ChatMessage           `json:"chat_history,omitempty"`    // Conversation history
+	TurnCounter        int                          `json:"turn_counter"`              // Total number of successful chat interactions
+	SceneTurnCounter   int                          `json:"scene_turn_counter"`        // Number of successful chat interactions in current scene
+	Vars               map[string]string            `json:"vars,omitempty"`            // Game variables (e.g. flags, counters)
+	ContingencyPrompts []string                     `json:"contingency_prompts,omitempty"`
+	CreatedAt          time.Time                    `json:"created_at"`
+	UpdatedAt          time.Time                    `json:"updated_at"`
 }
 
 func NewGameState(scenarioFileName string) *GameState {
 	return &GameState{
-		ID:               uuid.New(),
-		Scenario:         scenarioFileName,
-		ChatHistory:      make([]chat.ChatMessage, 0),
-		TurnCounter:      0,
-		SceneTurnCounter: 0,
+		ID:                 uuid.New(),
+		Scenario:           scenarioFileName,
+		ChatHistory:        make([]chat.ChatMessage, 0),
+		TurnCounter:        0,
+		SceneTurnCounter:   0,
+		Vars:               make(map[string]string),
+		ContingencyPrompts: make([]string, 0),
+		NPCs:               make(map[string]scenario.NPC),
+		WorldLocations:     make(map[string]scenario.Location),
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
 	}
 }
 

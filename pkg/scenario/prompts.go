@@ -55,17 +55,17 @@ Output Format (example):
   }
 }
 
-## Update Rules
-Rules for Location Updates:
-- If the agent clearly says the player moved, set "user_location" to the most similar location in the scenario.
-- Never permit movement to locations not in the scenario.
-- Never permit movement through blocked exits.
-- Never invent new locations.
+### Location Updates:
+- When the player moves to a different location in the scenario, set "user_location" to the new location's name.
+- Do not permit movement to locations not in the scenario.
+- Do not permit movement through blocked exits.
+- Do not invent new locations.
 
 ### Item Updates:
 - If the agent describes the player picking up, holding, or storing an item on their person, add it to "add_to_inventory". If the item came from a location, add it to "moved_items".
 - Whenever the agent describes the player using an item, add it to "used_items".
-- If the player gives away or discards an item, list it in \"remove_from_inventory\".
+- Whenever the player discards an item, list it in \"remove_from_inventory\".
+- Whenever the player gives an item to an NPC, list it in \"remove_from_inventory\".
 - Never invent new items.
 
 ### NPC Updates:
