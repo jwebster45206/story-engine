@@ -72,7 +72,7 @@ type gameStateCreatedMsg struct {
 var (
 	chatPanelStyle = lipgloss.NewStyle().
 			PaddingTop(2).
-			PaddingBottom(0).
+			PaddingBottom(1).
 			PaddingLeft(3).
 			PaddingRight(0)
 
@@ -125,6 +125,9 @@ var (
 				Background(lipgloss.Color("205")).
 				Bold(true)
 )
+
+var separatorStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("240")) // dark grey
 
 func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 	ta := textarea.New()
@@ -738,6 +741,7 @@ func (m ConsoleUI) View() string {
 		lipgloss.JoinVertical(lipgloss.Left,
 			m.chatViewport.View(),
 			"", // Add empty line for spacing
+			separatorStyle.Render(strings.Repeat("─", chatWidth-4)),
 			m.textarea.View(),
 		),
 	)
