@@ -43,6 +43,9 @@ type ConsoleUI struct {
 	scenarioMap       map[string]string
 	selectedScenario  int
 	loadingScenarios  bool
+
+	// Quit confirmation state
+	showQuitModal bool
 }
 
 type chatResponseMsg struct {
@@ -69,12 +72,15 @@ type gameStateCreatedMsg struct {
 var (
 	chatPanelStyle = lipgloss.NewStyle().
 			PaddingTop(2).
-			PaddingBottom(0).
+			PaddingBottom(1).
 			PaddingLeft(3).
-			PaddingRight(3)
+			PaddingRight(0)
 
 	metaPanelStyle = lipgloss.NewStyle().
-			Padding(2)
+			PaddingTop(2).
+			PaddingBottom(0).
+			PaddingLeft(0).
+			PaddingRight(2)
 
 	titleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("205")). // pink
@@ -119,6 +125,9 @@ var (
 				Background(lipgloss.Color("205")).
 				Bold(true)
 )
+
+var separatorStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("240")) // dark grey
 
 func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 	ta := textarea.New()
@@ -247,6 +256,11 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateScenarioModal(msg)
 	}
 
+	// Handle quit modal second
+	if m.showQuitModal {
+		return m.updateQuitModal(msg)
+	}
+
 	var (
 		tiCmd tea.Cmd
 		vpCmd tea.Cmd
@@ -301,7 +315,8 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
-			return m, tea.Quit
+			m.showQuitModal = true
+			return m, nil
 		case tea.KeyEnter:
 			if m.loading {
 				return m, nil
@@ -577,14 +592,16 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.err != nil {
 			if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyEsc {
-				return m, tea.Quit
+				m.showQuitModal = true
+				return m, nil
 			}
 			return m, nil
 		}
 
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
-			return m, tea.Quit
+			m.showQuitModal = true
+			return m, nil
 		case tea.KeyUp:
 			if m.selectedScenario > 0 {
 				m.selectedScenario--
@@ -604,6 +621,59 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m ConsoleUI) updateQuitModal(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyCtrlC, tea.KeyEsc:
+			return m, tea.Quit
+		case tea.KeyEnter:
+			return m, tea.Quit
+		default:
+			switch msg.String() {
+			case "y", "Y":
+				return m, tea.Quit
+			case "n", "N":
+				m.showQuitModal = false
+				// Return focus to the appropriate component
+				if m.showScenarioModal {
+					// We're in scenario selection, no need to focus textarea
+					return m, nil
+				} else {
+					// We're in the main game, focus the textarea
+					m.textarea.Focus()
+					return m, textarea.Blink
+				}
+			}
+		}
+	}
+
+	return m, nil
+}
+
+func (m ConsoleUI) renderQuitModal() string {
+	if m.width == 0 || m.height == 0 {
+		return "Loading..."
+	}
+
+	var content strings.Builder
+	content.WriteString(modalTitleStyle.Render("Quit Game?"))
+	content.WriteString("\n\n")
+	content.WriteString("Are you sure you want to quit your adventure?")
+	content.WriteString("\n\n")
+	content.WriteString(promptStyle.Render("Press Y to quit, N to continue, or Ctrl+C to force quit"))
+
+	// Create the modal
+	modal := modalStyle.Width(50).Render(content.String())
+
+	// Center the modal
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modal, lipgloss.WithWhitespaceChars(" "))
 }
 
 func (m ConsoleUI) renderScenarioModal() string {
@@ -656,6 +726,10 @@ func (m ConsoleUI) View() string {
 		return m.renderScenarioModal()
 	}
 
+	if m.showQuitModal {
+		return m.renderQuitModal()
+	}
+
 	if !m.ready {
 		return "\n  Initializing..."
 	}
@@ -667,6 +741,7 @@ func (m ConsoleUI) View() string {
 		lipgloss.JoinVertical(lipgloss.Left,
 			m.chatViewport.View(),
 			"", // Add empty line for spacing
+			separatorStyle.Render(strings.Repeat("─", chatWidth-4)),
 			m.textarea.View(),
 		),
 	)
