@@ -50,6 +50,9 @@ type ConsoleUI struct {
 
 	// Progress bar state
 	progressTick int
+
+	// Auto-scroll suppression
+	userPinned bool // true when user has scrolled away from bottom
 }
 
 type chatResponseMsg struct {
@@ -146,7 +149,7 @@ func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 	ta.ShowLineNumbers = false
 
 	chatVp := viewport.New(50, 20)
-	chatVp.MouseWheelEnabled = true
+	chatVp.MouseWheelEnabled = false // enabling causes text to jump around
 
 	metaVp := viewport.New(20, 20)
 
@@ -213,40 +216,48 @@ func writeMetadata(gs *state.GameState) string {
 func (m *ConsoleUI) writeChatContent() {
 	chatWidth := m.chatViewport.Width - 6 // Account for left(3) + right(3) padding
 
+	// Determine if we should auto-scroll (only if user was already at bottom)
+	wasBottom := m.chatViewport.AtBottom()
+	prevOffset := m.chatViewport.YOffset
+
 	if m.gameState == nil || len(m.gameState.ChatHistory) == 0 {
-		// No chat history, just show initial content
 		m.chatViewport.SetContent(writeInitialContent(m.gameState, chatWidth))
+		if wasBottom {
+			m.chatViewport.GotoBottom()
+		} else {
+			m.chatViewport.YOffset = prevOffset
+		}
 		return
 	}
 
 	var content strings.Builder
-
-	// Add title and intro
 	content.WriteString(titleStyle.Render("STORY ENGINE") + "\n\n")
 	content.WriteString("Welcome to your text-based adventure!\n")
 	content.WriteString("Type your messages below to interact with the story.\n\n")
 	content.WriteString(separatorStyle.Render(strings.Repeat("─", chatWidth-6)) + "\n\n")
 
-	// Reformat all chat history for the new width
 	for _, msg := range m.gameState.ChatHistory {
 		switch msg.Role {
 		case "assistant", "system":
 			formattedMsg := formatNarratorResponse(msg.Content, chatWidth)
 			content.WriteString(formattedMsg + "\n\n")
 		case "user":
-			// User messages should also be reformatted if needed
 			userMsg := userStyle.Render("You: ") + wordwrap.String(msg.Content, chatWidth-6) + "\n\n"
 			content.WriteString(userMsg)
 		}
 	}
 
-	// If currently loading, add the progress bar
 	if m.loading {
 		content.WriteString(m.renderProgressBar())
 	}
 
 	m.chatViewport.SetContent(content.String())
-	m.chatViewport.GotoBottom()
+	if !m.userPinned && wasBottom {
+		m.chatViewport.GotoBottom()
+	} else {
+		// Restore previous offset (viewport clamps internally). If pinned, stay pinned; if not at bottom before, preserve context.
+		m.chatViewport.YOffset = prevOffset
+	}
 }
 
 func (m ConsoleUI) Init() tea.Cmd {
@@ -274,19 +285,6 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case tea.MouseMsg:
-		// Handle mouse events first, before updating other components
-		// Check if the mouse event is in the chat viewport area
-		// For now, pass all mouse events to chat viewport for text selection
-		// The viewport component will ignore events outside its bounds
-		m.chatViewport, vpCmd = m.chatViewport.Update(msg)
-
-		// Also update textarea and meta viewport in case they need mouse events
-		m.textarea, tiCmd = m.textarea.Update(msg)
-		m.metaViewport, mvCmd = m.metaViewport.Update(msg)
-
-		return m, tea.Batch(tiCmd, vpCmd, mvCmd)
-
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -339,7 +337,8 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.textarea.Reset()
 			m.loading = true
-			m.progressTick = 0 // Reset progress animation
+			m.progressTick = 0   // Reset progress animation
+			m.userPinned = false // user intent to append at bottom
 
 			// Add user message to game state first
 			userMessage := chat.ChatMessage{
@@ -354,6 +353,21 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(m.sendChatMessage(input), progressTick())
 		}
 
+		// scrolling/navigation keys for the chat viewport
+		keyStr := msg.String()
+		if keyStr == "up" || keyStr == "down" || keyStr == "pgup" || keyStr == "pgdown" || keyStr == "home" || keyStr == "end" {
+			prevAtBottom := m.chatViewport.AtBottom()
+			prevOffset := m.chatViewport.YOffset
+			m.chatViewport, vpCmd = m.chatViewport.Update(msg)
+			if m.chatViewport.YOffset != prevOffset { // user navigated
+				if !m.chatViewport.AtBottom() {
+					m.userPinned = true
+				} else if !prevAtBottom && m.chatViewport.AtBottom() {
+					m.userPinned = false
+				}
+			}
+		}
+
 	case chatResponseMsg:
 		m.loading = false
 		if msg.err != nil {
@@ -363,6 +377,10 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			currentContent := m.chatViewport.View()
 			errorMsg := errorStyle.Render("Error: "+msg.err.Error()) + "\n\n"
 			m.chatViewport.SetContent(currentContent + errorMsg)
+			// After an error, only scroll if user was already at bottom
+			if m.chatViewport.AtBottom() {
+				m.chatViewport.GotoBottom()
+			}
 		} else {
 			// Add assistant response to game state
 			assistantMessage := chat.ChatMessage{
@@ -373,8 +391,10 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Reformat all content including the new response
 			m.writeChatContent()
+			if !m.userPinned { // only force scroll if not pinned
+				m.chatViewport.GotoBottom()
+			}
 		}
-		m.chatViewport.GotoBottom()
 		return m, m.refreshGameState()
 
 	case gameStateMsg:
@@ -391,11 +411,9 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Update components for non-mouse events
+	// Update components for non-mouse events (textarea & metadata). Chat viewport already handled for key scroll above.
 	m.textarea, tiCmd = m.textarea.Update(msg)
-	m.chatViewport, vpCmd = m.chatViewport.Update(msg)
 	m.metaViewport, mvCmd = m.metaViewport.Update(msg)
-
 	return m, tea.Batch(tiCmd, vpCmd, mvCmd)
 }
 
