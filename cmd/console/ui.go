@@ -293,15 +293,6 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string) strin
 
 	content.WriteString("\n" + titleStyle.Render(castle) + "\n\n")
 
-	content.WriteString(titleStyle.Render("GAME STATE") + "\n")
-	width = max(8, width) // min width of 8
-	idStr := gs.ID.String()
-	for len(idStr) > width {
-		content.WriteString(idStr[:width] + "\n")
-		idStr = idStr[width:]
-	}
-	content.WriteString(idStr + "\n\n")
-
 	content.WriteString(metaStyle.Render("Scenario: "))
 	content.WriteString(scenarioDisplay + "\n")
 	content.WriteString(metaStyle.Render("Location: "))
@@ -318,24 +309,19 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string) strin
 		}
 	}
 
-	// content.WriteString("Messages:\n")
-	// content.WriteString(fmt.Sprintf("%d total\n\n", len(gs.ChatHistory)))
-
-	// if len(gs.Vars) > 0 {
-	// 	content.WriteString("Variables:\n")
-	// 	for k, v := range gs.Vars {
-	// 		content.WriteString(fmt.Sprintf("• %s: %v\n", k, v))
-	// 	}
-	// } else {
-	// 	content.WriteString("Variables:\nNone set\n")
-	// }
-
 	content.WriteString("\n")
 	content.WriteString(metaStyle.Render("Commands:") + "\n")
 	content.WriteString("• Ctrl+C: Quit\n")
 	content.WriteString("• Enter: Send\n")
-	content.WriteString("• /help: Help\n")
-	content.WriteString("• /vars: Variables\n")
+	content.WriteString("• /help: Help\n\n")
+
+	width = max(8, width) // min width of 8
+	idStr := gs.ID.String()
+	for len(idStr) > width {
+		content.WriteString(promptStyle.Render(idStr[:width]) + "\n")
+		idStr = idStr[width:]
+	}
+	content.WriteString(promptStyle.Render(idStr) + "\n\n")
 
 	return content.String()
 }
