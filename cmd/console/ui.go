@@ -127,7 +127,7 @@ func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 	ta.Prompt = promptStyle.Render(":: ")
 	ta.CharLimit = 1000
 	ta.SetWidth(50)
-	ta.SetHeight(1) // Single line for chat input
+	ta.SetHeight(3)
 	ta.ShowLineNumbers = false
 
 	chatVp := viewport.New(50, 20)
