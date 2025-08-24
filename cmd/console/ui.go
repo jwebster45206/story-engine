@@ -231,7 +231,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Update viewport dimensions
 		m.chatViewport.Width = chatWidth - 2
-		m.chatViewport.Height = m.height - 9 // Reduced by 1 for spacing
+		m.chatViewport.Height = m.height - 7 // Reduced by 1 for spacing
 		m.metaViewport.Width = metaWidth - 2
 		m.metaViewport.Height = m.height - 4
 		m.textarea.SetWidth(chatWidth - 4)
