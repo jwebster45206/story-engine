@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -46,6 +47,9 @@ type ConsoleUI struct {
 
 	// Quit confirmation state
 	showQuitModal bool
+
+	// Progress bar state
+	progressTick int
 }
 
 type chatResponseMsg struct {
@@ -68,6 +72,8 @@ type gameStateCreatedMsg struct {
 	gameState *state.GameState
 	err       error
 }
+
+type progressTickMsg struct{}
 
 var (
 	chatPanelStyle = lipgloss.NewStyle().
@@ -161,7 +167,7 @@ func writeInitialContent(gs *state.GameState, chatWidth int) string {
 	var content strings.Builder
 	content.WriteString(titleStyle.Render("STORY ENGINE") + "\n\n")
 	content.WriteString("Type your messages below to interact with the story.\n\n")
-	content.WriteString(strings.Repeat("─", min(50, chatWidth)) + "\n\n")
+	content.WriteString(separatorStyle.Render(strings.Repeat("─", chatWidth-6)) + "\n\n")
 
 	if gs != nil && len(gs.ChatHistory) > 0 {
 		// Use the same formatting as writeChatContent for consistency
@@ -219,7 +225,7 @@ func (m *ConsoleUI) writeChatContent() {
 	content.WriteString(titleStyle.Render("STORY ENGINE") + "\n\n")
 	content.WriteString("Welcome to your text-based adventure!\n")
 	content.WriteString("Type your messages below to interact with the story.\n\n")
-	content.WriteString(strings.Repeat("─", min(50, chatWidth)) + "\n\n")
+	content.WriteString(separatorStyle.Render(strings.Repeat("─", chatWidth-6)) + "\n\n")
 
 	// Reformat all chat history for the new width
 	for _, msg := range m.gameState.ChatHistory {
@@ -234,9 +240,9 @@ func (m *ConsoleUI) writeChatContent() {
 		}
 	}
 
-	// If currently loading, add the loading message
+	// If currently loading, add the progress bar
 	if m.loading {
-		content.WriteString(loadingStyle.Render("Narrator is thinking..."))
+		content.WriteString(m.renderProgressBar())
 	}
 
 	m.chatViewport.SetContent(content.String())
@@ -333,6 +339,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.textarea.Reset()
 			m.loading = true
+			m.progressTick = 0 // Reset progress animation
 
 			// Add user message to game state first
 			userMessage := chat.ChatMessage{
@@ -344,7 +351,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Reformat content to include the new user message
 			m.writeChatContent()
 
-			return m, m.sendChatMessage(input)
+			return m, tea.Batch(m.sendChatMessage(input), progressTick())
 		}
 
 	case chatResponseMsg:
@@ -374,6 +381,13 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err == nil && msg.gameState != nil {
 			m.gameState = msg.gameState
 			m.metaViewport.SetContent(writeMetadata(m.gameState))
+		}
+
+	case progressTickMsg:
+		if m.loading {
+			m.progressTick++
+			m.writeChatContent()     // Refresh the chat content to update the progress bar
+			return m, progressTick() // Continue the animation
 		}
 	}
 
@@ -753,10 +767,41 @@ func (m ConsoleUI) View() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, chatPanel, metaPanel)
 }
 
-// Helper function for Go versions that don't have min
-func min(a, b int) int {
-	if a < b {
-		return a
+// renderProgressBar creates an animated progress bar for loading states
+func (m ConsoleUI) renderProgressBar() string {
+	// Determine usable content width (viewport width minus padding used elsewhere: 3 left + 3 right)
+	usable := m.chatViewport.Width - 6
+	if usable <= 0 {
+		usable = 30 // fallback before sizing
 	}
-	return b
+
+	// Clamp bar width to a sensible range
+	if usable > 80 {
+		usable = 80 // avoid overly wide bars
+	} else if usable < 10 {
+		usable = 10 // minimum visible bar
+	}
+
+	const totalFrames = 40
+	frame := m.progressTick % totalFrames
+	filled := (frame * usable) / totalFrames
+
+	var bar strings.Builder
+	for i := 0; i < usable; i++ {
+		if i < filled {
+			bar.WriteString("█")
+		} else if i == filled && frame%4 < 2 {
+			bar.WriteString("▓") // Blinking effect at the progress point
+		} else {
+			bar.WriteString("░")
+		}
+	}
+	return separatorStyle.Render(bar.String())
+}
+
+// progressTick creates a command that sends a progress tick message
+func progressTick() tea.Cmd {
+	return tea.Tick(time.Millisecond*200, func(time.Time) tea.Msg {
+		return progressTickMsg{}
+	})
 }
