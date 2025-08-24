@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/atotto/clipboard"
+
 	"github.com/google/uuid"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -312,6 +314,7 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string) strin
 	content.WriteString("\n")
 	content.WriteString(metaStyle.Render("Commands:") + "\n")
 	content.WriteString("• Ctrl+C: Quit\n")
+	content.WriteString("• Ctrl+Y: Copy GameState ID\n")
 	content.WriteString("• Enter: Send\n")
 	content.WriteString("• /help: Help\n\n")
 
@@ -436,6 +439,16 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			m.showQuitModal = true
 			return m, nil
+
+		case tea.KeyCtrlY:
+			// Copy GameState ID to system clipboard (assume non-nil per user instruction)
+			if m.gameState != nil {
+				_ = clipboard.WriteAll(m.gameState.ID.String())
+				// Optionally append a tiny notice to metadata (non-intrusive)
+				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName()))
+			}
+			return m, nil
+
 		case tea.KeyEnter:
 			if m.loading {
 				return m, nil
@@ -623,6 +636,7 @@ Commands:
 • /help - Show this help
 • /vars - Show game variables
 • Ctrl+C - Quit game
+• Ctrl+Y - Copy GameState ID
 
 How to play:
 • Type your actions and press Enter
