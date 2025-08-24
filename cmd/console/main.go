@@ -66,7 +66,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	p := tea.NewProgram(NewConsoleUI(cfg, client, gs), tea.WithAltScreen(), tea.WithMouseCellMotion())
+	p := tea.NewProgram(NewConsoleUI(cfg, client, gs),
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+		tea.WithMouseAllMotion())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
 		os.Exit(1)

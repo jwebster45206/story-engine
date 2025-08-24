@@ -50,7 +50,8 @@ type gameStateMsg struct {
 
 var (
 	chatPanelStyle = lipgloss.NewStyle().
-			Padding(2).
+			PaddingTop(2).
+			PaddingBottom(0).
 			PaddingLeft(3).
 			PaddingRight(3)
 
@@ -164,7 +165,7 @@ func (m *ConsoleUI) writeChatContent() {
 	}
 
 	var content strings.Builder
-	chatWidth := m.chatViewport.Width - 2
+	chatWidth := m.chatViewport.Width - 6 // Account for left(3) + right(3) padding
 
 	// Add title and intro
 	content.WriteString(titleStyle.Render("STORY ENGINE") + "\n\n")
@@ -205,11 +206,20 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		mvCmd tea.Cmd
 	)
 
-	m.textarea, tiCmd = m.textarea.Update(msg)
-	m.chatViewport, vpCmd = m.chatViewport.Update(msg)
-	m.metaViewport, mvCmd = m.metaViewport.Update(msg)
-
 	switch msg := msg.(type) {
+	case tea.MouseMsg:
+		// Handle mouse events first, before updating other components
+		// Check if the mouse event is in the chat viewport area
+		// For now, pass all mouse events to chat viewport for text selection
+		// The viewport component will ignore events outside its bounds
+		m.chatViewport, vpCmd = m.chatViewport.Update(msg)
+
+		// Also update textarea and meta viewport in case they need mouse events
+		m.textarea, tiCmd = m.textarea.Update(msg)
+		m.metaViewport, mvCmd = m.metaViewport.Update(msg)
+
+		return m, tea.Batch(tiCmd, vpCmd, mvCmd)
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -219,7 +229,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Update viewport dimensions
 		m.chatViewport.Width = chatWidth - 2
-		m.chatViewport.Height = m.height - 8
+		m.chatViewport.Height = m.height - 9 // Reduced by 1 for spacing
 		m.metaViewport.Width = metaWidth - 2
 		m.metaViewport.Height = m.height - 4
 		m.textarea.SetWidth(chatWidth - 4)
@@ -235,12 +245,6 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Update metadata panel content as well
 		m.metaViewport.SetContent(writeMetadata(m.gameState))
-
-	case tea.MouseMsg:
-		if msg.Action == tea.MouseActionPress && (msg.Button == tea.MouseButtonWheelUp || msg.Button == tea.MouseButtonWheelDown) {
-			m.chatViewport, vpCmd = m.chatViewport.Update(msg)
-			return m, vpCmd
-		}
 
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -305,6 +309,11 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.metaViewport.SetContent(writeMetadata(m.gameState))
 		}
 	}
+
+	// Update components for non-mouse events
+	m.textarea, tiCmd = m.textarea.Update(msg)
+	m.chatViewport, vpCmd = m.chatViewport.Update(msg)
+	m.metaViewport, mvCmd = m.metaViewport.Update(msg)
 
 	return m, tea.Batch(tiCmd, vpCmd, mvCmd)
 }
@@ -444,9 +453,10 @@ func (m ConsoleUI) View() string {
 	chatWidth := int(float64(m.width)*0.75) - 4
 	metaWidth := m.width - chatWidth - 6
 
-	chatPanel := chatPanelStyle.Width(chatWidth).Height(m.height - 6).Render(
+	chatPanel := chatPanelStyle.Width(chatWidth).Height(m.height - 3).Render(
 		lipgloss.JoinVertical(lipgloss.Left,
 			m.chatViewport.View(),
+			"", // Add empty line for spacing
 			m.textarea.View(),
 		),
 	)
@@ -456,4 +466,12 @@ func (m ConsoleUI) View() string {
 	)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, chatPanel, metaPanel)
+}
+
+// Helper function for Go versions that don't have min
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
