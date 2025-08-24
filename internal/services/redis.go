@@ -139,6 +139,9 @@ func (r *RedisService) WaitForConnection(ctx context.Context) error {
 
 // SaveGameState saves a gamestate with the given UUID
 func (r *RedisService) SaveGameState(ctx context.Context, uuid uuid.UUID, gamestate *state.GameState) error {
+	// Update the UpdatedAt timestamp
+	gamestate.UpdatedAt = time.Now()
+
 	// Marshal gamestate to JSON
 	data, err := json.Marshal(gamestate)
 	if err != nil {

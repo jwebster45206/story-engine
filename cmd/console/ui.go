@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -53,6 +55,83 @@ type ConsoleUI struct {
 
 	// Auto-scroll suppression
 	userPinned bool // true when user has scrolled away from bottom
+
+	// Polling state
+	pollSeq       int  // incrementing sequence for polls
+	activePollSeq int  // sequence number of poll in flight
+	pollInFlight  bool // whether a poll HTTP request is active
+
+	// Pending user messages not yet confirmed in server game state
+	// Pending user messages awaiting server echo (assistant responses are applied only on chatResponse)
+	pendingUserMessages []chat.ChatMessage
+}
+
+// mergeServerGameState reconciles the authoritative server game state with any locally
+// pending messages (both user and assistant) that have been optimistically appended
+// but not yet observed from the server. Matching heuristic: role+content.
+// If chat history changes, rewrites chat viewport content while preserving scroll pin.
+func (m *ConsoleUI) mergeServerGameState(serverGS *state.GameState) {
+	if serverGS == nil {
+		return
+	}
+	origLen := 0
+	if m.gameState != nil {
+		origLen = len(m.gameState.ChatHistory)
+	}
+	if m.gameState == nil {
+		m.gameState = serverGS
+	} else {
+		m.gameState.ID = serverGS.ID
+		m.gameState.Scenario = serverGS.Scenario
+		m.gameState.Location = serverGS.Location
+		m.gameState.TurnCounter = serverGS.TurnCounter
+		m.gameState.Inventory = serverGS.Inventory
+		m.gameState.Vars = serverGS.Vars
+		m.gameState.ChatHistory = make([]chat.ChatMessage, len(serverGS.ChatHistory))
+		copy(m.gameState.ChatHistory, serverGS.ChatHistory)
+	}
+
+	if len(m.pendingUserMessages) > 0 {
+		for _, pm := range m.pendingUserMessages {
+			found := false
+			for _, existing := range m.gameState.ChatHistory {
+				if existing.Role == pm.Role && existing.Content == pm.Content {
+					found = true
+					break
+				}
+			}
+			if !found {
+				// Append locally (keep order after server messages). If last server message is assistant
+				// and pending is user, place before to preserve conversational alternation.
+				if len(m.gameState.ChatHistory) > 0 && m.gameState.ChatHistory[len(m.gameState.ChatHistory)-1].Role == "assistant" && pm.Role == "user" {
+					last := m.gameState.ChatHistory[len(m.gameState.ChatHistory)-1]
+					m.gameState.ChatHistory = append(m.gameState.ChatHistory[:len(m.gameState.ChatHistory)-1], pm, last)
+				} else {
+					m.gameState.ChatHistory = append(m.gameState.ChatHistory, pm)
+				}
+			}
+		}
+		// Filter out any pending messages that have now appeared in server data
+		var stillPending []chat.ChatMessage
+		for _, pm := range m.pendingUserMessages {
+			present := false
+			for _, existing := range m.gameState.ChatHistory {
+				if existing.Role == pm.Role && existing.Content == pm.Content {
+					present = true
+					break
+				}
+			}
+			if !present { // Should rarely happen; keep if somehow not present
+				stillPending = append(stillPending, pm)
+			}
+		}
+		m.pendingUserMessages = stillPending
+	}
+
+	// If chat history length changed or pending merges occurred, re-render chat (but don't lose scroll pin state)
+	if len(m.gameState.ChatHistory) != origLen {
+		m.writeChatContent()
+	}
 }
 
 type chatResponseMsg struct {
@@ -77,6 +156,12 @@ type gameStateCreatedMsg struct {
 }
 
 type progressTickMsg struct{}
+type pollTickMsg struct{}
+type pollResultMsg struct {
+	seq       int
+	gameState *state.GameState
+	err       error
+}
 
 var (
 	chatPanelStyle = lipgloss.NewStyle().
@@ -101,6 +186,8 @@ var (
 
 	narratorStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("86")) // green
+
+	metaStyle = narratorStyle // copy narrator style for now
 
 	userStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("39")) // teal
@@ -180,30 +267,47 @@ func writeInitialContent(gs *state.GameState, chatWidth int) string {
 	return content.String()
 }
 
-func writeMetadata(gs *state.GameState) string {
+func writeMetadata(gs *state.GameState, width int) string {
 	var content strings.Builder
-	content.WriteString(titleStyle.Render("GAME STATE") + "\n\n")
+	content.WriteString(titleStyle.Render("GAME STATE") + "\n")
+	width = max(8, width) // min width of 8
+	idStr := gs.ID.String()
+	for len(idStr) > width {
+		content.WriteString(idStr[:width] + "\n")
+		idStr = idStr[width:]
+	}
+	content.WriteString(idStr + "\n\n")
 
-	content.WriteString("Game ID:\n")
-	content.WriteString(gs.ID.String()[:8] + "...\n\n")
+	content.WriteString(metaStyle.Render("Scenario: "))
+	content.WriteString(gs.Scenario + "\n")
+	content.WriteString(metaStyle.Render("Location: "))
+	content.WriteString(gs.Location + "\n")
+	content.WriteString(metaStyle.Render("Turn: "))
+	content.WriteString(fmt.Sprintf("%d", gs.TurnCounter) + "\n\n")
 
-	content.WriteString("Scenario:\n")
-	content.WriteString(gs.Scenario + "\n\n")
-
-	content.WriteString("Messages:\n")
-	content.WriteString(fmt.Sprintf("%d total\n\n", len(gs.ChatHistory)))
-
-	if len(gs.Vars) > 0 {
-		content.WriteString("Variables:\n")
-		for k, v := range gs.Vars {
-			content.WriteString(fmt.Sprintf("• %s: %v\n", k, v))
-		}
+	content.WriteString(metaStyle.Render("Inventory: ") + "\n")
+	if len(gs.Inventory) == 0 {
+		content.WriteString("None\n\n")
 	} else {
-		content.WriteString("Variables:\nNone set\n")
+		for i := range gs.Inventory {
+			content.WriteString(fmt.Sprintf("• %s\n", gs.Inventory[i]))
+		}
 	}
 
+	// content.WriteString("Messages:\n")
+	// content.WriteString(fmt.Sprintf("%d total\n\n", len(gs.ChatHistory)))
+
+	// if len(gs.Vars) > 0 {
+	// 	content.WriteString("Variables:\n")
+	// 	for k, v := range gs.Vars {
+	// 		content.WriteString(fmt.Sprintf("• %s: %v\n", k, v))
+	// 	}
+	// } else {
+	// 	content.WriteString("Variables:\nNone set\n")
+	// }
+
 	content.WriteString("\n")
-	content.WriteString("Commands:\n")
+	content.WriteString(metaStyle.Render("Commands:") + "\n")
 	content.WriteString("• Ctrl+C: Quit\n")
 	content.WriteString("• Enter: Send\n")
 	content.WriteString("• /help: Help\n")
@@ -264,7 +368,8 @@ func (m ConsoleUI) Init() tea.Cmd {
 	if m.showScenarioModal {
 		return m.loadScenarios()
 	}
-	return textarea.Blink
+	// Start polling even before game state; scheduler will requeue until game state exists
+	return tea.Batch(textarea.Blink, schedulePoll())
 }
 
 func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -312,7 +417,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Update metadata panel content as well
 			if m.gameState != nil {
-				m.metaViewport.SetContent(writeMetadata(m.gameState))
+				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width))
 			}
 		}
 
@@ -346,6 +451,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				Content: input,
 			}
 			m.gameState.ChatHistory = append(m.gameState.ChatHistory, userMessage)
+			m.pendingUserMessages = append(m.pendingUserMessages, userMessage)
 
 			// Reformat content to include the new user message
 			m.writeChatContent()
@@ -382,25 +488,56 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.chatViewport.GotoBottom()
 			}
 		} else {
-			// Add assistant response to game state
-			assistantMessage := chat.ChatMessage{
-				Role:    "assistant",
-				Content: msg.response.Message,
-			}
+			// Add assistant response to game state (server will echo later; we'll de-dupe then)
+			assistantMessage := chat.ChatMessage{Role: "assistant", Content: msg.response.Message}
 			m.gameState.ChatHistory = append(m.gameState.ChatHistory, assistantMessage)
-
-			// Reformat all content including the new response
 			m.writeChatContent()
-			if !m.userPinned { // only force scroll if not pinned
+			if !m.userPinned {
 				m.chatViewport.GotoBottom()
 			}
 		}
-		return m, m.refreshGameState()
+		return m, tea.Batch(m.refreshGameState(), schedulePoll())
+
+	case pollTickMsg:
+		// Time to initiate a poll (if we have a game state)
+		if m.gameState != nil {
+			if m.pollInFlight {
+				// Start a fresh poll by bumping the sequence; result from older poll will be ignored when it arrives
+				m.pollSeq++
+				m.activePollSeq = m.pollSeq
+				m.pollInFlight = true
+				return m, tea.Batch(startPoll(m.activePollSeq, m.client, m.config.APIBaseURL, m.gameState.ID), schedulePoll())
+			}
+			// No poll in flight; start one
+			m.pollSeq++
+			m.activePollSeq = m.pollSeq
+			m.pollInFlight = true
+			return m, tea.Batch(startPoll(m.activePollSeq, m.client, m.config.APIBaseURL, m.gameState.ID), schedulePoll())
+		}
+		// No game state yet; just reschedule
+		return m, schedulePoll()
+
+	case pollResultMsg:
+		// Only apply if this is the latest active sequence
+		if msg.seq == m.activePollSeq {
+			m.pollInFlight = false
+			if msg.err == nil && msg.gameState != nil && m.gameState != nil {
+				// Refresh metadata fields ONLY to avoid reordering chat mid-turn
+				m.gameState.ID = msg.gameState.ID
+				m.gameState.Scenario = msg.gameState.Scenario
+				m.gameState.Location = msg.gameState.Location
+				m.gameState.TurnCounter = msg.gameState.TurnCounter
+				m.gameState.Inventory = msg.gameState.Inventory
+				m.gameState.Vars = msg.gameState.Vars
+				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width))
+			}
+		}
+		return m, nil
 
 	case gameStateMsg:
 		if msg.err == nil && msg.gameState != nil {
-			m.gameState = msg.gameState
-			m.metaViewport.SetContent(writeMetadata(m.gameState))
+			m.mergeServerGameState(msg.gameState)
+			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width))
 		}
 
 	case progressTickMsg:
@@ -608,7 +745,7 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textarea.SetWidth(chatWidth - 4)
 			}
 			m.chatViewport.SetContent(writeInitialContent(m.gameState, m.chatViewport.Width-6))
-			m.metaViewport.SetContent(writeMetadata(m.gameState))
+			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width))
 			m.textarea.Focus() // Ensure textarea gets focus when modal closes
 			m.ready = true
 		}
@@ -822,4 +959,32 @@ func progressTick() tea.Cmd {
 	return tea.Tick(time.Millisecond*200, func(time.Time) tea.Msg {
 		return progressTickMsg{}
 	})
+}
+
+// schedulePoll returns a command that triggers a pollTickMsg after the interval
+func schedulePoll() tea.Cmd {
+	return tea.Tick(5*time.Second, func(time.Time) tea.Msg { return pollTickMsg{} })
+}
+
+// startPoll begins an HTTP fetch for the latest game state; old sequences are ignored
+func startPoll(seq int, client *http.Client, baseURL string, id uuid.UUID) tea.Cmd {
+	return func() tea.Msg {
+		resp, err := client.Get(fmt.Sprintf("%s/v1/gamestate/%s", baseURL, id))
+		if err != nil {
+			return pollResultMsg{seq: seq, gameState: nil, err: err}
+		}
+		defer func() { _ = resp.Body.Close() }()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return pollResultMsg{seq: seq, gameState: nil, err: err}
+		}
+		if resp.StatusCode != http.StatusOK {
+			return pollResultMsg{seq: seq, gameState: nil, err: fmt.Errorf("poll status %d", resp.StatusCode)}
+		}
+		var gs state.GameState
+		if err := json.Unmarshal(body, &gs); err != nil {
+			return pollResultMsg{seq: seq, gameState: nil, err: err}
+		}
+		return pollResultMsg{seq: seq, gameState: &gs, err: nil}
+	}
 }
