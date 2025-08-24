@@ -149,7 +149,7 @@ func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 	ta.ShowLineNumbers = false
 
 	chatVp := viewport.New(50, 20)
-	chatVp.MouseWheelEnabled = true
+	chatVp.MouseWheelEnabled = false // enabling causes text to jump around
 
 	metaVp := viewport.New(20, 20)
 
@@ -285,30 +285,6 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case tea.MouseMsg:
-		// Handle mouse events first, before updating other components
-		// Check if the mouse event is in the chat viewport area
-		// For now, pass all mouse events to chat viewport for text selection
-		// The viewport component will ignore events outside its bounds
-		prevAtBottom := m.chatViewport.AtBottom()
-		prevOffset := m.chatViewport.YOffset
-		m.chatViewport, vpCmd = m.chatViewport.Update(msg)
-		// Detect user scroll interaction (wheel up/down changes YOffset)
-		if m.chatViewport.YOffset != prevOffset {
-			if !m.chatViewport.AtBottom() {
-				m.userPinned = true
-			} else if !prevAtBottom && m.chatViewport.AtBottom() {
-				// User scrolled back to bottom
-				m.userPinned = false
-			}
-		}
-
-		// Also update textarea and meta viewport in case they need mouse events
-		m.textarea, tiCmd = m.textarea.Update(msg)
-		m.metaViewport, mvCmd = m.metaViewport.Update(msg)
-
-		return m, tea.Batch(tiCmd, vpCmd, mvCmd)
-
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -377,6 +353,21 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(m.sendChatMessage(input), progressTick())
 		}
 
+		// scrolling/navigation keys for the chat viewport
+		keyStr := msg.String()
+		if keyStr == "up" || keyStr == "down" || keyStr == "pgup" || keyStr == "pgdown" || keyStr == "home" || keyStr == "end" {
+			prevAtBottom := m.chatViewport.AtBottom()
+			prevOffset := m.chatViewport.YOffset
+			m.chatViewport, vpCmd = m.chatViewport.Update(msg)
+			if m.chatViewport.YOffset != prevOffset { // user navigated
+				if !m.chatViewport.AtBottom() {
+					m.userPinned = true
+				} else if !prevAtBottom && m.chatViewport.AtBottom() {
+					m.userPinned = false
+				}
+			}
+		}
+
 	case chatResponseMsg:
 		m.loading = false
 		if msg.err != nil {
@@ -420,23 +411,9 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Update components for non-mouse events
-	prevVPOffset := m.chatViewport.YOffset
-	prevVPAtBottom := m.chatViewport.AtBottom()
-
+	// Update components for non-mouse events (textarea & metadata). Chat viewport already handled for key scroll above.
 	m.textarea, tiCmd = m.textarea.Update(msg)
-	m.chatViewport, vpCmd = m.chatViewport.Update(msg)
 	m.metaViewport, mvCmd = m.metaViewport.Update(msg)
-
-	// Detect keyboard-driven scroll changes and adjust pin state
-	if m.chatViewport.YOffset != prevVPOffset {
-		if !m.chatViewport.AtBottom() {
-			m.userPinned = true
-		} else if !prevVPAtBottom && m.chatViewport.AtBottom() {
-			m.userPinned = false
-		}
-	}
-
 	return m, tea.Batch(tiCmd, vpCmd, mvCmd)
 }
 
