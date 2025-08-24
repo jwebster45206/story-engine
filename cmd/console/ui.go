@@ -80,7 +80,6 @@ var (
 
 	promptStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("240")) // dark grey
-
 )
 
 func NewConsoleUI(cfg *ConsoleConfig, client *http.Client, gs *state.GameState) ConsoleUI {
@@ -95,6 +94,9 @@ func NewConsoleUI(cfg *ConsoleConfig, client *http.Client, gs *state.GameState) 
 
 	chatVp := viewport.New(50, 20)
 	chatVp.SetContent(writeInitialContent(gs))
+
+	// Enable scrollbar
+	chatVp.MouseWheelEnabled = true
 
 	metaVp := viewport.New(20, 20)
 	metaVp.SetContent(writeMetadata(gs))
@@ -319,8 +321,24 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func formatNarratorResponse(response string, width int) string {
-	// First wrap the text to the available width
-	wrappedResponse := wordwrap.String(response, width)
+	// Check if response already has a speaker prefix
+	hasPrefix := false
+	if idx := strings.Index(response, ":"); idx > 0 && idx <= 20 {
+		speaker := response[:idx]
+		if len(strings.Fields(speaker)) <= 2 {
+			hasPrefix = true
+		}
+	}
+
+	// If no prefix, we'll add "Narrator: " so reduce available width
+	wrapWidth := width
+	if !hasPrefix {
+		narratorPrefix := AgentName + ": "
+		wrapWidth = width - len(narratorPrefix)
+	}
+
+	// Wrap the text to the available width
+	wrappedResponse := wordwrap.String(response, wrapWidth)
 	lines := strings.Split(wrappedResponse, "\n")
 	var formattedLines []string
 
@@ -344,8 +362,8 @@ func formatNarratorResponse(response string, width int) string {
 	}
 
 	result := strings.Join(formattedLines, "\n")
-	if !strings.HasPrefix(strings.TrimSpace(result), speakerStyle.Render("")) {
-		result = narratorStyle.Render("Narrator: ") + result
+	if !hasPrefix && !strings.HasPrefix(strings.TrimSpace(result), speakerStyle.Render("")) {
+		result = narratorStyle.Render(AgentName+": ") + result
 	}
 
 	return result
