@@ -54,7 +54,8 @@ The console client uses a split-pane layout:
 - Automatic text wrapping and formatting
 
 **Right Panel (Game State)**:
-- Metadata about game state
+- Details about game state (inventory, location, etc.)
+- Intended for both gameplay and debugging
 
 ### Message Flow
 
