@@ -52,6 +52,9 @@ type ConsoleUI struct {
 	// Quit confirmation state
 	showQuitModal bool
 
+	// New game confirmation state
+	showNewGameModal bool
+
 	// Progress bar state
 	progressTick int
 
@@ -314,6 +317,7 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string) strin
 	content.WriteString("\n")
 	content.WriteString(metaStyle.Render("Commands:") + "\n")
 	content.WriteString("• Ctrl+C: Quit\n")
+	content.WriteString("• Ctrl+N: New Game\n")
 	content.WriteString("• Ctrl+Y: Copy GameState ID\n")
 	content.WriteString("• Enter: Send\n")
 	content.WriteString("• /help: Help\n\n")
@@ -396,6 +400,11 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateQuitModal(msg)
 	}
 
+	// Handle new game modal third
+	if m.showNewGameModal {
+		return m.updateNewGameModal(msg)
+	}
+
 	var (
 		tiCmd tea.Cmd
 		vpCmd tea.Cmd
@@ -438,6 +447,11 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			m.showQuitModal = true
+			return m, nil
+
+		case tea.KeyCtrlN:
+			// Show new game confirmation modal
+			m.showNewGameModal = true
 			return m, nil
 
 		case tea.KeyCtrlY:
@@ -855,6 +869,64 @@ func (m ConsoleUI) updateQuitModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// updateNewGameModal handles confirmation for starting a new game
+func (m ConsoleUI) updateNewGameModal(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyCtrlC, tea.KeyEsc:
+			m.showNewGameModal = false
+			return m, nil
+		case tea.KeyEnter:
+			return m.startNewGame()
+		default:
+			switch msg.String() {
+			case "y", "Y":
+				return m.startNewGame()
+			case "n", "N":
+				m.showNewGameModal = false
+				return m, nil
+			}
+		}
+	}
+	return m, nil
+}
+
+// startNewGame resets state and returns to scenario selection, reloading scenarios
+func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
+	m.gameState = nil
+	m.pendingUserMessages = nil
+	m.chatViewport.SetContent("")
+	m.metaViewport.SetContent("")
+	m.showNewGameModal = false
+	m.showScenarioModal = true
+	m.loadingScenarios = true
+	m.scenarios = nil
+	m.scenarioMap = nil
+	m.selectedScenario = 0
+	m.pollSeq = 0
+	m.activePollSeq = 0
+	m.pollInFlight = false
+	return m, m.loadScenarios()
+}
+
+func (m ConsoleUI) renderNewGameModal() string {
+	if m.width == 0 || m.height == 0 {
+		return "Loading..."
+	}
+	var content strings.Builder
+	content.WriteString(modalTitleStyle.Render("Start a New Game?"))
+	content.WriteString("\n\n")
+	content.WriteString("This will discard the current session and return to scenario selection.")
+	content.WriteString("\n\n")
+	content.WriteString(promptStyle.Render("Press Y to confirm, N to cancel, or Esc to go back"))
+	modal := modalStyle.Width(58).Render(content.String())
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modal, lipgloss.WithWhitespaceChars(" "))
+}
+
 func (m ConsoleUI) renderQuitModal() string {
 	if m.width == 0 || m.height == 0 {
 		return "Loading..."
@@ -926,6 +998,10 @@ func (m ConsoleUI) View() string {
 
 	if m.showQuitModal {
 		return m.renderQuitModal()
+	}
+
+	if m.showNewGameModal {
+		return m.renderNewGameModal()
 	}
 
 	if !m.ready {
