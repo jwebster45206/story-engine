@@ -267,13 +267,31 @@ func writeInitialContent(gs *state.GameState, scenarioName string, chatWidth int
 	return content.String()
 }
 
-func writeMetadata(gs *state.GameState, width int) string {
+func (m *ConsoleUI) scenarioDisplayName() string {
+	if m == nil || m.gameState == nil {
+		return ""
+	}
+	file := m.gameState.Scenario
+	// scenarioMap maps displayName -> file; reverse lookup
+	for display, f := range m.scenarioMap {
+		if f == file {
+			return display
+		}
+	}
+	return file // fallback to file name
+}
+
+func writeMetadata(gs *state.GameState, width int, scenarioDisplay string) string {
 	var content strings.Builder
 
-	castle := " _   |>  _\n[_]--'--[_]\n|'|\"\"`\"\"|'|\n| | /^\\ | |\n|_|_|I|_|_|"
+	//castle := " _   |>  _\n[_]--'--[_]\n|'|\"\"`\"\"|'|\n| | /^\\ | |\n|_|_|I|_|_|"
+	castle := " _   |>  _\n"
+	castle += "[_]--'--[_]   STORY ENGINE\n"
+	castle += "|'|\"\"`\"\"|'|   LLM-Powered Text\n"
+	castle += "| | /^\\ | |   Adventure Game\n"
+	castle += "|_|_|I|_|_|"
 
-	content.WriteString(titleStyle.Render("STORY ENGINE") + "\n")
-	content.WriteString(titleStyle.Render(castle) + "\n\n")
+	content.WriteString("\n" + titleStyle.Render(castle) + "\n\n")
 
 	content.WriteString(titleStyle.Render("GAME STATE") + "\n")
 	width = max(8, width) // min width of 8
@@ -285,7 +303,7 @@ func writeMetadata(gs *state.GameState, width int) string {
 	content.WriteString(idStr + "\n\n")
 
 	content.WriteString(metaStyle.Render("Scenario: "))
-	content.WriteString(gs.Scenario + "\n")
+	content.WriteString(scenarioDisplay + "\n")
 	content.WriteString(metaStyle.Render("Location: "))
 	content.WriteString(gs.Location + "\n")
 	content.WriteString(metaStyle.Render("Turn: "))
@@ -331,7 +349,7 @@ func (m *ConsoleUI) writeChatContent() {
 	prevOffset := m.chatViewport.YOffset
 
 	if m.gameState == nil || len(m.gameState.ChatHistory) == 0 {
-		m.chatViewport.SetContent(writeInitialContent(m.gameState, m.gameState.Scenario, chatWidth))
+		m.chatViewport.SetContent(writeInitialContent(m.gameState, m.scenarioDisplayName(), chatWidth))
 		if wasBottom {
 			m.chatViewport.GotoBottom()
 		} else {
@@ -423,7 +441,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Update metadata panel content as well
 			if m.gameState != nil {
-				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width))
+				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName()))
 			}
 		}
 
@@ -535,7 +553,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.gameState.TurnCounter = msg.gameState.TurnCounter
 				m.gameState.Inventory = msg.gameState.Inventory
 				m.gameState.Vars = msg.gameState.Vars
-				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width))
+				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName()))
 			}
 		}
 		return m, nil
@@ -543,7 +561,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gameStateMsg:
 		if msg.err == nil && msg.gameState != nil {
 			m.mergeServerGameState(msg.gameState)
-			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width))
+			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName()))
 		}
 
 	case progressTickMsg:
@@ -678,6 +696,10 @@ func (m ConsoleUI) sendChatMessage(message string) tea.Cmd {
 		if err != nil {
 			return chatResponseMsg{nil, fmt.Errorf("failed to read response: %w", err)}
 		}
+		// Update metadata in case server mutated something quickly (turn counter etc.)
+		if m.gameState != nil {
+			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName()))
+		}
 
 		if resp.StatusCode != http.StatusOK {
 			var errorResp ErrorResponse
@@ -750,8 +772,9 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.metaViewport.Height = m.height - 4
 				m.textarea.SetWidth(chatWidth - 4)
 			}
-			m.chatViewport.SetContent(writeInitialContent(m.gameState, m.gameState.Scenario, m.chatViewport.Width-6))
-			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width))
+			// Use display name instead of raw file name
+			m.chatViewport.SetContent(writeInitialContent(m.gameState, m.scenarioDisplayName(), m.chatViewport.Width-6))
+			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName()))
 			m.textarea.Focus() // Ensure textarea gets focus when modal closes
 			m.ready = true
 		}
@@ -920,7 +943,6 @@ func (m ConsoleUI) View() string {
 			m.textarea.View(),
 		),
 	)
-
 	metaPanel := metaPanelStyle.Width(metaWidth).Height(m.height - 2).Render(
 		m.metaViewport.View(),
 	)
