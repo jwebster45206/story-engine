@@ -128,42 +128,37 @@ All endpoints return consistent error format:
 
 ## Running the Project
 
-### Config
+### Configuration
 
-Create a json config file. Example:
+Create a JSON configuration file with your service settings:
 
 ```json
 {
   "port": "8080",
   "environment": "dev",
   "log_level": "debug",
-  "ollama_url": "http://localhost:11434",
-  "venice_api_key": "API_KEY_HERE",
+  "venice_api_key": "your_api_key_here",
   "model_name": "llama-3.3-70b",
   "redis_url": "localhost:6379"
 }
 ```
 
-*Note: Currently only Venice LLM provider is supported.* 
+*Note: Currently only Venice LLM provider is supported.*
 
-#### Venice LLM Provider
+### API Server
 
-Venice provides low-cost access to models that are good at storytelling. Recommended models:
-- llama-3.3-70b
-- dolphin-2.9.2-qwen2-72b
-
-#### Ollama LLM Provider
-
-TODO: Re-enable Ollama support with a proper model. Local performance constraints may block testing. 
-
-### API
-
-````bash
-GAME_CONFIG=config.docker.json go run cmd/api/main.go &
-````
+```bash
+GAME_CONFIG=config.json go run cmd/api/main.go
+```
 
 ### Console Client
 
-````bash
-GAME_CONFIG=config.docker.json go run cmd/console/main.go
-````
+For detailed setup and usage instructions, see the [Console Client README](cmd/console/README.md).
+
+```bash
+# Run with default API URL (localhost:8080)
+go run cmd/console/*.go
+
+# Or with custom API URL
+API_BASE_URL=http://localhost:3000 go run cmd/console/*.go
+```

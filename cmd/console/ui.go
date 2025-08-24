@@ -36,6 +36,13 @@ type ConsoleUI struct {
 	height       int
 	err          error
 	loading      bool
+
+	// Scenario selection state
+	showScenarioModal bool
+	scenarios         []string
+	scenarioMap       map[string]string
+	selectedScenario  int
+	loadingScenarios  bool
 }
 
 type chatResponseMsg struct {
@@ -44,6 +51,17 @@ type chatResponseMsg struct {
 }
 
 type gameStateMsg struct {
+	gameState *state.GameState
+	err       error
+}
+
+type scenariosLoadedMsg struct {
+	scenarios   []string
+	scenarioMap map[string]string
+	err         error
+}
+
+type gameStateCreatedMsg struct {
 	gameState *state.GameState
 	err       error
 }
@@ -80,9 +98,29 @@ var (
 
 	promptStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("240")) // dark grey
+
+	modalStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("62")).
+			Padding(1, 2).
+			Background(lipgloss.Color("235")).
+			Foreground(lipgloss.Color("255"))
+
+	modalTitleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("205")).
+			Bold(true).
+			Align(lipgloss.Center)
+
+	modalItemStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("255"))
+
+	modalSelectedItemStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("0")).
+				Background(lipgloss.Color("205")).
+				Bold(true)
 )
 
-func NewConsoleUI(cfg *ConsoleConfig, client *http.Client, gs *state.GameState) ConsoleUI {
+func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 	ta := textarea.New()
 	ta.Placeholder = PlaceHolderText
 	ta.Focus()
@@ -93,35 +131,33 @@ func NewConsoleUI(cfg *ConsoleConfig, client *http.Client, gs *state.GameState) 
 	ta.ShowLineNumbers = false
 
 	chatVp := viewport.New(50, 20)
-	chatVp.SetContent(writeInitialContent(gs))
-
-	// Enable scrollbar
 	chatVp.MouseWheelEnabled = true
 
 	metaVp := viewport.New(20, 20)
-	metaVp.SetContent(writeMetadata(gs))
 
 	return ConsoleUI{
-		config:       cfg,
-		client:       client,
-		gameState:    gs,
-		textarea:     ta,
-		chatViewport: chatVp,
-		metaViewport: metaVp,
-		ready:        false,
+		config:            cfg,
+		client:            client,
+		textarea:          ta,
+		chatViewport:      chatVp,
+		metaViewport:      metaVp,
+		ready:             false,
+		showScenarioModal: true,
+		loadingScenarios:  true,
+		selectedScenario:  0,
 	}
 }
 
-func writeInitialContent(gs *state.GameState) string {
+func writeInitialContent(gs *state.GameState, chatWidth int) string {
 	var content strings.Builder
 	content.WriteString(titleStyle.Render("STORY ENGINE") + "\n\n")
 	content.WriteString("Type your messages below to interact with the story.\n\n")
-	content.WriteString(strings.Repeat("─", 50) + "\n\n")
+	content.WriteString(strings.Repeat("─", min(50, chatWidth)) + "\n\n")
 
-	if len(gs.ChatHistory) > 0 {
-		content.WriteString(narratorStyle.Render("Narrator: "))
-		content.WriteString((gs.ChatHistory[0].Content))
-		content.WriteString("\n\n")
+	if gs != nil && len(gs.ChatHistory) > 0 {
+		// Use the same formatting as writeChatContent for consistency
+		formattedMsg := formatNarratorResponse(gs.ChatHistory[0].Content, chatWidth)
+		content.WriteString(formattedMsg + "\n\n")
 	}
 	return content.String()
 }
@@ -160,14 +196,15 @@ func writeMetadata(gs *state.GameState) string {
 
 // writeChatContent builds the chat content from game state for the current viewport width
 func (m *ConsoleUI) writeChatContent() {
+	chatWidth := m.chatViewport.Width - 6 // Account for left(3) + right(3) padding
+
 	if m.gameState == nil || len(m.gameState.ChatHistory) == 0 {
 		// No chat history, just show initial content
-		m.chatViewport.SetContent(writeInitialContent(m.gameState))
+		m.chatViewport.SetContent(writeInitialContent(m.gameState, chatWidth))
 		return
 	}
 
 	var content strings.Builder
-	chatWidth := m.chatViewport.Width - 6 // Account for left(3) + right(3) padding
 
 	// Add title and intro
 	content.WriteString(titleStyle.Render("STORY ENGINE") + "\n\n")
@@ -198,10 +235,18 @@ func (m *ConsoleUI) writeChatContent() {
 }
 
 func (m ConsoleUI) Init() tea.Cmd {
+	if m.showScenarioModal {
+		return m.loadScenarios()
+	}
 	return textarea.Blink
 }
 
 func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle scenario modal first
+	if m.showScenarioModal {
+		return m.updateScenarioModal(msg)
+	}
+
 	var (
 		tiCmd tea.Cmd
 		vpCmd tea.Cmd
@@ -226,27 +271,32 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-		chatWidth := int(float64(m.width)*0.75) - 4
-		metaWidth := m.width - chatWidth - 6
+		// Only update chat UI if we're not showing the modal
+		if !m.showScenarioModal {
+			chatWidth := int(float64(m.width)*0.75) - 4
+			metaWidth := m.width - chatWidth - 6
 
-		// Update viewport dimensions
-		m.chatViewport.Width = chatWidth - 2
-		m.chatViewport.Height = m.height - 7 // Reduced by 1 for spacing
-		m.metaViewport.Width = metaWidth - 2
-		m.metaViewport.Height = m.height - 4
-		m.textarea.SetWidth(chatWidth - 4)
+			// Update viewport dimensions
+			m.chatViewport.Width = chatWidth - 2
+			m.chatViewport.Height = m.height - 7 // Reduced by 1 for spacing
+			m.metaViewport.Width = metaWidth - 2
+			m.metaViewport.Height = m.height - 4
+			m.textarea.SetWidth(chatWidth - 4)
 
-		if !m.ready {
-			m.ready = true
-			// Initial content setup
-			m.writeChatContent()
-		} else {
-			// Window was resized - reformat all content for new width
-			m.writeChatContent()
+			if !m.ready {
+				m.ready = true
+				// Initial content setup
+				m.writeChatContent()
+			} else {
+				// Window was resized - reformat all content for new width
+				m.writeChatContent()
+			}
+
+			// Update metadata panel content as well
+			if m.gameState != nil {
+				m.metaViewport.SetContent(writeMetadata(m.gameState))
+			}
 		}
-
-		// Update metadata panel content as well
-		m.metaViewport.SetContent(writeMetadata(m.gameState))
 
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -463,7 +513,149 @@ func (m ConsoleUI) refreshGameState() tea.Cmd {
 	}
 }
 
+func (m ConsoleUI) loadScenarios() tea.Cmd {
+	return func() tea.Msg {
+		orderedNames, scenarioMap, err := listScenarios(m.client, m.config.APIBaseURL)
+		return scenariosLoadedMsg{orderedNames, scenarioMap, err}
+	}
+}
+
+func (m ConsoleUI) createGameStateFromScenario(scenarioFile string) tea.Cmd {
+	return func() tea.Msg {
+		gs, err := createGameState(m.client, m.config.APIBaseURL, scenarioFile)
+		return gameStateCreatedMsg{gs, err}
+	}
+}
+
+func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+	case scenariosLoadedMsg:
+		m.loadingScenarios = false
+		if msg.err != nil {
+			m.err = msg.err
+		} else {
+			m.scenarios = msg.scenarios
+			m.scenarioMap = msg.scenarioMap
+		}
+
+	case gameStateCreatedMsg:
+		// Regardless of outcome, we're no longer in the create-game loading phase
+		m.loading = false
+		if msg.err != nil {
+			m.err = msg.err
+		} else {
+			m.gameState = msg.gameState
+			m.showScenarioModal = false
+			// Set up viewport dimensions now that we have a game state
+			if m.width > 0 && m.height > 0 {
+				chatWidth := int(float64(m.width)*0.75) - 4
+				metaWidth := m.width - chatWidth - 6
+				m.chatViewport.Width = chatWidth - 2
+				m.chatViewport.Height = m.height - 7
+				m.metaViewport.Width = metaWidth - 2
+				m.metaViewport.Height = m.height - 4
+				m.textarea.SetWidth(chatWidth - 4)
+			}
+			m.chatViewport.SetContent(writeInitialContent(m.gameState, m.chatViewport.Width-6))
+			m.metaViewport.SetContent(writeMetadata(m.gameState))
+			m.textarea.Focus() // Ensure textarea gets focus when modal closes
+			m.ready = true
+		}
+		return m, textarea.Blink // Return focus command
+
+	case tea.KeyMsg:
+		if m.loadingScenarios {
+			if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyEsc {
+				return m, tea.Quit
+			}
+			return m, nil
+		}
+
+		if m.err != nil {
+			if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyEsc {
+				return m, tea.Quit
+			}
+			return m, nil
+		}
+
+		switch msg.Type {
+		case tea.KeyCtrlC, tea.KeyEsc:
+			return m, tea.Quit
+		case tea.KeyUp:
+			if m.selectedScenario > 0 {
+				m.selectedScenario--
+			}
+		case tea.KeyDown:
+			if m.selectedScenario < len(m.scenarios)-1 {
+				m.selectedScenario++
+			}
+		case tea.KeyEnter:
+			if len(m.scenarios) > 0 {
+				scenarioName := m.scenarios[m.selectedScenario]
+				scenarioFile := m.scenarioMap[scenarioName]
+				m.loading = true
+				return m, m.createGameStateFromScenario(scenarioFile)
+			}
+		}
+	}
+
+	return m, nil
+}
+
+func (m ConsoleUI) renderScenarioModal() string {
+	if m.width == 0 || m.height == 0 {
+		return "Loading..."
+	}
+
+	var content strings.Builder
+
+	if m.loadingScenarios {
+		content.WriteString(modalTitleStyle.Render("Loading Scenarios..."))
+		content.WriteString("\n\n")
+		content.WriteString(loadingStyle.Render("Please wait while we fetch available scenarios..."))
+	} else if m.err != nil {
+		content.WriteString(modalTitleStyle.Render("Error"))
+		content.WriteString("\n\n")
+		content.WriteString(errorStyle.Render(fmt.Sprintf("Failed to load scenarios: %v", m.err)))
+		content.WriteString("\n\n")
+		content.WriteString("Press Ctrl+C to exit")
+	} else if m.loading {
+		content.WriteString(modalTitleStyle.Render("Creating Game..."))
+		content.WriteString("\n\n")
+		content.WriteString(loadingStyle.Render("Setting up your adventure..."))
+	} else {
+		content.WriteString(modalTitleStyle.Render("Select a Scenario"))
+		content.WriteString("\n\n")
+
+		for i, scenario := range m.scenarios {
+			if i == m.selectedScenario {
+				content.WriteString(modalSelectedItemStyle.Render(fmt.Sprintf("▶ %s", scenario)))
+			} else {
+				content.WriteString(modalItemStyle.Render(fmt.Sprintf("  %s", scenario)))
+			}
+			content.WriteString("\n")
+		}
+
+		content.WriteString("\n")
+		content.WriteString(promptStyle.Render("Use ↑/↓ to navigate, Enter to select, Ctrl+C to exit"))
+	}
+
+	// Create the modal
+	modal := modalStyle.Width(60).Render(content.String())
+
+	// Center the modal
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modal, lipgloss.WithWhitespaceChars(" "))
+}
+
 func (m ConsoleUI) View() string {
+	if m.showScenarioModal {
+		return m.renderScenarioModal()
+	}
+
 	if !m.ready {
 		return "\n  Initializing..."
 	}
