@@ -43,7 +43,6 @@ func (r *RedisService) Ping(ctx context.Context) error {
 		return fmt.Errorf("redis ping failed: %w", err)
 	}
 
-	r.logger.Debug("Redis ping successful", "result", cmd.Val())
 	return nil
 }
 

@@ -34,11 +34,6 @@ func NewHealthHandler(storage services.Storage, llmService services.LLMService, 
 func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	h.logger.Debug("Health check requested",
-		"method", r.Method,
-		"path", r.URL.Path,
-		"remote_addr", r.RemoteAddr)
-
 	// Check cache health
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
