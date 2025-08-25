@@ -53,7 +53,6 @@ func (r *RedisService) Set(ctx context.Context, key string, value interface{}, e
 		return fmt.Errorf("redis set failed: %w", err)
 	}
 
-	r.logger.Debug("Redis SET successful", "key", key)
 	return nil
 }
 
@@ -61,7 +60,6 @@ func (r *RedisService) Get(ctx context.Context, key string) (string, error) {
 	cmd := r.client.Get(ctx, key)
 	if err := cmd.Err(); err != nil {
 		if err == redis.Nil {
-			r.logger.Debug("Redis key not found", "key", key)
 			return "", nil // Return empty string for not found, not an error
 		}
 		r.logger.Error("Redis GET failed", "key", key, "error", err)
@@ -69,7 +67,6 @@ func (r *RedisService) Get(ctx context.Context, key string) (string, error) {
 	}
 
 	value := cmd.Val()
-	r.logger.Debug("Redis GET successful", "key", key, "value_length", len(value))
 	return value, nil
 }
 
@@ -79,9 +76,6 @@ func (r *RedisService) Del(ctx context.Context, keys ...string) error {
 		r.logger.Error("Redis DEL failed", "keys", keys, "error", err)
 		return fmt.Errorf("redis del failed: %w", err)
 	}
-
-	deleted := cmd.Val()
-	r.logger.Debug("Redis DEL successful", "keys", keys, "deleted_count", deleted)
 	return nil
 }
 
@@ -93,7 +87,6 @@ func (r *RedisService) Exists(ctx context.Context, keys ...string) (bool, error)
 	}
 
 	exists := cmd.Val() > 0
-	r.logger.Debug("Redis EXISTS check", "keys", keys, "exists", exists)
 	return exists, nil
 }
 
@@ -155,7 +148,6 @@ func (r *RedisService) SaveGameState(ctx context.Context, uuid uuid.UUID, gamest
 		return fmt.Errorf("failed to save gamestate: %w", err)
 	}
 
-	r.logger.Debug("Gamestate saved successfully", "uuid", uuid)
 	return nil
 }
 
@@ -169,7 +161,7 @@ func (r *RedisService) LoadGameState(ctx context.Context, uuid uuid.UUID) (*stat
 	}
 
 	if data == "" {
-		r.logger.Debug("Gamestate not found", "uuid", uuid)
+		r.logger.Warn("Gamestate not found", "uuid", uuid)
 		return nil, nil // Return nil for not found
 	}
 
@@ -180,7 +172,6 @@ func (r *RedisService) LoadGameState(ctx context.Context, uuid uuid.UUID) (*stat
 		return nil, fmt.Errorf("failed to unmarshal gamestate: %w", err)
 	}
 
-	r.logger.Debug("Gamestate loaded successfully", "uuid", uuid)
 	return &gamestate, nil
 }
 
@@ -192,7 +183,6 @@ func (r *RedisService) DeleteGameState(ctx context.Context, uuid uuid.UUID) erro
 		return fmt.Errorf("failed to delete gamestate: %w", err)
 	}
 
-	r.logger.Debug("Gamestate deleted successfully", "uuid", uuid)
 	return nil
 }
 
@@ -228,7 +218,6 @@ func (r *RedisService) ListScenarios(ctx context.Context) (map[string]string, er
 		return nil, fmt.Errorf("failed to list scenarios: %w", err)
 	}
 
-	r.logger.Debug("Listed scenarios", "count", len(scenarios))
 	return scenarios, nil
 }
 
@@ -245,10 +234,8 @@ func (r *RedisService) GetScenario(ctx context.Context, filename string) (*scena
 		if err := json.Unmarshal([]byte(data), &cachedScenario); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal cached scenario: %w", err)
 		}
-		r.logger.Debug("Cache hit:", "filename", filename)
 		return &cachedScenario, nil
 	}
-	r.logger.Debug("Cache miss:", "filename", filename)
 
 	path := filepath.Join("./data/scenarios", filename)
 	file, err := os.ReadFile(path)

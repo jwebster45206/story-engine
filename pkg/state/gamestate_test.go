@@ -60,7 +60,7 @@ func TestGameState_GetStatePrompt(t *testing.T) {
 The following JSON describes the complete world and current state.
 
 Game State:
-` + "```json\n" + `{"world_npcs":{"Gibbs":{"name":"Gibbs","type":"pirate","disposition":"loyal","location":"Black Pearl"}},"world_locations":{"Tortuga":{"name":"Tortuga","description":"A pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass","spyglass"]}
+` + "```json\n" + `{"npcs":{"Gibbs":{"name":"Gibbs","type":"pirate","disposition":"loyal","location":"Black Pearl"}},"locations":{"Tortuga":{"name":"Tortuga","description":"A pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass","spyglass"]}
 ` + "```" + `
 
 The user may only move to locations defined in the ` + "`locations`" + ` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.
@@ -111,7 +111,7 @@ The user may only interact with items defined in the ` + "`inventory`" + ` objec
 The following JSON describes the complete world and current state.
 
 Game State:
-` + "```json\n" + `{"world_npcs":{"Shipwright":{"name":"Shipwright","type":"craftsman","disposition":"gruff","location":"Tortuga"}},"world_locations":{"Tortuga":{"name":"Tortuga","description":"A bustling pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass"]}
+` + "```json\n" + `{"npcs":{"Shipwright":{"name":"Shipwright","type":"craftsman","disposition":"gruff","location":"Tortuga"}},"locations":{"Tortuga":{"name":"Tortuga","description":"A bustling pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass"]}
 ` + "```" + `
 
 The user may only move to locations defined in the ` + "`locations`" + ` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.

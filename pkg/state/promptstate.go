@@ -6,8 +6,8 @@ import "github.com/jwebster45206/story-engine/pkg/scenario"
 // For user-facing prompts, only core world state is included.
 // For background processing, Vars are also populated.
 type PromptState struct {
-	NPCs             map[string]scenario.NPC      `json:"world_npcs,omitempty"`         // Map of key NPCs
-	WorldLocations   map[string]scenario.Location `json:"world_locations,omitempty"`    // Current locations in the game world
+	NPCs             map[string]scenario.NPC      `json:"npcs,omitempty"`               // Map of key NPCs
+	WorldLocations   map[string]scenario.Location `json:"locations,omitempty"`          // Current locations in the game world
 	Location         string                       `json:"user_location,omitempty"`      // User's current location
 	Inventory        []string                     `json:"user_inventory,omitempty"`     // Inventory items
 	Vars             map[string]string            `json:"vars,omitempty"`               // Only populated for background processing
