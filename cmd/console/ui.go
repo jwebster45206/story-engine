@@ -356,10 +356,7 @@ func (m *ConsoleUI) writeChatContent() {
 	}
 
 	var content strings.Builder
-	content.WriteString(titleStyle.Render("STORY ENGINE") + "\n\n")
-	content.WriteString("Welcome to your text-based adventure!\n")
-	content.WriteString("Type your messages below to interact with the story.\n\n")
-	content.WriteString(separatorStyle.Render(strings.Repeat("─", chatWidth-6)) + "\n\n")
+	content.WriteString(separatorStyle.Render(strings.Repeat("─ ", chatWidth/2-6)) + "\n\n")
 
 	for _, msg := range m.gameState.ChatHistory {
 		switch msg.Role {
@@ -1003,7 +1000,7 @@ func (m ConsoleUI) View() string {
 	chatWidth := int(float64(m.width)*0.75) - 4
 	metaWidth := m.width - chatWidth - 6
 
-	chatPanel := chatPanelStyle.Width(chatWidth).Height(m.height - 3).MaxWidth(chatWidth).Render(
+	chatPanel := chatPanelStyle.Width(chatWidth).Height(m.height - 3).Render(
 		lipgloss.JoinVertical(lipgloss.Left,
 			m.chatViewport.View(),
 			"", // Add empty line for spacing
@@ -1011,7 +1008,7 @@ func (m ConsoleUI) View() string {
 			m.textarea.View(),
 		),
 	)
-	metaPanel := metaPanelStyle.Width(metaWidth).Height(m.height - 2).MaxWidth(metaWidth).Render(
+	metaPanel := metaPanelStyle.Width(metaWidth).Height(m.height - 2).Render(
 		m.metaViewport.View(),
 	)
 
