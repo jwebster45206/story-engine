@@ -300,6 +300,10 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string) strin
 
 	content.WriteString(metaStyle.Render("Scenario: "))
 	content.WriteString(scenarioDisplay + "\n")
+	if gs.SceneName != "" {
+		content.WriteString(metaStyle.Render("Scene: "))
+		content.WriteString(gs.SceneName + "\n")
+	}
 	content.WriteString(metaStyle.Render("Location: "))
 	content.WriteString(gs.Location + "\n")
 	content.WriteString(metaStyle.Render("Turn: "))
@@ -319,8 +323,8 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string) strin
 	content.WriteString("• Ctrl+C: Quit\n")
 	content.WriteString("• Ctrl+N: New Game\n")
 	content.WriteString("• Ctrl+Y: Copy GameState ID\n")
-	content.WriteString("• Enter: Send\n")
-	content.WriteString("• /help: Help\n\n")
+	content.WriteString("• Ctrl+Z: Clear Text\n")
+	content.WriteString("• Enter: Send\n\n")
 
 	width = max(8, width) // min width of 8
 	idStr := gs.ID.String()
@@ -461,6 +465,11 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Optionally append a tiny notice to metadata (non-intrusive)
 				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName()))
 			}
+			return m, nil
+
+		case tea.KeyCtrlZ:
+			// Clear the text area
+			m.textarea.Reset()
 			return m, nil
 
 		case tea.KeyEnter:
@@ -644,23 +653,6 @@ func (m ConsoleUI) handleCommand(input string) (tea.Model, tea.Cmd) {
 	cmd := strings.ToLower(strings.TrimSpace(input))
 
 	switch cmd {
-	case "/help":
-		helpText := `
-Commands:
-• /help - Show this help
-• /vars - Show game variables
-• Ctrl+C - Quit game
-• Ctrl+Y - Copy GameState ID
-
-How to play:
-• Type your actions and press Enter
-• The narrator will respond to guide the story
-• Be descriptive for better responses
-`
-		currentContent := m.chatViewport.View()
-		m.chatViewport.SetContent(currentContent + titleStyle.Render("Help:") + helpText + "\n")
-		m.chatViewport.GotoBottom()
-
 	case "/vars":
 		var varsText strings.Builder
 		varsText.WriteString(titleStyle.Render("Variables:") + "\n")
@@ -1011,15 +1003,15 @@ func (m ConsoleUI) View() string {
 	chatWidth := int(float64(m.width)*0.75) - 4
 	metaWidth := m.width - chatWidth - 6
 
-	chatPanel := chatPanelStyle.Width(chatWidth).Height(m.height - 3).Render(
+	chatPanel := chatPanelStyle.Width(chatWidth).Height(m.height - 3).MaxWidth(chatWidth).Render(
 		lipgloss.JoinVertical(lipgloss.Left,
 			m.chatViewport.View(),
 			"", // Add empty line for spacing
-			separatorStyle.Render(strings.Repeat("─", chatWidth-4)),
+			separatorStyle.Render(strings.Repeat("─", chatWidth-8)),
 			m.textarea.View(),
 		),
 	)
-	metaPanel := metaPanelStyle.Width(metaWidth).Height(m.height - 2).Render(
+	metaPanel := metaPanelStyle.Width(metaWidth).Height(m.height - 2).MaxWidth(metaWidth).Render(
 		m.metaViewport.View(),
 	)
 
