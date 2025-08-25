@@ -176,7 +176,7 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 	postMessagePrompt := scenario.UserPostPrompt
 	contingencyPrompts := gs.GetContingencyPrompts(s)
 	if len(contingencyPrompts) > 0 {
-		postMessagePrompt = "\n\nApply the following conditional rules if their conditions are met:\n\n"
+		postMessagePrompt += "\n\nApply the following conditional rules if their conditions are met:\n\n"
 		for i, prompt := range contingencyPrompts {
 			postMessagePrompt += fmt.Sprintf("%d. %s\n", i+1, prompt)
 		}

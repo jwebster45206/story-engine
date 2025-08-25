@@ -200,8 +200,6 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *GameStateHandler) handleRead(w http.ResponseWriter, r *http.Request, gameStateID uuid.UUID) {
-	h.logger.Debug("Reading game state", "id", gameStateID.String())
-
 	gs, err := h.storage.LoadGameState(r.Context(), gameStateID)
 	if err != nil {
 		h.logger.Error("Failed to load game state", "error", err, "id", gameStateID.String())
@@ -216,7 +214,7 @@ func (h *GameStateHandler) handleRead(w http.ResponseWriter, r *http.Request, ga
 	}
 
 	if gs == nil {
-		h.logger.Debug("Game state not found", "id", gameStateID.String())
+		h.logger.Warn("Game state not found", "id", gameStateID.String())
 		w.WriteHeader(http.StatusNotFound)
 		response := ErrorResponse{
 			Error: "Game state not found",
@@ -227,7 +225,6 @@ func (h *GameStateHandler) handleRead(w http.ResponseWriter, r *http.Request, ga
 		return
 	}
 
-	h.logger.Debug("Game state loaded successfully", "id", gameStateID.String(), "chat_history_length", len(gs.ChatHistory))
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(gs); err != nil {
 		h.logger.Error("Failed to encode game state response", "error", err)
