@@ -12,17 +12,17 @@ import (
 
 // GameState is the current state of a roleplay game session.
 type GameState struct {
-	ID                 uuid.UUID                    `json:"id"`                        // Unique ID per session
-	Scenario           string                       `json:"scenario,omitempty"`        // Filename of the scenario being played. Ex: "foo_scenario.json"
-	SceneName          string                       `json:"scene_name,omitempty"`      // Current scene name in the scenario, if applicable
-	NPCs               map[string]scenario.NPC      `json:"world_npcs,omitempty"`      // All NPCs in the game world
-	WorldLocations     map[string]scenario.Location `json:"world_locations,omitempty"` // Current locations in the game world
-	Location           string                       `json:"user_location,omitempty"`   // Current location in the game world
-	Inventory          []string                     `json:"user_inventory,omitempty"`  // User's inventory items
-	ChatHistory        []chat.ChatMessage           `json:"chat_history,omitempty"`    // Conversation history
-	TurnCounter        int                          `json:"turn_counter"`              // Total number of successful chat interactions
-	SceneTurnCounter   int                          `json:"scene_turn_counter"`        // Number of successful chat interactions in current scene
-	Vars               map[string]string            `json:"vars,omitempty"`            // Game variables (e.g. flags, counters)
+	ID                 uuid.UUID                    `json:"id"`                       // Unique ID per session
+	Scenario           string                       `json:"scenario,omitempty"`       // Filename of the scenario being played. Ex: "foo_scenario.json"
+	SceneName          string                       `json:"scene_name,omitempty"`     // Current scene name in the scenario, if applicable
+	NPCs               map[string]scenario.NPC      `json:"npcs,omitempty"`           // All NPCs in the game world
+	WorldLocations     map[string]scenario.Location `json:"locations,omitempty"`      // Current locations in the game world
+	Location           string                       `json:"user_location,omitempty"`  // Current location in the game world
+	Inventory          []string                     `json:"user_inventory,omitempty"` // User's inventory items
+	ChatHistory        []chat.ChatMessage           `json:"chat_history,omitempty"`   // Conversation history
+	TurnCounter        int                          `json:"turn_counter"`             // Total number of successful chat interactions
+	SceneTurnCounter   int                          `json:"scene_turn_counter"`       // Number of successful chat interactions in current scene
+	Vars               map[string]string            `json:"vars,omitempty"`           // Game variables (e.g. flags, counters)
 	ContingencyPrompts []string                     `json:"contingency_prompts,omitempty"`
 	CreatedAt          time.Time                    `json:"created_at"`
 	UpdatedAt          time.Time                    `json:"updated_at"`
@@ -93,11 +93,10 @@ func (gs *GameState) GetScenePrompt(s *scenario.Scenario, scene *scenario.Scene)
 		return chat.ChatMessage{}, err
 	}
 
-	story := scene.Story
-	if story == "" {
-		story = s.Story // Fallback to scenario story if scene story is empty
+	story := s.Story
+	if scene.Story != "" {
+		story += "\n\n" + scene.Story
 	}
-
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
 		Content: fmt.Sprintf(scenario.StatePromptTemplate, story, jsonScene),
@@ -173,17 +172,18 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 	})
 
 	// Add contingency prompts as a system message after user input
+	postMessagePrompt := scenario.UserPostPrompt
 	contingencyPrompts := gs.GetContingencyPrompts(s)
 	if len(contingencyPrompts) > 0 {
-		promptText := "Apply the following conditional rules if their conditions are met:\n\n"
+		postMessagePrompt += "\n\nApply the following conditional rules if their conditions are met:\n\n"
 		for i, prompt := range contingencyPrompts {
-			promptText += fmt.Sprintf("%d. %s\n", i+1, prompt)
+			postMessagePrompt += fmt.Sprintf("%d. %s\n", i+1, prompt)
 		}
-		messages = append(messages, chat.ChatMessage{
-			Role:    chat.ChatRoleSystem,
-			Content: promptText,
-		})
 	}
+	messages = append(messages, chat.ChatMessage{
+		Role:    chat.ChatRoleSystem,
+		Content: postMessagePrompt,
+	})
 
 	return messages, nil
 }

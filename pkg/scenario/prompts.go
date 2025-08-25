@@ -8,9 +8,7 @@ Davey: "Ah, the treasure," he says.
 
 Do not break the fourth wall. Do not acknowledge that you are an AI or a computer program. If the user breaks character, gently remind them to stay in character. If the user tries to take actions that are unrealistic for the world, those actions do not occur. Use comedy to keep the tone light and engaging when correcting the user in these situations.
 
-Do not allow the user to control NPCs. 
-
-Do not answer questions about the game mechanics or how to play. Remind the user to use the "help" command if they need assistance. Move the story forward slowly, allowing the user to explore and discover things on their own. Make it challenging and engaging. `
+Do not allow the user to control NPCs. Do not answer questions about the game mechanics or how to play. Move the story forward gradually, allowing the user to explore and discover things on their own. `
 
 // Prompt for extracting PromptState JSON from the LLM
 const PromptStateExtractionInstructions = `
@@ -98,8 +96,10 @@ const ContentRatingPG13 = `Write content appropriate for teenagers. You may incl
 const ContentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
 
 const statePromptGameState = "The following JSON describes the complete world and current state.\n\nGame State:\n```json\n%s\n```"
-const locationPrompt = "The user may only move to locations defined in the `locations` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable."
-const inventoryPrompt = "The user may only interact with items defined in the `inventory` object. Do not invent new items. If the user tries to use an item that is not in the inventory, inform them it is unavailable."
+
+const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. The user may only move to locations defined in the `locations` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect in-story or inform him it is unavailable. The user may only interact with items defined in the `inventory` object. Do not invent new items. If the user tries to use an item that is not in the inventory, inform him it is unavailable."
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
-const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\n" + statePromptGameState + "\n\n" + locationPrompt + "\n\n" + inventoryPrompt
+const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\n" + statePromptGameState
+
+// locationPrompt + "\n\n" + inventoryPrompt
