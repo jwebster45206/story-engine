@@ -61,11 +61,7 @@ The following JSON describes the complete world and current state.
 
 Game State:
 ` + "```json\n" + `{"npcs":{"Gibbs":{"name":"Gibbs","type":"pirate","disposition":"loyal","location":"Black Pearl"}},"locations":{"Tortuga":{"name":"Tortuga","description":"A pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass","spyglass"]}
-` + "```" + `
-
-The user may only move to locations defined in the ` + "`locations`" + ` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.
-
-The user may only interact with items defined in the ` + "`inventory`" + ` object. Do not invent new items. If the user tries to use an item that is not in the inventory, inform them it is unavailable.`,
+` + "```",
 			},
 		},
 		{
@@ -106,17 +102,15 @@ The user may only interact with items defined in the ` + "`inventory`" + ` objec
 			},
 			expected: chat.ChatMessage{
 				Role: chat.ChatRoleSystem,
-				Content: `The user is roleplaying this scenario: Find the shipwright
+				Content: `The user is roleplaying this scenario: Overall pirate story
+
+Find the shipwright
 
 The following JSON describes the complete world and current state.
 
 Game State:
 ` + "```json\n" + `{"npcs":{"Shipwright":{"name":"Shipwright","type":"craftsman","disposition":"gruff","location":"Tortuga"}},"locations":{"Tortuga":{"name":"Tortuga","description":"A bustling pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass"]}
-` + "```" + `
-
-The user may only move to locations defined in the ` + "`locations`" + ` object. Do not invent new locations. If the user tries to go somewhere invalid, redirect them or inform them it is unavailable.
-
-The user may only interact with items defined in the ` + "`inventory`" + ` object. Do not invent new items. If the user tries to use an item that is not in the inventory, inform them it is unavailable.`,
+` + "```",
 			},
 		},
 		{

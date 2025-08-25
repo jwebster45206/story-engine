@@ -93,11 +93,10 @@ func (gs *GameState) GetScenePrompt(s *scenario.Scenario, scene *scenario.Scene)
 		return chat.ChatMessage{}, err
 	}
 
-	story := scene.Story
-	if story == "" {
-		story = s.Story // Fallback to scenario story if scene story is empty
+	story := s.Story
+	if scene.Story != "" {
+		story += "\n\n" + scene.Story
 	}
-
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
 		Content: fmt.Sprintf(scenario.StatePromptTemplate, story, jsonScene),

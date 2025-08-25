@@ -1,120 +1,310 @@
 {
   "name": "Egyptian Expedition",
   "story": "The year is 1923. You are Dr. Alexandra Kane, a renowned archaeologist who has just received a cryptic telegram about an extraordinary discovery in the Egyptian desert. The sender claims to have found something that will 'rewrite history itself.' Armed with your expertise and a thirst for knowledge, you must navigate the mysteries of ancient secrets and modern dangers.",
-  "locations": {
-    "Cairo Hotel": {
-      "name": "Cairo Hotel",
-      "description": "A grand colonial hotel where foreign expeditions gather. The lobby buzzes with whispered conversations and shadowy figures.",
-      "exits": {
-        "east": "Local Market",
-        "south": "Desert Camp"
+  "rating": "PG13",
+  "scenes": {
+    "telegram_mystery": {
+      "story": "You've arrived in Cairo with a cryptic telegram that speaks of an extraordinary discovery. You must decode its message and gather information from the mysterious contacts who await you in the city.",
+      "locations": {
+        "Cairo Hotel": {
+          "name": "Cairo Hotel",
+          "description": "A grand colonial hotel where foreign expeditions gather. The lobby buzzes with whispered conversations and shadowy figures.",
+          "exits": {
+            "east": "Local Market"
+          },
+          "blocked_exits": {
+            "south": "You must decode the telegram before leaving for the desert.",
+            "west": "The way is blocked by a security guard."
+          },
+          "items": [
+            "hotel register",
+            "old newspaper"
+          ]
+        },
+        "Local Market": {
+          "name": "Local Market",
+          "description": "A bustling bazaar where information, supplies, and ancient artifacts change hands.",
+          "exits": {
+            "west": "Cairo Hotel"
+          },
+          "items": [
+            "ancient pottery shards",
+            "desert survival kit",
+            "hieroglyph translation guide"
+          ]
+        }
       },
-      "blocked_exits": {
-        "south": "You must decode the telegram before leaving for the desert.",
-        "west": "The way is blocked by a security guard."
-      }
+      "npcs": {
+        "Professor Blackwood": {
+          "name": "Professor Blackwood",
+          "type": "rival archaeologist",
+          "disposition": "competitive",
+          "description": "A brilliant but ruthless colleague who seems to know more about your expedition than he should.",
+          "important": true,
+          "location": "Cairo Hotel",
+          "items": [
+            "expedition permit"
+          ]
+        },
+        "The Messenger": {
+          "name": "The Messenger",
+          "type": "informant",
+          "disposition": "nervous",
+          "description": "A hooded figure who sent the original telegram. Their identity remains hidden behind shadows.",
+          "important": true,
+          "location": "Cairo Hotel",
+          "items": [
+            "coded message"
+          ]
+        },
+        "Amara": {
+          "name": "Amara",
+          "type": "antiquities dealer",
+          "disposition": "mysterious",
+          "description": "A enigmatic trader who deals in both legal artifacts and forbidden knowledge. She speaks in riddles.",
+          "important": true,
+          "location": "Local Market",
+          "items": [
+            "ancient amulet",
+            "star chart"
+          ]
+        }
+      },
+      "vars": {
+        "telegram_decoded": "false",
+        "messenger_met": "false",
+        "amara_riddle_solved": "false"
+      },
+      "contingency_prompts": [
+        "The telegram contains astronomical references that Amara can help decode.",
+        "The Messenger will only reveal information if they trust you.",
+        "Professor Blackwood knows more than he's letting on."
+      ],
+      "contingency_rules": [
+        "If the player meets The Messenger, set `messenger_met` to true.",
+        "If the player solves Amara's riddle about the stars, set `amara_riddle_solved` to true and add 'star chart' to inventory.",
+        "When the player has both `messenger_met` and `amara_riddle_solved` set to true, set `telegram_decoded` to true.",
+        "Scene changes to 'desert_expedition' when `telegram_decoded` is true."
+      ]
     },
-    "Desert Camp": {
-      "name": "Desert Camp",
-      "description": "Your temporary archaeological camp, surrounded by endless dunes and the remnants of ancient civilizations.",
-      "exits": {
-        "north": "Cairo Hotel",
-        "east": "Hidden Temple"
+    "desert_expedition": {
+      "story": "With the telegram decoded, you can now venture into the desert. You must establish a camp and find the hidden temple entrance with Hassan's guidance, while navigating Professor Blackwood's interference.",
+      "locations": {
+        "Cairo Hotel": {
+          "name": "Cairo Hotel",
+          "description": "A grand colonial hotel where foreign expeditions gather. The lobby buzzes with whispered conversations and shadowy figures.",
+          "exits": {
+            "east": "Local Market",
+            "south": "Desert Camp"
+          },
+          "items": [
+            "hotel register",
+            "old newspaper"
+          ]
+        },
+        "Desert Camp": {
+          "name": "Desert Camp",
+          "description": "Your temporary archaeological camp, surrounded by endless dunes and the remnants of ancient civilizations.",
+          "exits": {
+            "north": "Cairo Hotel"
+          },
+          "blocked_exits": {
+            "east": "Hassan must guide you to the temple entrance."
+          },
+          "items": [
+            "excavation tools",
+            "camp supplies",
+            "survey maps"
+          ]
+        },
+        "Local Market": {
+          "name": "Local Market",
+          "description": "A bustling bazaar where information, supplies, and ancient artifacts change hands.",
+          "exits": {
+            "west": "Cairo Hotel"
+          },
+          "items": [
+            "ancient pottery shards",
+            "desert survival kit",
+            "hieroglyph translation guide"
+          ]
+        }
       },
-      "blocked_exits": {
-        "east": "Hassan must guide you to the temple entrance."
-      }
+      "npcs": {
+        "Hassan": {
+          "name": "Hassan",
+          "type": "guide",
+          "disposition": "cautious",
+          "description": "A weathered Bedouin guide with knowledge of the desert's hidden secrets. His eyes hold ancient wisdom.",
+          "important": true,
+          "location": "Desert Camp",
+          "items": [
+            "desert map",
+            "water compass"
+          ]
+        },
+        "Professor Blackwood": {
+          "name": "Professor Blackwood",
+          "type": "rival archaeologist",
+          "disposition": "competitive",
+          "description": "A brilliant but ruthless colleague who seems to know more about your expedition than he should. He's become more aggressive since your success.",
+          "important": true,
+          "location": "Cairo Hotel",
+          "items": [
+            "rival expedition notes"
+          ]
+        },
+        "Amara": {
+          "name": "Amara",
+          "type": "antiquities dealer",
+          "disposition": "mysterious",
+          "description": "A enigmatic trader who deals in both legal artifacts and forbidden knowledge. She speaks in riddles.",
+          "important": false,
+          "location": "Local Market",
+          "items": [
+            "protective charms"
+          ]
+        }
+      },
+      "vars": {
+        "hassan_trust": "false",
+        "temple_location_revealed": "false",
+        "blackwood_confronted": "false"
+      },
+      "contingency_prompts": [
+        "Hassan requires proof of your worthiness before revealing the temple location.",
+        "The desert holds many dangers, and Hassan's guidance is essential.",
+        "Professor Blackwood may try to follow you or sabotage your expedition."
+      ],
+      "contingency_rules": [
+        "If the player demonstrates knowledge of ancient Egyptian customs to Hassan, set `hassan_trust` to true.",
+        "When `hassan_trust` is true, Hassan reveals the temple location and `temple_location_revealed` becomes true.",
+        "If the player confronts Professor Blackwood about his suspicious behavior, set `blackwood_confronted` to true.",
+        "Scene changes to 'temple_discovery' when `temple_location_revealed` is true."
+      ]
     },
-    "Hidden Temple": {
-      "name": "Hidden Temple",
-      "description": "A recently uncovered temple complex, its hieroglyphs still vibrant despite millennia of burial.",
-      "exits": {
-        "west": "Desert Camp",
-        "down": "Underground Chamber"
+    "temple_discovery": {
+      "story": "You've found the hidden temple with Hassan's guidance. Now you must explore its mysteries, solve ancient puzzles, and uncover the truth behind the cryptic telegram while avoiding the traps that guard its secrets.",
+      "locations": {
+        "Desert Camp": {
+          "name": "Desert Camp",
+          "description": "Your temporary archaeological camp, surrounded by endless dunes and the remnants of ancient civilizations.",
+          "exits": {
+            "north": "Cairo Hotel",
+            "east": "Hidden Temple"
+          },
+          "items": [
+            "excavation tools",
+            "camp supplies",
+            "survey maps"
+          ]
+        },
+        "Hidden Temple": {
+          "name": "Hidden Temple",
+          "description": "A recently uncovered temple complex, its hieroglyphs still vibrant despite millennia of burial.",
+          "exits": {
+            "west": "Desert Camp"
+          },
+          "blocked_exits": {
+            "down": "The entrance to the chamber is sealed by an ancient puzzle."
+          },
+          "items": [
+            "hieroglyphic tablets",
+            "golden scarab",
+            "ceremonial dagger"
+          ]
+        },
+        "Underground Chamber": {
+          "name": "Underground Chamber",
+          "description": "A mysterious chamber deep beneath the temple, filled with artifacts that shouldn't exist.",
+          "exits": {
+            "up": "Hidden Temple"
+          },
+          "items": [
+            "ancient device",
+            "crystal orb",
+            "scrolls of forbidden knowledge"
+          ]
+        },
+        "Cairo Hotel": {
+          "name": "Cairo Hotel",
+          "description": "A grand colonial hotel where foreign expeditions gather. The lobby buzzes with whispered conversations and shadowy figures.",
+          "exits": {
+            "south": "Desert Camp"
+          },
+          "items": [
+            "hotel register",
+            "old newspaper"
+          ]
+        }
       },
-      "blocked_exits": {
-        "down": "The entrance to the chamber is sealed by an ancient puzzle."
-      }
-    },
-    "Underground Chamber": {
-      "name": "Underground Chamber",
-      "description": "A mysterious chamber deep beneath the temple, filled with artifacts that shouldn't exist.",
-      "exits": {
-        "up": "Hidden Temple"
+      "npcs": {
+        "Hassan": {
+          "name": "Hassan",
+          "type": "guide",
+          "disposition": "cautious",
+          "description": "A weathered Bedouin guide with knowledge of the desert's hidden secrets. He warns of the temple's dangers.",
+          "important": true,
+          "location": "Hidden Temple",
+          "items": [
+            "temple key"
+          ]
+        },
+        "Professor Blackwood": {
+          "name": "Professor Blackwood",
+          "type": "rival archaeologist",
+          "disposition": "desperate",
+          "description": "A brilliant but ruthless colleague who has followed you to the temple. His true intentions are now revealed.",
+          "important": true,
+          "location": "Desert Camp",
+          "items": [
+            "stolen artifacts"
+          ]
+        },
+        "Ancient Guardian": {
+          "name": "Ancient Guardian",
+          "type": "temple spirit",
+          "disposition": "testing",
+          "description": "A mystical presence that protects the temple's secrets. It speaks in ancient riddles.",
+          "important": true,
+          "location": "Underground Chamber",
+          "items": []
+        }
       },
-      "blocked_exits": {
-        "up": "The chamber can only be unsealed by solving Amara's riddle."
-      }
-    },
-    "Local Market": {
-      "name": "Local Market",
-      "description": "A bustling bazaar where information, supplies, and ancient artifacts change hands.",
-      "exits": {
-        "west": "Cairo Hotel"
+      "vars": {
+        "puzzle_solved": "false",
+        "chamber_accessed": "false",
+        "ancient_device_activated": "false",
+        "guardian_approval": "false"
       },
-      "blocked_exits": {
-        "west": "You must speak to Amara before returning to the hotel."
-      }
+      "contingency_prompts": [
+        "The temple puzzle requires knowledge from the star chart and hieroglyph guide.",
+        "The Ancient Guardian will test your worthiness before allowing access to the greatest secrets.",
+        "Professor Blackwood's desperation makes him dangerous."
+      ],
+      "contingency_rules": [
+        "If the player uses the star chart and hieroglyph guide to solve the temple puzzle, set `puzzle_solved` to true.",
+        "When `puzzle_solved` is true, the Underground Chamber becomes accessible and `chamber_accessed` becomes true.",
+        "If the player correctly answers the Ancient Guardian's riddles, set `guardian_approval` to true.",
+        "When `guardian_approval` is true, the player can activate the ancient device and `ancient_device_activated` becomes true.",
+        "When `ancient_device_activated` is true, the expedition concludes successfully."
+      ]
     }
   },
-  "inventory": [
-    "archaeological tools",
-    "research journal",
-    "vintage camera",
-    "oil lamp"
-  ],
-  "npcs": {
-    "Hassan": {
-      "name": "Hassan",
-      "type": "guide",
-      "disposition": "cautious",
-      "description": "A weathered Bedouin guide with knowledge of the desert's hidden secrets. His eyes hold ancient wisdom.",
-      "important": true,
-      "location": "Desert Camp"
-    },
-    "Professor Blackwood": {
-      "name": "Professor Blackwood",
-      "type": "rival archaeologist",
-      "disposition": "competitive",
-      "description": "A brilliant but ruthless colleague who seems to know more about your expedition than he should.",
-      "important": true,
-      "location": "Cairo Hotel"
-    },
-    "Amara": {
-      "name": "Amara",
-      "type": "antiquities dealer",
-      "disposition": "mysterious",
-      "description": "A enigmatic trader who deals in both legal artifacts and forbidden knowledge. She speaks in riddles.",
-      "important": true,
-      "location": "Local Market"
-    },
-    "The Messenger": {
-      "name": "The Messenger",
-      "type": "informant",
-      "disposition": "nervous",
-      "description": "A hooded figure who sent the original telegram. Their identity remains hidden behind shadows.",
-      "important": true,
-      "location": "Cairo Hotel"
-    }
-  },
-  "flags": {
-    "telegram_decoded": "no",
-    "temple_entrance_found": "no",
-    "ancient_device_activated": "no",
-    "blackwood_alliance": "neutral",
-    "chamber_sealed": "yes"
-  },
-  "triggers": [
-    "The telegram must be decoded before the temple entrance can be found. Hassan holds crucial information.",
-    "The ancient device in the Underground Chamber cannot be activated until three specific artifacts are collected from different locations.",
-    "Professor Blackwood's true intentions are revealed only after the temple entrance is discovered.",
-    "The chamber can only be unsealed by solving a puzzle that requires knowledge from Amara's riddles."
-  ],
+  "opening_scene": "telegram_mystery",
   "opening_prompt": "The desert wind carries whispers of ancient secrets as you arrive at your hotel in Cairo. The cryptic telegram burns in your pocket, its mysterious message haunting your thoughts: 'The stars align as they did when the old gods walked among mortals. What was lost shall be found, but beware - some knowledge comes at a price.' Your adventure into the unknown begins now.",
   "opening_location": "Cairo Hotel",
   "opening_inventory": [
     "archaeological tools",
     "research journal",
     "cryptic telegram"
+  ],
+  "contingency_prompts": [
+    "Maintain the atmosphere of 1920s archaeological adventure throughout.",
+    "Ancient knowledge should feel both wondrous and dangerous."
+  ],
+  "contingency_rules": [
+    "Hassan should always prioritize the player's safety and provide wisdom about the desert and ancient ways.",
+    "Professor Blackwood's rivalry should escalate throughout the scenes, becoming more desperate as the player succeeds."
   ]
 }
