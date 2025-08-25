@@ -300,6 +300,10 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string) strin
 
 	content.WriteString(metaStyle.Render("Scenario: "))
 	content.WriteString(scenarioDisplay + "\n")
+	if gs.SceneName != "" {
+		content.WriteString(metaStyle.Render("Scene: "))
+		content.WriteString(gs.SceneName + "\n")
+	}
 	content.WriteString(metaStyle.Render("Location: "))
 	content.WriteString(gs.Location + "\n")
 	content.WriteString(metaStyle.Render("Turn: "))
@@ -319,8 +323,8 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string) strin
 	content.WriteString("• Ctrl+C: Quit\n")
 	content.WriteString("• Ctrl+N: New Game\n")
 	content.WriteString("• Ctrl+Y: Copy GameState ID\n")
-	content.WriteString("• Enter: Send\n")
-	content.WriteString("• /help: Help\n\n")
+	content.WriteString("• Ctrl+Z: Clear Text\n")
+	content.WriteString("• Enter: Send\n\n")
 
 	width = max(8, width) // min width of 8
 	idStr := gs.ID.String()
@@ -352,10 +356,7 @@ func (m *ConsoleUI) writeChatContent() {
 	}
 
 	var content strings.Builder
-	content.WriteString(titleStyle.Render("STORY ENGINE") + "\n\n")
-	content.WriteString("Welcome to your text-based adventure!\n")
-	content.WriteString("Type your messages below to interact with the story.\n\n")
-	content.WriteString(separatorStyle.Render(strings.Repeat("─", chatWidth-6)) + "\n\n")
+	content.WriteString(separatorStyle.Render(strings.Repeat("─ ", chatWidth/2-6)) + "\n\n")
 
 	for _, msg := range m.gameState.ChatHistory {
 		switch msg.Role {
@@ -363,8 +364,8 @@ func (m *ConsoleUI) writeChatContent() {
 			formattedMsg := formatNarratorResponse(msg.Content, chatWidth)
 			content.WriteString(formattedMsg + "\n\n")
 		case "user":
-			userMsg := userStyle.Render("You: ") + wordwrap.String(msg.Content, chatWidth-6) + "\n\n"
-			content.WriteString(userMsg)
+			userMsg := userStyle.Render(wordwrap.String(msg.Content, chatWidth-3))
+			content.WriteString(userMsg + "\n\n")
 		}
 	}
 
@@ -461,6 +462,11 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Optionally append a tiny notice to metadata (non-intrusive)
 				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName()))
 			}
+			return m, nil
+
+		case tea.KeyCtrlZ:
+			// Clear the text area
+			m.textarea.Reset()
 			return m, nil
 
 		case tea.KeyEnter:
@@ -644,23 +650,6 @@ func (m ConsoleUI) handleCommand(input string) (tea.Model, tea.Cmd) {
 	cmd := strings.ToLower(strings.TrimSpace(input))
 
 	switch cmd {
-	case "/help":
-		helpText := `
-Commands:
-• /help - Show this help
-• /vars - Show game variables
-• Ctrl+C - Quit game
-• Ctrl+Y - Copy GameState ID
-
-How to play:
-• Type your actions and press Enter
-• The narrator will respond to guide the story
-• Be descriptive for better responses
-`
-		currentContent := m.chatViewport.View()
-		m.chatViewport.SetContent(currentContent + titleStyle.Render("Help:") + helpText + "\n")
-		m.chatViewport.GotoBottom()
-
 	case "/vars":
 		var varsText strings.Builder
 		varsText.WriteString(titleStyle.Render("Variables:") + "\n")
@@ -1015,7 +1004,7 @@ func (m ConsoleUI) View() string {
 		lipgloss.JoinVertical(lipgloss.Left,
 			m.chatViewport.View(),
 			"", // Add empty line for spacing
-			separatorStyle.Render(strings.Repeat("─", chatWidth-4)),
+			separatorStyle.Render(strings.Repeat("─", chatWidth-8)),
 			m.textarea.View(),
 		),
 	)
