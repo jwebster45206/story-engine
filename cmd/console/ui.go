@@ -364,8 +364,8 @@ func (m *ConsoleUI) writeChatContent() {
 			formattedMsg := formatNarratorResponse(msg.Content, chatWidth)
 			content.WriteString(formattedMsg + "\n\n")
 		case "user":
-			userMsg := userStyle.Render("You: ") + wordwrap.String(msg.Content, chatWidth-6) + "\n\n"
-			content.WriteString(userMsg)
+			userMsg := userStyle.Render(wordwrap.String(msg.Content, chatWidth-3))
+			content.WriteString(userMsg + "\n\n")
 		}
 	}
 
