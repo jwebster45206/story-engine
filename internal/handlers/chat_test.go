@@ -184,7 +184,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 
 			// Verify mock calls for successful requests
 			if tt.expectedStatus == http.StatusOK {
-				_, generateCalls, _, _ := mockLLM.GetCalls()
+				_, generateCalls := mockLLM.GetCalls()
 
 				// Instead of checking for exactly 1 call, only count main chat calls
 				mainPromptPrefix := scenario.BaseSystemPrompt

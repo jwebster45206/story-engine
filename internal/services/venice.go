@@ -66,29 +66,6 @@ type VeniceChatResponse struct {
 	} `json:"error,omitempty"`
 }
 
-// VeniceModel represents a model in the Venice AI models list
-type VeniceModel struct {
-	ID        string `json:"id"`
-	Object    string `json:"object"`
-	OwnedBy   string `json:"owned_by"`
-	Type      string `json:"type"`
-	Created   int64  `json:"created"`
-	ModelSpec struct {
-		AvailableContextTokens int `json:"availableContextTokens"`
-	} `json:"model_spec"`
-}
-
-// VeniceModelsResponse represents the response from the Venice AI models endpoint
-type VeniceModelsResponse struct {
-	Object string        `json:"object"`
-	Data   []VeniceModel `json:"data"`
-	Error  *struct {
-		Message string `json:"message"`
-		Type    string `json:"type"`
-		Code    string `json:"code"`
-	} `json:"error,omitempty"`
-}
-
 // NewVeniceService creates a new Venice AI service
 func NewVeniceService(apiKey string, modelName string) *VeniceService {
 	return &VeniceService{
@@ -103,53 +80,6 @@ func NewVeniceService(apiKey string, modelName string) *VeniceService {
 // InitModel initializes the model (Venice AI doesn't require explicit model initialization)
 func (v *VeniceService) InitModel(ctx context.Context, modelName string) error {
 	return nil
-}
-
-// IsModelReady checks if the model is ready (always true for Venice AI)
-func (v *VeniceService) IsModelReady(ctx context.Context, modelName string) (bool, error) {
-	return true, nil
-}
-
-// ListModels retrieves the list of available models from Venice AI
-func (v *VeniceService) ListModels(ctx context.Context) ([]string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", veniceBaseURL+"/models", nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", "Bearer "+v.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := v.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make request: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var modelsResp VeniceModelsResponse
-	if err := json.Unmarshal(body, &modelsResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	if modelsResp.Error != nil {
-		return nil, fmt.Errorf("API error: %s", modelsResp.Error.Message)
-	}
-
-	models := make([]string, len(modelsResp.Data))
-	for i, model := range modelsResp.Data {
-		models[i] = model.ID
-	}
-
-	return models, nil
 }
 
 // Chat generates a chat response using Venice AI
