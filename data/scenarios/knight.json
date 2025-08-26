@@ -1,114 +1,335 @@
 {
   "name": "Last Knight of Camelot",
-  "story": "You are the final living knight of King Arthur’s Round Table. With Camelot fallen and the realm divided, you ride forth on a sacred quest to recover the Holy Grail and restore your kingdom. Your journey will take you across lands holy and heathen, testing your faith, your sword, and your soul.",
+  "story": "The player is the final living knight of King Arthur's Round Table. With Camelot fallen and the realm divided, they ride forth on a sacred quest to recover the Holy Grail and restore their kingdom. The player's journey will take them across lands holy and heathen, testing their faith, their sword, and their soul.",
   "rating": "PG13",
-  "locations": {
-    "Ruins of Camelot": {
-      "name": "Ruins of Camelot",
-      "description": "The broken remains of a once-great kingdom. Crumbling towers, empty halls, and faded glory. Your quest begins here.",
-      "exits": {
-        "north": "Enchanted Forest"
+  "scenes": {
+    "quest_beginning": {
+      "story": "The player stands in the ruins of Camelot, ready to begin their sacred quest. They must seek guidance from the wise and powerful beings of the realm while gathering clues to find the Holy Grail.",
+      "locations": {
+        "Ruins of Camelot": {
+          "name": "Ruins of Camelot",
+          "description": "The broken remains of a once-great kingdom. Crumbling towers, empty halls, and faded glory. The player's quest begins here.",
+          "exits": {
+            "north": "Enchanted Forest"
+          },
+          "blocked_exits": {
+            "south": "Only ghosts remain in the tombs below. The player has no reason to go there."
+          },
+          "items": [
+            "rusted shield",
+            "banner of Camelot"
+          ]
+        },
+        "Enchanted Forest": {
+          "name": "Enchanted Forest",
+          "description": "A dense wood alive with whispered voices and ancient magic. Paths twist of their own will.",
+          "exits": {
+            "south": "Ruins of Camelot",
+            "east": "Hermit's Cave",
+            "west": "Witch's Glade",
+            "north": "Dragon's Peak"
+          }
+        },
+        "Hermit's Cave": {
+          "name": "Hermit's Cave",
+          "description": "A humble cave where a Christian hermit offers wisdom and healing, if the player proves themselves worthy.",
+          "exits": {
+            "west": "Enchanted Forest"
+          }
+        },
+        "Witch's Glade": {
+          "name": "Witch's Glade",
+          "description": "A clearing lit by strange fire. A Pagan enchantress dwells here, neither enemy nor friend.",
+          "exits": {
+            "east": "Enchanted Forest"
+          }
+        },
+        "Dragon's Peak": {
+          "name": "Dragon's Peak",
+          "description": "A jagged mountain shrouded in mist. A terrible dragon guards a secret sacred to the Grail.",
+          "exits": {
+            "south": "Enchanted Forest"
+          },
+          "blocked_exits": {
+            "summit": "The dragon blocks the path to the mountain's summit."
+          },
+          "items": [
+            "ancient stone tablet"
+          ]
+        }
       },
-      "blocked_exits": {
-        "south": "Only ghosts remain in the tombs below. You have no reason to go there."
+      "npcs": {
+        "Hermit": {
+          "name": "Hermit",
+          "type": "hermit",
+          "disposition": "wise and cautious",
+          "description": "An old monk who survived the fall of Camelot. He offers cryptic guidance and healing, but tests the player's humility first.",
+          "important": true,
+          "location": "Hermit's Cave",
+          "items": [
+            "scroll of wisdom"
+          ]
+        },
+        "Enchantress": {
+          "name": "Enchantress",
+          "type": "sorceress",
+          "disposition": "mysterious",
+          "description": "A powerful woman of the old ways. Her aid may come at a price, and she may change her mind tomorrow.",
+          "important": true,
+          "location": "Witch's Glade",
+          "items": [
+            "crystal shard",
+            "potion of courage"
+          ]
+        },
+        "Dragon of the Peak": {
+          "name": "Dragon of the Peak",
+          "type": "dragon",
+          "disposition": "hostile",
+          "description": "A fire-breathing beast who slumbers atop the grail's final clue. It must be defeated or outwitted.",
+          "important": true,
+          "location": "Dragon's Peak",
+          "items": []
+        }
       },
-      "items": [
-        "rusted shield",
-        "banner of Camelot"
+      "vars": {
+        "hermit_blessing": "false",
+        "enchantress_aid": "false",
+        "dragon_challenged": "false"
+      },
+      "contingency_prompts": [
+        "The Hermit will bless the player if they show humility and faith.",
+        "The Enchantress may offer magical aid, but always for a price.",
+        "The Dragon guards the path to the mountain summit where ancient secrets lie."
+      ],
+      "contingency_rules": [
+        "If the player shows proper respect and humility to the Hermit, set `hermit_blessing` to true and add 'scroll of wisdom' to inventory.",
+        "If the player accepts the Enchantress's bargain, set `enchantress_aid` to true and add 'crystal shard' and 'potion of courage' to inventory.",
+        "If the player challenges the Dragon of the Peak, set `dragon_challenged` to true.",
+        "Scene changes to 'dragon_trial' when `dragon_challenged` is true."
       ]
     },
-    "Enchanted Forest": {
-      "name": "Enchanted Forest",
-      "description": "A dense wood alive with whispered voices and ancient magic. Paths twist of their own will.",
-      "exits": {
-        "south": "Ruins of Camelot",
-        "east": "Hermit's Cave",
-        "west": "Witch's Glade",
-        "north": "Dragon's Peak"
-      }
-    },
-    "Hermit's Cave": {
-      "name": "Hermit's Cave",
-      "description": "A humble cave where a Christian hermit offers wisdom and healing, if you prove yourself worthy.",
-      "exits": {
-        "west": "Enchanted Forest"
-      }
-    },
-    "Witch's Glade": {
-      "name": "Witch's Glade",
-      "description": "A clearing lit by strange fire. A Pagan enchantress dwells here, neither enemy nor friend.",
-      "exits": {
-        "east": "Enchanted Forest"
-      }
-    },
-    "Dragon's Peak": {
-      "name": "Dragon's Peak",
-      "description": "A jagged mountain shrouded in mist. A terrible dragon guards a secret sacred to the Grail.",
-      "exits": {
-        "south": "Enchanted Forest"
+    "dragon_trial": {
+      "story": "The player has challenged the mighty dragon. They must use their courage, faith, and any aid they have gathered to overcome this terrible guardian and claim the grail map fragment.",
+      "locations": {
+        "Dragon's Peak": {
+          "name": "Dragon's Peak",
+          "description": "A jagged mountain shrouded in mist. The terrible dragon awakens, its eyes blazing with ancient fury.",
+          "exits": {
+            "south": "Enchanted Forest"
+          },
+          "blocked_exits": {
+            "summit": "The dragon must be defeated before the player can reach the summit."
+          }
+        },
+        "Mountain Summit": {
+          "name": "Mountain Summit",
+          "description": "The highest peak, where ancient stones hold the secrets of the Grail's location.",
+          "exits": {
+            "down": "Dragon's Peak"
+          },
+          "items": [
+            "fragment of the grail map",
+            "dragon scale"
+          ]
+        },
+        "Enchanted Forest": {
+          "name": "Enchanted Forest",
+          "description": "A dense wood alive with whispered voices and ancient magic. Paths twist of their own will.",
+          "exits": {
+            "south": "Ruins of Camelot",
+            "east": "Hermit's Cave",
+            "west": "Witch's Glade",
+            "north": "Dragon's Peak"
+          }
+        },
+        "Hermit's Cave": {
+          "name": "Hermit's Cave",
+          "description": "A humble cave where a Christian hermit offers wisdom and healing.",
+          "exits": {
+            "west": "Enchanted Forest"
+          }
+        },
+        "Witch's Glade": {
+          "name": "Witch's Glade",
+          "description": "A clearing lit by strange fire. The enchantress watches the player's progress with interest.",
+          "exits": {
+            "east": "Enchanted Forest"
+          }
+        },
+        "Ruins of Camelot": {
+          "name": "Ruins of Camelot",
+          "description": "The broken remains of a once-great kingdom, waiting for restoration.",
+          "exits": {
+            "north": "Enchanted Forest"
+          }
+        }
       },
-      "items": [
-        "dragon scale",
-        "fragment of the grail map"
+      "npcs": {
+        "Dragon of the Peak": {
+          "name": "Dragon of the Peak",
+          "type": "dragon",
+          "disposition": "hostile",
+          "description": "A fire-breathing beast, awakened and furious. Its ancient eyes hold the wisdom of ages and the fury of the wronged.",
+          "important": true,
+          "location": "Dragon's Peak",
+          "items": []
+        },
+        "Hermit": {
+          "name": "Hermit",
+          "type": "hermit",
+          "disposition": "wise and cautious",
+          "description": "An old monk who prays for the player's success against the dragon.",
+          "important": false,
+          "location": "Hermit's Cave",
+          "items": []
+        },
+        "Enchantress": {
+          "name": "Enchantress",
+          "type": "sorceress",
+          "disposition": "mysterious",
+          "description": "A powerful woman who watches the battle with ancient eyes.",
+          "important": false,
+          "location": "Witch's Glade",
+          "items": []
+        }
+      },
+      "vars": {
+        "dragon_defeated": "false",
+        "grail_map_obtained": "false"
+      },
+      "contingency_prompts": [
+        "The dragon can be defeated through combat, outwitted through wisdom, or calmed through faith.",
+        "The Hermit's blessing and Enchantress's aid from the previous scene may help in this trial.",
+        "Once the dragon is overcome, the Mountain Summit becomes accessible."
+      ],
+      "contingency_rules": [
+        "If the player defeats or overcomes the Dragon through any means, set `dragon_defeated` to true and unlock the Mountain Summit.",
+        "When the player reaches the Mountain Summit, set `grail_map_obtained` to true and add 'fragment of the grail map' to inventory.",
+        "Scene changes to 'grail_quest' when `grail_map_obtained` is true."
       ]
     },
-    "Sanctum of the Grail": {
-      "name": "Sanctum of the Grail",
-      "description": "A hidden shrine of light and silence. The Holy Grail rests here—if you are worthy.",
-      "exits": {},
-      "blocked_exits": {
-        "any": "The path opens only to the pure of heart and bearer of the Grail Map."
+    "grail_quest": {
+      "story": "With the grail map fragment in hand, the player must decipher its ancient secrets and find the hidden Sanctum of the Grail. Their faith and worthiness will be tested one final time.",
+      "locations": {
+        "Mountain Summit": {
+          "name": "Mountain Summit",
+          "description": "The highest peak, where ancient stones have revealed their secrets. The path to the Grail is now clear.",
+          "exits": {
+            "down": "Dragon's Peak",
+            "sacred path": "Sanctum of the Grail"
+          }
+        },
+        "Sanctum of the Grail": {
+          "name": "Sanctum of the Grail",
+          "description": "A hidden shrine of light and silence. The Holy Grail rests here, awaiting one worthy to claim it.",
+          "exits": {
+            "sacred path": "Mountain Summit"
+          },
+          "items": [
+            "holy grail"
+          ]
+        },
+        "Dragon's Peak": {
+          "name": "Dragon's Peak",
+          "description": "A jagged mountain where the defeated dragon now rests peacefully, its ancient duty fulfilled.",
+          "exits": {
+            "south": "Enchanted Forest",
+            "summit": "Mountain Summit"
+          }
+        },
+        "Enchanted Forest": {
+          "name": "Enchanted Forest",
+          "description": "A dense wood that seems lighter now, as if the player's quest has begun to heal the land.",
+          "exits": {
+            "south": "Ruins of Camelot",
+            "east": "Hermit's Cave",
+            "west": "Witch's Glade",
+            "north": "Dragon's Peak"
+          }
+        },
+        "Ruins of Camelot": {
+          "name": "Ruins of Camelot",
+          "description": "The broken remains of the kingdom, but now hope stirs in the ancient stones.",
+          "exits": {
+            "north": "Enchanted Forest"
+          }
+        },
+        "Hermit's Cave": {
+          "name": "Hermit's Cave",
+          "description": "The hermit's humble dwelling, filled with peaceful prayer.",
+          "exits": {
+            "west": "Enchanted Forest"
+          }
+        },
+        "Witch's Glade": {
+          "name": "Witch's Glade",
+          "description": "The enchantress's clearing, where old magic stirs with new hope.",
+          "exits": {
+            "east": "Enchanted Forest"
+          }
+        }
       },
-      "items": [
-        "holy grail"
+      "npcs": {
+        "Grail Guardian": {
+          "name": "Grail Guardian",
+          "type": "spiritual guardian",
+          "disposition": "testing",
+          "description": "A luminous presence that appears to test the player's final worthiness for the Holy Grail.",
+          "important": true,
+          "location": "Sanctum of the Grail",
+          "items": []
+        },
+        "Hermit": {
+          "name": "Hermit",
+          "type": "hermit",
+          "disposition": "wise and hopeful",
+          "description": "The old monk, now filled with hope as the player nears their goal.",
+          "important": false,
+          "location": "Hermit's Cave",
+          "items": []
+        },
+        "Enchantress": {
+          "name": "Enchantress",
+          "type": "sorceress",
+          "disposition": "respectful",
+          "description": "The powerful woman watches with newfound respect for the player's achievement.",
+          "important": false,
+          "location": "Witch's Glade",
+          "items": []
+        }
+      },
+      "vars": {
+        "grail_guardian_faced": "false",
+        "grail_acquired": "false"
+      },
+      "contingency_prompts": [
+        "The Grail Guardian will test the player's purity of heart and purpose.",
+        "Only one truly worthy may claim the Holy Grail.",
+        "The player's actions throughout their quest will determine their worthiness."
+      ],
+      "contingency_rules": [
+        "When the player enters the Sanctum of the Grail, set `grail_guardian_faced` to true.",
+        "If the player proves their worthiness to the Grail Guardian, set `grail_acquired` to true and add 'holy grail' to inventory.",
+        "When `grail_acquired` is true, the quest is complete and the kingdom can be restored."
       ]
     }
   },
-  "inventory": [
-    "rusted shield",
-    "longsword",
-    "banner of Camelot"
-  ],
-  "npcs": {
-    "Hermit": {
-      "name": "Hermit",
-      "type": "hermit",
-      "disposition": "wise and cautious",
-      "description": "An old monk who survived the fall of Camelot. He offers cryptic guidance and healing, but tests your humility first.",
-      "important": true,
-      "location": "Hermit's Cave"
-    },
-    "Enchantress": {
-      "name": "Enchantress",
-      "type": "sorceress",
-      "disposition": "mysterious",
-      "description": "A powerful woman of the old ways. Her aid may come at a price, and she may change her mind tomorrow.",
-      "important": true,
-      "location": "Witch's Glade"
-    },
-    "Dragon of the Peak": {
-      "name": "Dragon of the Peak",
-      "type": "dragon",
-      "disposition": "hostile",
-      "description": "A fire-breathing beast who slumbers atop the grail’s final clue. It must be defeated or outwitted.",
-      "important": true,
-      "location": "Dragon's Peak"
-    }
-  },
-  "flags": {
-    "grail_map_complete": "no",
-    "dragon_defeated": "no",
-    "grail_acquired": "no"
-  },
-  "triggers": [
-    "The dragon must be defeated to claim the grail map fragment at Dragon's Peak.",
-    "The Sanctum of the Grail is only revealed when the grail_map_complete flag is set to 'yes'.",
-    "The grail_acquired flag is set when the player enters the Sanctum of the Grail and chooses to take the Holy Grail."
-  ],
+  "opening_scene": "quest_beginning",
   "opening_prompt": "The wind howls through the broken walls of Camelot. You kneel one last time at Arthur's throne. With sword in hand and hope in your heart, you rise to begin your quest. Will you seek the Grail and restore what was lost?",
   "opening_location": "Ruins of Camelot",
   "opening_inventory": [
     "rusted shield",
-    "longsword"
+    "longsword",
+    "banner of Camelot"
+  ],
+  "contingency_prompts": [
+    "Maintain the atmosphere of Arthurian legend and chivalric romance throughout.",
+    "The player's faith, humility, and courage should be tested at every step.",
+    "Magic and wonder exist alongside Christian faith in this medieval world."
+  ],
+  "contingency_rules": [
+    "The player's worthiness for the Grail should be determined by their actions of humility, courage, and faith throughout all scenes.",
+    "NPCs should respond to the player's behavior, becoming more helpful to those who show virtue."
   ]
 }
