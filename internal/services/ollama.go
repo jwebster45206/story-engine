@@ -40,7 +40,7 @@ func (s *OllamaService) InitModel(ctx context.Context, modelName string) error {
 		return fmt.Errorf("ollama service is not ready: %w", err)
 	}
 
-	ready, err := s.IsModelReady(ctx, modelName)
+	ready, err := s.isModelReady(ctx, modelName)
 	if err != nil {
 		return fmt.Errorf("failed to check model readiness: %w", err)
 	}
@@ -129,45 +129,8 @@ func (s *OllamaService) GetChatResponse(ctx context.Context, messages []chat.Cha
 	}, nil
 }
 
-// ListModels returns the currently available models
-func (s *OllamaService) ListModels(ctx context.Context) ([]string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", s.baseURL+"/api/tags", nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer func() {
-		_ = resp.Body.Close() // Ignore error in defer
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
-	}
-
-	var tagsResp struct {
-		Models []struct {
-			Name string `json:"name"`
-		} `json:"models"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&tagsResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	modelNames := make([]string, len(tagsResp.Models))
-	for i, model := range tagsResp.Models {
-		modelNames[i] = model.Name
-	}
-
-	return modelNames, nil
-}
-
-// IsModelReady checks if the specified model is available
-func (s *OllamaService) IsModelReady(ctx context.Context, modelName string) (bool, error) {
+// isModelReady checks if the specified model is available
+func (s *OllamaService) isModelReady(ctx context.Context, modelName string) (bool, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", s.baseURL+"/api/tags", nil)
 	if err != nil {
 		return false, fmt.Errorf("failed to create request: %w", err)

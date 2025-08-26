@@ -26,19 +26,6 @@ func TestNewVeniceService(t *testing.T) {
 	}
 }
 
-func TestVeniceService_IsModelReady(t *testing.T) {
-	service := NewVeniceService("test-key", "test-model")
-
-	ready, err := service.IsModelReady(context.Background(), "test-model")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-
-	if !ready {
-		t.Error("Expected model to be ready")
-	}
-}
-
 func TestVeniceService_InitModel(t *testing.T) {
 	service := NewVeniceService("invalid-key", "test-model")
 

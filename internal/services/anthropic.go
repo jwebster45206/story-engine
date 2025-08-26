@@ -28,7 +28,6 @@ type AnthropicService struct {
 	httpClient *http.Client
 }
 
-// AnthropicChatRequest represents the request structure for Anthropic Claude messages
 type AnthropicChatRequest struct {
 	Model       string             `json:"model"`
 	MaxTokens   int                `json:"max_tokens"`
@@ -38,13 +37,11 @@ type AnthropicChatRequest struct {
 	Stream      bool               `json:"stream,omitempty"`
 }
 
-// AnthropicContentBlock represents a content block in Anthropic's response
 type AnthropicContentBlock struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
 }
 
-// AnthropicChatResponse represents the response structure for Anthropic Claude messages
 type AnthropicChatResponse struct {
 	ID           string                  `json:"id"`
 	Type         string                  `json:"type"`
@@ -63,7 +60,6 @@ type AnthropicChatResponse struct {
 	} `json:"error,omitempty"`
 }
 
-// NewAnthropicService creates a new Anthropic Claude service
 func NewAnthropicService(apiKey string, modelName string) *AnthropicService {
 	return &AnthropicService{
 		apiKey:    apiKey,
@@ -74,28 +70,8 @@ func NewAnthropicService(apiKey string, modelName string) *AnthropicService {
 	}
 }
 
-// InitModel initializes the model (Anthropic doesn't require explicit model initialization)
 func (a *AnthropicService) InitModel(ctx context.Context, modelName string) error {
 	return nil
-}
-
-// IsModelReady checks if the model is ready (always true for Anthropic)
-func (a *AnthropicService) IsModelReady(ctx context.Context, modelName string) (bool, error) {
-	return true, nil
-}
-
-// ListModels retrieves the list of available models from Anthropic
-// Note: Anthropic doesn't provide a public models endpoint, so we return known models
-func (a *AnthropicService) ListModels(ctx context.Context) ([]string, error) {
-	// Known Anthropic Claude models as of the API documentation
-	knownModels := []string{
-		"claude-3-5-sonnet-20241022",
-		"claude-3-5-sonnet-20240620",
-		"claude-3-opus-20240229",
-		"claude-3-sonnet-20240229",
-		"claude-3-haiku-20240307",
-	}
-	return knownModels, nil
 }
 
 // extractSystemMessage extracts and combines all system messages into a single system prompt

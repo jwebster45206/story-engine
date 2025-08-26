@@ -39,23 +39,9 @@ func TestMockLLMService(t *testing.T) {
 		t.Errorf("Expected 'Mock response', got '%s'", response.Message)
 	}
 
-	_, generateCalls, _, _ := mockService.GetCalls()
+	_, generateCalls := mockService.GetCalls()
 	if len(generateCalls) != 1 {
 		t.Errorf("Expected 1 GenerateResponse call, got %d", len(generateCalls))
-	}
-
-	// Test IsModelReady
-	ready, err := mockService.IsModelReady(context.Background(), "test-model")
-	if err != nil {
-		t.Errorf("IsModelReady failed: %v", err)
-	}
-
-	if !ready {
-		t.Errorf("Expected model to be ready")
-	}
-
-	if len(mockService.IsModelReadyCalls) != 1 {
-		t.Errorf("Expected 1 IsModelReady call, got %d", len(mockService.IsModelReadyCalls))
 	}
 }
 
@@ -73,16 +59,5 @@ func TestMockLLMService_ErrorHandling(t *testing.T) {
 
 	if err.Error() != expectedErr.Error() {
 		t.Errorf("Expected error '%s', got '%s'", expectedErr.Error(), err.Error())
-	}
-
-	// Test model not ready
-	mockService.SetModelNotReady()
-	ready, err := mockService.IsModelReady(context.Background(), "test-model")
-	if err != nil {
-		t.Errorf("IsModelReady failed: %v", err)
-	}
-
-	if ready {
-		t.Errorf("Expected model to not be ready")
 	}
 }

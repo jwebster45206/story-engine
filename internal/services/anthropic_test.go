@@ -36,52 +36,6 @@ func TestAnthropicService_InitModel(t *testing.T) {
 	}
 }
 
-func TestAnthropicService_IsModelReady(t *testing.T) {
-	service := NewAnthropicService("test-key", "claude-3-sonnet-20240229")
-
-	ready, err := service.IsModelReady(context.Background(), "test-model")
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	if !ready {
-		t.Error("Expected model to be ready")
-	}
-}
-
-func TestAnthropicService_ListModels(t *testing.T) {
-	service := NewAnthropicService("test-key", "claude-3-sonnet-20240229")
-
-	models, err := service.ListModels(context.Background())
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-
-	if len(models) == 0 {
-		t.Error("Expected some models to be returned")
-	}
-
-	// Check that known models are included
-	knownModels := []string{
-		"claude-3-5-sonnet-20241022",
-		"claude-3-opus-20240229",
-		"claude-3-sonnet-20240229",
-		"claude-3-haiku-20240307",
-	}
-
-	for _, knownModel := range knownModels {
-		found := false
-		for _, model := range models {
-			if model == knownModel {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("Expected model %s to be in the list", knownModel)
-		}
-	}
-}
-
 func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 	service := NewAnthropicService("test-key", "claude-3-sonnet-20240229")
 
