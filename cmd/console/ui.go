@@ -334,6 +334,8 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string) strin
 	}
 	content.WriteString(promptStyle.Render(idStr) + "\n\n")
 
+	content.WriteString(promptStyle.Render(gs.ModelName))
+
 	return content.String()
 }
 
