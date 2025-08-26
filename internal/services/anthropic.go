@@ -1,0 +1,216 @@
+package services
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/jwebster45206/story-engine/pkg/chat"
+)
+
+const (
+	anthropicBaseURL = "https://api.anthropic.com/v1"
+	anthropicVersion = "2023-06-01"
+
+	DefaultAnthropicTemperature = 0.7
+	DefaultAnthropicMaxTokens   = 2048
+)
+
+// AnthropicService implements LLMService for Anthropic Claude
+type AnthropicService struct {
+	apiKey     string
+	modelName  string
+	httpClient *http.Client
+}
+
+// AnthropicChatRequest represents the request structure for Anthropic Claude messages
+type AnthropicChatRequest struct {
+	Model       string             `json:"model"`
+	MaxTokens   int                `json:"max_tokens"`
+	Temperature float64            `json:"temperature,omitempty"`
+	Messages    []chat.ChatMessage `json:"messages"`
+	System      string             `json:"system,omitempty"`
+	Stream      bool               `json:"stream,omitempty"`
+}
+
+// AnthropicContentBlock represents a content block in Anthropic's response
+type AnthropicContentBlock struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+// AnthropicChatResponse represents the response structure for Anthropic Claude messages
+type AnthropicChatResponse struct {
+	ID           string                  `json:"id"`
+	Type         string                  `json:"type"`
+	Role         string                  `json:"role"`
+	Content      []AnthropicContentBlock `json:"content"`
+	Model        string                  `json:"model"`
+	StopReason   string                  `json:"stop_reason"`
+	StopSequence *string                 `json:"stop_sequence"`
+	Usage        struct {
+		InputTokens  int `json:"input_tokens"`
+		OutputTokens int `json:"output_tokens"`
+	} `json:"usage"`
+	Error *struct {
+		Type    string `json:"type"`
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
+}
+
+// NewAnthropicService creates a new Anthropic Claude service
+func NewAnthropicService(apiKey string, modelName string) *AnthropicService {
+	return &AnthropicService{
+		apiKey:    apiKey,
+		modelName: modelName,
+		httpClient: &http.Client{
+			Timeout: 120 * time.Second,
+		},
+	}
+}
+
+// InitModel initializes the model (Anthropic doesn't require explicit model initialization)
+func (a *AnthropicService) InitModel(ctx context.Context, modelName string) error {
+	return nil
+}
+
+// IsModelReady checks if the model is ready (always true for Anthropic)
+func (a *AnthropicService) IsModelReady(ctx context.Context, modelName string) (bool, error) {
+	return true, nil
+}
+
+// ListModels retrieves the list of available models from Anthropic
+// Note: Anthropic doesn't provide a public models endpoint, so we return known models
+func (a *AnthropicService) ListModels(ctx context.Context) ([]string, error) {
+	// Known Anthropic Claude models as of the API documentation
+	knownModels := []string{
+		"claude-3-5-sonnet-20241022",
+		"claude-3-5-sonnet-20240620",
+		"claude-3-opus-20240229",
+		"claude-3-sonnet-20240229",
+		"claude-3-haiku-20240307",
+	}
+	return knownModels, nil
+}
+
+// extractSystemMessage extracts and combines all system messages into a single system prompt
+// and returns the remaining non-system messages
+func (a *AnthropicService) extractSystemMessage(messages []chat.ChatMessage) (string, []chat.ChatMessage) {
+	var systemParts []string
+	var nonSystemMessages []chat.ChatMessage
+
+	for _, msg := range messages {
+		if msg.Role == chat.ChatRoleSystem {
+			systemParts = append(systemParts, msg.Content)
+		} else {
+			nonSystemMessages = append(nonSystemMessages, msg)
+		}
+	}
+
+	systemPrompt := strings.Join(systemParts, "\n\n")
+	return systemPrompt, nonSystemMessages
+}
+
+// Chat generates a chat response using Anthropic Claude
+func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+	// Extract system messages and convert to Anthropic format
+	systemPrompt, conversationMessages := a.extractSystemMessage(messages)
+
+	anthropicReq := AnthropicChatRequest{
+		Model:       a.modelName,
+		MaxTokens:   DefaultAnthropicMaxTokens,
+		Temperature: DefaultAnthropicTemperature,
+		Messages:    conversationMessages,
+		Stream:      false,
+	}
+
+	// Add system prompt if we have one
+	if systemPrompt != "" {
+		anthropicReq.System = systemPrompt
+	}
+
+	reqBody, err := json.Marshal(anthropicReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", anthropicBaseURL+"/messages", bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set required Anthropic headers
+	req.Header.Set("x-api-key", a.apiKey)
+	req.Header.Set("anthropic-version", anthropicVersion)
+	req.Header.Set("content-type", "application/json")
+
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var anthropicResp AnthropicChatResponse
+	if err := json.Unmarshal(body, &anthropicResp); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	if anthropicResp.Error != nil {
+		return nil, fmt.Errorf("API error: %s", anthropicResp.Error.Message)
+	}
+
+	// Extract text content from the response
+	var responseText string
+	for _, content := range anthropicResp.Content {
+		if content.Type == "text" {
+			responseText += content.Text
+		}
+	}
+
+	if responseText == "" {
+		responseText = "(no response)"
+	}
+
+	return &chat.ChatResponse{
+		Message: responseText,
+	}, nil
+}
+
+// MetaUpdate processes a meta update request using Anthropic Claude
+func (a *AnthropicService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, error) {
+	cr, err := a.Chat(ctx, messages)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chat response: %w", err)
+	}
+	if cr.Message == "" {
+		return nil, nil
+	}
+
+	// Clean up the response text to extract JSON
+	mTxt := cr.Message
+	mTxt = strings.TrimPrefix(mTxt, "```json\n")
+	mTxt = strings.TrimSuffix(mTxt, "\n```")
+	mTxt = strings.TrimPrefix(mTxt, "```json")
+	mTxt = strings.TrimSuffix(mTxt, "```")
+	mTxt = strings.TrimSpace(mTxt)
+
+	var metaUpdate chat.MetaUpdate
+	if err := json.Unmarshal([]byte(mTxt), &metaUpdate); err != nil {
+		return nil, fmt.Errorf("failed to parse meta update: %w", err)
+	}
+	return &metaUpdate, nil
+}
