@@ -2,8 +2,8 @@
   "port": "8080",
   "environment": "dev",
   "log_level": "debug",
-  "ollama_url": "http://localhost:11434",
-  "venice_api_key": "API_KEY_HERE",
-  "model_name": "llama-3.3-70b",
+  "llm_provider": "anthropic",
+  "anthropic_api_key": "API_KEY_HERE",
+  "model_name": "claude-sonnet-4-20250514",
   "redis_url": "localhost:6379"
 }
