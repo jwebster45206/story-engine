@@ -29,12 +29,15 @@ type AnthropicService struct {
 }
 
 type AnthropicChatRequest struct {
-	Model       string             `json:"model"`
-	MaxTokens   int                `json:"max_tokens"`
-	Temperature float64            `json:"temperature,omitempty"`
-	Messages    []chat.ChatMessage `json:"messages"`
-	System      string             `json:"system,omitempty"`
-	Stream      bool               `json:"stream,omitempty"`
+	Model         string             `json:"model"`
+	MaxTokens     int                `json:"max_tokens"`
+	Temperature   *float64           `json:"temperature,omitempty"`
+	Messages      []chat.ChatMessage `json:"messages"`
+	System        string             `json:"system,omitempty"`
+	Stream        bool               `json:"stream,omitempty"`
+	TopP          *float64           `json:"top_p,omitempty"`
+	TopK          *int               `json:"top_k,omitempty"`
+	StopSequences []string           `json:"stop_sequences,omitempty"`
 }
 
 type AnthropicContentBlock struct {
@@ -74,9 +77,9 @@ func (a *AnthropicService) InitModel(ctx context.Context, modelName string) erro
 	return nil
 }
 
-// extractSystemMessage extracts and combines all system messages into a single system prompt
+// splitChatMessages extracts and combines all system messages into a single system prompt
 // and returns the remaining non-system messages
-func (a *AnthropicService) extractSystemMessage(messages []chat.ChatMessage) (string, []chat.ChatMessage) {
+func (a *AnthropicService) splitChatMessages(messages []chat.ChatMessage) (string, []chat.ChatMessage) {
 	var systemParts []string
 	var nonSystemMessages []chat.ChatMessage
 
@@ -95,12 +98,13 @@ func (a *AnthropicService) extractSystemMessage(messages []chat.ChatMessage) (st
 // Chat generates a chat response using Anthropic Claude
 func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 	// Extract system messages and convert to Anthropic format
-	systemPrompt, conversationMessages := a.extractSystemMessage(messages)
+	systemPrompt, conversationMessages := a.splitChatMessages(messages)
 
+	temperature := DefaultAnthropicTemperature
 	anthropicReq := AnthropicChatRequest{
 		Model:       a.modelName,
 		MaxTokens:   DefaultAnthropicMaxTokens,
-		Temperature: DefaultAnthropicTemperature,
+		Temperature: &temperature,
 		Messages:    conversationMessages,
 		Stream:      false,
 	}

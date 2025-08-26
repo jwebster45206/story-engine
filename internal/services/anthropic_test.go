@@ -79,7 +79,7 @@ func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			systemPrompt, nonSystemMessages := service.extractSystemMessage(tt.messages)
+			systemPrompt, nonSystemMessages := service.splitChatMessages(tt.messages)
 
 			if systemPrompt != tt.expectedSystem {
 				t.Errorf("Expected system prompt '%s', got '%s'", tt.expectedSystem, systemPrompt)
@@ -101,10 +101,11 @@ func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 
 func TestAnthropicChatRequestStructure(t *testing.T) {
 	// Test that the request structure can be marshaled properly
+	temp := 0.7
 	req := AnthropicChatRequest{
 		Model:       "claude-3-sonnet-20240229",
 		MaxTokens:   1024,
-		Temperature: 0.7,
+		Temperature: &temp,
 		Messages: []chat.ChatMessage{
 			{Role: "user", Content: "Hello"},
 		},
