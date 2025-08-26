@@ -264,12 +264,12 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 	copy(capturedMessagesCopy, capturedMainChatMessages)
 	mu.Unlock()
 
-	if len(capturedMessagesCopy) != 4 {
-		t.Fatalf("Expected 4 messages, got %d", len(capturedMessagesCopy))
+	if len(capturedMessagesCopy) != 2 {
+		t.Fatalf("Expected 2 messages, got %d", len(capturedMessagesCopy))
 	}
 
-	// Check that the user message (third message) is correct
-	userMsg := capturedMessagesCopy[2]
+	// Check that the user message (second message) is correct
+	userMsg := capturedMessagesCopy[1]
 	if userMsg.Role != chat.ChatRoleUser {
 		t.Errorf("Expected user message role %s, got %s", chat.ChatRoleUser, userMsg.Role)
 	}
@@ -278,16 +278,21 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 		t.Errorf("Expected user message content '%s', got '%s'", requestBody.Message, userMsg.Content)
 	}
 
-	// Check that we have system messages in the correct places
+	// Check that we have a consolidated system message first
 	if capturedMessagesCopy[0].Role != chat.ChatRoleSystem {
 		t.Errorf("Expected first message to be system message, got %s", capturedMessagesCopy[0].Role)
 	}
-	if capturedMessagesCopy[1].Role != chat.ChatRoleSystem {
-		t.Errorf("Expected second message to be system message, got %s", capturedMessagesCopy[1].Role)
+
+	// Verify the system message contains all expected components
+	systemContent := capturedMessagesCopy[0].Content
+	if !strings.Contains(systemContent, "omniscient narrator") {
+		t.Errorf("Expected system message to contain base system prompt")
 	}
-	// Fourth message should be the post-message system prompt with contingency rules
-	if capturedMessagesCopy[3].Role != chat.ChatRoleSystem {
-		t.Errorf("Expected fourth message to be system message, got %s", capturedMessagesCopy[3].Role)
+	if !strings.Contains(systemContent, "Game State:") {
+		t.Errorf("Expected system message to contain game state JSON")
+	}
+	if !strings.Contains(systemContent, "Treat the user's message as a request") {
+		t.Errorf("Expected system message to contain user post prompt")
 	}
 }
 
