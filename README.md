@@ -18,7 +18,6 @@ The LLM interface provides an abstraction layer for Large Language Model integra
 - **Interface Design**: Pluggable architecture supporting multiple LLM providers
 - **Chat Integration**: Handles conversation context and message formatting
 - **Model Management**: API for model initialization and readiness checks
-- **Response Processing**: Robust JSON extraction from mixed narrative/JSON responses
 - **Provider Implementations**: Anthropic Claude and VeniceAI
 
 ### Scenario and Rules
