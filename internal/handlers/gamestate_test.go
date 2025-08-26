@@ -21,7 +21,7 @@ func TestGameStateHandler_Create(t *testing.T) {
 	}))
 
 	mockStorage := services.NewMockStorage()
-	handler := NewGameStateHandler(mockStorage, logger)
+	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
 	// Test creating a new game state
 	reqBody := `{"scenario":"foo_scenario.json"}`
@@ -59,10 +59,10 @@ func TestGameStateHandler_Read(t *testing.T) {
 	}))
 
 	mockStorage := services.NewMockStorage()
-	handler := NewGameStateHandler(mockStorage, logger)
+	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
 	// Create a test game state
-	testGS := state.NewGameState("FooScenario")
+	testGS := state.NewGameState("FooScenario", "foo_model")
 	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
@@ -133,10 +133,10 @@ func TestGameStateHandler_Delete(t *testing.T) {
 	}))
 
 	mockStorage := services.NewMockStorage()
-	handler := NewGameStateHandler(mockStorage, logger)
+	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
 	// Create a test game state
-	testGS := state.NewGameState("FooScenario")
+	testGS := state.NewGameState("FooScenario", "foo_model")
 	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestGameStateHandler_MethodNotAllowed(t *testing.T) {
 	}))
 
 	mockStorage := services.NewMockStorage()
-	handler := NewGameStateHandler(mockStorage, logger)
+	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
 	// Test unsupported methods (DELETE is now supported)
 	methods := []string{http.MethodPut, http.MethodPatch, http.MethodHead}
@@ -237,7 +237,7 @@ func TestGameStateHandler_MissingID(t *testing.T) {
 	}))
 
 	mockStorage := services.NewMockStorage()
-	handler := NewGameStateHandler(mockStorage, logger)
+	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
 	tests := []struct {
 		name   string
