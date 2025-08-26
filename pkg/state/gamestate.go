@@ -13,6 +13,7 @@ import (
 // GameState is the current state of a roleplay game session.
 type GameState struct {
 	ID                 uuid.UUID                    `json:"id"`                       // Unique ID per session
+	ModelName          string                       `json:"model_name,omitempty"`     // Name of the large language model driving gameplay
 	Scenario           string                       `json:"scenario,omitempty"`       // Filename of the scenario being played. Ex: "foo_scenario.json"
 	SceneName          string                       `json:"scene_name,omitempty"`     // Current scene name in the scenario, if applicable
 	NPCs               map[string]scenario.NPC      `json:"npcs,omitempty"`           // All NPCs in the game world
@@ -28,9 +29,10 @@ type GameState struct {
 	UpdatedAt          time.Time                    `json:"updated_at"`
 }
 
-func NewGameState(scenarioFileName string) *GameState {
+func NewGameState(scenarioFileName string, modelName string) *GameState {
 	return &GameState{
 		ID:                 uuid.New(),
+		ModelName:          modelName,
 		Scenario:           scenarioFileName,
 		ChatHistory:        make([]chat.ChatMessage, 0),
 		TurnCounter:        0,

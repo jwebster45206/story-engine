@@ -81,7 +81,7 @@ func main() {
 	chatHandler := handlers.NewChatHandler(llmService, log, storage)
 	mux.Handle("/v1/chat", chatHandler)
 
-	gameStateHandler := handlers.NewGameStateHandler(storage, log)
+	gameStateHandler := handlers.NewGameStateHandler(cfg.ModelName, storage, log)
 	mux.Handle("/v1/gamestate", gameStateHandler)
 	mux.Handle("/v1/gamestate/", gameStateHandler)
 
