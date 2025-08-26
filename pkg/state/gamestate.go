@@ -136,24 +136,40 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 		return nil, fmt.Errorf("error generating state prompt: %w", err)
 	}
 
-	// System prompt first
-	ratingPrompt := ""
+	// Build consolidated system prompt
+	systemPrompt := scenario.BaseSystemPrompt
+
+	// Add rating prompt
 	switch s.Rating {
 	case scenario.RatingG:
-		ratingPrompt = "\n\n" + scenario.ContentRatingG
+		systemPrompt += "\n\n" + scenario.ContentRatingG
 	case scenario.RatingPG:
-		ratingPrompt = "\n\n" + scenario.ContentRatingPG
+		systemPrompt += "\n\n" + scenario.ContentRatingPG
 	case scenario.RatingPG13:
-		ratingPrompt = "\n\n" + scenario.ContentRatingPG13
+		systemPrompt += "\n\n" + scenario.ContentRatingPG13
 	case scenario.RatingR:
-		ratingPrompt = "\n\n" + scenario.ContentRatingR
+		systemPrompt += "\n\n" + scenario.ContentRatingR
 	}
+
+	// Add state context
+	systemPrompt += "\n\n" + statePrompt.Content
+
+	// Add message instructions and contingency prompts
+	systemPrompt += "\n\n" + scenario.UserPostPrompt
+	contingencyPrompts := gs.GetContingencyPrompts(s)
+	if len(contingencyPrompts) > 0 {
+		systemPrompt += "\n\nApply the following conditional rules if their conditions are met:\n\n"
+		for i, prompt := range contingencyPrompts {
+			systemPrompt += fmt.Sprintf("%d. %s\n", i+1, prompt)
+		}
+	}
+
+	// single system message at the beginning
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: scenario.BaseSystemPrompt + "\n\n" + ratingPrompt,
+			Content: systemPrompt,
 		},
-		statePrompt, // game state context json
 	}
 
 	// Add chat history from game state
@@ -169,20 +185,6 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 	messages = append(messages, chat.ChatMessage{
 		Role:    requestRole,
 		Content: requestMessage,
-	})
-
-	// Add contingency prompts as a system message after user input
-	postMessagePrompt := scenario.UserPostPrompt
-	contingencyPrompts := gs.GetContingencyPrompts(s)
-	if len(contingencyPrompts) > 0 {
-		postMessagePrompt += "\n\nApply the following conditional rules if their conditions are met:\n\n"
-		for i, prompt := range contingencyPrompts {
-			postMessagePrompt += fmt.Sprintf("%d. %s\n", i+1, prompt)
-		}
-	}
-	messages = append(messages, chat.ChatMessage{
-		Role:    chat.ChatRoleSystem,
-		Content: postMessagePrompt,
 	})
 
 	return messages, nil
