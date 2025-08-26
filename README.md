@@ -15,10 +15,11 @@ The project uses Redis as the primary storage backend for game state persistence
 
 The LLM interface provides an abstraction layer for Large Language Model integration:
 
-- **Current Implementation**: Venice AI service for low-cost and performant responses
 - **Interface Design**: Pluggable architecture supporting multiple LLM providers
 - **Chat Integration**: Handles conversation context and message formatting
 - **Model Management**: API for model initialization and readiness checks
+- **Response Processing**: Robust JSON extraction from mixed narrative/JSON responses
+- **Provider Implementations**: Anthropic Claude and VeniceAI
 
 ### Scenario and Rules
 
@@ -40,9 +41,6 @@ GameState is a storytelling session, including conversation history and session 
 
 Game states are created at session start and maintained throughout the storytelling experience. Future enhancements may include location tracking, inventory systems, and game flags.
 
-
-
-
 ## Endpoints
 
 The API provides RESTful endpoints for game management and chat interaction:
@@ -57,7 +55,7 @@ Returns API status and health information.
 
 **Create Game State**
 ```bash
-POST /gamestate
+POST /v1/gamestate
 Content-Type: application/json
 
 # Response: 201 Created
@@ -69,7 +67,7 @@ Content-Type: application/json
 
 **Get Game State**
 ```bash
-GET /gamestate/{id}
+GET /v1/gamestate/{id}
 
 # Response: 200 OK
 {
@@ -80,7 +78,7 @@ GET /gamestate/{id}
 
 **Delete Game State**
 ```bash
-DELETE /gamestate/{id}
+DELETE /v1/gamestate/{id}
 
 # Response: 204 No Content (idempotent)
 ```
@@ -89,7 +87,7 @@ DELETE /gamestate/{id}
 
 **Get Scenario by Filename**
 ```bash
-GET /scenario/pirate.json
+GET /v1/scenarios/pirate.json
 
 # Response: 200 OK
 {
@@ -104,7 +102,7 @@ GET /scenario/pirate.json
 
 **Send Chat Message**
 ```bash
-POST /chat
+POST /v1/chat
 Content-Type: application/json
 
 {
@@ -132,18 +130,31 @@ All endpoints return consistent error format:
 
 Create a JSON configuration file with your service settings:
 
+**Anthropic Claude**
 ```json
 {
   "port": "8080",
   "environment": "dev",
   "log_level": "debug",
-  "venice_api_key": "your_api_key_here",
-  "model_name": "llama-3.3-70b",
+  "llm_provider": "anthropic",
+  "anthropic_api_key": "sk-ant-api03-...",
+  "model_name": "claude-sonnet-4-20250514",
   "redis_url": "localhost:6379"
 }
 ```
 
-*Note: Currently only Venice LLM provider is supported.*
+**Venice AI**
+```json
+{
+  "port": "8080",
+  "environment": "dev", 
+  "log_level": "debug",
+  "llm_provider": "venice",
+  "venice_api_key": "your_venice_api_key_here",
+  "model_name": "llama-3.3-70b",
+  "redis_url": "localhost:6379"
+}
+```
 
 ### API Server
 
@@ -159,6 +170,6 @@ For detailed setup and usage instructions, see the [Console Client README](cmd/c
 # Run with default API URL (localhost:8080)
 go run cmd/console/*.go
 
-# Or with custom API URL
+# If using custom API URL
 API_BASE_URL=http://localhost:3000 go run cmd/console/*.go
 ```
