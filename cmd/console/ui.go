@@ -27,6 +27,43 @@ const (
 	PlaceHolderText = "Type your message here..."
 )
 
+// smartWrap wraps text at natural break points including spaces, slashes, and dashes
+func smartWrap(text string, width int) []string {
+	if width <= 0 {
+		return []string{text}
+	}
+
+	// For simple cases like URLs, use a simpler approach
+	if !strings.Contains(text, " ") {
+		// This is likely a URL or similar - split on / and -
+		var lines []string
+		var currentLine strings.Builder
+
+		for _, char := range text {
+			currentLine.WriteRune(char)
+
+			// Check if we should break after certain characters
+			if (char == '/' || char == '-') && currentLine.Len() >= width/2 {
+				lines = append(lines, currentLine.String())
+				currentLine.Reset()
+			} else if currentLine.Len() >= width {
+				lines = append(lines, currentLine.String())
+				currentLine.Reset()
+			}
+		}
+
+		if currentLine.Len() > 0 {
+			lines = append(lines, currentLine.String())
+		}
+
+		return lines
+	}
+
+	// For text with spaces, use the existing wordwrap
+	wrapped := wordwrap.String(text, width)
+	return strings.Split(wrapped, "\n")
+}
+
 // ConsoleUI is the BubbleTea model that runs the UI.
 // https://github.com/charmbracelet/bubbletea
 type ConsoleUI struct {
@@ -294,11 +331,10 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string) strin
 	castle += "[_]--'--[_]   STORY ENGINE\n"
 	castle += "|'|\"\"`\"\"|'|   LLM-Powered Text\n"
 	castle += "| | /^\\ | |   Adventure Game\n"
-	castle += "|_|_|I|_|_|"
+	castle += "|_|_|I|_|_|.  "
 
 	content.WriteString("\n" + titleStyle.Render(castle) + "\n\n")
 
-	content.WriteString(metaStyle.Render("Scenario: "))
 	content.WriteString(scenarioDisplay + "\n")
 	if gs.SceneName != "" {
 		content.WriteString(metaStyle.Render("Scene: "))
@@ -326,15 +362,18 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string) strin
 	content.WriteString("• Ctrl+Z: Clear Text\n")
 	content.WriteString("• Enter: Send\n\n")
 
+	content.WriteString(promptStyle.Render(gs.ModelName) + "\n\n")
 	width = max(8, width) // min width of 8
-	idStr := gs.ID.String()
-	for len(idStr) > width {
-		content.WriteString(promptStyle.Render(idStr[:width]) + "\n")
-		idStr = idStr[width:]
-	}
-	content.WriteString(promptStyle.Render(idStr) + "\n\n")
 
-	content.WriteString(promptStyle.Render(gs.ModelName))
+	// Format the UUID to wrap nicely
+	idStr := gs.ID.String()
+	wrappedIDLines := smartWrap(idStr, width)
+	for _, line := range wrappedIDLines {
+		content.WriteString(promptStyle.Render(line) + "\n")
+	}
+	content.WriteString("\n")
+
+	content.WriteString(promptStyle.Render("© 2025 Joseph Webster"))
 
 	return content.String()
 }
