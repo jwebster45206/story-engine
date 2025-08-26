@@ -3,6 +3,9 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
@@ -11,8 +14,9 @@ import (
 func TestNewAnthropicService(t *testing.T) {
 	apiKey := "test-api-key"
 	modelName := "claude-3-sonnet-20240229"
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	service := NewAnthropicService(apiKey, modelName)
+	service := NewAnthropicService(apiKey, modelName, log)
 
 	if service.apiKey != apiKey {
 		t.Errorf("Expected API key %s, got %s", apiKey, service.apiKey)
@@ -28,7 +32,8 @@ func TestNewAnthropicService(t *testing.T) {
 }
 
 func TestAnthropicService_InitModel(t *testing.T) {
-	service := NewAnthropicService("test-key", "claude-3-sonnet-20240229")
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	service := NewAnthropicService("test-key", "claude-3-sonnet-20240229", log)
 
 	err := service.InitModel(context.Background(), "test-model")
 	if err != nil {
@@ -37,7 +42,8 @@ func TestAnthropicService_InitModel(t *testing.T) {
 }
 
 func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
-	service := NewAnthropicService("test-key", "claude-3-sonnet-20240229")
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	service := NewAnthropicService("test-key", "claude-3-sonnet-20240229", log)
 
 	tests := []struct {
 		name                   string
@@ -156,5 +162,123 @@ func TestAnthropicChatResponseStructure(t *testing.T) {
 
 	if resp.Content[0].Text != "Hello! How can I help you today?" {
 		t.Errorf("Expected text 'Hello! How can I help you today?', got '%s'", resp.Content[0].Text)
+	}
+}
+
+func TestAnthropicService_MetaUpdateJSONParsing(t *testing.T) {
+	// Test JSON cleaning logic by creating test cases for various response formats
+	tests := []struct {
+		name             string
+		responseText     string
+		expectedError    bool
+		expectedLocation string
+	}{
+		{
+			name:             "clean JSON",
+			responseText:     `{"user_location": "forest"}`,
+			expectedError:    false,
+			expectedLocation: "forest",
+		},
+		{
+			name:             "JSON with markdown code blocks",
+			responseText:     "```json\n{\"user_location\": \"forest\"}\n```",
+			expectedError:    false,
+			expectedLocation: "forest",
+		},
+		{
+			name:             "JSON with backticks in content",
+			responseText:     "```\n{\"user_location\": \"forest`area\"}\n```",
+			expectedError:    false,
+			expectedLocation: "forestarea",
+		},
+		{
+			name:             "mixed narrative and JSON (real world case)",
+			responseText:     "Across the tavern, you spot the burly Shipwright hunched over a table, nursing a mug of ale and examining what looks like ship blueprints.\n\njson\n{\n \"user_location\": \"Sleepy Mermaid\",\n \"remove_from_inventory\": [\"cutlass\"]\n}",
+			expectedError:    false,
+			expectedLocation: "Sleepy Mermaid",
+		},
+		{
+			name:             "invalid JSON",
+			responseText:     "```json\n{invalid json}\n```",
+			expectedError:    true,
+			expectedLocation: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test the cleaning logic directly by applying the same logic as MetaUpdate
+			originalText := tt.responseText
+			mTxt := originalText
+
+			// Apply the same cleaning logic as in MetaUpdate
+			mTxt = strings.TrimSpace(mTxt)
+
+			// Strategy 1: Remove markdown code blocks if present
+			if strings.HasPrefix(mTxt, "```") {
+				lines := strings.Split(mTxt, "\n")
+				startIdx := 0
+				for i, line := range lines {
+					if strings.HasPrefix(line, "```") && i == 0 {
+						startIdx = 1
+						break
+					}
+				}
+
+				endIdx := len(lines)
+				for i := len(lines) - 1; i >= 0; i-- {
+					if strings.HasPrefix(lines[i], "```") && i > 0 {
+						endIdx = i
+						break
+					}
+				}
+
+				if startIdx < endIdx {
+					mTxt = strings.Join(lines[startIdx:endIdx], "\n")
+				}
+			}
+
+			// Strategy 2: Look for JSON object if we have mixed content
+			if !strings.HasPrefix(strings.TrimSpace(mTxt), "{") {
+				jsonStart := strings.Index(mTxt, "{")
+				if jsonStart >= 0 {
+					mTxt = mTxt[jsonStart:]
+				}
+			}
+
+			// Strategy 3: Clean up any remaining artifacts
+			mTxt = strings.ReplaceAll(mTxt, "`", "")
+
+			// Remove standalone "json" lines that might appear
+			lines := strings.Split(mTxt, "\n")
+			var cleanLines []string
+			for _, line := range lines {
+				trimmed := strings.TrimSpace(line)
+				if trimmed != "json" && trimmed != "" {
+					cleanLines = append(cleanLines, line)
+				}
+			}
+			mTxt = strings.Join(cleanLines, "\n")
+			mTxt = strings.TrimSpace(mTxt)
+
+			var metaUpdate chat.MetaUpdate
+			err := json.Unmarshal([]byte(mTxt), &metaUpdate)
+
+			if tt.expectedError {
+				if err == nil {
+					t.Error("Expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error parsing %q -> %q: %v", originalText, mTxt, err)
+				return
+			}
+
+			if metaUpdate.UserLocation != tt.expectedLocation {
+				t.Errorf("Expected UserLocation %q, got %q", tt.expectedLocation, metaUpdate.UserLocation)
+			}
+		})
 	}
 }
