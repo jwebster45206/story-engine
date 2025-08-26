@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -27,14 +28,32 @@ func main() {
 	log.Info("Starting Story Engine API",
 		"port", cfg.Port,
 		"environment", cfg.Environment,
+		"llm_provider", cfg.LLMProvider,
 		"model_name", cfg.ModelName)
 
-	// TODO: Restore support for Ollama in config
-	if cfg.VeniceAPIKey == "" {
-		log.Error("Venice API key is required")
+	var llmService services.LLMService
+	switch strings.ToLower(cfg.LLMProvider) {
+	case "anthropic":
+		// Initialize Anthropic LLM service
+		if cfg.AnthropicAPIKey == "" {
+			log.Error("Anthropic API key is required when using anthropic provider")
+			os.Exit(1)
+		}
+		llmService = services.NewAnthropicService(cfg.AnthropicAPIKey, cfg.ModelName)
+		log.Info("Using Anthropic LLM provider")
+	case "venice":
+		// Initialize Venice LLM service
+		if cfg.VeniceAPIKey == "" {
+			log.Error("Venice API key is required when using venice provider")
+			os.Exit(1)
+		}
+		llmService = services.NewVeniceService(cfg.VeniceAPIKey, cfg.ModelName)
+		log.Info("Using Venice LLM provider")
+	// case "ollama": // TODO: Support for Ollama self-hosted LLM
+	default:
+		log.Error("Invalid LLM provider specified", "provider", cfg.LLMProvider, "supported", []string{"anthropic", "venice"})
 		os.Exit(1)
 	}
-	llmService := services.NewVeniceService(cfg.VeniceAPIKey, cfg.ModelName)
 
 	var storage services.Storage = services.NewRedisService(cfg.RedisURL, log)
 	storageCtx, storageCancel := context.WithTimeout(context.Background(), 2*time.Minute)
