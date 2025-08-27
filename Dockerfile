@@ -37,8 +37,8 @@ COPY --from=builder /app/main .
 # Copy config files
 COPY config.docker.json .
 
-# Copy scenario files
-COPY data/scenarios /app/data/scenarios
+# Note: scenario files are mounted as a volume in docker-compose.yml
+# This allows for live editing without rebuilding the image
 
 # Change ownership of all files to appuser
 RUN chown -R appuser:appgroup /app

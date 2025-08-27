@@ -1,10 +1,10 @@
 {
   "name": "Egyptian Expedition",
-  "story": "The year is 1923. You are Dr. Alexandra Kane, a renowned archaeologist who has just received a cryptic telegram about an extraordinary discovery in the Egyptian desert. The sender claims to have found something that will 'rewrite history itself.' Armed with your expertise and a thirst for knowledge, you must navigate the mysteries of ancient secrets and modern dangers.",
+  "story": "The year is 1923. The player is Dr. Alexandra Kane, a renowned archaeologist who has just received a cryptic telegram about an extraordinary discovery in the Egyptian desert. The sender claims to have found something that will 'rewrite history itself.' Armed with the player's expertise and a thirst for knowledge, they must navigate the mysteries of ancient secrets and modern dangers.",
   "rating": "PG13",
   "scenes": {
     "telegram_mystery": {
-      "story": "You've arrived in Cairo with a cryptic telegram that speaks of an extraordinary discovery. You must decode its message and gather information from the mysterious contacts who await you in the city.",
+      "story": "The player has arrived in Cairo with a cryptic telegram that speaks of an extraordinary discovery. They must decode its message and gather information from the mysterious contacts who await them in the city.",
       "locations": {
         "Cairo Hotel": {
           "name": "Cairo Hotel",
@@ -13,7 +13,7 @@
             "east": "Local Market"
           },
           "blocked_exits": {
-            "south": "You must decode the telegram before leaving for the desert.",
+            "south": "The player must decode the telegram before leaving for the desert.",
             "west": "The way is blocked by a security guard."
           },
           "items": [
@@ -39,7 +39,7 @@
           "name": "Professor Blackwood",
           "type": "rival archaeologist",
           "disposition": "competitive",
-          "description": "A brilliant but ruthless colleague who seems to know more about your expedition than he should.",
+          "description": "A brilliant but ruthless colleague who seems to know more about the player's expedition than he should.",
           "important": true,
           "location": "Cairo Hotel",
           "items": [
@@ -77,7 +77,7 @@
       },
       "contingency_prompts": [
         "The telegram contains astronomical references that Amara can help decode.",
-        "The Messenger will only reveal information if they trust you.",
+        "The Messenger will only reveal information if they trust the player.",
         "Professor Blackwood knows more than he's letting on."
       ],
       "contingency_rules": [
@@ -88,7 +88,7 @@
       ]
     },
     "desert_expedition": {
-      "story": "With the telegram decoded, you can now venture into the desert. You must establish a camp and find the hidden temple entrance with Hassan's guidance, while navigating Professor Blackwood's interference.",
+      "story": "With the telegram decoded, the player can now venture into the desert. They must establish a camp and find the hidden temple entrance with Hassan's guidance, while navigating Professor Blackwood's interference.",
       "locations": {
         "Cairo Hotel": {
           "name": "Cairo Hotel",
@@ -104,12 +104,12 @@
         },
         "Desert Camp": {
           "name": "Desert Camp",
-          "description": "Your temporary archaeological camp, surrounded by endless dunes and the remnants of ancient civilizations.",
+          "description": "The player's temporary archaeological camp, surrounded by endless dunes and the remnants of ancient civilizations.",
           "exits": {
             "north": "Cairo Hotel"
           },
           "blocked_exits": {
-            "east": "Hassan must guide you to the temple entrance."
+            "east": "Hassan must guide the player to the temple entrance."
           },
           "items": [
             "excavation tools",
@@ -147,7 +147,7 @@
           "name": "Professor Blackwood",
           "type": "rival archaeologist",
           "disposition": "competitive",
-          "description": "A brilliant but ruthless colleague who seems to know more about your expedition than he should. He's become more aggressive since your success.",
+          "description": "A brilliant but ruthless colleague who seems to know more about the player's expedition than he should. He's become more aggressive since the player's success.",
           "important": true,
           "location": "Cairo Hotel",
           "items": [
@@ -172,9 +172,9 @@
         "blackwood_confronted": "false"
       },
       "contingency_prompts": [
-        "Hassan requires proof of your worthiness before revealing the temple location.",
+        "Hassan requires proof of the player's worthiness before revealing the temple location.",
         "The desert holds many dangers, and Hassan's guidance is essential.",
-        "Professor Blackwood may try to follow you or sabotage your expedition."
+        "Professor Blackwood may try to follow the player or sabotage their expedition."
       ],
       "contingency_rules": [
         "If the player demonstrates knowledge of ancient Egyptian customs to Hassan, set `hassan_trust` to true.",
@@ -184,11 +184,11 @@
       ]
     },
     "temple_discovery": {
-      "story": "You've found the hidden temple with Hassan's guidance. Now you must explore its mysteries, solve ancient puzzles, and uncover the truth behind the cryptic telegram while avoiding the traps that guard its secrets.",
+      "story": "The player has found the hidden temple with Hassan's guidance. Now they must explore its mysteries, solve ancient puzzles, and uncover the truth behind the cryptic telegram while avoiding the traps that guard its secrets.",
       "locations": {
         "Desert Camp": {
           "name": "Desert Camp",
-          "description": "Your temporary archaeological camp, surrounded by endless dunes and the remnants of ancient civilizations.",
+          "description": "The player's temporary archaeological camp, surrounded by endless dunes and the remnants of ancient civilizations.",
           "exits": {
             "north": "Cairo Hotel",
             "east": "Hidden Temple"
@@ -254,7 +254,7 @@
           "name": "Professor Blackwood",
           "type": "rival archaeologist",
           "disposition": "desperate",
-          "description": "A brilliant but ruthless colleague who has followed you to the temple. His true intentions are now revealed.",
+          "description": "A brilliant but ruthless colleague who has followed the player to the temple. His true intentions are now revealed.",
           "important": true,
           "location": "Desert Camp",
           "items": [
@@ -265,7 +265,7 @@
           "name": "Ancient Guardian",
           "type": "temple spirit",
           "disposition": "testing",
-          "description": "A mystical presence that protects the temple's secrets. It speaks in ancient riddles.",
+          "description": "A mystical presence that protects the temple's secrets. It speaks in ancient riddles and tests the player's worthiness.",
           "important": true,
           "location": "Underground Chamber",
           "items": []
@@ -279,7 +279,7 @@
       },
       "contingency_prompts": [
         "The temple puzzle requires knowledge from the star chart and hieroglyph guide.",
-        "The Ancient Guardian will test your worthiness before allowing access to the greatest secrets.",
+        "The Ancient Guardian will test the player's worthiness before allowing access to the greatest secrets.",
         "Professor Blackwood's desperation makes him dangerous."
       ],
       "contingency_rules": [

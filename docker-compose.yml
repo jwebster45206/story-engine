@@ -6,6 +6,9 @@ services:
     container_name: story-engine
     ports:
       - "8080:8080"
+    volumes:
+      - ./data/scenarios:/app/data/scenarios
+      - ./config.docker.json:/app/config.docker.json
     environment:
       - GAME_CONFIG=/app/config.docker.json
     depends_on:

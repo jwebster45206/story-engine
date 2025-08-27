@@ -1,0 +1,312 @@
+{
+  "name": "Hitchhiker's Guide",
+  "story": "The player is Arthur Dent, an ordinary Englishman whose life is about to be turned upside down. The player's house is about to be demolished, and Earth is about to be destroyed to make way for a hyperspace bypass. Adventure and absurdity await as the player tries to survive the destruction of Earth and navigate the galaxy.",
+  "rating": "PG",
+  "scenes": {
+    "earth_doom": {
+      "story": "The player's house is about to be demolished by bulldozers. The player must find Ford Prefect, who has a plan to save them both. The player has no idea that Earth is about to be destroyed.",
+      "locations": {
+        "Arthur's House": {
+          "name": "Arthur's House",
+          "description": "A typical English suburban home, complete with slippers and tea. Bulldozers are gathered outside.",
+          "exits": {
+            "front door": "Front Yard",
+            "kitchen": "Kitchen"
+          },
+          "items": [
+            "bathrobe",
+            "cup of tea"
+          ]
+        },
+        "Front Yard": {
+          "name": "Front Yard",
+          "description": "The small patch of grass in front of Arthur's house, now surrounded by bulldozers and construction workers.",
+          "exits": {
+            "back": "Arthur's House",
+            "street": "Road"
+          },
+          "blocked_exits": {
+            "open space": "The bulldozers block your path."
+          }
+        },
+        "Kitchen": {
+          "name": "Kitchen",
+          "description": "A cozy kitchen with tea-making equipment. Ford Prefect is here, acting strangely.",
+          "exits": {
+            "back": "Arthur's House"
+          },
+          "items": [
+            "tea biscuits"
+          ]
+        },
+        "Road": {
+          "name": "Road",
+          "description": "The street outside Arthur's house, crowded with construction vehicles and workers.",
+          "exits": {
+            "back": "Front Yard",
+            "sidewalk": "Sidewalk"
+          }
+        },
+        "Sidewalk": {
+          "name": "Sidewalk",
+          "description": "The sidewalk along the road, where Ford Prefect is trying to get Arthur's attention.",
+          "exits": {
+            "road": "Road"
+          }
+        }
+      },
+      "npcs": {
+        "Ford Prefect": {
+          "name": "Ford Prefect",
+          "type": "strange friend",
+          "disposition": "calm and mysterious",
+          "description": "Your friend who claims to be from Guildford but is actually a researcher for the Hitchhiker's Guide to the Galaxy. He knows Earth is about to be destroyed.",
+          "important": true,
+          "location": "Kitchen",
+          "items": [
+            "Hitchhiker's Guide to the Galaxy electronic book"
+          ]
+        },
+        "Mr. Prosser": {
+          "name": "Mr. Prosser",
+          "type": "construction foreman",
+          "disposition": "impatient",
+          "description": "The man in charge of demolishing Arthur's house. He has a half-Earth, half-Vogon brain.",
+          "important": true,
+          "location": "Front Yard",
+          "items": []
+        }
+      },
+      "vars": {
+        "ford_found": "false",
+        "house_demolished": "false"
+      },
+      "contingency_prompts": [
+        "When the player first encounters Ford Prefect, he seems oddly unconcerned about the bulldozers.",
+        "Ford Prefect never leaves the house until the player speaks with him.",
+        "To escape the demolition, the player must follow Ford Prefect's lead."
+      ],
+      "contingency_rules": [
+        "If the player has spoken with Ford Prefect, set the var `ford_found` to `true`.",
+        "If the player stays in the house when the demolition begins, set `house_demolished` to true and the game ends poorly.",
+        "Scene changes to 'hitchhiking' when `ford_found` is true and the player leaves the house with Ford.",
+        "If ford_found is true and the player has left the house, advance to the next scene: 'hitchhiking'."
+      ]
+    },
+    "hitchhiking": {
+      "story": "With Ford's help, the player has escaped the demolition of their house. Now they must hitchhike to avoid the imminent destruction of Earth. Ford has a plan involving a Vogon constructor ship.",
+      "locations": {
+        "Road": {
+          "name": "Road",
+          "description": "The street outside Arthur's demolished house, now with a large hole where the house once stood.",
+          "exits": {
+            "sidewalk": "Sidewalk"
+          }
+        },
+        "Sidewalk": {
+          "name": "Sidewalk",
+          "description": "The sidewalk along the road, where Ford is trying to get Arthur to understand the gravity of the situation.",
+          "exits": {
+            "road": "Road",
+            "field": "Field"
+          }
+        },
+        "Field": {
+          "name": "Field",
+          "description": "An open field where Ford claims they can hitch a better ride. Strange lights appear in the sky.",
+          "exits": {
+            "back": "Sidewalk"
+          },
+          "blocked_exits": {
+            "sky": "You can't just fly up to the spaceship."
+          },
+          "items": []
+        },
+        "Vogon Ship": {
+          "name": "Vogon Ship",
+          "description": "The massive, ugly Vogon constructor ship that has just arrived. It's not a comfortable place.",
+          "exits": {
+            "airlock": "Vogon Holding Cell"
+          },
+          "items": [
+            "Vogon poetry book"
+          ]
+        }
+      },
+      "npcs": {
+        "Ford Prefect": {
+          "name": "Ford Prefect",
+          "type": "strange friend",
+          "disposition": "calm and mysterious",
+          "description": "Your friend who is now revealing he's not from Guildford. He's trying to get you to hitch a ride on the Vogon ship.",
+          "important": true,
+          "location": "Sidewalk",
+          "items": [
+            "Hitchhiker's Guide to the Galaxy electronic book"
+          ]
+        },
+        "Vogon Guard": {
+          "name": "Vogon Guard",
+          "type": "alien official",
+          "disposition": "bureaucratic and unpleasant",
+          "description": "A large, unpleasant-looking alien who enforces Vogon regulations with grim determination.",
+          "important": true,
+          "location": "Vogon Ship",
+          "items": []
+        }
+      },
+      "vars": {
+        "in_vogon_ship": "false",
+        "earth_destroyed": "false"
+      },
+      "contingency_prompts": [
+        "Ford explains that Earth is about to be destroyed for a hyperspace bypass.",
+        "The Vogon ship appears just as Earth is about to be destroyed.",
+        "Hitchhiking in space requires the right thumb signal and a certain disregard for personal safety."
+      ],
+      "contingency_rules": [
+        "Only when the player boards the Vogon ship with Ford, set `in_vogon_ship` to true.",
+        "When Earth is destroyed (automatically after a few turns), set `earth_destroyed` to true.",
+        "As soon as `in_vogon_ship` is true, the scene advances to 'vogon_poetry'.",
+        "If earth_destroyed is true and the player is not on the Vogon ship, the game ends poorly."
+      ]
+    },
+    "vogon_poetry": {
+      "story": "The player has narrowly escaped Earth's destruction but now faces the horrors of Vogon poetry. They must survive the poetry reading and find a way to escape the Vogon ship.",
+      "locations": {
+        "Vogon Holding Cell": {
+          "name": "Vogon Holding Cell",
+          "description": "A cold, damp cell on the Vogon constructor ship. Not the most pleasant place to be.",
+          "exits": {
+            "cell door": "Vogon Corridor"
+          },
+          "items": [
+            "wet towel"
+          ]
+        },
+        "Vogon Corridor": {
+          "name": "Vogon Corridor",
+          "description": "A long, metallic corridor on the Vogon ship. The air smells faintly of decay.",
+          "exits": {
+            "holding cell": "Vogon Holding Cell",
+            "poetry chamber": "Poetry Chamber"
+          }
+        },
+        "Poetry Chamber": {
+          "name": "Poetry Chamber",
+          "description": "A large chamber where Vogons gather to inflict their poetry on prisoners. The walls are covered in bad poetry.",
+          "exits": {
+            "corridor": "Vogon Corridor",
+            "airlock": "Space"
+          },
+          "items": [
+            "Vogon poetry book"
+          ]
+        },
+        "Space": {
+          "name": "Space",
+          "description": "The infinite void of space. Somehow, you've been thrown out of the Vogon ship.",
+          "exits": {
+            "nothingness": "Heart of Gold"
+          },
+          "items": []
+        },
+        "Heart of Gold": {
+          "name": "Heart of Gold",
+          "description": "A miraculous ship powered by the Infinite Improbability Drive. You've somehow hitched a ride!",
+          "exits": {
+            "bridge": "Bridge"
+          },
+          "items": [
+            "towel"
+          ]
+        },
+        "Bridge": {
+          "name": "Bridge",
+          "description": "The control center of the Heart of Gold. Zaphod Beeblebrox and Trillian are here.",
+          "exits": {
+            "heart of gold": "Heart of Gold"
+          },
+          "items": [
+            "infinite improbability drive controls"
+          ]
+        }
+      },
+      "npcs": {
+        "Ford Prefect": {
+          "name": "Ford Prefect",
+          "type": "strange friend",
+          "disposition": "calm and resourceful",
+          "description": "Your friend who's been through this before. He's trying to keep you alive through the Vogon poetry.",
+          "important": true,
+          "location": "Vogon Holding Cell",
+          "items": [
+            "Hitchhiker's Guide to the Galaxy electronic book"
+          ]
+        },
+        "Vogon Captain": {
+          "name": "Vogon Captain",
+          "type": "alien official",
+          "disposition": "bureaucratic and cruel",
+          "description": "The captain of the Vogon constructor ship, known for his terrible poetry and lack of empathy.",
+          "important": true,
+          "location": "Poetry Chamber",
+          "items": [
+            "book of Vogon poetry"
+          ]
+        },
+        "Zaphod Beeblebrox": {
+          "name": "Zaphod Beeblebrox",
+          "type": "two-headed president",
+          "disposition": "cocky and adventurous",
+          "description": "The ex-president of the galaxy and captain of the Heart of Gold. He's here to rescue you.",
+          "important": true,
+          "location": "Heart of Gold",
+          "items": [
+            "third arm (hidden)",
+            "federation ID"
+          ]
+        },
+        "Trillian": {
+          "name": "Trillian",
+          "type": "astrophysicist",
+          "disposition": "intelligent and composed",
+          "description": "The only other human in the galaxy, and a brilliant scientist. She's on the Heart of Gold.",
+          "important": true,
+          "location": "Bridge",
+          "items": []
+        }
+      },
+      "vars": {
+        "poetry_survived": "false",
+        "escaped_vogons": "false"
+      },
+      "contingency_prompts": [
+        "Vogon poetry is so bad it can kill. The player must find a way to survive it.",
+        "The only known defense against Vogon poetry is having no imagination or being dead.",
+        "Ford suggests using a towel as a psychological weapon against Vogon poetry."
+      ],
+      "contingency_rules": [
+        "If the player survives the Vogon poetry reading, set `poetry_survived` to true.",
+        "When the player is thrown out of the Vogon ship and into space, set `escaped_vogons` to true.",
+        "Only when `escaped_vogons` is true and the player has reached the Heart of Gold, the game ends successfully."
+      ]
+    }
+  },
+  "opening_scene": "earth_doom",
+  "opening_prompt": "You wake up in your comfortable bed in your comfortable house in the comfortable English countryside. Something feels... off. The sound of bulldozers rumbles outside. What will you do next?",
+  "opening_location": "Arthur's House",
+  "opening_inventory": [
+    "bathrobe",
+    "slippers",
+    "cup of tea"
+  ],
+  "contingency_prompts": [
+    "Use British humor in responses.",
+    "Remember that the answer to life, the universe, and everything is 42."
+  ],
+  "contingency_rules": [
+    "Never let Ford Prefect leave the player's side once they've met. He is always ready to assist and will follow the player wherever they go.",
+    "The towel is the most important item in the universe. Always remind the player of this."
+  ]
+}
