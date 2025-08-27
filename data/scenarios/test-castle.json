@@ -1,0 +1,214 @@
+{
+  "name": "Test Castle Scene Advances",
+  "story": "A minimal French castle scenario designed to test scene advancement mechanics. The player explores a simple castle with multiple triggers for scene changes.",
+  "rating": "PG",
+  "scenes": {
+    "courtyard": {
+      "story": "The player stands in the castle courtyard. This scene tests story event based advancement - finding the key will advance to the tower scene.",
+      "locations": {
+        "Castle Courtyard": {
+          "name": "Castle Courtyard",
+          "description": "A simple stone courtyard surrounded by high walls. There is a fountain in the center and a door to the north.",
+          "exits": {
+            "north": "Great Hall"
+          },
+          "items": [
+            "golden key"
+          ]
+        },
+        "Great Hall": {
+          "name": "Great Hall",
+          "description": "A large hall with tapestries on the walls. Stairs lead up to the tower.",
+          "exits": {
+            "south": "Castle Courtyard",
+            "up": "Tower Entrance"
+          },
+          "blocked_exits": {
+            "up": "The tower door is locked. You need a key."
+          }
+        },
+        "Tower Entrance": {
+          "name": "Tower Entrance",
+          "description": "The entrance to the tower. A locked door blocks the way up.",
+          "exits": {
+            "down": "Great Hall"
+          }
+        }
+      },
+      "npcs": {
+        "Castle Guard": {
+          "name": "Castle Guard",
+          "type": "guard",
+          "disposition": "neutral",
+          "description": "A French guard who watches the courtyard carefully.",
+          "important": true,
+          "location": "Castle Courtyard",
+          "items": []
+        }
+      },
+      "vars": {
+        "key_found": "false",
+        "guard_talked": "false"
+      },
+      "contingency_prompts": [
+        "The golden key unlocks the tower door.",
+        "The guard will comment if the player finds the key."
+      ],
+      "contingency_rules": [
+        "If the player picks up the golden key, set `key_found` to true and unlock the Tower Entrance exit in Great Hall.",
+        "Update `scene_name` to 'tower' when the key is found, or if the key is in the user's inventory."
+      ]
+    },
+    "tower": {
+      "story": "The player has entered the tower area. This scene tests turn-based advancement - after 3 turns in this scene, it advances to the final scene.",
+      "locations": {
+        "Tower Entrance": {
+          "name": "Tower Entrance", 
+          "description": "The entrance to the tower. The door is now unlocked.",
+          "exits": {
+            "down": "Great Hall",
+            "up": "Tower Room"
+          }
+        },
+        "Tower Room": {
+          "name": "Tower Room",
+          "description": "A circular room with windows overlooking the countryside. Ancient books line the walls.",
+          "exits": {
+            "down": "Tower Entrance"
+          },
+          "items": [
+            "ancient scroll",
+            "crystal orb"
+          ]
+        },
+        "Great Hall": {
+          "name": "Great Hall",
+          "description": "The great hall, now with the tower accessible.",
+          "exits": {
+            "south": "Castle Courtyard",
+            "up": "Tower Entrance"
+          }
+        },
+        "Castle Courtyard": {
+          "name": "Castle Courtyard",
+          "description": "The stone courtyard where your adventure began.",
+          "exits": {
+            "north": "Great Hall"
+          }
+        }
+      },
+      "npcs": {
+        "Tower Wizard": {
+          "name": "Tower Wizard",
+          "type": "wizard",
+          "disposition": "mysterious",
+          "description": "An old wizard who dwells in the tower, studying ancient magic.",
+          "important": true,
+          "location": "Tower Room",
+          "items": []
+        }
+      },
+      "vars": {
+        "scroll_read": "false",
+        "orb_touched": "false"
+      },
+      "contingency_prompts": [
+        "The wizard will share wisdom if approached respectfully.",
+        "The ancient scroll contains cryptic writing.",
+        "The crystal orb glows with inner light."
+      ],
+      "contingency_rules": [
+        "If the player reads the ancient scroll, set `scroll_read` to true.",
+        "If the player touches the crystal orb, set `orb_touched` to true.",
+        "Scene changes to 'final' when `scene_turn_counter` reaches 3."
+      ]
+    },
+    "final": {
+      "story": "The final scene tests multiple advancement conditions: overall turn count (8+ turns) and variable values (both scroll_read and orb_touched must be true).",
+      "locations": {
+        "Tower Room": {
+          "name": "Tower Room",
+          "description": "The tower room now pulses with magical energy. Something momentous is about to happen.",
+          "exits": {
+            "down": "Tower Entrance"
+          },
+          "items": [
+            "magical artifact"
+          ]
+        },
+        "Tower Entrance": {
+          "name": "Tower Entrance",
+          "description": "The tower entrance, now charged with mystical energy.",
+          "exits": {
+            "down": "Great Hall",
+            "up": "Tower Room"
+          }
+        },
+        "Great Hall": {
+          "name": "Great Hall",
+          "description": "The great hall seems different now, touched by magic.",
+          "exits": {
+            "south": "Castle Courtyard",
+            "up": "Tower Entrance"
+          }
+        },
+        "Castle Courtyard": {
+          "name": "Castle Courtyard",
+          "description": "Even the courtyard has changed, filled with an otherworldly presence.",
+          "exits": {
+            "north": "Great Hall"
+          }
+        }
+      },
+      "npcs": {
+        "Tower Wizard": {
+          "name": "Tower Wizard",
+          "type": "wizard",
+          "disposition": "knowing",
+          "description": "The wizard now radiates power, ready to reveal the castle's greatest secret.",
+          "important": true,
+          "location": "Tower Room",
+          "items": []
+        },
+        "Magical Spirit": {
+          "name": "Magical Spirit",
+          "type": "spirit",
+          "disposition": "benevolent",
+          "description": "A glowing spirit that has appeared due to the magical awakening.",
+          "important": true,
+          "location": "Castle Courtyard",
+          "items": []
+        }
+      },
+      "vars": {
+        "artifact_claimed": "false",
+        "quest_complete": "false"
+      },
+      "contingency_prompts": [
+        "The magical artifact can only be claimed if both the scroll has been read and the orb has been touched.",
+        "The wizard will grant final wisdom to those who have completed the full journey.",
+        "The spirit appears only when the castle's magic fully awakens."
+      ],
+      "contingency_rules": [
+        "If `turn_counter` >= 8 AND `scroll_read` is true AND `orb_touched` is true, set `artifact_claimed` to true and allow the player to take the magical artifact.",
+        "If the player claims the magical artifact, set `quest_complete` to true.",
+        "When `quest_complete` is true, the scenario ends successfully."
+      ]
+    }
+  },
+  "opening_scene": "courtyard",
+  "opening_prompt": "You stand in the courtyard of an ancient French castle. The stones are worn smooth by centuries, and ivy climbs the tall walls. A fountain bubbles quietly in the center, and you sense there are secrets waiting to be discovered. What will you do?",
+  "opening_location": "Castle Courtyard",
+  "opening_inventory": [
+    "traveler's cloak"
+  ],
+  "contingency_prompts": [
+    "This is a test scenario focused on scene advancement mechanics.",
+    "Pay attention to turn counters and variable states for scene transitions.",
+    "The castle holds secrets that unfold through exploration and interaction."
+  ],
+  "contingency_rules": [
+    "Track all interactions carefully to ensure proper scene advancement triggers.",
+    "Turn counters should increment normally with each user interaction."
+  ]
+}

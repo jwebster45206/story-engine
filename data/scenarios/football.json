@@ -1,0 +1,321 @@
+{
+  "name": "Gridiron Glory",
+  "story": "The player is Jake Callahan, star quarterback of the Maplewood State Wildcats. It's Homecoming Saturday against their archrivals, the River City Bulldogs. The stakes are high as both teams are ranked in the top 25, and a win could propel the Wildcats into the College Football Playoff conversation. The game begins with the coin flip and ends at halftime.",
+  "rating": "PG",
+  "scenes": {
+    "pre_game": {
+      "story": "The player stands on the field with teammates as the referee prepares for the coin toss. The crowd is roaring, and the atmosphere is electric. This is the biggest game of the season so far.",
+      "locations": {
+        "50_Yard_Line": {
+          "name": "50 Yard Line",
+          "description": "The center of Maplewood Stadium, where captains gather for the coin toss. The roar of 60,000 fans echoes through the stadium.",
+          "exits": {
+            "locker_room": "Visitors Locker Room",
+            "field": "Field",
+            "sideline": "Home Sideline"
+          },
+          "items": []
+        },
+        "Visitors Locker Room": {
+          "name": "Visitors Locker Room",
+          "description": "The River City Bulldogs' locker room, filled with their players preparing for battle.",
+          "exits": {
+            "field": "50 Yard Line"
+          },
+          "items": []
+        },
+        "Home Sideline": {
+          "name": "Home Sideline",
+          "description": "The Maplewood State Wildcats' sideline, where coaches and reserves wait for the game to begin.",
+          "exits": {
+            "field": "50 Yard Line",
+            "locker_room": "Home Locker Room"
+          },
+          "items": []
+        },
+        "Home Locker Room": {
+          "name": "Home Locker Room",
+          "description": "The Maplewood State Wildcats' locker room, filled with motivational speeches and last-minute preparations.",
+          "exits": {
+            "sideline": "Home Sideline"
+          },
+          "items": [
+            "playbook",
+            "water bottle"
+          ]
+        },
+        "Field": {
+          "name": "Field",
+          "description": "The pristine grass field of Maplewood Stadium, ready for battle between two ranked opponents.",
+          "exits": {
+            "50_yard_line": "50 Yard Line",
+            "end_zone": "Maplewood End Zone",
+            "opponent_end_zone": "River City End Zone"
+          },
+          "items": []
+        },
+        "Maplewood_End_Zone": {
+          "name": "Maplewood End Zone",
+          "description": "The home team's end zone, painted with the Wildcats logo and ready for touchdowns.",
+          "exits": {
+            "field": "Field"
+          },
+          "items": []
+        },
+        "River_City_End_Zone": {
+          "name": "River City End Zone",
+          "description": "The visiting team's end zone, currently empty but soon to be occupied by Bulldogs players.",
+          "exits": {
+            "field": "Field"
+          },
+          "items": []
+        }
+      },
+      "npcs": {
+        "Coach_Harper": {
+          "name": "Coach Harper",
+          "type": "head_coach",
+          "disposition": "intense_but_supportive",
+          "description": "The veteran head coach of the Maplewood State Wildcats, known for his offensive schemes and calm demeanor under pressure.",
+          "important": true,
+          "location": "Home Sideline",
+          "items": [
+            "play_sheet"
+          ]
+        },
+        "Marcus_Jones": {
+          "name": "Marcus Jones",
+          "type": "running_back",
+          "disposition": "confident_and_loyal",
+          "description": "The team's star running back and your favorite target on screen passes. He's been with you since freshman year.",
+          "important": true,
+          "location": "50 Yard Line",
+          "items": []
+        },
+        "River_City_Captain": {
+          "name": "Chad Dawson",
+          "type": "opponent_captain",
+          "disposition": "cocky_and_aggressive",
+          "description": "The River City Bulldogs' senior linebacker and team captain, known for trash-talking and hard hits.",
+          "important": true,
+          "location": "50 Yard Line",
+          "items": []
+        },
+        "Referee": {
+          "name": "Referee",
+          "type": "official",
+          "disposition": "strict_and_impartial",
+          "description": "The head referee overseeing the coin toss and game proceedings.",
+          "important": true,
+          "location": "50 Yard Line",
+          "items": []
+        }
+      },
+      "vars": {
+        "coin_toss_called": "false",
+        "coin_toss_won": "false",
+        "deferred_to_second_half": "true"
+      },
+      "contingency_prompts": [
+        "The referee will ask if you want to call heads or tails before flipping the coin.",
+        "Most teams choose to defer to the second half to get the ball after halftime.",
+        "Coach Harper will give you strategic advice before the coin toss."
+      ],
+      "contingency_rules": [
+        "When the player calls the coin toss correctly, set `coin_toss_won` to `true`.",
+        "If the player wins the toss and chooses to defer, set `deferred_to_second_half` to `true`.",
+        "After the coin toss is complete, advance to the 'first_half' scene regardless of outcome.",
+        "Set `coin_toss_called` to `true` once the player has participated in the coin toss."
+      ]
+    },
+    "first_half": {
+      "story": "The game is underway! The first half is a back-and-forth battle between two talented teams. You'll experience key moments from both quarters before reaching halftime.",
+      "locations": {
+        "Field": {
+          "name": "Field",
+          "description": "The action is heating up on the field as both teams battle for supremacy.",
+          "exits": {
+            "sideline": "Home Sideline",
+            "end_zone": "Maplewood End Zone",
+            "opponent_end_zone": "River City End Zone"
+          },
+          "items": []
+        },
+        "Home Sideline": {
+          "name": "Home Sideline",
+          "description": "The Maplewood State Wildcats' sideline, where coaches make adjustments between series.",
+          "exits": {
+            "field": "Field",
+            "locker_room": "Home Locker Room"
+          },
+          "items": []
+        },
+        "Maplewood_End_Zone": {
+          "name": "Maplewood End Zone",
+          "description": "Your end zone, currently under pressure from the River City offense.",
+          "exits": {
+            "field": "Field"
+          },
+          "items": []
+        },
+        "River_City_End_Zone": {
+          "name": "River City End Zone",
+          "description": "The opponent's end zone, where you're trying to score touchdowns.",
+          "exits": {
+            "field": "Field"
+          },
+          "items": []
+        },
+        "Home Locker Room": {
+          "name": "Home Locker Room",
+          "description": "The Wildcats' locker room at halftime, where the team regroups and prepares for the second half.",
+          "exits": {
+            "sideline": "Home Sideline"
+          },
+          "items": [
+            "playbook",
+            "water bottle",
+            "towel"
+          ]
+        }
+      },
+      "npcs": {
+        "Coach_Harper": {
+          "name": "Coach Harper",
+          "type": "head_coach",
+          "disposition": "intense_but_supportive",
+          "description": "Your coach is making strategic adjustments based on how the game is unfolding.",
+          "important": true,
+          "location": "Home Sideline",
+          "items": [
+            "play_sheet"
+          ]
+        },
+        "Marcus_Jones": {
+          "name": "Marcus Jones",
+          "type": "running_back",
+          "disposition": "confident_and_loyal",
+          "description": "Your trusted running back is executing the game plan and providing key blocks in pass protection.",
+          "important": true,
+          "location": "Field",
+          "items": []
+        },
+        "River_City_Defensive_Coordinator": {
+          "name": "Coach Vance",
+          "type": "opponent_coach",
+          "disposition": "strategic_and_aggressive",
+          "description": "The River City Bulldogs' defensive coordinator, known for his complex blitz packages.",
+          "important": true,
+          "location": "Opponent Sideline",
+          "items": []
+        },
+        "Referee": {
+          "name": "Referee",
+          "type": "official",
+          "disposition": "strict_and_impartial",
+          "description": "The head referee monitoring the game action and making crucial calls.",
+          "important": true,
+          "location": "Field",
+          "items": []
+        }
+      },
+      "vars": {
+        "first_quarter_complete": "false",
+        "second_quarter_complete": "false",
+        "score_maplewood": "0",
+        "score_river_city": "0"
+      },
+      "contingency_prompts": [
+        "The first quarter features a defensive struggle with both teams feeling each other out.",
+        "In the second quarter, offensive fireworks begin as both quarterbacks find their rhythm.",
+        "Halftime approaches with the game still very much in doubt."
+      ],
+      "contingency_rules": [
+        "After describing key first quarter plays, set `first_quarter_complete` to `true` and update `score_maplewood` and `score_river_city` to 7-7.",
+        "After describing key second quarter plays, set `second_quarter_complete` to `true` and update `score_maplewood` to 17 and `score_river_city` to 14.",
+        "When `second_quarter_complete` is true, advance to the 'halftime' scene.",
+        "The game automatically ends at halftime as per the scenario requirements."
+      ]
+    },
+    "halftime": {
+      "story": "The first half has concluded with Maplewood State leading 17-14. You head to the locker room to regroup before the second half.",
+      "locations": {
+        "Home Locker Room": {
+          "name": "Home Locker Room",
+          "description": "The Wildcats' locker room at halftime, filled with the sounds of players catching their breath and coaches preparing for the second half.",
+          "exits": {
+            "sideline": "Home Sideline"
+          },
+          "items": [
+            "playbook",
+            "water bottle",
+            "towel"
+          ]
+        },
+        "Home Sideline": {
+          "name": "Home Sideline",
+          "description": "The Maplewood State Wildcats' sideline, where players will return after halftime.",
+          "exits": {
+            "locker_room": "Home Locker Room",
+            "field": "Field"
+          },
+          "items": []
+        }
+      },
+      "npcs": {
+        "Coach_Harper": {
+          "name": "Coach Harper",
+          "type": "head_coach",
+          "disposition": "analytical_and_motivational",
+          "description": "Your coach delivers a halftime speech analyzing the first half and preparing the team for the second.",
+          "important": true,
+          "location": "Home Locker Room",
+          "items": [
+            "halftime_adjustments_sheet"
+          ]
+        },
+        "Marcus_Jones": {
+          "name": "Marcus Jones",
+          "type": "running_back",
+          "disposition": "focused_and_determined",
+          "description": "Your running back is already thinking about how to exploit the defense in the second half.",
+          "important": true,
+          "location": "Home Locker Room",
+          "items": []
+        }
+      },
+      "vars": {
+        "halftime_speech_complete": "false",
+        "game_ended": "true"
+      },
+      "contingency_prompts": [
+        "Coach Harper reviews what worked and what didn't in the first half.",
+        "The team discusses adjustments needed for the second half.",
+        "The scenario ends here as per the user's request to stop at halftime."
+      ],
+      "contingency_rules": [
+        "When the player experiences the halftime speech, set `halftime_speech_complete` to `true`.",
+        "Set `game_ended` to `true` to indicate the scenario is complete.",
+        "This is the final scene as the user requested the story to end at halftime."
+      ]
+    }
+  },
+  "opening_scene": "pre_game",
+  "opening_prompt": "You stand at the 50-yard line of Maplewood Stadium, the roar of 60,000 fans filling your ears. It's Homecoming Saturday against your archrival River City Bulldogs, and both teams are ranked in the top 25. The referee motions for you and the opposing captain to approach for the coin toss. What will you do?",
+  "opening_location": "50 Yard Line",
+  "opening_inventory": [
+    "playbook",
+    "water bottle",
+    "lucky wristband"
+  ],
+  "contingency_prompts": [
+    "Use authentic football terminology in responses.",
+    "Include references to the high stakes of the game and potential College Football Playoff implications.",
+    "Make the game feel realistic with proper football strategy and mechanics."
+  ],
+  "contingency_rules": [
+    "Never let Coach Harper leave the sideline during game action.",
+    "The game automatically progresses through the first half regardless of player choices, as this is an on-rails experience.",
+    "The scenario ends at halftime as requested by the user, with Maplewood State leading 17-14."
+  ]
+}
