@@ -224,18 +224,20 @@ func (r *RedisService) ListScenarios(ctx context.Context) (map[string]string, er
 // GetScenario retrieves a scenario by its filename from the filesystem
 func (r *RedisService) GetScenario(ctx context.Context, filename string) (*scenario.Scenario, error) {
 	key := "scenario:" + filename
-	data, err := r.Get(ctx, key)
-	if err != nil && err != redis.Nil {
-		return nil, fmt.Errorf("failed to get scenario: %w", err)
-	}
 
-	if data != "" {
-		var cachedScenario scenario.Scenario
-		if err := json.Unmarshal([]byte(data), &cachedScenario); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal cached scenario: %w", err)
-		}
-		return &cachedScenario, nil
-	}
+	// Note: Enable cache, if used at any kind of scale
+	// data, err := r.Get(ctx, key)
+	// if err != nil && err != redis.Nil {
+	// 	return nil, fmt.Errorf("failed to get scenario: %w", err)
+	// }
+
+	// if data != "" {
+	// 	var cachedScenario scenario.Scenario
+	// 	if err := json.Unmarshal([]byte(data), &cachedScenario); err != nil {
+	// 		return nil, fmt.Errorf("failed to unmarshal cached scenario: %w", err)
+	// 	}
+	// 	return &cachedScenario, nil
+	// }
 
 	path := filepath.Join("./data/scenarios", filename)
 	file, err := os.ReadFile(path)
