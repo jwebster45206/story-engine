@@ -120,7 +120,7 @@
       "contingency_rules": [
         "If the player reads the ancient scroll, set `scroll_read` to true.",
         "If the player touches the crystal orb, set `orb_touched` to true.",
-        "Scene changes to 'final' when `scene_turn_counter` reaches 3."
+        "Update `scene_name` to 'final' when `scene_turn_counter` is 3 or greater."
       ]
     },
     "final": {
