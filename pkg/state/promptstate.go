@@ -6,6 +6,7 @@ import "github.com/jwebster45206/story-engine/pkg/scenario"
 // For user-facing prompts, only core world state is included.
 // For background processing, Vars are also populated.
 type PromptState struct {
+	SceneName        string                       `json:"scene_name,omitempty"`         // Current scene name
 	NPCs             map[string]scenario.NPC      `json:"npcs,omitempty"`               // Map of key NPCs
 	WorldLocations   map[string]scenario.Location `json:"locations,omitempty"`          // Current locations in the game world
 	Location         string                       `json:"user_location,omitempty"`      // User's current location
@@ -27,6 +28,7 @@ func ToPromptState(gs *GameState) *PromptState {
 
 func ToBackgroundPromptState(gs *GameState) *PromptState {
 	return &PromptState{
+		SceneName:        gs.SceneName,
 		NPCs:             gs.NPCs,
 		WorldLocations:   gs.WorldLocations,
 		Location:         gs.Location,

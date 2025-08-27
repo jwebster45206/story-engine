@@ -124,11 +124,17 @@ func (m *ConsoleUI) mergeServerGameState(serverGS *state.GameState) {
 		m.gameState = serverGS
 	} else {
 		m.gameState.ID = serverGS.ID
+		m.gameState.ModelName = serverGS.ModelName
 		m.gameState.Scenario = serverGS.Scenario
+		m.gameState.SceneName = serverGS.SceneName
+		m.gameState.NPCs = serverGS.NPCs
+		m.gameState.WorldLocations = serverGS.WorldLocations
 		m.gameState.Location = serverGS.Location
-		m.gameState.TurnCounter = serverGS.TurnCounter
 		m.gameState.Inventory = serverGS.Inventory
+		m.gameState.TurnCounter = serverGS.TurnCounter
+		m.gameState.SceneTurnCounter = serverGS.SceneTurnCounter
 		m.gameState.Vars = serverGS.Vars
+		m.gameState.ContingencyPrompts = serverGS.ContingencyPrompts
 		m.gameState.ChatHistory = make([]chat.ChatMessage, len(serverGS.ChatHistory))
 		copy(m.gameState.ChatHistory, serverGS.ChatHistory)
 	}
@@ -608,11 +614,17 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.err == nil && msg.gameState != nil && m.gameState != nil {
 				// Refresh metadata fields ONLY to avoid reordering chat mid-turn
 				m.gameState.ID = msg.gameState.ID
+				m.gameState.ModelName = msg.gameState.ModelName
 				m.gameState.Scenario = msg.gameState.Scenario
+				m.gameState.SceneName = msg.gameState.SceneName
+				m.gameState.NPCs = msg.gameState.NPCs
+				m.gameState.WorldLocations = msg.gameState.WorldLocations
 				m.gameState.Location = msg.gameState.Location
-				m.gameState.TurnCounter = msg.gameState.TurnCounter
 				m.gameState.Inventory = msg.gameState.Inventory
+				m.gameState.TurnCounter = msg.gameState.TurnCounter
+				m.gameState.SceneTurnCounter = msg.gameState.SceneTurnCounter
 				m.gameState.Vars = msg.gameState.Vars
+				m.gameState.ContingencyPrompts = msg.gameState.ContingencyPrompts
 				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName()))
 			}
 		}
@@ -1011,7 +1023,7 @@ func (m ConsoleUI) renderScenarioModal() string {
 		}
 
 		content.WriteString("\n")
-		content.WriteString(promptStyle.Render("Use ↑/↓ to navigate, Enter to select, Ctrl+C to exit"))
+		content.WriteString(promptStyle.Render("Use ↑/↓ to navigate, Enter to select"))
 	}
 
 	// Create the modal
