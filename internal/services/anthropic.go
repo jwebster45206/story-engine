@@ -179,63 +179,6 @@ func (a *AnthropicService) MetaUpdate(ctx context.Context, messages []chat.ChatM
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chat response: %w", err)
 	}
-	if cr.Message == "" {
-		return nil, nil
-	}
 
-	originalText := cr.Message
-	mTxt := strings.TrimSpace(originalText)
-
-	// Remove markdown code blocks if present
-	if strings.HasPrefix(mTxt, "```") {
-		lines := strings.Split(mTxt, "\n")
-		startIdx := 0
-		for i, line := range lines {
-			if strings.HasPrefix(line, "```") && i == 0 {
-				startIdx = 1
-				break
-			}
-		}
-		endIdx := len(lines)
-		for i := len(lines) - 1; i >= 0; i-- {
-			if strings.HasPrefix(lines[i], "```") && i > 0 {
-				endIdx = i
-				break
-			}
-		}
-		if startIdx < endIdx {
-			mTxt = strings.Join(lines[startIdx:endIdx], "\n")
-		}
-	}
-
-	// Look for JSON object if we have mixed content
-	if !strings.HasPrefix(strings.TrimSpace(mTxt), "{") {
-		jsonStart := strings.Index(mTxt, "{")
-		if jsonStart >= 0 {
-			mTxt = mTxt[jsonStart:]
-			a.logger.Warn("Detected mixed narrative/JSON content in LLM response. Extracting JSON portion.")
-		}
-	}
-
-	// Clean up any remaining artifacts
-	mTxt = strings.ReplaceAll(mTxt, "`", "")
-
-	// Remove standalone "json" lines that might appear
-	lines := strings.Split(mTxt, "\n")
-	var cleanLines []string
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed != "json" && trimmed != "" {
-			cleanLines = append(cleanLines, line)
-		}
-	}
-	mTxt = strings.Join(cleanLines, "\n")
-	mTxt = strings.TrimSpace(mTxt)
-
-	var metaUpdate chat.MetaUpdate
-	if err := json.Unmarshal([]byte(mTxt), &metaUpdate); err != nil {
-		return nil, fmt.Errorf("failed to parse meta update. Original response: %q, Cleaned text: %q, Error: %w", originalText, mTxt, err)
-	}
-
-	return &metaUpdate, nil
+	return parseMetaUpdateResponse(cr.Message)
 }

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
@@ -145,15 +144,6 @@ func (v *VeniceService) MetaUpdate(ctx context.Context, messages []chat.ChatMess
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chat response: %w", err)
 	}
-	if cr.Message == "" {
-		return nil, nil
-	}
-	mTxt := cr.Message
-	mTxt = strings.TrimPrefix(mTxt, "```json\n")
-	mTxt = strings.TrimSuffix(mTxt, "\n```")
-	var metaUpdate chat.MetaUpdate
-	if err := json.Unmarshal([]byte(mTxt), &metaUpdate); err != nil {
-		return nil, fmt.Errorf("failed to parse meta update: %w", err)
-	}
-	return &metaUpdate, nil
+
+	return parseMetaUpdateResponse(cr.Message)
 }
