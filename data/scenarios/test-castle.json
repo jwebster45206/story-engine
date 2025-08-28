@@ -4,7 +4,7 @@
   "rating": "PG",
   "scenes": {
     "courtyard": {
-      "story": "The player stands in the castle courtyard. This scene tests story event based advancement - finding the key will advance to the tower scene.",
+      "story": "The player stands in the castle courtyard. ",
       "locations": {
         "Castle Courtyard": {
           "name": "Castle Courtyard",
@@ -60,7 +60,7 @@
       ]
     },
     "tower": {
-      "story": "The player has entered the tower area. This scene tests turn-based advancement - after 3 turns in this scene, it advances to the final scene.",
+      "story": "The player has entered the tower area. ",
       "locations": {
         "Tower Entrance": {
           "name": "Tower Entrance", 
@@ -124,7 +124,7 @@
       ]
     },
     "final": {
-      "story": "The final scene tests multiple advancement conditions: overall turn count (8+ turns) and variable values (both scroll_read and orb_touched must be true).",
+      "story": "The player is in the tower room, at the climax of their adventure.",
       "locations": {
         "Tower Room": {
           "name": "Tower Room",
