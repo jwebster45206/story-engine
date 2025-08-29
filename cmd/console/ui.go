@@ -99,11 +99,11 @@ type ConsoleUI struct {
 	userPinned bool // true when user has scrolled away from bottom
 
 	// Polling state
-	pollSeq       int       // incrementing sequence for polls
-	activePollSeq int       // sequence number of poll in flight
-	pollInFlight  bool      // whether a poll HTTP request is active
-	pollingActive bool      // whether we're actively waiting for an updated gamestate
-	lastUpdatedAt time.Time // timestamp of when we started waiting for updates
+	pollSeq          int       // incrementing sequence for polls
+	activePollSeq    int       // sequence number of poll in flight
+	pollInFlight     bool      // whether a poll HTTP request is active
+	pollingActive    bool      // whether we're actively waiting for an updated gamestate
+	pollingStartedAt time.Time // timestamp when we started waiting for updates
 
 	// Pending user messages not yet confirmed in server game state
 	// Pending user messages awaiting server echo (assistant responses are applied only on chatResponse)
@@ -364,9 +364,8 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string, polli
 	content.WriteString("• Ctrl+Z: Clear Text\n")
 	content.WriteString("• Enter: Send\n")
 
-	// Add polling indicator
 	if pollingActive {
-		content.WriteString("\n" + loadingStyle.Render("⟳ Syncing game state...") + "\n")
+		content.WriteString("\n" + loadingStyle.Render("Syncing game state...") + "\n")
 	}
 
 	content.WriteString("\n")
@@ -537,11 +536,6 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.progressTick = 0   // Reset progress animation
 			m.userPinned = false // user intent to append at bottom
 
-			// Note the current time when we start - look for gamestate updates after this point
-			if m.gameState != nil {
-				// We'll set lastUpdatedAt after we get the chat response
-			}
-
 			// Add user message to game state first
 			userMessage := chat.ChatMessage{
 				Role:    "user",
@@ -553,7 +547,6 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Reformat content to include the new user message
 			m.writeChatContent()
 
-			// Start polling immediately before sending the chat request
 			return m, tea.Batch(m.sendChatMessage(input), progressTick())
 		}
 
@@ -593,7 +586,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Start polling now that we have the chat response
 			m.pollingActive = true
-			m.lastUpdatedAt = time.Now() // Record time AFTER chat response, look for updates after this
+			m.pollingStartedAt = time.Now() // Record time AFTER chat response, look for updates after this
 			// Update metadata to show polling indicator
 			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
 
@@ -633,7 +626,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pollInFlight = false
 			if msg.err == nil && msg.gameState != nil && m.gameState != nil {
 				// Check if we got an updated timestamp and should stop active polling
-				if m.pollingActive && msg.gameState.UpdatedAt.After(m.lastUpdatedAt) {
+				if m.pollingActive && msg.gameState.UpdatedAt.After(m.pollingStartedAt) {
 					m.pollingActive = false
 					// Apply the full updated gamestate
 					m.mergeServerGameState(msg.gameState)
@@ -987,7 +980,7 @@ func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
 	m.activePollSeq = 0
 	m.pollInFlight = false
 	m.pollingActive = false
-	m.lastUpdatedAt = time.Time{}
+	m.pollingStartedAt = time.Time{}
 	return m, m.loadScenarios()
 }
 
