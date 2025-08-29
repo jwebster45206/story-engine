@@ -12,6 +12,7 @@ type PromptState struct {
 	Location         string                       `json:"user_location,omitempty"`      // User's current location
 	Inventory        []string                     `json:"user_inventory,omitempty"`     // Inventory items
 	Vars             map[string]string            `json:"vars,omitempty"`               // Only populated for background processing
+	IsEnded          bool                         `json:"is_ended"`                     // true when the game is over
 	TurnCounter      int                          `json:"turn_counter,omitempty"`       // Total number of successful chat interactions
 	SceneTurnCounter int                          `json:"scene_turn_counter,omitempty"` // Number of successful chat interactions in
 }
@@ -34,6 +35,7 @@ func ToBackgroundPromptState(gs *GameState) *PromptState {
 		Location:         gs.Location,
 		Inventory:        gs.Inventory,
 		Vars:             gs.Vars,
+		IsEnded:          gs.IsEnded,
 		TurnCounter:      gs.TurnCounter,
 		SceneTurnCounter: gs.SceneTurnCounter,
 		// ContingencyPrompts are handled as separate system messages, not JSON data

@@ -1,0 +1,102 @@
+{
+  "name": "The Final Choice",
+  "story": "The player is a space explorer who has discovered an ancient alien artifact. The artifact pulses with mysterious energy and seems to respond to the player's presence. Time is running out as the ship's systems begin to fail.",
+  "rating": "PG",
+  "scenes": {
+    "artifact_chamber": {
+      "story": "The player stands before a glowing alien artifact in the ship's cargo bay. The ship's power is failing, and critical decisions must be made quickly.",
+      "locations": {
+        "Cargo Bay": {
+          "name": "Cargo Bay",
+          "description": "A dimly lit chamber containing the mysterious alien artifact. Warning lights flash red as ship systems fail around you.",
+          "exits": {
+            "north": "Bridge",
+            "south": "Engine Room"
+          },
+          "items": [
+            "alien artifact",
+            "emergency beacon",
+            "power cell"
+          ]
+        },
+        "Bridge": {
+          "name": "Bridge",
+          "description": "The ship's command center. Multiple screens show critical system failures throughout the vessel.",
+          "exits": {
+            "south": "Cargo Bay"
+          },
+          "items": [
+            "ship's log",
+            "navigation computer"
+          ]
+        },
+        "Engine Room": {
+          "name": "Engine Room",
+          "description": "The heart of the ship's power systems. Sparks fly from damaged conduits as the reactor core grows unstable.",
+          "exits": {
+            "north": "Cargo Bay"
+          },
+          "items": [
+            "reactor stabilizer",
+            "emergency shutdown lever"
+          ]
+        }
+      },
+      "npcs": {
+        "ARIA": {
+          "name": "ARIA",
+          "type": "AI",
+          "disposition": "helpful but urgent",
+          "description": "The ship's artificial intelligence. Her voice crackles with static as ship systems fail.",
+          "important": true,
+          "location": "Bridge",
+          "items": []
+        },
+        "Chief Engineer": {
+          "name": "Chief Engineer",
+          "type": "crew member",
+          "disposition": "panicked",
+          "description": "The ship's chief engineer, frantically trying to keep systems online.",
+          "important": true,
+          "location": "Engine Room",
+          "items": [
+            "engineering toolkit"
+          ]
+        }
+      },
+      "vars": {
+        "artifact_touched": "false",
+        "beacon_activated": "false",
+        "reactor_stabilized": "false",
+        "ship_destroyed": "false"
+      },
+      "contingency_prompts": [
+        "The alien artifact responds to direct contact with living beings.",
+        "The emergency beacon can send a distress signal, but requires power to function.",
+        "The reactor is becoming increasingly unstable and will explode without intervention."
+      ],
+      "contingency_rules": [
+        "If the player touches the alien artifact, set `artifact_touched` to true.",
+        "If the player activates the emergency beacon, set `beacon_activated` to true.",
+        "If the player uses the reactor stabilizer or pulls the emergency shutdown lever, set `reactor_stabilized` to true.",
+        "If `artifact_touched` is true, the game ends with the player being transported to safety by the alien technology.",
+        "If `beacon_activated` is true and `reactor_stabilized` is true, the game ends with a successful rescue.",
+        "If the player waits too long without taking action, set `ship_destroyed` to true and the game ends with the ship's destruction.",
+        "If `beacon_activated` is true but `reactor_stabilized` is false, the game ends with the player being rescued but the ship is lost."
+      ]
+    }
+  },
+  "opening_scene": "artifact_chamber",
+  "opening_prompt": "Alarms blare throughout your ship as you stand before the mysterious alien artifact you discovered. The ship's power fluctuates dangerously, and you know you have only moments to act. What do you do?",
+  "opening_location": "Cargo Bay",
+  "opening_inventory": [
+    "scanner",
+    "communicator"
+  ],
+  "contingency_prompts": [
+    "Time is of the essence - the ship's condition is deteriorating rapidly."
+  ],
+  "contingency_rules": [
+    "The game should end within 3-5 player actions based on their choices."
+  ]
+}

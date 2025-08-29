@@ -55,6 +55,7 @@ type MetaUpdate struct {
 	AddToInventory      []string          `json:"add_to_inventory,omitempty"`
 	RemoveFromInventory []string          `json:"remove_from_inventory,omitempty"`
 	SetVars             map[string]string `json:"set_vars,omitempty"`
+	GameEnded           *bool             `json:"game_ended,omitempty"`
 
 	MovedItems []struct {
 		Item string `json:"item"`

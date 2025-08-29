@@ -345,7 +345,9 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string, polli
 	content.WriteString("\n" + titleStyle.Render(castle) + "\n\n")
 
 	content.WriteString(scenarioDisplay + "\n")
-	if gs.SceneName != "" {
+	if gs.IsEnded {
+		content.WriteString(titleStyle.Render("GAME ENDED") + "\n")
+	} else if gs.SceneName != "" {
 		content.WriteString(metaStyle.Render("Scene: "))
 		content.WriteString(gs.SceneName + "\n")
 	}

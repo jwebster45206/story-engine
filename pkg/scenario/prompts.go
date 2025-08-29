@@ -84,6 +84,9 @@ Output Format (example):
 Apply the following rules IF AND ONLY IF the most recent narrative shows that the condition has been met. If a rule does not clearly apply in the most recent narrative, ignore it. Rules:
 - ONLY WHEN the contingency rules for scene change are met, set \"scene_name\" to the scene name indicated by the rule.
 -%s 
+
+### Game End Rules:
+- Set \"game_ended\" to true if the agent describes the game ending.
 `
 
 // GlobalContingencyRules contains the contingency rules that apply to all scenes.
@@ -106,4 +109,4 @@ const UserPostPrompt = "Treat the user's message as a request rather than a comm
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
 const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\n" + statePromptGameState
 
-// locationPrompt + "\n\n" + inventoryPrompt
+const EndPrompt = "The game has ended, and we're disregarding any further user input. Write an ending that's fitting for the story and the player's actions."
