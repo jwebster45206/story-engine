@@ -103,7 +103,7 @@ type ConsoleUI struct {
 	activePollSeq int       // sequence number of poll in flight
 	pollInFlight  bool      // whether a poll HTTP request is active
 	pollingActive bool      // whether we're actively waiting for an updated gamestate
-	lastUpdatedAt time.Time // timestamp of gamestate when we started waiting for updates
+	lastUpdatedAt time.Time // timestamp of when we started waiting for updates
 
 	// Pending user messages not yet confirmed in server game state
 	// Pending user messages awaiting server echo (assistant responses are applied only on chatResponse)
@@ -539,7 +539,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Note the current time when we start - look for gamestate updates after this point
 			if m.gameState != nil {
-				m.lastUpdatedAt = time.Now()
+				// We'll set lastUpdatedAt after we get the chat response
 			}
 
 			// Add user message to game state first
@@ -587,14 +587,16 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Don't start polling on error
 		} else {
-			// Start polling now that we have the chat response
-			m.pollingActive = true
-			// Update metadata to show polling indicator
-			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
-
 			// Add assistant response to game state (server will echo later; we'll de-dupe then)
 			assistantMessage := chat.ChatMessage{Role: "assistant", Content: msg.response.Message}
 			m.gameState.ChatHistory = append(m.gameState.ChatHistory, assistantMessage)
+
+			// Start polling now that we have the chat response
+			m.pollingActive = true
+			m.lastUpdatedAt = time.Now() // Record time AFTER chat response, look for updates after this
+			// Update metadata to show polling indicator
+			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+
 			m.writeChatContent()
 			if !m.userPinned {
 				m.chatViewport.GotoBottom()
