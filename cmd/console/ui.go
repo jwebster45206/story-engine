@@ -845,7 +845,10 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.err != nil {
-			if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyEsc {
+			switch msg.Type {
+			case tea.KeyCtrlC:
+				return m, tea.Quit
+			case tea.KeyEsc:
 				m.showQuitModal = true
 				return m, nil
 			}
@@ -853,7 +856,9 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyCtrlC:
+			return m, tea.Quit
+		case tea.KeyEsc:
 			m.showQuitModal = true
 			return m, nil
 		case tea.KeyUp:
@@ -1004,7 +1009,7 @@ func (m ConsoleUI) renderScenarioModal() string {
 		content.WriteString("\n\n")
 		content.WriteString(errorStyle.Render(fmt.Sprintf("Failed to load scenarios: %v", m.err)))
 		content.WriteString("\n\n")
-		content.WriteString("Press Ctrl+C to exit")
+		content.WriteString("Press Ctrl+C to force quit, Esc to confirm quit")
 	} else if m.loading {
 		content.WriteString(modalTitleStyle.Render("Creating Game..."))
 		content.WriteString("\n\n")
@@ -1023,7 +1028,7 @@ func (m ConsoleUI) renderScenarioModal() string {
 		}
 
 		content.WriteString("\n")
-		content.WriteString(promptStyle.Render("Use ↑/↓ to navigate, Enter to select"))
+		content.WriteString(promptStyle.Render("Use ↑/↓ to navigate, Enter to select, Ctrl+C to force quit"))
 	}
 
 	// Create the modal
