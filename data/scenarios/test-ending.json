@@ -97,6 +97,7 @@
     "Time is of the essence - the ship's condition is deteriorating rapidly."
   ],
   "contingency_rules": [
-    "The game should end within 3-5 player actions based on their choices."
-  ]
+    "If `scene_turn_counter` exceeds 3, the game always ends. "
+  ],
+  "game_end_prompt": "Things probably didn't end well for the user. Remind him that even Captain Kirk failed a training mission or two, if so. Also provide a grade similar to a Cracker Barrel peg game grade."
 }

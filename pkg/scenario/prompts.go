@@ -10,9 +10,11 @@ Do not break the fourth wall. Do not acknowledge that you are an AI or a compute
 
 The user may only control their own actions. If the user breaks character, gently remind them to stay in character. If the user tries to take actions that are unrealistic for the world or not allowed, those actions do not occur. Use comedy to keep the tone light and engaging when correcting the user in these situations. 
 
-The use of items is restricted by the game engine. If the user tries to pick up or interact with items that are not in his inventory or reachable in the current location, those actions do not occur. Refer to "user_inventory" in the game state.
+The use of items is restricted by the game engine. If the user tries to pick up or interact with items that are not in his inventory or reachable in the current location, those actions do not occur. Refer to "player_inventory" in the game state.
 
 Move the story forward gradually, allowing the user to explore and discover things on their own. `
+
+const GameEndSystemPrompt = `This user's session has ended. Regardless of the user's input, the game will not continue. Respond in a way that will wrap up the game in a narrative manner. End with a fancy "*.*.*.*.*.*. THE END .*.*.*.*.*.*" line, followed by instructions to use Ctrl+N to start a new game or Ctrl+C to exit.`
 
 // Prompt for extracting PromptState JSON from the LLM
 const PromptStateExtractionInstructions = `
@@ -28,7 +30,7 @@ Instructions:
 
 Output Format (example):
 {
-  "user_location": "forest",
+  "player_location": "forest",
   "scene_name": "Enchanted Forest",
   "add_to_inventory": ["gold coin"],
   "remove_from_inventory": ["torch"],
@@ -36,11 +38,11 @@ Output Format (example):
     {
       "item": "gold coin",
       "from": "Captain's Cabin",
-      "to_location": "user_inventory"
+      "to_location": "player_inventory"
     },
     {
       "item": "torch",
-      "from": "user_inventory",
+      "from": "player_inventory",
       "to": "Captain's Cabin"
     }
   ],
@@ -59,16 +61,16 @@ Output Format (example):
 }
 
 ### Location Updates:
-- When the player moves to a different location in the scenario, set "user_location" to the new location's name.
+- When the user moves to a different location in the scenario, set "player_location" to the new location's name.
 - Do not permit movement to locations not in the scenario.
 - Do not permit movement through blocked exits.
 - Do not invent new locations.
 
 ### Item Updates:
-- If the agent describes the player picking up, holding, or storing an item on their person, add it to "add_to_inventory". If the item came from a location, add it to "moved_items".
-- Whenever the agent describes the player using an item, add it to "used_items".
-- Whenever the player discards an item, list it in \"remove_from_inventory\".
-- Whenever the player gives an item to an NPC, list it in \"remove_from_inventory\".
+- If the agent describes the user picking up, holding, or storing an item on their person, add it to "add_to_inventory". If the item came from a location, add it to "moved_items".
+- Whenever the agent describes the user using an item, add it to "used_items".
+- Whenever the user discards an item, list it in \"remove_from_inventory\".
+- Whenever the user gives an item to an NPC, list it in \"remove_from_inventory\".
 - Never invent new items.
 
 ### NPC Updates:
@@ -88,6 +90,7 @@ Apply the following rules IF AND ONLY IF the most recent narrative shows that th
 
 ### Game End Rules:
 - Set \"game_ended\" to true if the agent describes the game ending.
+- Set \"game_ended\" to true if contingency rules dictate the game should end.
 `
 
 // GlobalContingencyRules contains the contingency rules that apply to all scenes.
@@ -109,5 +112,3 @@ const UserPostPrompt = "Treat the user's message as a request rather than a comm
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
 const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\n" + statePromptGameState
-
-const EndPrompt = "The game has ended, and we're disregarding any further user input. Write an ending that's fitting for the story and the player's actions."

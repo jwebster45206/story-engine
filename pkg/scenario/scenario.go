@@ -29,6 +29,7 @@ type Scenario struct {
 	Vars               map[string]string `json:"vars,omitempty"`                // Custom variables for the scenario
 	ContingencyPrompts []string          `json:"contingency_prompts,omitempty"` // Conditional prompts for LLM
 	ContingencyRules   []string          `json:"contingency_rules,omitempty"`   // Backend rules for LLM to follow
+	GameEndPrompt      string            `json:"game_end_prompt,omitempty"`     // Optional instructions for writing a game ending
 }
 
 type ContentRating string

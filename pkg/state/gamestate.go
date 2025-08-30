@@ -167,6 +167,14 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 		}
 	}
 
+	// if the game is over, add the end prompt
+	if gs.IsEnded {
+		systemPrompt += "\n\n" + scenario.GameEndSystemPrompt
+		if s.GameEndPrompt != "" {
+			systemPrompt += "\n\n" + s.GameEndPrompt
+		}
+	}
+
 	// single system message at the beginning
 	messages := []chat.ChatMessage{
 		{
@@ -184,18 +192,10 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 		}
 	}
 
-	if gs.IsEnded {
-		messages = append(messages, chat.ChatMessage{
-			Role:    chat.ChatRoleSystem,
-			Content: scenario.EndPrompt,
-		})
-	} else {
-		// Add user message
-		messages = append(messages, chat.ChatMessage{
-			Role:    requestRole,
-			Content: requestMessage,
-		})
-	}
+	messages = append(messages, chat.ChatMessage{
+		Role:    requestRole,
+		Content: requestMessage,
+	})
 
 	return messages, nil
 }
