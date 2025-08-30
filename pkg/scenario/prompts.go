@@ -54,7 +54,8 @@ Output Format (example):
   "set_vars": {
     "map_assembled": "true",
     "crew_loyalty": "low"
-  }
+  },
+  "game_ended": false
 }
 
 ### Location Updates:
