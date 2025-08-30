@@ -279,6 +279,13 @@ func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 	ta.SetHeight(3)
 	ta.ShowLineNumbers = false
 
+	// Style the textarea to match user text color (teal)
+	tealColor := lipgloss.Color("39")
+	ta.FocusedStyle.Text = ta.FocusedStyle.Text.Foreground(tealColor)
+	ta.BlurredStyle.Text = ta.BlurredStyle.Text.Foreground(tealColor)
+	ta.FocusedStyle.Base = ta.FocusedStyle.Base.Foreground(tealColor)
+	ta.BlurredStyle.Base = ta.BlurredStyle.Base.Foreground(tealColor)
+
 	chatVp := viewport.New(50, 20)
 	chatVp.MouseWheelEnabled = false // enabling causes text to jump around
 
@@ -404,6 +411,9 @@ func (m *ConsoleUI) writeChatContent() {
 	}
 
 	var content strings.Builder
+
+	// Always include the welcome message
+	content.WriteString("Welcome to " + titleStyle.Render(m.scenarioDisplayName()) + "...\n\n")
 	content.WriteString(separatorStyle.Render(strings.Repeat("─ ", chatWidth/2-6)) + "\n\n")
 
 	for _, msg := range m.gameState.ChatHistory {
