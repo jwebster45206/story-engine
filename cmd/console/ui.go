@@ -136,6 +136,7 @@ func (m *ConsoleUI) mergeServerGameState(serverGS *state.GameState) {
 		m.gameState.TurnCounter = serverGS.TurnCounter
 		m.gameState.SceneTurnCounter = serverGS.SceneTurnCounter
 		m.gameState.Vars = serverGS.Vars
+		m.gameState.IsEnded = serverGS.IsEnded
 		m.gameState.ContingencyPrompts = serverGS.ContingencyPrompts
 		m.gameState.ChatHistory = make([]chat.ChatMessage, len(serverGS.ChatHistory))
 		copy(m.gameState.ChatHistory, serverGS.ChatHistory)
@@ -611,6 +612,11 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(m.refreshGameState(), schedulePoll())
 
 	case pollTickMsg:
+		// Don't poll if the game has ended
+		if m.gameState != nil && m.gameState.IsEnded {
+			return m, nil
+		}
+
 		// Time to initiate a poll (if we have a game state and are actively waiting for updates)
 		if m.gameState != nil && m.pollingActive {
 			if m.pollInFlight {
@@ -637,8 +643,13 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.seq == m.activePollSeq {
 			m.pollInFlight = false
 			if msg.err == nil && msg.gameState != nil && m.gameState != nil {
-				// Check if we got an updated timestamp and should stop active polling
-				if m.pollingActive && msg.gameState.UpdatedAt.After(m.pollingStartedAt) {
+				// Check if the game has ended and stop polling
+				if msg.gameState.IsEnded {
+					m.pollingActive = false
+					m.mergeServerGameState(msg.gameState)
+					m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+				} else if m.pollingActive && msg.gameState.UpdatedAt.After(m.pollingStartedAt) {
+					// Check if we got an updated timestamp and should stop active polling
 					m.pollingActive = false
 					// Apply the full updated gamestate
 					m.mergeServerGameState(msg.gameState)
@@ -656,6 +667,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.gameState.TurnCounter = msg.gameState.TurnCounter
 					m.gameState.SceneTurnCounter = msg.gameState.SceneTurnCounter
 					m.gameState.Vars = msg.gameState.Vars
+					m.gameState.IsEnded = msg.gameState.IsEnded
 					m.gameState.ContingencyPrompts = msg.gameState.ContingencyPrompts
 					m.gameState.UpdatedAt = msg.gameState.UpdatedAt
 					m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
