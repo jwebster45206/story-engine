@@ -61,7 +61,8 @@ Output Format (example):
 }
 
 ### Location Updates:
-- When the user moves to a different location in the scenario, set "player_location" to the new location's name.
+- With every request, provide a "user_location" value with the current location of the user.
+- Select the most appropriate location from those available in the scenario. 
 - Do not permit movement to locations not in the scenario.
 - Do not permit movement through blocked exits.
 - Do not invent new locations.
