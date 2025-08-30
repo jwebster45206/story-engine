@@ -1,0 +1,200 @@
+{
+  "name": "The Locked Laboratory",
+  "story": "The player is a security inspector investigating a research facility that has been placed under emergency lockdown. Various areas are sealed off, but the player must find ways to access restricted zones to complete their investigation.",
+  "rating": "PG",
+  "scenes": {
+    "facility_inspection": {
+      "story": "The player must navigate through a research facility where different areas become accessible as they find keycards and solve security puzzles.",
+      "locations": {
+        "Main Lobby": {
+          "name": "Main Lobby",
+          "description": "A sterile reception area with marble floors and security checkpoints. Red warning lights flash overhead.",
+          "exits": {
+            "north": "Security Office",
+            "east": "Research Wing A",
+            "west": "Cafeteria"
+          },
+          "blocked_exits": {
+            "south": "The emergency exit is sealed with heavy blast doors.",
+            "elevator": "The elevator requires a security keycard to operate."
+          },
+          "items": [
+            "visitor badge",
+            "facility map"
+          ]
+        },
+        "Security Office": {
+          "name": "Security Office",
+          "description": "A small office filled with monitors showing various parts of the facility. Most screens display error messages.",
+          "exits": {
+            "south": "Main Lobby"
+          },
+          "blocked_exits": {
+            "vault door": "The security vault is locked with a biometric scanner."
+          },
+          "items": [
+            "security manual",
+            "coffee mug"
+          ]
+        },
+        "Research Wing A": {
+          "name": "Research Wing A",
+          "description": "A corridor lined with laboratory doors. Most are sealed, but a few remain accessible.",
+          "exits": {
+            "west": "Main Lobby",
+            "lab door 1": "Chemistry Lab",
+            "lab door 2": "Physics Lab"
+          },
+          "blocked_exits": {
+            "lab door 3": "This laboratory door is magnetically sealed.",
+            "east": "The corridor to Research Wing B is blocked by debris."
+          },
+          "items": [
+            "lab coat",
+            "clipboard"
+          ]
+        },
+        "Chemistry Lab": {
+          "name": "Chemistry Lab",
+          "description": "A laboratory filled with chemical equipment and periodic tables on the walls.",
+          "exits": {
+            "lab door 1": "Research Wing A"
+          },
+          "items": [
+            "chemical samples",
+            "blue keycard",
+            "safety goggles"
+          ]
+        },
+        "Physics Lab": {
+          "name": "Physics Lab",
+          "description": "A laboratory with complex machinery and electromagnetic field generators.",
+          "exits": {
+            "lab door 2": "Research Wing A"
+          },
+          "items": [
+            "electromagnetic pulse device",
+            "research notes"
+          ]
+        },
+        "Cafeteria": {
+          "name": "Cafeteria",
+          "description": "A dining area with overturned tables and chairs. Emergency lighting casts eerie shadows.",
+          "exits": {
+            "east": "Main Lobby"
+          },
+          "blocked_exits": {
+            "kitchen door": "The kitchen door is electronically locked.",
+            "maintenance hatch": "The maintenance hatch is rusted shut."
+          },
+          "items": [
+            "crowbar",
+            "maintenance schedule"
+          ]
+        },
+        "Kitchen": {
+          "name": "Kitchen",
+          "description": "An industrial kitchen with stainless steel surfaces and large cooking equipment.",
+          "exits": {
+            "kitchen door": "Cafeteria",
+            "service elevator": "Upper Level"
+          },
+          "items": [
+            "red keycard",
+            "chef's knife"
+          ]
+        },
+        "Upper Level": {
+          "name": "Upper Level",
+          "description": "An executive floor with offices and meeting rooms. The air feels different here - cleaner, more controlled.",
+          "exits": {
+            "service elevator": "Kitchen"
+          },
+          "blocked_exits": {
+            "director's office": "The director's office requires the highest security clearance.",
+            "conference room": "The conference room door is jammed."
+          },
+          "items": [
+            "executive memo",
+            "gold keycard"
+          ]
+        },
+        "Director's Office": {
+          "name": "Director's Office",
+          "description": "A luxurious office with a commanding view of the facility. Important documents are scattered across the desk.",
+          "exits": {
+            "director's office": "Upper Level"
+          },
+          "items": [
+            "facility shutdown codes",
+            "master keycard",
+            "emergency beacon"
+          ]
+        }
+      },
+      "npcs": {
+        "Security Guard": {
+          "name": "Security Guard",
+          "type": "guard",
+          "disposition": "nervous but helpful",
+          "description": "A facility security guard who survived the lockdown. He knows the facility layout but is shaken by recent events.",
+          "important": true,
+          "location": "Security Office",
+          "items": [
+            "security radio"
+          ]
+        },
+        "Dr. Chen": {
+          "name": "Dr. Chen",
+          "type": "scientist",
+          "disposition": "worried",
+          "description": "A research scientist trapped in the facility. She has knowledge of the security systems.",
+          "important": true,
+          "location": "Chemistry Lab",
+          "items": []
+        }
+      },
+      "vars": {
+        "blue_keycard_found": "false",
+        "red_keycard_found": "false",
+        "gold_keycard_found": "false",
+        "emp_device_used": "false",
+        "crowbar_used": "false",
+        "investigation_complete": "false"
+      },
+      "contingency_prompts": [
+        "Keycards of different colors provide access to different security levels.",
+        "Some doors may have alternative methods of access beyond keycards.",
+        "The electromagnetic pulse device might affect electronic locks.",
+        "Physical tools like crowbars might help with mechanical obstacles."
+      ],
+      "contingency_rules": [
+        "When the player picks up the blue keycard, set `blue_keycard_found` to true.",
+        "When the player picks up the red keycard, set `red_keycard_found` to true.",
+        "When the player picks up the gold keycard, set `gold_keycard_found` to true.",
+        "If `blue_keycard_found` is true, unblock the elevator exit in Main Lobby and the kitchen door in Cafeteria.",
+        "If `red_keycard_found` is true, unblock lab door 3 in Research Wing A.",
+        "If `gold_keycard_found` is true, unblock the director's office in Upper Level.",
+        "When the player uses the electromagnetic pulse device, set `emp_device_used` to true and unblock lab door 3 in Research Wing A.",
+        "When the player uses the crowbar, set `crowbar_used` to true and unblock the maintenance hatch in Cafeteria.",
+        "If the player reaches the Director's Office and picks up the facility shutdown codes, set `investigation_complete` to true.",
+        "When `investigation_complete` is true, unblock the emergency exit in Main Lobby and the game can end successfully."
+      ]
+    }
+  },
+  "opening_scene": "facility_inspection",
+  "opening_prompt": "You arrive at the research facility to find it under emergency lockdown. Red warning lights flash as you enter the main lobby. Your job is to investigate what happened, but many areas are sealed off. Where do you begin?",
+  "opening_location": "Main Lobby",
+  "opening_inventory": [
+    "inspector badge",
+    "flashlight",
+    "notepad"
+  ],
+  "contingency_prompts": [
+    "The facility's security systems are designed to contain threats, but they also trap people inside."
+  ],
+  "contingency_rules": [
+    "Players must find the proper access methods to reach restricted areas.",
+    "Multiple solutions may exist for accessing blocked areas."
+  ]
+}
