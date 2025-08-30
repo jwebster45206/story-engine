@@ -105,6 +105,9 @@ type ConsoleUI struct {
 	pollingActive    bool      // whether we're actively waiting for an updated gamestate
 	pollingStartedAt time.Time // timestamp when we started waiting for updates
 
+	// Game ending state
+	finalMessageSent bool // whether we've already sent the final message after game end
+
 	// Pending user messages not yet confirmed in server game state
 	// Pending user messages awaiting server echo (assistant responses are applied only on chatResponse)
 	pendingUserMessages []chat.ChatMessage
@@ -136,9 +139,15 @@ func (m *ConsoleUI) mergeServerGameState(serverGS *state.GameState) {
 		m.gameState.TurnCounter = serverGS.TurnCounter
 		m.gameState.SceneTurnCounter = serverGS.SceneTurnCounter
 		m.gameState.Vars = serverGS.Vars
+		m.gameState.IsEnded = serverGS.IsEnded
 		m.gameState.ContingencyPrompts = serverGS.ContingencyPrompts
 		m.gameState.ChatHistory = make([]chat.ChatMessage, len(serverGS.ChatHistory))
 		copy(m.gameState.ChatHistory, serverGS.ChatHistory)
+
+		// Stop polling if game has ended
+		if serverGS.IsEnded {
+			m.pollingActive = false
+		}
 	}
 
 	if len(m.pendingUserMessages) > 0 {
@@ -345,7 +354,9 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string, polli
 	content.WriteString("\n" + titleStyle.Render(castle) + "\n\n")
 
 	content.WriteString(scenarioDisplay + "\n")
-	if gs.SceneName != "" {
+	if gs.IsEnded {
+		content.WriteString(titleStyle.Render("GAME ENDED") + "\n")
+	} else if gs.SceneName != "" {
 		content.WriteString(metaStyle.Render("Scene: "))
 		content.WriteString(gs.SceneName + "\n")
 	}
@@ -541,10 +552,20 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.handleCommand(input)
 			}
 
+			// Prevent multiple messages after game end
+			if m.gameState != nil && m.gameState.IsEnded && m.finalMessageSent {
+				return m, nil
+			}
+
 			m.textarea.Reset()
 			m.loading = true
 			m.progressTick = 0   // Reset progress animation
 			m.userPinned = false // user intent to append at bottom
+
+			// Mark that we've sent the final message if game is ended
+			if m.gameState != nil && m.gameState.IsEnded {
+				m.finalMessageSent = true
+			}
 
 			// Add user message to game state first
 			userMessage := chat.ChatMessage{
@@ -594,9 +615,11 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			assistantMessage := chat.ChatMessage{Role: "assistant", Content: msg.response.Message}
 			m.gameState.ChatHistory = append(m.gameState.ChatHistory, assistantMessage)
 
-			// Start polling now that we have the chat response
-			m.pollingActive = true
-			m.pollingStartedAt = time.Now() // Record time AFTER chat response, look for updates after this
+			// Start polling now that we have the chat response (only if game hasn't ended)
+			if m.gameState != nil && !m.gameState.IsEnded {
+				m.pollingActive = true
+				m.pollingStartedAt = time.Now() // Record time AFTER chat response, look for updates after this
+			}
 			// Update metadata to show polling indicator
 			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
 
@@ -609,6 +632,11 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(m.refreshGameState(), schedulePoll())
 
 	case pollTickMsg:
+		// Don't poll if the game has ended
+		if m.gameState != nil && m.gameState.IsEnded {
+			return m, nil
+		}
+
 		// Time to initiate a poll (if we have a game state and are actively waiting for updates)
 		if m.gameState != nil && m.pollingActive {
 			if m.pollInFlight {
@@ -635,8 +663,13 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.seq == m.activePollSeq {
 			m.pollInFlight = false
 			if msg.err == nil && msg.gameState != nil && m.gameState != nil {
-				// Check if we got an updated timestamp and should stop active polling
-				if m.pollingActive && msg.gameState.UpdatedAt.After(m.pollingStartedAt) {
+				// Check if the game has ended and stop polling
+				if msg.gameState.IsEnded {
+					m.pollingActive = false
+					m.mergeServerGameState(msg.gameState)
+					m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+				} else if m.pollingActive && msg.gameState.UpdatedAt.After(m.pollingStartedAt) {
+					// Check if we got an updated timestamp and should stop active polling
 					m.pollingActive = false
 					// Apply the full updated gamestate
 					m.mergeServerGameState(msg.gameState)
@@ -654,6 +687,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.gameState.TurnCounter = msg.gameState.TurnCounter
 					m.gameState.SceneTurnCounter = msg.gameState.SceneTurnCounter
 					m.gameState.Vars = msg.gameState.Vars
+					m.gameState.IsEnded = msg.gameState.IsEnded
 					m.gameState.ContingencyPrompts = msg.gameState.ContingencyPrompts
 					m.gameState.UpdatedAt = msg.gameState.UpdatedAt
 					m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
@@ -980,6 +1014,7 @@ func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
 	m.pendingUserMessages = nil
 	m.chatViewport.SetContent("")
 	m.metaViewport.SetContent("")
+	m.textarea.Reset() // Clear the text area
 	m.showNewGameModal = false
 	m.showScenarioModal = true
 	m.loadingScenarios = true
@@ -991,6 +1026,7 @@ func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
 	m.pollInFlight = false
 	m.pollingActive = false
 	m.pollingStartedAt = time.Time{}
+	m.finalMessageSent = false
 	return m, m.loadScenarios()
 }
 

@@ -24,6 +24,7 @@ type GameState struct {
 	TurnCounter        int                          `json:"turn_counter"`             // Total number of successful chat interactions
 	SceneTurnCounter   int                          `json:"scene_turn_counter"`       // Number of successful chat interactions in current scene
 	Vars               map[string]string            `json:"vars,omitempty"`           // Game variables (e.g. flags, counters)
+	IsEnded            bool                         `json:"is_ended"`                 // true when the game is over
 	ContingencyPrompts []string                     `json:"contingency_prompts,omitempty"`
 	CreatedAt          time.Time                    `json:"created_at"`
 	UpdatedAt          time.Time                    `json:"updated_at"`
@@ -166,6 +167,14 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 		}
 	}
 
+	// if the game is over, add the end prompt
+	if gs.IsEnded {
+		systemPrompt += "\n\n" + scenario.GameEndSystemPrompt
+		if s.GameEndPrompt != "" {
+			systemPrompt += "\n\n" + s.GameEndPrompt
+		}
+	}
+
 	// single system message at the beginning
 	messages := []chat.ChatMessage{
 		{
@@ -183,7 +192,6 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 		}
 	}
 
-	// Add user message
 	messages = append(messages, chat.ChatMessage{
 		Role:    requestRole,
 		Content: requestMessage,

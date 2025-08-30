@@ -206,10 +206,12 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.metaCancel[gs.ID] = metaCancel
 	h.metaCancelMu.Unlock()
 
-	// Update turn counters before background updates
-	gs.IncrementTurnCounters()
-	// Start background goroutine to update game meta (PromptState)
-	go h.updateGameMeta(metaCtx, gs, request.Message, response.Message)
+	if !gs.IsEnded {
+		// Update turn counters before background updates
+		gs.IncrementTurnCounters()
+		// Start background goroutine to update game meta (PromptState)
+		go h.updateGameMeta(metaCtx, gs, request.Message, response.Message)
+	}
 
 	// Exit early if the prompt is a system message
 	if cmdResult.Role == chat.ChatRoleSystem {
@@ -375,6 +377,11 @@ func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdat
 			gs.Vars = make(map[string]string)
 		}
 		gs.Vars[snake] = v
+	}
+
+	// Handle Game End
+	if metaUpdate.GameEnded != nil && *metaUpdate.GameEnded {
+		gs.IsEnded = true
 	}
 
 	return nil
