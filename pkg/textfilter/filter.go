@@ -76,12 +76,46 @@ func NewProfanityFilter() *ProfanityFilter {
 
 	// Pre-compile regex patterns for each swear word
 	for _, word := range swearWords {
-		// Create a regex that matches the word with word boundaries and handles basic variations
-		pattern := `\b` + regexp.QuoteMeta(word) + `\b`
+		// Create a regex that matches the word with word boundaries and handles plurals
+		pattern := `\b` + regexp.QuoteMeta(word)
+
+		// Add optional 's' for pluralizable words (nouns, not phrases)
+		if canBePluralized(word) {
+			pattern += `s?` // Optional 's' for plural
+		}
+
+		pattern += `\b`
 		pf.regexes[word] = regexp.MustCompile(`(?i)` + pattern)
 	}
 
 	return pf
+}
+
+// canBePluralized determines if a word can have an 's' added for plural form
+func canBePluralized(word string) bool {
+	// Words that are typically nouns and can be pluralized
+	pluralizableWords := map[string]bool{
+		"hell":      true,
+		"damn":      true,
+		"ass":       true,
+		"bitch":     true,
+		"bastard":   true,
+		"dick":      true,
+		"prick":     true,
+		"douche":    true,
+		"douchebag": true,
+		"asshole":   true,
+		"dumbass":   true,
+		"jackass":   true,
+		"smartass":  true,
+		"badass":    true,
+		"dipshit":   true,
+		"shithead":  true,
+		"dickhead":  true,
+	}
+
+	// Don't pluralize phrases, expletives, or words that don't make sense as plurals
+	return pluralizableWords[word]
 }
 
 // FilterText replaces profanity in the input text with family-friendly alternatives
@@ -106,6 +140,14 @@ func (pf *ProfanityFilter) FilterText(text string) string {
 func preserveCase(original, replacement string) string {
 	if len(original) == 0 {
 		return replacement
+	}
+
+	// Check if the original word is plural (ends with 's')
+	isPlural := strings.HasSuffix(strings.ToLower(original), "s")
+	
+	// If original is plural, make replacement plural too
+	if isPlural {
+		replacement = replacement + "s"
 	}
 
 	// All uppercase

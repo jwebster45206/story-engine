@@ -62,6 +62,16 @@ func TestProfanityFilter_FilterText(t *testing.T) {
 			input:    "HeLl yeah, that's DaMn good!",
 			expected: "HeCk yeah, that's DaNg good!",
 		},
+		{
+			name:     "plural profanity",
+			input:    "There are too many assholes and bastards here!",
+			expected: "There are too many jerks and jerks here!",
+		},
+		{
+			name:     "non-pluralizable words should not match extra s",
+			input:    "I need to process this data",
+			expected: "I need to process this data", // "ass" in "process" should not match, even with 's'
+		},
 	}
 
 	for _, tt := range tests {
@@ -111,6 +121,16 @@ func TestProfanityFilter_ContainsProfanity(t *testing.T) {
 			name:     "empty string",
 			input:    "",
 			expected: false,
+		},
+		{
+			name:     "contains plural profanity",
+			input:    "There are multiple hells on earth",
+			expected: true,
+		},
+		{
+			name:     "plural mixed case detection",
+			input:    "These DAMNS are everywhere!",
+			expected: true,
 		},
 	}
 
@@ -190,10 +210,10 @@ func TestShouldFilterContent(t *testing.T) {
 func TestProfanityFilter_Integration(t *testing.T) {
 	filter := NewProfanityFilter()
 
-	// Test a realistic user input scenario
-	userInput := "That boss fight was damn hard! What the hell were the developers thinking?"
+	// Test a realistic user input scenario with plurals
+	userInput := "That boss fight was damn hard! What the hells were the developers thinking? There are too many assholes in this game."
 	filtered := filter.FilterText(userInput)
-	expected := "That boss fight was dang hard! What the heck were the developers thinking?"
+	expected := "That boss fight was dang hard! What the hecks were the developers thinking? There are too many jerks in this game."
 
 	if filtered != expected {
 		t.Errorf("Integration test failed:\nInput:    %q\nExpected: %q\nGot:      %q", userInput, expected, filtered)
