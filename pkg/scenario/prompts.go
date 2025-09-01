@@ -107,7 +107,7 @@ Apply the following rules IF AND ONLY IF the most recent narrative shows that th
 ### Game End Rules:
 - Set \"game_ended\" to true if the agent describes the game ending.
 - Set \"game_ended\" to true if contingency rules dictate the game should end.
-- Examples: "The player has died." -> "game_ended": true; "The player has rescued the princess. Contingency rules state that game ends when princess is rescued." -> "game_ended": true
+- Examples: "The player has died." -> "game_ended": true; "The player has rescued the princess. Contingency rules state that game ends when princess is rescued." -> "game_ended": true; "scene_turn_counter is 4, and prompts state that game ends whenever. the counter exceeds 3." -> "game_ended": true"
 `
 
 // GlobalContingencyRules contains the contingency rules that apply to all scenes.
