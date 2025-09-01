@@ -144,7 +144,7 @@ func preserveCase(original, replacement string) string {
 
 	// Check if the original word is plural (ends with 's')
 	isPlural := strings.HasSuffix(strings.ToLower(original), "s")
-	
+
 	// If original is plural, make replacement plural too
 	if isPlural {
 		replacement = replacement + "s"
