@@ -39,7 +39,7 @@ func main() {
 			log.Error("Anthropic API key is required when using anthropic provider")
 			os.Exit(1)
 		}
-		llmService = services.NewAnthropicService(cfg.AnthropicAPIKey, cfg.ModelName, log)
+		llmService = services.NewAnthropicService(cfg.AnthropicAPIKey, cfg.ModelName, cfg.BackendModelName, log)
 		log.Info("Using Anthropic LLM provider")
 	case "venice":
 		// Initialize Venice LLM service
@@ -47,7 +47,7 @@ func main() {
 			log.Error("Venice API key is required when using venice provider")
 			os.Exit(1)
 		}
-		llmService = services.NewVeniceService(cfg.VeniceAPIKey, cfg.ModelName)
+		llmService = services.NewVeniceService(cfg.VeniceAPIKey, cfg.ModelName, cfg.BackendModelName)
 		log.Info("Using Venice LLM provider")
 	// case "ollama": // TODO: Support for Ollama self-hosted LLM
 	default:

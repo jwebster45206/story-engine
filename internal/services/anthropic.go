@@ -20,31 +20,49 @@ const (
 
 	DefaultAnthropicTemperature = 0.7
 	DefaultAnthropicMaxTokens   = 2048
+	BackendAnthropicMaxTokens   = 400
 )
 
 // AnthropicService implements LLMService for Anthropic Claude
 type AnthropicService struct {
-	apiKey     string
-	modelName  string
-	httpClient *http.Client
-	logger     *slog.Logger
+	apiKey           string
+	modelName        string
+	backendModelName string
+	httpClient       *http.Client
+	logger           *slog.Logger
+}
+
+type AnthropicTool struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	InputSchema map[string]interface{} `json:"input_schema"`
+}
+
+type AnthropicToolChoice struct {
+	Type string `json:"type"`
+	Name string `json:"name,omitempty"`
 }
 
 type AnthropicChatRequest struct {
-	Model         string             `json:"model"`
-	MaxTokens     int                `json:"max_tokens"`
-	Temperature   *float64           `json:"temperature,omitempty"`
-	Messages      []chat.ChatMessage `json:"messages"`
-	System        string             `json:"system,omitempty"`
-	Stream        bool               `json:"stream,omitempty"`
-	TopP          *float64           `json:"top_p,omitempty"`
-	TopK          *int               `json:"top_k,omitempty"`
-	StopSequences []string           `json:"stop_sequences,omitempty"`
+	Model         string               `json:"model"`
+	MaxTokens     int                  `json:"max_tokens"`
+	Temperature   *float64             `json:"temperature,omitempty"`
+	Messages      []chat.ChatMessage   `json:"messages"`
+	System        string               `json:"system,omitempty"`
+	Stream        bool                 `json:"stream,omitempty"`
+	TopP          *float64             `json:"top_p,omitempty"`
+	TopK          *int                 `json:"top_k,omitempty"`
+	StopSequences []string             `json:"stop_sequences,omitempty"`
+	Tools         []AnthropicTool      `json:"tools,omitempty"`
+	ToolChoice    *AnthropicToolChoice `json:"tool_choice,omitempty"`
 }
 
 type AnthropicContentBlock struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Type  string                 `json:"type"`
+	Text  string                 `json:"text,omitempty"`
+	ID    string                 `json:"id,omitempty"`
+	Name  string                 `json:"name,omitempty"`
+	Input map[string]interface{} `json:"input,omitempty"`
 }
 
 type AnthropicChatResponse struct {
@@ -65,10 +83,11 @@ type AnthropicChatResponse struct {
 	} `json:"error,omitempty"`
 }
 
-func NewAnthropicService(apiKey string, modelName string, logger *slog.Logger) *AnthropicService {
+func NewAnthropicService(apiKey string, modelName string, backendModelName string, logger *slog.Logger) *AnthropicService {
 	return &AnthropicService{
-		apiKey:    apiKey,
-		modelName: modelName,
+		apiKey:           apiKey,
+		modelName:        modelName,
+		backendModelName: backendModelName,
 		httpClient: &http.Client{
 			Timeout: 120 * time.Second,
 		},
@@ -99,14 +118,18 @@ func (a *AnthropicService) splitChatMessages(messages []chat.ChatMessage) (strin
 }
 
 // Chat generates a chat response using Anthropic Claude
-func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+// chatCompletion makes a chat completion request to Anthropic with the specified model
+func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, tools []AnthropicTool) (string, error) {
 	// Extract system messages and convert to Anthropic format
 	systemPrompt, conversationMessages := a.splitChatMessages(messages)
 
-	temperature := DefaultAnthropicTemperature
+	maxTokens := DefaultAnthropicMaxTokens
+	if temperature == 0 {
+		maxTokens = BackendAnthropicMaxTokens
+	}
 	anthropicReq := AnthropicChatRequest{
-		Model:       a.modelName,
-		MaxTokens:   DefaultAnthropicMaxTokens,
+		Model:       modelName,
+		MaxTokens:   maxTokens,
 		Temperature: &temperature,
 		Messages:    conversationMessages,
 		Stream:      false,
@@ -117,14 +140,23 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 		anthropicReq.System = systemPrompt
 	}
 
+	// Add tools if provided, and use the first tool as the tool choice
+	if len(tools) > 0 {
+		anthropicReq.Tools = tools
+		anthropicReq.ToolChoice = &AnthropicToolChoice{
+			Type: "tool",
+			Name: tools[0].Name,
+		}
+	}
+
 	reqBody, err := json.Marshal(anthropicReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", anthropicBaseURL+"/messages", bytes.NewBuffer(reqBody))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
 	// Set required Anthropic headers
@@ -134,33 +166,40 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to make request: %w", err)
+		return "", fmt.Errorf("failed to make request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return "", fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+		return "", fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var anthropicResp AnthropicChatResponse
 	if err := json.Unmarshal(body, &anthropicResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	if anthropicResp.Error != nil {
-		return nil, fmt.Errorf("API error: %s", anthropicResp.Error.Message)
+		return "", fmt.Errorf("API error: %s", anthropicResp.Error.Message)
 	}
 
-	// Extract text content from the response
+	// Extract content from the response (text or tool use)
 	var responseText string
 	for _, content := range anthropicResp.Content {
 		if content.Type == "text" {
 			responseText += content.Text
+		} else if content.Type == "tool_use" {
+			// For tool use, return the input as JSON
+			inputBytes, err := json.Marshal(content.Input)
+			if err != nil {
+				return "", fmt.Errorf("failed to marshal tool input: %w", err)
+			}
+			responseText += string(inputBytes)
 		}
 	}
 
@@ -168,17 +207,121 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 		responseText = "(no response)"
 	}
 
+	return responseText, nil
+}
+
+func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+	content, err := a.chatCompletion(ctx, messages, a.modelName, DefaultAnthropicTemperature, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	return &chat.ChatResponse{
-		Message: responseText,
+		Message: content,
 	}, nil
 }
 
+// getMetaUpdateTool returns the tool definition for meta updates
+func (a *AnthropicService) getMetaUpdateTool() AnthropicTool {
+	return AnthropicTool{
+		Name:        "apply_changes",
+		Description: "Return only the delta for game state updates.",
+		InputSchema: map[string]interface{}{
+			"type":                 "object",
+			"additionalProperties": false,
+			"properties": map[string]interface{}{
+				"user_location": map[string]interface{}{
+					"type": "string",
+				},
+				"scene_name": map[string]interface{}{
+					"type": "string",
+				},
+				"add_to_inventory": map[string]interface{}{
+					"type": "array",
+					"items": map[string]interface{}{
+						"type": "string",
+					},
+				},
+				"remove_from_inventory": map[string]interface{}{
+					"type": "array",
+					"items": map[string]interface{}{
+						"type": "string",
+					},
+				},
+				"moved_items": map[string]interface{}{
+					"type": "array",
+					"items": map[string]interface{}{
+						"type":                 "object",
+						"additionalProperties": false,
+						"properties": map[string]interface{}{
+							"item": map[string]interface{}{
+								"type": "string",
+							},
+							"from": map[string]interface{}{
+								"type": "string",
+							},
+							"to": map[string]interface{}{
+								"type": "string",
+							},
+							"to_location": map[string]interface{}{
+								"type": "string",
+							},
+						},
+					},
+				},
+				"updated_npcs": map[string]interface{}{
+					"type": "array",
+					"items": map[string]interface{}{
+						"type":                 "object",
+						"additionalProperties": false,
+						"properties": map[string]interface{}{
+							"name": map[string]interface{}{
+								"type": "string",
+							},
+							"description": map[string]interface{}{
+								"type": "string",
+							},
+							"location": map[string]interface{}{
+								"type": "string",
+							},
+						},
+						"required": []string{"name"},
+					},
+				},
+				"set_vars": map[string]interface{}{
+					"type": "object",
+					"additionalProperties": map[string]interface{}{
+						"type": "string",
+					},
+				},
+				"game_ended": map[string]interface{}{
+					"type": "boolean",
+				},
+			},
+		},
+	}
+}
+
 // MetaUpdate processes a meta update request using Anthropic Claude
-func (a *AnthropicService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, error) {
-	cr, err := a.Chat(ctx, messages)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get chat response: %w", err)
+func (a *AnthropicService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, string, error) {
+	// Determine which model to use for MetaUpdate
+	modelToUse := a.modelName
+	if a.backendModelName != "" {
+		modelToUse = a.backendModelName
 	}
 
-	return parseMetaUpdateResponse(cr.Message)
+	// Create tools for structured output (first tool will be automatically chosen)
+	tools := []AnthropicTool{a.getMetaUpdateTool()}
+
+	content, err := a.chatCompletion(ctx, messages, modelToUse, 0.0, tools)
+	if err != nil {
+		return nil, "", err
+	}
+
+	metaUpdate, err := parseMetaUpdateResponse(content)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return metaUpdate, modelToUse, nil
 }

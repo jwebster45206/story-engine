@@ -14,9 +14,10 @@ import (
 func TestNewAnthropicService(t *testing.T) {
 	apiKey := "test-api-key"
 	modelName := "claude-3-sonnet-20240229"
+	backendModelName := "claude-3-backend"
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	service := NewAnthropicService(apiKey, modelName, log)
+	service := NewAnthropicService(apiKey, modelName, backendModelName, log)
 
 	if service.apiKey != apiKey {
 		t.Errorf("Expected API key %s, got %s", apiKey, service.apiKey)
@@ -33,7 +34,7 @@ func TestNewAnthropicService(t *testing.T) {
 
 func TestAnthropicService_InitModel(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	service := NewAnthropicService("test-key", "claude-3-sonnet-20240229", log)
+	service := NewAnthropicService("test-key", "claude-3-sonnet-20240229", "claude-3-backend", log)
 
 	err := service.InitModel(context.Background(), "test-model")
 	if err != nil {
@@ -43,7 +44,7 @@ func TestAnthropicService_InitModel(t *testing.T) {
 
 func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	service := NewAnthropicService("test-key", "claude-3-sonnet-20240229", log)
+	service := NewAnthropicService("test-key", "claude-3-sonnet-20240229", "claude-3-backend", log)
 
 	tests := []struct {
 		name                   string

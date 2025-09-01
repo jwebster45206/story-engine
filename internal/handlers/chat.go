@@ -298,17 +298,21 @@ func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdat
 	}
 
 	for _, item := range metaUpdate.AddToInventory {
-		// add to inventory if not already present
+		itemExists := false
 		for _, invItem := range gs.Inventory {
 			if invItem == item {
-				continue
+				itemExists = true
+				break
 			}
 		}
-		// Item not found, add it
-		if gs.Inventory == nil {
-			gs.Inventory = make([]string, 0)
+
+		// Only add if not already present
+		if !itemExists {
+			if gs.Inventory == nil {
+				gs.Inventory = make([]string, 0)
+			}
+			gs.Inventory = append(gs.Inventory, item)
 		}
-		gs.Inventory = append(gs.Inventory, item)
 	}
 
 	for _, item := range metaUpdate.RemoveFromInventory {
@@ -470,7 +474,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 
 	// Send the meta update request to the LLM
 	h.logger.Debug("Sending meta update request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
-	metaResponse, err := h.llmService.MetaUpdate(metaCtx, messages)
+	metaResponse, backendModel, err := h.llmService.MetaUpdate(metaCtx, messages)
 	if err != nil {
 		h.logger.Error("Failed to get meta extraction response from LLM", "error", err, "game_state_id", gs.ID.String())
 		return
@@ -508,5 +512,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 	h.logger.Debug("Successfully updated game meta",
 		"game_state_id", gs.ID.String(),
 		"meta_response", metaResponse,
-		"duration_s", time.Since(start).Seconds())
+		"duration_s", time.Since(start).Seconds(),
+		"backend_model", backendModel,
+	)
 }

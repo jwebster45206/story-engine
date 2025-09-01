@@ -22,7 +22,7 @@ type MockLLMAPI struct {
 }
 
 // MetaUpdate mocks the MetaUpdate functionality
-func (m *MockLLMAPI) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, error) {
+func (m *MockLLMAPI) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, string, error) {
 	// For testing, return a simple mock MetaUpdate
 	return &chat.MetaUpdate{
 		UserLocation:        "mock_location",
@@ -50,7 +50,7 @@ func (m *MockLLMAPI) MetaUpdate(ctx context.Context, messages []chat.ChatMessage
 				Location:    "mock_location",
 			},
 		},
-	}, nil
+	}, "mock-model", nil
 }
 
 type GenerateResponseCall struct {
