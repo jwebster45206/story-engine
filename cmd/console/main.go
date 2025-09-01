@@ -12,6 +12,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
@@ -161,6 +162,35 @@ func listScenarios(client *http.Client, baseURL string) ([]string, map[string]st
 	}
 	sort.Strings(names)
 	return names, scenarioMap, nil
+}
+
+func getScenario(client *http.Client, baseURL string, scenarioFile string) (*scenario.Scenario, error) {
+	resp, err := client.Get(fmt.Sprintf("%s/v1/scenarios/%s", baseURL, scenarioFile))
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer func() {
+		_ = resp.Body.Close() // Ignore error in defer
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		var errorResp ErrorResponse
+		if err := json.Unmarshal(body, &errorResp); err != nil {
+			return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+		}
+		return nil, fmt.Errorf("failed to get scenario: %s", errorResp.Error)
+	}
+
+	var scenarioData scenario.Scenario
+	if err := json.Unmarshal(body, &scenarioData); err != nil {
+		return nil, fmt.Errorf("failed to parse scenario response: %w", err)
+	}
+	return &scenarioData, nil
 }
 
 func getEnv(key, defaultValue string) string {
