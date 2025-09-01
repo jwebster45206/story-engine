@@ -24,10 +24,11 @@ const (
 
 // AnthropicService implements LLMService for Anthropic Claude
 type AnthropicService struct {
-	apiKey     string
-	modelName  string
-	httpClient *http.Client
-	logger     *slog.Logger
+	apiKey           string
+	modelName        string
+	backendModelName string
+	httpClient       *http.Client
+	logger           *slog.Logger
 }
 
 type AnthropicChatRequest struct {
@@ -65,10 +66,11 @@ type AnthropicChatResponse struct {
 	} `json:"error,omitempty"`
 }
 
-func NewAnthropicService(apiKey string, modelName string, logger *slog.Logger) *AnthropicService {
+func NewAnthropicService(apiKey string, modelName string, backendModelName string, logger *slog.Logger) *AnthropicService {
 	return &AnthropicService{
-		apiKey:    apiKey,
-		modelName: modelName,
+		apiKey:           apiKey,
+		modelName:        modelName,
+		backendModelName: backendModelName,
 		httpClient: &http.Client{
 			Timeout: 120 * time.Second,
 		},
@@ -99,13 +101,14 @@ func (a *AnthropicService) splitChatMessages(messages []chat.ChatMessage) (strin
 }
 
 // Chat generates a chat response using Anthropic Claude
-func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+// chatCompletion makes a chat completion request to Anthropic with the specified model
+func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string) (string, error) {
 	// Extract system messages and convert to Anthropic format
 	systemPrompt, conversationMessages := a.splitChatMessages(messages)
 
 	temperature := DefaultAnthropicTemperature
 	anthropicReq := AnthropicChatRequest{
-		Model:       a.modelName,
+		Model:       modelName,
 		MaxTokens:   DefaultAnthropicMaxTokens,
 		Temperature: &temperature,
 		Messages:    conversationMessages,
@@ -119,12 +122,12 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 
 	reqBody, err := json.Marshal(anthropicReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", anthropicBaseURL+"/messages", bytes.NewBuffer(reqBody))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
 	// Set required Anthropic headers
@@ -134,26 +137,26 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to make request: %w", err)
+		return "", fmt.Errorf("failed to make request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return "", fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+		return "", fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var anthropicResp AnthropicChatResponse
 	if err := json.Unmarshal(body, &anthropicResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	if anthropicResp.Error != nil {
-		return nil, fmt.Errorf("API error: %s", anthropicResp.Error.Message)
+		return "", fmt.Errorf("API error: %s", anthropicResp.Error.Message)
 	}
 
 	// Extract text content from the response
@@ -168,22 +171,37 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 		responseText = "(no response)"
 	}
 
+	return responseText, nil
+}
+
+func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+	content, err := a.chatCompletion(ctx, messages, a.modelName)
+	if err != nil {
+		return nil, err
+	}
+
 	return &chat.ChatResponse{
-		Message: responseText,
+		Message: content,
 	}, nil
 }
 
 // MetaUpdate processes a meta update request using Anthropic Claude
 func (a *AnthropicService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, string, error) {
-	cr, err := a.Chat(ctx, messages)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to get chat response: %w", err)
+	// Determine which model to use for MetaUpdate
+	modelToUse := a.modelName
+	if a.backendModelName != "" {
+		modelToUse = a.backendModelName
 	}
 
-	metaUpdate, err := parseMetaUpdateResponse(cr.Message)
+	content, err := a.chatCompletion(ctx, messages, modelToUse)
 	if err != nil {
 		return nil, "", err
 	}
 
-	return metaUpdate, a.modelName, nil
+	metaUpdate, err := parseMetaUpdateResponse(content)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return metaUpdate, modelToUse, nil
 }

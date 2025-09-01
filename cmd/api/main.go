@@ -39,7 +39,7 @@ func main() {
 			log.Error("Anthropic API key is required when using anthropic provider")
 			os.Exit(1)
 		}
-		llmService = services.NewAnthropicService(cfg.AnthropicAPIKey, cfg.ModelName, log)
+		llmService = services.NewAnthropicService(cfg.AnthropicAPIKey, cfg.ModelName, cfg.BackendModelName, log)
 		log.Info("Using Anthropic LLM provider")
 	case "venice":
 		// Initialize Venice LLM service
