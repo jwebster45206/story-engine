@@ -1,6 +1,50 @@
 # Story Engine
 A lightweight narrative engine for immersive, structured text adventures. Game engine inspired by text adventure games of the 70's and 80's, augmented with a modern LLM's conversational capabilities. 
 
+## Features
+
+The Story Engine supports a comprehensive set of game mechanics for creating rich text adventures:
+
+### Scene-Based Narrative
+- **Linear Progression**: Stories can progress through defined scenes with specific contexts and characters
+- **Branching Support**: Framework supports branching narratives (linear implementation currently, but designed for branching)
+- **Scene Transitions**: Automatic scene changes based on game conditions and player actions
+
+### Location & Map System  
+- **Room-Based Navigation**: Players move between defined locations with explicit exit connections
+- **Exit Restrictions**: Movement limited to available exits from current location - no teleportation
+- **Location Descriptions**: Rich descriptions and contextual details for each area
+
+### Item & Inventory Management
+- **Player Inventory**: Track items carried by the player
+- **Location Items**: Items available in specific locations
+- **Item Interactions**: Pick up, use, and give items with proper state tracking
+- **Transaction Control**: Prevents item duplication and ensures realistic acquisition mechanics
+
+### NPC System
+- **Character Presence**: NPCs with specific locations, descriptions, and personalities  
+- **Dynamic Behavior**: NPCs can move between locations and change demeanor based on story events
+- **Dialogue Integration**: Named character speech with proper formatting
+- **Inventory Support**: NPCs can carry and exchange items
+
+### Variables & Game State
+- **Custom Variables**: Track story-specific flags and counters (implementation varies by LLM model)
+- **Persistent State**: Variables maintained throughout the game session
+- **Conditional Logic**: Story branching based on variable values
+
+### Turn Tracking
+- **Session Counters**: Track total number of interactions across the entire game
+- **Scene Counters**: Track interactions within individual scenes
+- **Reliability Note**: More consistent with some LLM models than others
+
+### Game End Conditions
+- **Narrative Endings**: Stories can conclude based on player actions and story progression
+- **Conditional Endings**: Multiple possible endings based on game state
+- **Final Response**: Special handling for concluding game sessions with proper closure
+
+### Not Implemented
+- **Combat**: Potential roadmap item
+
 ## Architecture
 Project includes a Go microservice API and a console app. Console app is lightweight, to demonstrate a barebones gameplay session. 
 
