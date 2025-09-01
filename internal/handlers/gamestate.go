@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/services"
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
@@ -104,6 +105,21 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func isCensoredModel(modelName string) bool {
+	modelLower := strings.ToLower(modelName)
+	if strings.Contains(modelLower, "gpt") ||
+		strings.Contains(modelLower, "claude") ||
+		strings.HasPrefix(modelLower, "text-davinci") ||
+		strings.HasPrefix(modelLower, "text-curie") ||
+		strings.HasPrefix(modelLower, "text-babbage") ||
+		strings.HasPrefix(modelLower, "text-ada") ||
+		strings.Contains(modelLower, "openai") ||
+		strings.Contains(modelLower, "anthropic") {
+		return true
+	}
+	return false
+}
+
 func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Creating new game state")
 
@@ -147,7 +163,21 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// TODO: If using Anthropic provider, check that a valid content rating is set
+	// If it looks like a censored model, apply content filtering
+	if isCensoredModel(h.modelName) &&
+		s.Rating != scenario.RatingG &&
+		s.Rating != scenario.RatingPG &&
+		s.Rating != scenario.RatingPG13 {
+		h.logger.Error("Attempt to use censored model with wrong scenario rating", "model", h.modelName, "rating", s.Rating)
+		w.WriteHeader(http.StatusBadRequest)
+		response := ErrorResponse{
+			Error: "Censored model cannot be used with this scenario rating",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
+		return
+	}
 
 	// Add the opening prompt to chat history
 	if s.OpeningPrompt != "" {
