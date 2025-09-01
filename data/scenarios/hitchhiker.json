@@ -36,7 +36,8 @@
             "back": "Arthur's House"
           },
           "items": [
-            "tea biscuits"
+            "tea biscuits",
+            "towel"
           ]
         },
         "Road": {
@@ -87,10 +88,8 @@
         "To escape the demolition, the player must follow Ford Prefect's lead."
       ],
       "contingency_rules": [
-        "If the player has spoken with Ford Prefect, set the var `ford_found` to `true`.",
         "If the player stays in the house when the demolition begins, set `house_demolished` to true and the game ends poorly.",
-        "Scene changes to 'hitchhiking' when `ford_found` is true and the player leaves the house with Ford.",
-        "If ford_found is true and the player has left the house, advance to the next scene: 'hitchhiking'."
+        "Update `scene_name` to 'hitchhiking' when the player leaves the house with Ford, or if he has already done so."
       ]
     },
     "hitchhiking": {
@@ -162,13 +161,16 @@
       "contingency_prompts": [
         "Ford explains that Earth is about to be destroyed for a hyperspace bypass.",
         "The Vogon ship appears just as Earth is about to be destroyed.",
-        "Hitchhiking in space requires the right thumb signal and a certain disregard for personal safety."
+        "Hitchhiking in space requires the right thumb signal and a certain disregard for personal safety.",
+        "Ford may recommend lying in front of the bulldozer, while he finishes preparations.",
+        "Ford stresses the importance of keeping a towel handy."
       ],
       "contingency_rules": [
         "Only when the player boards the Vogon ship with Ford, set `in_vogon_ship` to true.",
         "When Earth is destroyed (automatically after a few turns), set `earth_destroyed` to true.",
-        "As soon as `in_vogon_ship` is true, the scene advances to 'vogon_poetry'.",
-        "If earth_destroyed is true and the player is not on the Vogon ship, the game ends poorly."
+        "When the player boards the Vogon ship with Ford, update `scene_name` to 'vogon_poetry'.",
+        "If the player has already boarded the ship with Ford, update `scene_name` to 'vogon_poetry'.",
+        "If earth_destroyed is true and the player is not on the Vogon ship, the game ends immediately."
       ]
     },
     "vogon_poetry": {

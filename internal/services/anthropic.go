@@ -297,7 +297,7 @@ func (a *AnthropicService) getMetaUpdateTool() AnthropicTool {
 				"game_ended": map[string]interface{}{
 					"type": "boolean",
 				},
-				"required": []string{"user_location", "add_to_inventory", "game_ended"},
+				"required": []string{"user_location", "scene_name", "add_to_inventory", "game_ended"},
 			},
 		},
 	}
