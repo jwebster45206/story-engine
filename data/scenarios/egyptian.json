@@ -78,13 +78,14 @@
       "contingency_prompts": [
         "The telegram contains astronomical references that Amara can help decode.",
         "The Messenger will only reveal information if they trust the player.",
-        "Professor Blackwood knows more than he's letting on."
+        "Professor Blackwood knows more than he's letting on.",
+        "Provide subtle hints about meeting Amara in the market."
       ],
       "contingency_rules": [
         "If the player meets The Messenger, set `messenger_met` to true.",
         "If the player solves Amara's riddle about the stars, set `amara_riddle_solved` to true and add 'star chart' to inventory.",
-        "When the player has both `messenger_met` and `amara_riddle_solved` set to true, set `telegram_decoded` to true.",
-        "Scene changes to 'desert_expedition' when `telegram_decoded` is true."
+        "When the player has both `messenger_met` and `amara_riddle_solved`: set `telegram_decoded` to true.",
+        "When the player has both `messenger_met` and `amara_riddle_solved`: update `scene_name` to 'desert_expedition'."
       ]
     },
     "desert_expedition": {
@@ -301,10 +302,8 @@
   ],
   "contingency_prompts": [
     "Maintain the atmosphere of 1920s archaeological adventure throughout.",
-    "Ancient knowledge should feel both wondrous and dangerous."
-  ],
-  "contingency_rules": [
-    "Hassan should always prioritize the player's safety and provide wisdom about the desert and ancient ways.",
-    "Professor Blackwood's rivalry should escalate throughout the scenes, becoming more desperate as the player succeeds."
+    "Treat the content like a Call of Cthulhu mystery, filled with cosmic horror and ancient secrets.",
+    "Narrator speaks with the voice of Vincent Price.",
+    "Professor Blackwood's rivalry should escalate throughout the adventure, becoming more desperate as the player succeeds."
   ]
 }

@@ -147,6 +147,8 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// TODO: If using Anthropic provider, check that a valid content rating is set
+
 	// Add the opening prompt to chat history
 	if s.OpeningPrompt != "" {
 		gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
