@@ -305,10 +305,10 @@
   ],
   "contingency_prompts": [
     "Use British humor in responses.",
-    "Remember that the answer to life, the universe, and everything is 42."
+    "Remember that the answer to life, the universe, and everything is 42.",
+    "The towel is the most important item in the universe. Occasionally remind the player of this."
   ],
   "contingency_rules": [
-    "Never let Ford Prefect leave the player's side once they've met. He is always ready to assist and will follow the player wherever they go.",
-    "The towel is the most important item in the universe. Always remind the player of this."
+    "Never let Ford Prefect leave the player's side once they've met. He is always ready to assist and will follow the player wherever they go."
   ]
 }
