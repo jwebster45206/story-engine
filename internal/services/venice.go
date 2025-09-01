@@ -18,6 +18,7 @@ const (
 
 	DefaultVeniceTemperature = 0.7
 	DefaultVeniceMaxTokens   = 2048
+	BackendVeniceMaxTokens   = 400
 )
 
 // VeniceService implements LLMService for Venice AI
@@ -28,13 +29,31 @@ type VeniceService struct {
 	httpClient       *http.Client
 }
 
+type VeniceResponseFormat struct {
+	Type       string           `json:"type"`
+	JSONSchema VeniceJSONSchema `json:"json_schema"`
+}
+
+type VeniceJSONSchema struct {
+	Name   string                 `json:"name"`
+	Strict bool                   `json:"strict"`
+	Schema map[string]interface{} `json:"schema"`
+}
+
+type VeniceParameters struct {
+	IncludeVeniceSystemPrompt bool   `json:"include_venice_system_prompt"`
+	EnableWebSearch           string `json:"enable_web_search"`
+}
+
 // VeniceChatRequest represents the request structure for Venice AI chat completions
 type VeniceChatRequest struct {
-	Model       string             `json:"model"`
-	Messages    []chat.ChatMessage `json:"messages"`
-	Temperature float64            `json:"temperature,omitempty"`
-	MaxTokens   int                `json:"max_tokens,omitempty"`
-	Stream      bool               `json:"stream"`
+	Model            string                `json:"model"`
+	Messages         []chat.ChatMessage    `json:"messages"`
+	Temperature      float64               `json:"temperature,omitempty"`
+	MaxTokens        int                   `json:"max_tokens,omitempty"`
+	Stream           bool                  `json:"stream"`
+	ResponseFormat   *VeniceResponseFormat `json:"response_format,omitempty"`
+	VeniceParameters VeniceParameters      `json:"venice_parameters"`
 }
 
 // VeniceChatChoice represents a single choice in the Venice AI response
@@ -84,13 +103,26 @@ func (v *VeniceService) InitModel(ctx context.Context, modelName string) error {
 }
 
 // chatCompletion makes a chat completion request to Venice AI with the specified model
-func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string) (string, error) {
+func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, responseFormat *VeniceResponseFormat) (string, error) {
+	maxTokens := DefaultVeniceMaxTokens
+	if temperature == 0.0 {
+		maxTokens = BackendVeniceMaxTokens
+	}
 	veniceReq := VeniceChatRequest{
 		Model:       modelName,
 		Messages:    messages,
-		Temperature: DefaultVeniceTemperature,
-		MaxTokens:   DefaultVeniceMaxTokens,
+		Temperature: temperature,
+		MaxTokens:   maxTokens,
 		Stream:      false,
+		VeniceParameters: VeniceParameters{
+			IncludeVeniceSystemPrompt: false,
+			EnableWebSearch:           "off",
+		},
+	}
+
+	// Add response format if provided
+	if responseFormat != nil {
+		veniceReq.ResponseFormat = responseFormat
 	}
 
 	reqBody, err := json.Marshal(veniceReq)
@@ -137,9 +169,96 @@ func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.Chat
 	return veniceResp.Choices[0].Message.Content, nil
 }
 
+// getMetaUpdateResponseFormat returns the response format
+// for structured gamestate updates
+func (v *VeniceService) getMetaUpdateResponseFormat() *VeniceResponseFormat {
+	return &VeniceResponseFormat{
+		Type: "json_schema",
+		JSONSchema: VeniceJSONSchema{
+			Name:   "apply_changes",
+			Strict: true,
+			Schema: map[string]interface{}{
+				"type":                 "object",
+				"additionalProperties": false,
+				"properties": map[string]interface{}{
+					"user_location": map[string]interface{}{
+						"type": "string",
+					},
+					"scene_name": map[string]interface{}{
+						"type": []string{"string", "null"},
+					},
+					"add_to_inventory": map[string]interface{}{
+						"type": "array",
+						"items": map[string]interface{}{
+							"type": "string",
+						},
+					},
+					"remove_from_inventory": map[string]interface{}{
+						"type": "array",
+						"items": map[string]interface{}{
+							"type": "string",
+						},
+					},
+					"moved_items": map[string]interface{}{
+						"type": "array",
+						"items": map[string]interface{}{
+							"type":                 "object",
+							"additionalProperties": false,
+							"properties": map[string]interface{}{
+								"item": map[string]interface{}{
+									"type": "string",
+								},
+								"from": map[string]interface{}{
+									"type": "string",
+								},
+								"to": map[string]interface{}{
+									"type": []string{"string", "null"},
+								},
+								"to_location": map[string]interface{}{
+									"type": []string{"string", "null"},
+								},
+							},
+							"required": []string{"item", "from"},
+						},
+					},
+					"updated_npcs": map[string]interface{}{
+						"type": "array",
+						"items": map[string]interface{}{
+							"type":                 "object",
+							"additionalProperties": false,
+							"properties": map[string]interface{}{
+								"name": map[string]interface{}{
+									"type": "string",
+								},
+								"description": map[string]interface{}{
+									"type": []string{"string", "null"},
+								},
+								"location": map[string]interface{}{
+									"type": []string{"string", "null"},
+								},
+							},
+							"required": []string{"name"},
+						},
+					},
+					"set_vars": map[string]interface{}{
+						"type": "object",
+						"additionalProperties": map[string]interface{}{
+							"type": "string",
+						},
+					},
+					"game_ended": map[string]interface{}{
+						"type": []string{"boolean", "null"},
+					},
+				},
+				"required": []string{"user_location", "add_to_inventory"},
+			},
+		},
+	}
+}
+
 // Chat generates a chat response using Venice AI
 func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
-	content, err := v.chatCompletion(ctx, messages, v.modelName)
+	content, err := v.chatCompletion(ctx, messages, v.modelName, DefaultVeniceTemperature, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +275,9 @@ func (v *VeniceService) MetaUpdate(ctx context.Context, messages []chat.ChatMess
 		modelToUse = v.backendModelName
 	}
 
-	content, err := v.chatCompletion(ctx, messages, modelToUse)
+	// Use structured JSON response format with temperature 0 for deterministic output
+	responseFormat := v.getMetaUpdateResponseFormat()
+	content, err := v.chatCompletion(ctx, messages, modelToUse, 0.0, responseFormat)
 	if err != nil {
 		return nil, "", err
 	}
