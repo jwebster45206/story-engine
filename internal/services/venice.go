@@ -250,7 +250,7 @@ func (v *VeniceService) getMetaUpdateResponseFormat() *VeniceResponseFormat {
 						"type": []string{"boolean", "null"},
 					},
 				},
-				"required": []string{"user_location", "add_to_inventory"},
+				"required": []string{"user_location", "add_to_inventory", "game_ended"},
 			},
 		},
 	}
