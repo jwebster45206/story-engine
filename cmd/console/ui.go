@@ -19,6 +19,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/textfilter"
 	"github.com/muesli/reflow/wordwrap"
 )
 
@@ -85,6 +86,10 @@ type ConsoleUI struct {
 	scenarioMap       map[string]string
 	selectedScenario  int
 	loadingScenarios  bool
+	contentRating     string
+
+	// Profanity filter for family-friendly content
+	profanityFilter *textfilter.ProfanityFilter
 
 	// Quit confirmation state
 	showQuitModal bool
@@ -310,6 +315,7 @@ func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 		showScenarioModal: true,
 		loadingScenarios:  true,
 		selectedScenario:  0,
+		profanityFilter:   textfilter.NewProfanityFilter(),
 	}
 }
 
@@ -546,6 +552,11 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			input := strings.TrimSpace(m.textarea.Value())
 			if input == "" {
 				return m, nil
+			}
+
+			// Apply profanity filtering if the scenario's content rating requires it
+			if textfilter.ShouldFilterContent(m.contentRating) {
+				input = m.profanityFilter.FilterText(input)
 			}
 
 			if strings.HasPrefix(input, "/") {
@@ -940,6 +951,13 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 				scenarioName := m.scenarios[m.selectedScenario]
 				scenarioFile := m.scenarioMap[scenarioName]
 				m.loading = true
+				// First fetch scenario details to get the content rating
+				s, err := getScenario(m.client, m.config.APIBaseURL, scenarioFile)
+				if err != nil {
+					m.err = fmt.Errorf("failed to fetch scenario details: %w", err)
+					return m, nil
+				}
+				m.contentRating = s.Rating
 				return m, m.createGameStateFromScenario(scenarioFile)
 			}
 		}
