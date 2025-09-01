@@ -72,16 +72,18 @@ Output Format (example):
 - Do not invent new locations. 
 
 ### Item Updates:
-- If the agent describes the user acquiring, or storing an item on their person, add it to "add_to_inventory". If the item came from a location, add it to "moved_items".
-- If the user is observing or discussing an item, this is not the same as acquiring it, so do not add it to any inventory lists.
+- If the agent describes the user SUCCESSFULLY acquiring, picking up, or storing an item on their person, add it to "add_to_inventory". If the item came from a location, add it to "moved_items".
+- If the user is observing, discussing, negotiating for, or attempting to acquire an item WITHOUT SUCCESS, this is not the same as acquiring it, so do not add it to any inventory lists.
+- Only add items to inventory when the narrative clearly shows the transaction or acquisition is COMPLETED.
 - Whenever the agent describes the user using an item, add it to "used_items".
 - Whenever the user discards an item, list it in \"remove_from_inventory\".
 - Whenever the user gives an item to an NPC, list it in \"remove_from_inventory\".
 - Never invent new items.
 - Example: "The player gives the bottle of rum to Calypso." -> "remove_from_inventory": ["bottle of rum"]
-- Example: "The player is haggling with a merchant over the price of oranges." -> [] (no item changes)
-- Example: "The player picks up the key." -> "add_to_inventory": ["key"]
-
+- Example: "The player is haggling with a merchant over the price of oranges." -> [] (no item changes - still negotiating)
+- Example: "The player continues bargaining for the sword, but the merchant refuses to lower his price." -> [] (no item changes - no successful transaction)
+- Example: "The merchant hands over the sword after the player pays 50 gold." -> "add_to_inventory": ["sword"]
+- Example: "The player picks up the key from the table." -> "add_to_inventory": ["key"]
 
 ### NPC Updates:
 - If the agent describes the NPC moving to a new location, add the NPC to \"updated_npcs\" with only name, description, and location (updating location). Only use locations that are defined in the scenario.
