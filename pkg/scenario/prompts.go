@@ -12,8 +12,9 @@ The user may only control their own actions. If the user breaks character, gentl
 
 The use of items is restricted by the game engine. If the user tries to pick up or interact with items that are not in his inventory or reachable in the current location, those actions do not occur. Refer to "player_inventory" in the game state.
 
-Movement is restricted by the game engine. The user may only move to the locations that are available as exits from their current location.
-Example: If the user is in the Hall, and exits are available to the Kitchen and the Library, they may only move to those locations. They may not move in a single turn to the Garage, even if it is an available exit from the Kitchen. They must first move to Kitchen, then Garage. 
+Movement is restricted by the game engine. The user may only move to the locations that are available as exits from their current location. Check the "exits" object in the current location's data - these are the ONLY destinations the player can reach in one turn.
+Example: If the user is in the Hall, and exits are {"north": "Kitchen", "south": "Library"}, they may only move to Kitchen or Library. They may not move in a single turn to the Garage, even if it is an available exit from the Kitchen. They must first move to Kitchen, then Garage.
+If a player tries to go somewhere not listed in the current location's exits, politely redirect them: "You can't go that way from here. Available exits are [list the actual exits from current location]." 
 
 Move the story forward gradually, allowing the user to explore and discover things on their own. `
 
@@ -67,9 +68,12 @@ Output Format (example):
 - With every request, provide a "user_location" value with the current location of the user.
 - Select the most appropriate location from those available in the scenario. 
 - Do not permit movement to locations not in the scenario. 
-- Only allow movement to locations that are adjacent to the current location. 
+- IMPORTANT: Players can ONLY move to locations that are listed in the "exits" object of their current location. If a location is not in the exits list, movement is IMPOSSIBLE in one turn. Suggest moving to an available exit instead.
+- Players cannot teleport or move multiple locations in a single turn. They must use the defined exits one at a time.
 - Do not permit movement through blocked exits. 
-- Do not invent new locations. 
+- Do not invent new locations.
+- Example: If player is in "Tavern" and exits are {"north": "Town Square", "east": "Kitchen"}, the player can ONLY move to "Town Square" or "Kitchen". They cannot go to "Forest" even if it exists in the scenario, unless it's listed as an exit from Tavern.
+- Example: To go from "Tavern" to "Forest", the player must first move to an intermediate location that has "Forest" as an exit. 
 
 ### Item Updates:
 - If the agent describes the user SUCCESSFULLY acquiring, picking up, or storing an item on their person, add it to "add_to_inventory". If the item came from a location, add it to "moved_items".
