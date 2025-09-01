@@ -10,8 +10,9 @@ import (
 func TestNewVeniceService(t *testing.T) {
 	apiKey := "test-api-key"
 	modelName := "test-model"
+	backendModelName := "test-backend-model"
 
-	service := NewVeniceService(apiKey, modelName)
+	service := NewVeniceService(apiKey, modelName, backendModelName)
 
 	if service.apiKey != apiKey {
 		t.Errorf("Expected apiKey %s, got %s", apiKey, service.apiKey)
@@ -27,7 +28,7 @@ func TestNewVeniceService(t *testing.T) {
 }
 
 func TestVeniceService_InitModel(t *testing.T) {
-	service := NewVeniceService("invalid-key", "test-model")
+	service := NewVeniceService("invalid-key", "test-model", "test-backend-model")
 
 	// This should not fail even with invalid key since we handle the error gracefully
 	err := service.InitModel(context.Background(), "test-model")

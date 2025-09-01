@@ -174,11 +174,16 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 }
 
 // MetaUpdate processes a meta update request using Anthropic Claude
-func (a *AnthropicService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, error) {
+func (a *AnthropicService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, string, error) {
 	cr, err := a.Chat(ctx, messages)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get chat response: %w", err)
+		return nil, "", fmt.Errorf("failed to get chat response: %w", err)
 	}
 
-	return parseMetaUpdateResponse(cr.Message)
+	metaUpdate, err := parseMetaUpdateResponse(cr.Message)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return metaUpdate, a.modelName, nil
 }

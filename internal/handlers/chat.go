@@ -470,7 +470,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 
 	// Send the meta update request to the LLM
 	h.logger.Debug("Sending meta update request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
-	metaResponse, err := h.llmService.MetaUpdate(metaCtx, messages)
+	metaResponse, backendModel, err := h.llmService.MetaUpdate(metaCtx, messages)
 	if err != nil {
 		h.logger.Error("Failed to get meta extraction response from LLM", "error", err, "game_state_id", gs.ID.String())
 		return
@@ -508,5 +508,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 	h.logger.Debug("Successfully updated game meta",
 		"game_state_id", gs.ID.String(),
 		"meta_response", metaResponse,
-		"duration_s", time.Since(start).Seconds())
+		"duration_s", time.Since(start).Seconds(),
+		"backend_model", backendModel,
+	)
 }

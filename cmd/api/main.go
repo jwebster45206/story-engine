@@ -47,7 +47,7 @@ func main() {
 			log.Error("Venice API key is required when using venice provider")
 			os.Exit(1)
 		}
-		llmService = services.NewVeniceService(cfg.VeniceAPIKey, cfg.ModelName)
+		llmService = services.NewVeniceService(cfg.VeniceAPIKey, cfg.ModelName, cfg.BackendModelName)
 		log.Info("Using Venice LLM provider")
 	// case "ollama": // TODO: Support for Ollama self-hosted LLM
 	default:

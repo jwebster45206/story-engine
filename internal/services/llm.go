@@ -15,7 +15,7 @@ type LLMService interface {
 
 	// Chat generates a chat response using the LLM
 	Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error)
-	MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, error)
+	MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, string, error)
 }
 
 // parseMetaUpdateResponse parses an LLM response text into a MetaUpdate struct.
