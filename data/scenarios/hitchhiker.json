@@ -294,7 +294,7 @@
     }
   },
   "opening_scene": "earth_doom",
-  "opening_prompt": "You wake up in your comfortable bed in your comfortable house in the comfortable English countryside. Something feels... off. The sound of bulldozers rumbles outside. What will you do next?",
+  "opening_prompt": "You are Arthur Dent, an ordinary Englishman. \n\nYou have just woken who wakes up in your comfortable bed in your comfortable house in the comfortable English countryside. Something feels... off. The sound of bulldozers rumbles outside. \n\nWhat will you do next?",
   "opening_location": "Arthur's House",
   "opening_inventory": [
     "bathrobe",

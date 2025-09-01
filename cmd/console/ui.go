@@ -25,7 +25,7 @@ import (
 
 const (
 	AgentName       = "Narrator"
-	PlaceHolderText = "Type your message here..."
+	PlaceHolderText = "Type your message here...\nExamples: Look around. Get the key. Talk to the guard."
 )
 
 // smartWrap wraps text at natural break points including spaces, slashes, and dashes

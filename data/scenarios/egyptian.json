@@ -293,7 +293,7 @@
     }
   },
   "opening_scene": "telegram_mystery",
-  "opening_prompt": "The desert wind carries whispers of ancient secrets as you arrive at your hotel in Cairo. The cryptic telegram burns in your pocket, its mysterious message haunting your thoughts: 'The stars align as they did when the old gods walked among mortals. What was lost shall be found, but beware - some knowledge comes at a price.' Your adventure into the unknown begins now.",
+  "opening_prompt": "You are Dr. Alexandra Kane, a renowned archaeologist in 1923. The desert wind carries whispers of ancient secrets as you arrive at your hotel in Cairo, Egypt. \n\nThe cryptic telegram burns in your pocket, its mysterious message haunting your thoughts: 'The stars align as they did when the old gods walked among mortals. What was lost shall be found, but beware - some knowledge comes at a price.' \n\nYour adventure into the unknown begins now.",
   "opening_location": "Cairo Hotel",
   "opening_inventory": [
     "archaeological tools",

@@ -4,7 +4,7 @@
   "rating": "PG-13",
   "scenes": {
     "shipwright": {
-      "story": "The player's ship needs repairs before they can set sail again. The player must find the shipwright and hire him to fix The Black Pearl. ",
+      "story": "The player's ship badly needs repairs. The player must identify this problem and find the shipwright to hire him to fix The Black Pearl.",
       "locations": {
         "Tortuga": {
           "name": "Tortuga",
@@ -20,10 +20,8 @@
           "description": "The player's ship, moored at the docks, ready for the next voyage.",
           "exits": {
             "west": "Tortuga",
-            "cabin door": "Captain's Cabin"
-          },
-          "blocked_exits": {
-            "open sea": "The Black Pearl is not seaworthy until it is repaired."
+            "cabin door": "Captain's Cabin",
+            "open sea": "Open Sea"
           },
           "items": [
             "ship repair ledger",
@@ -59,6 +57,13 @@
             "forged documents",
             "rare spices"
           ]
+        },
+        "Open Sea": {
+          "name": "Open Sea",
+          "description": "The vast and treacherous waters of the Caribbean, certain death for an unrepaired ship.",
+          "blocked_exits": {
+            "tortuga": "Once it departs, the Pearl is deteriorating too quickly to return to port."
+          }
         }
       },
       "npcs": {
@@ -114,13 +119,16 @@
       "contingency_prompts": [
         "When the player first enters the Sleepy Mermaid, Calypso greets them.",
         "Calypso never leaves the Sleepy Mermaid, so the player must find her there.",
-        "The shipwright can BEGIN work for a small deposit. To FINISH the repairs, he requires payment of 500 gold doubloons."
+        "The shipwright can BEGIN work for a small deposit. To FINISH the repairs, he requires payment of 500 gold doubloons.",
+        "After cautioning them against it, allow the player to sail the Black Pearl without completing repairs."
       ],
       "contingency_rules": [
         "If the player has met Calypso, set the var `calypso_met` to `true`.",
         "If the shipwright agrees to start repairs on the Black Pearl, set `black_pearl_repairs_started` to true and remove the ship repair ledger from inventory.",
         "Scene changes to 'british_docks' when `black_pearl_repairs_started` is true.",
-        "If black_pearl_repairs_started is true and calypso_met is true, advance to the next scene: 'british_docks'."
+        "If black_pearl_repairs_started is true and calypso_met is true, advance to the next scene: 'british_docks'.",
+        "If `scene_turn_counter` exceeds 8, the repairs take too long and rival pirates attack - the game ends poorly.",
+        "If the player tries to leave Tortuga without starting repairs, the game ends with the ship sinking at sea."
       ]
     },
     "british_docks": {
@@ -263,7 +271,10 @@
         "Only when the player accesses the British Docks, set `british_docks_accessed` to true.",
         "Only when the player steals the chest of gold doubloons, set `gold_stolen` to true and add '510 gold doubloons' to inventory.",
         "When the player has returned to the Black Pearl and paid the shipwright, remove 500 gold doubloons from inventory, leaving 10 gold doubloons, and set shipright_paid to true.",
-        "As soon as `shipwright_paid` is true, the scene advances to 'calypsos_map'."
+        "As soon as `shipwright_paid` is true, the scene advances to 'calypsos_map'.",
+        "If the player is caught stealing at the British Docks without proper disguise, they are captured - the game ends with imprisonment.",
+        "If `scene_turn_counter` exceeds 10, British reinforcements arrive and the docks become too dangerous - the game ends with the player fleeing empty-handed.",
+        "If the player attacks British guards directly, they are overwhelmed and captured - the game ends poorly."
       ]
     },
      "calypsos_map": {
@@ -355,19 +366,27 @@
       },
       "vars": {
         "blacksmith_paid": "false",
-        "map_obtained": "false"
+        "map_obtained": "false",
+        "treasure_found": "false",
+        "rival_pirates_encountered": "false"
       },
       "contingency_prompts": [
-        "Calypso will only give the treasure map to someone she trusts - someone who has proven themselves worthy."
+        "Calypso will only give the treasure map to someone she trusts - someone who has proven themselves worthy.",
+        "The treasure map leads to Dead Man's Cove, but rival pirates may also be seeking the same treasure.",
+        "The Black Pearl is now seaworthy and ready for the final adventure."
       ],
       "contingency_rules": [
         "Only when the player receives the treasure map from Calypso, set `map_obtained` to true and add 'treasure map' to inventory.",
-        "When the player returns to the Black Pearl, with `map_obtained` true, the game ends successfully."
+        "If the player sets sail with the treasure map, set `treasure_found` to true - the game ends with legendary pirate success.",
+        "If the player obtains the map but waits too long to leave, set `rival_pirates_encountered` to true and rival pirates steal the map - the game ends with bitter defeat.",
+        "If the player leaves without the treasure map, they have modest success but miss the greatest treasure - the game ends with moderate success.",
+        "If `scene_turn_counter` exceeds 6, rival pirates arrive at Tortuga seeking the same treasure - the game ends with the player having to flee.",
+        "The game always ends when the player sets sail from Tortuga with or without the map."
       ]
     }
   },
   "opening_scene": "shipwright",
-  "opening_prompt": "You stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your ship, The Black Pearl, needs repairs before you can set sail. What will you do next?",
+  "opening_prompt": "You are the captain of The Black Pearl, one of the most feared pirate ships in the Caribbean. \n\nYou stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your ship needs repairs before you can set sail again. What will you do next?",
   "opening_location": "Tortuga",
   "opening_inventory": [
     "cutlass",
@@ -375,9 +394,15 @@
     "lockpicks"
   ],
   "contingency_prompts": [
-    "Use some humor in responses."
+    "Use some humor in responses.",
+    "Time is always a factor in pirate adventures - rival crews and the Royal Navy are constant threats.",
+    "The Caribbean is dangerous - direct confrontation usually leads to defeat, but cunning and wit often triumph.",
+    "Calypso has mysterious powers and knowledge that can help or hinder the player's quest."
   ],
   "contingency_rules": [
-    "Never let Gibbs leave the player's side. He is always ready to assist and will follow the player wherever they go."
-  ]
+    "Never let Gibbs leave the player's side. He is always ready to assist and will follow the player wherever they go.",
+    "If the player becomes reckless or takes too long, rival pirates or the Royal Navy will interfere.",
+    "The game should end within 25 total turns across all scenes to maintain urgency."
+  ],
+  "game_end_prompt": "Weigh anchor and evaluate the player's pirate career! Rate their performance like a seasoned pirate captain would - from 'Scurvy Dog' (terrible) to 'Pirate King' (legendary). Consider their cunning, speed, treasure acquired, and whether they lived up to the pirate code. Give them a proper pirate sendoff with humor and maritime flair!"
 }
