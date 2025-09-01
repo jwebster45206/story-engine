@@ -143,15 +143,16 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 	systemPrompt := scenario.BaseSystemPrompt
 
 	// Add rating prompt
+	systemPrompt += "\n\nContent Rating: " + s.Rating
 	switch s.Rating {
 	case scenario.RatingG:
-		systemPrompt += "\n\n" + scenario.ContentRatingG
+		systemPrompt += "- " + scenario.ContentRatingG
 	case scenario.RatingPG:
-		systemPrompt += "\n\n" + scenario.ContentRatingPG
+		systemPrompt += "- " + scenario.ContentRatingPG
 	case scenario.RatingPG13:
-		systemPrompt += "\n\n" + scenario.ContentRatingPG13
+		systemPrompt += "- " + scenario.ContentRatingPG13
 	case scenario.RatingR:
-		systemPrompt += "\n\n" + scenario.ContentRatingR
+		systemPrompt += "- " + scenario.ContentRatingR
 	}
 
 	// Add state context
@@ -159,23 +160,26 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 
 	// Add message instructions and contingency prompts
 	systemPrompt += "\n\n" + scenario.UserPostPrompt
-	contingencyPrompts := gs.GetContingencyPrompts(s)
-	if len(contingencyPrompts) > 0 {
-		systemPrompt += "\n\nApply the following conditional rules if their conditions are met:\n\n"
-		for i, prompt := range contingencyPrompts {
-			systemPrompt += fmt.Sprintf("%d. %s\n", i+1, prompt)
-		}
-	}
 
-	// if the game is over, add the end prompt
 	if gs.IsEnded {
+		// if the game is over, add the end prompt
 		systemPrompt += "\n\n" + scenario.GameEndSystemPrompt
 		if s.GameEndPrompt != "" {
 			systemPrompt += "\n\n" + s.GameEndPrompt
 		}
+	} else {
+		// contingency prompts otherwise
+		contingencyPrompts := gs.GetContingencyPrompts(s)
+		if len(contingencyPrompts) > 0 {
+			systemPrompt += "\n\nApply the following conditional rules if their conditions are met:\n\n"
+			for i, prompt := range contingencyPrompts {
+				systemPrompt += fmt.Sprintf("%d. %s\n", i+1, prompt)
+			}
+		}
 	}
 
-	// single system message at the beginning
+	// start building chat messages, starting with
+	// the full system prompt
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,

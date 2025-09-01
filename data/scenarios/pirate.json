@@ -1,7 +1,7 @@
 {
   "name": "Pirate Captain",
   "story": "The player is the captain of The Black Pearl, a legendary pirate ship. The player's crew has just docked at Tortuga, a notorious pirate haven. Adventure and treasure await as the player explores the Caribbean during the Golden Age of Piracy.",
-  "rating": "PG13",
+  "rating": "PG-13",
   "scenes": {
     "shipwright": {
       "story": "The player's ship needs repairs before they can set sail again. The player must find the shipwright and hire him to fix The Black Pearl. ",
