@@ -18,7 +18,7 @@ const (
 
 	DefaultVeniceTemperature = 0.7
 	DefaultVeniceMaxTokens   = 512
-	BackendVeniceMaxTokens   = 1024
+	BackendVeniceMaxTokens   = 512
 )
 
 // VeniceService implements LLMService for Venice AI
