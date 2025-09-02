@@ -76,38 +76,99 @@ Output Format (example):
 - Example: To go from "Tavern" to "Forest", the player must first move to an intermediate location that has "Forest" as an exit. 
 
 ### Item Updates:
-- If the agent describes the user SUCCESSFULLY acquiring, picking up, or storing an item on their person, add it to "add_to_inventory". If the item came from a location, add it to "moved_items".
-- If the user is observing, discussing, negotiating for, or attempting to acquire an item WITHOUT SUCCESS, this is not the same as acquiring it, so do not add it to any inventory lists.
-- Only add items to inventory when the narrative clearly shows the transaction or acquisition is COMPLETED.
-- Whenever the agent describes the user using an item, add it to "used_items".
-- Whenever the user discards an item, list it in \"remove_from_inventory\".
-- Whenever the user gives an item to an NPC, list it in \"remove_from_inventory\".
-- Never invent new items.
-- Example: "The player gives the bottle of rum to Calypso." -> "remove_from_inventory": ["bottle of rum"]
-- Example: "The player is haggling with a merchant over the price of oranges." -> [] (no item changes - still negotiating)
-- Example: "The player continues bargaining for the sword, but the merchant refuses to lower his price." -> [] (no item changes - no successful transaction)
-- Example: "The merchant hands over the sword after the player pays 50 gold." -> "add_to_inventory": ["sword"]
-- Example: "The player picks up the key from the table." -> "add_to_inventory": ["key"]
+CRITICAL RULE: Items go into inventory ONLY when the player TAKES POSSESSION. Seeing, examining, touching, or discussing items does NOT add them to inventory.
+
+WHEN TO ADD ITEMS (add_to_inventory):
+- Player "takes", "grabs", "picks up", "pockets", "stores", "receives" an item
+- Player "puts the [item] in their bag/pocket"
+- NPC "gives", "hands over", "passes" an item to the player
+- Player "collects", "gathers", "acquires" physical possession
+
+WHEN NOT TO ADD ITEMS (make NO changes):
+- Player "sees", "looks at", "notices", "spots", "observes" an item
+- Player "examines", "inspects", "studies", "reads" an item
+- Player "touches", "feels", "handles" an item briefly
+- Player "considers", "thinks about", "wants" an item
+- Player "negotiates for", "asks about", "discusses" an item
+- Player "tries to take" but fails (locked, heavy, refused, etc.)
+- Item is simply mentioned as being present in a location
+
+REMOVING ITEMS:
+- DISCARDING: Player "drops", "throws", "abandons", "discards" -> remove_from_inventory
+- GIVING: Player "gives", "hands to", "offers to" an NPC -> remove_from_inventory
+- USING: Player actively uses an item they possess -> used_items (but keep in inventory unless consumed)
+
+Examples:
+- "The player sees a sword on the wall." -> [] (only observing)
+- "The player examines the sword closely." -> [] (examining, not taking)  
+- "The player touches the sword's blade." -> [] (touching, not taking)
+- "The player wants the sword badly." -> [] (wanting, not taking)
+- "The guard refuses to let the player take the sword." -> [] (failed attempt)
+- "The player picks up the sword." -> "add_to_inventory": ["sword"]
+- "The merchant hands the player a sword after payment." -> "add_to_inventory": ["sword"]
+- "The player gives the bottle of rum to Calypso." -> "remove_from_inventory": ["bottle of rum"]
+- "The player sees oranges at the market stall." -> [] (only observing)
+- "The player haggling with a merchant over oranges." -> [] (still negotiating, no possession)
+- "The merchant refuses to sell the sword." -> [] (failed attempt, no possession)
+- "The merchant hands over the sword after payment." -> "add_to_inventory": ["sword"] (successful acquisition)
+- "The player picks up the key from the table." -> "add_to_inventory": ["key"] (successful acquisition)
+- "The player enters the library. An ancient tome sits on a pedestal." -> [] (only observing, no acquisition)
+- "The player examines the tome closely, reading its cover." -> [] (examining, not taking)
+- "The player carefully lifts the tome from the pedestal." -> "add_to_inventory": ["ancient tome"] (physical possession)
 
 ### NPC Updates:
-- If the agent describes the NPC moving to a new location, add the NPC to \"updated_npcs\" with only name, description, and location (updating location). Only use locations that are defined in the scenario.
-- If the agent describes a change in the NPC's demeanor, add the NPC to \"updated_npcs\" with only name, description, and location (updating description).
-- Never invent new NPCs.
+IMPORTANT: Only update NPCs when the narrative explicitly describes a change. Mentioning an NPC without changes requires NO updates.
+
+- LOCATION CHANGES: Add NPC to "updated_npcs" ONLY when the narrative explicitly states the NPC moves, walks, goes, travels, or changes location. Include name, description, and new location.
+- BEHAVIOR CHANGES: Add NPC to "updated_npcs" ONLY when the narrative describes a clear change in mood, attitude, appearance, or behavior. Update the description to reflect the change.
+- NO CHANGES: If an NPC simply speaks, is mentioned, or appears without any described changes, make NO NPC updates.
+- Use only locations that exist in the scenario.
+- Never invent new NPCs or new locations.
+
+Examples:
+- "The guard walks from the courtyard to the armory." -> "updated_npcs": [{"name": "Guard", "description": "...", "location": "armory"}]
+- "The merchant becomes angry and starts shouting." -> "updated_npcs": [{"name": "Merchant", "description": "An angry merchant shouting at customers", "location": "market"}]
+- "The captain speaks to you calmly." -> [] (no change described, just dialogue)
+- "You see the blacksmith working at his forge." -> [] (no change, just observation)
+- "The tavern keeper continues serving drinks." -> [] (ongoing action, no change)
 
 ### Scene Updates:
-- Scenes are sections of the story. SCENES ARE NOT LOCATIONS.  
+Scenes are sections of the story. SCENES ARE NOT LOCATIONS. Advance scenes when story conditions are met to keep the narrative progressing.
 - Use only scenes that are defined in the scenario. 
 - NEVER INVENT NEW SCENES.
+- When contingency rules indicate a scene change should occur, make the change to advance the story.
 
 ### Contingency Rules:
-Apply the following rules IF AND ONLY IF the most recent narrative shows that the condition has been met. If a rule does not clearly apply in the most recent narrative, ignore it. Rules:
-- Whenever the contingency rules for scene change are met, set \"scene_name\" to the scene name indicated by the rule. 
+Apply these rules when the most recent narrative shows that the condition has been met. Check each rule against what actually happened in the narrative.
+
+- VARIABLE UPDATES: When narrative describes actions that trigger variable changes, update "set_vars" accordingly.
+- SCENE PROGRESSION: When contingency rules for scene change are met, set "scene_name" to advance the story. Don't hesitate to progress scenes when conditions are satisfied.
+- RULE CHECKING: Compare the narrative against each contingency rule to see if conditions are satisfied.
+
+Examples:
+- Rule: "Scene changes to 'treasure_room' when player finds the golden key." + Narrative: "Player picks up the golden key." -> "scene_name": "treasure_room"
+- Rule: "Set 'door_unlocked' to true when player uses key on door." + Narrative: "Player unlocks the door with the key." -> "set_vars": {"door_unlocked": "true"}
+- Rule: "Set 'guards_alerted' to true if player makes noise." + Narrative: "Player carefully sneaks past." -> [] (condition not met)
+
+Contingency Rules for this scenario:
 -%s
 
 ### Game End Rules:
-- Set \"game_ended\" to true if the agent describes the game ending.
-- Set \"game_ended\" to true if contingency rules dictate the game should end.
-- Examples: "The player has died." -> "game_ended": true; "The player has rescued the princess. Contingency rules state that game ends when princess is rescued." -> "game_ended": true; "scene_turn_counter is 4, and prompts state that game ends whenever. the counter exceeds 3." -> "game_ended": true"
+CRITICAL: Set "game_ended" to true when the narrative describes a definitive ending or when contingency rules are triggered.
+
+- EXPLICIT ENDINGS: Set "game_ended" to true when the narrative describes death, victory, failure, or other clear story conclusion.
+- CONTINGENCY TRIGGERS: Set "game_ended" to true when contingency rules specifically state the game should end and those conditions are met.
+- CLOSE CALLS: If the player is in danger, injured, or facing challenges but NOT definitively dead/defeated, and other end conditions do not apply, do NOT end the game.
+- TEMPORARY SETBACKS: Failures, mistakes, or bad situations that don't explicitly end the story should NOT trigger game_ended.
+
+Examples:
+- "The player collapses and dies from the poison." -> "game_ended": true (explicit death)
+- "The player has rescued the princess and the kingdom celebrates." -> "game_ended": true (explicit victory)
+- "Contingency rule: Game ends when turn_counter exceeds 10. Current turn_counter is 11." -> "game_ended": true (rule triggered)
+- "Contingency rule: Game ends if player is captured. Player is captured by goblins." -> "game_ended": true (rule triggered)
+- "The player is badly injured and falls unconscious." -> "game_ended": false (injured but not dead)
+- "The player fails to convince the guard and is thrown in jail." -> "game_ended": false (setback, not ending)
+- "The ship is damaged but still afloat." -> "game_ended": false (danger but continuing)
 `
 
 // GlobalContingencyRules contains the contingency rules that apply to all scenes.
