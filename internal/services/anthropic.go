@@ -19,8 +19,8 @@ const (
 	anthropicVersion = "2023-06-01"
 
 	DefaultAnthropicTemperature = 0.7
-	DefaultAnthropicMaxTokens   = 2048
-	BackendAnthropicMaxTokens   = 400
+	DefaultAnthropicMaxTokens   = 512
+	BackendAnthropicMaxTokens   = 512
 )
 
 // AnthropicService implements LLMService for Anthropic Claude

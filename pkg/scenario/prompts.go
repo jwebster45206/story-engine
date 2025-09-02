@@ -22,53 +22,13 @@ const GameEndSystemPrompt = `This user's session has ended. Regardless of the us
 
 // Prompt for extracting PromptState JSON from the LLM
 const PromptStateExtractionInstructions = `
-You are a backend system translating narrative into structured JSON changes.
-
-Your task is to read the most recent agent narrative response and the current game state,
-then output a compact JSON object that contains only the changes resulting from the agent's response.
-
-Instructions:
-- Only output the JSON object, with no extra text or explanation.
-- Be precise and consistent with field names and types.
-- If nothing changed, return an empty object: {}.
-
-Output Format (example):
-{
-  "player_location": "forest",
-  "scene_name": "Enchanted Forest",
-  "add_to_inventory": ["gold coin"],
-  "remove_from_inventory": ["torch"],
-  "moved_items": [
-    {
-      "item": "gold coin",
-      "from": "Captain's Cabin",
-      "to_location": "player_inventory"
-    },
-    {
-      "item": "torch",
-      "from": "player_inventory",
-      "to": "Captain's Cabin"
-    }
-  ],
-  "updated_npcs": [
-    {
-      "name": "Old Hermit",
-      "description": "A reclusive figure in a tattered cloak.",
-      "location": "forest"
-    }
-  ],
-  "set_vars": {
-    "map_assembled": "true",
-    "crew_loyalty": "low"
-  },
-  "game_ended": false
-}
+You are a backend system translating narrative into structured JSON changes. Your task is to read the most recent agent narrative response and the current game state, then output the changes resulting from the agent's response.
 
 ### Location Updates:
 - With every request, provide a "user_location" value with the current location of the user.
 - Select the most appropriate location from those available in the scenario. 
 - Do not permit movement to locations not in the scenario. 
-- IMPORTANT: Players can ONLY move to locations that are listed in the "exits" object of their current location. If a location is not in the exits list, movement is IMPOSSIBLE in one turn. Suggest moving to an available exit instead.
+- IMPORTANT: Players can ONLY move to locations that are listed in the "exits" object of their current location. If a location is not in the exits list, movement is IMPOSSIBLE in one turn. 
 - Players cannot teleport or move multiple locations in a single turn. They must use the defined exits one at a time.
 - Do not permit movement through blocked exits. 
 - Do not invent new locations.

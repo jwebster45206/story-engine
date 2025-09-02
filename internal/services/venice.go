@@ -17,8 +17,8 @@ const (
 	msgNoResponse = "(no response)"
 
 	DefaultVeniceTemperature = 0.7
-	DefaultVeniceMaxTokens   = 2048
-	BackendVeniceMaxTokens   = 400
+	DefaultVeniceMaxTokens   = 512
+	BackendVeniceMaxTokens   = 1024
 )
 
 // VeniceService implements LLMService for Venice AI
