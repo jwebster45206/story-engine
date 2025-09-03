@@ -19,8 +19,8 @@ const (
 	anthropicVersion = "2023-06-01"
 
 	DefaultAnthropicTemperature = 0.7
-	DefaultAnthropicMaxTokens   = 2048
-	BackendAnthropicMaxTokens   = 400
+	DefaultAnthropicMaxTokens   = 512
+	BackendAnthropicMaxTokens   = 512
 )
 
 // AnthropicService implements LLMService for Anthropic Claude
@@ -297,8 +297,8 @@ func (a *AnthropicService) getMetaUpdateTool() AnthropicTool {
 				"game_ended": map[string]interface{}{
 					"type": "boolean",
 				},
-				"required": []string{"user_location", "add_to_inventory", "game_ended"},
 			},
+			"required": []string{"user_location", "scene_name", "add_to_inventory", "game_ended"},
 		},
 	}
 }

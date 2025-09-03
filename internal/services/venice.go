@@ -17,8 +17,8 @@ const (
 	msgNoResponse = "(no response)"
 
 	DefaultVeniceTemperature = 0.7
-	DefaultVeniceMaxTokens   = 2048
-	BackendVeniceMaxTokens   = 400
+	DefaultVeniceMaxTokens   = 512
+	BackendVeniceMaxTokens   = 512
 )
 
 // VeniceService implements LLMService for Venice AI
@@ -250,7 +250,7 @@ func (v *VeniceService) getMetaUpdateResponseFormat() *VeniceResponseFormat {
 						"type": []string{"boolean", "null"},
 					},
 				},
-				"required": []string{"user_location", "add_to_inventory", "game_ended"},
+				"required": []string{"user_location", "scene_name", "add_to_inventory", "game_ended"},
 			},
 		},
 	}

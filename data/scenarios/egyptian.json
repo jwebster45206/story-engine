@@ -85,7 +85,7 @@
         "If the player meets The Messenger, set `messenger_met` to true.",
         "If the player solves Amara's riddle about the stars, set `amara_riddle_solved` to true and add 'star chart' to inventory.",
         "When the player has both `messenger_met` and `amara_riddle_solved`: set `telegram_decoded` to true.",
-        "When the player has both `messenger_met` and `amara_riddle_solved`: update `scene_name` to 'desert_expedition'."
+        "If the telegram is decoded, or riddle is solved, update `scene_name` to 'desert_expedition'."
       ]
     },
     "desert_expedition": {
@@ -181,7 +181,7 @@
         "If the player demonstrates knowledge of ancient Egyptian customs to Hassan, set `hassan_trust` to true.",
         "When `hassan_trust` is true, Hassan reveals the temple location and `temple_location_revealed` becomes true.",
         "If the player confronts Professor Blackwood about his suspicious behavior, set `blackwood_confronted` to true.",
-        "Scene changes to 'temple_discovery' when `temple_location_revealed` is true."
+        "Set `scene_name` to 'temple_discovery' when Hassan reveals the temple location, or if he has previously revealed it."
       ]
     },
     "temple_discovery": {
