@@ -8,75 +8,130 @@ func TestProfanityFilter_FilterText(t *testing.T) {
 	filter := NewProfanityFilter()
 
 	tests := []struct {
-		name     string
-		input    string
-		expected string
+		name          string
+		input         string
+		contentRating string
+		expected      string
 	}{
 		{
-			name:     "simple profanity replacement",
-			input:    "What the hell is going on?",
-			expected: "What the heck is going on?",
+			name:          "G rating - simple profanity replacement",
+			input:         "What the hell is going on?",
+			contentRating: "G",
+			expected:      "What the heck is going on?",
 		},
 		{
-			name:     "multiple profanities",
-			input:    "This is damn crap!",
-			expected: "This is dang crud!",
+			name:          "PG rating - multiple profanities",
+			input:         "This is damn crap!",
+			contentRating: "PG",
+			expected:      "This is dang crud!",
 		},
 		{
-			name:     "case preservation - uppercase",
-			input:    "DAMN that's annoying!",
-			expected: "DANG that's annoying!",
+			name:          "PG13 rating - allows mild profanity",
+			input:         "What the hell is this damn thing?",
+			contentRating: "PG13",
+			expected:      "What the hell is this damn thing?", // hell and damn allowed in PG13
 		},
 		{
-			name:     "case preservation - title case",
-			input:    "Hell no, that's not right",
-			expected: "Heck no, that's not right",
+			name:          "PG13 rating - still filters strong profanity",
+			input:         "This shit is fucking crazy!",
+			contentRating: "PG13",
+			expected:      "This shoot is fudging crazy!",
 		},
 		{
-			name:     "word boundaries - partial matches should not be replaced",
-			input:    "I love classical music",
-			expected: "I love classical music", // "ass" in "classical" should not be replaced
+			name:          "PG13 rating - mixed mild and strong profanity",
+			input:         "Hell yeah, that's some badass shit right there!",
+			contentRating: "PG13",
+			expected:      "Hell yeah, that's some badass shoot right there!",
 		},
 		{
-			name:     "mild profanity replacement",
-			input:    "You're such a bastard!",
-			expected: "You're such a jerk!",
+			name:          "R rating - no filtering",
+			input:         "What the hell is this damn shit?",
+			contentRating: "R",
+			expected:      "What the hell is this damn shit?",
 		},
 		{
-			name:     "no profanity",
-			input:    "This is a perfectly clean sentence.",
-			expected: "This is a perfectly clean sentence.",
+			name:          "Empty rating - no filtering",
+			input:         "What the hell is this damn shit?",
+			contentRating: "",
+			expected:      "What the hell is this damn shit?",
 		},
 		{
-			name:     "empty string",
-			input:    "",
-			expected: "",
+			name:          "Unknown rating - no filtering",
+			input:         "What the hell is this damn shit?",
+			contentRating: "UNKNOWN",
+			expected:      "What the hell is this damn shit?",
 		},
 		{
-			name:     "profanity with punctuation",
-			input:    "What the hell?! That's damn crazy.",
-			expected: "What the heck?! That's dang crazy.",
+			name:          "case preservation - uppercase",
+			input:         "DAMN that's annoying!",
+			contentRating: "PG",
+			expected:      "DANG that's annoying!",
 		},
 		{
-			name:     "mixed case profanity",
-			input:    "HeLl yeah, that's DaMn good!",
-			expected: "HeCk yeah, that's DaNg good!",
+			name:          "case preservation - title case",
+			input:         "Hell no, that's not right",
+			contentRating: "PG",
+			expected:      "Heck no, that's not right",
 		},
 		{
-			name:     "plural profanity",
-			input:    "There are too many assholes and bastards here!",
-			expected: "There are too many jerks and jerks here!",
+			name:          "word boundaries - partial matches should not be replaced",
+			input:         "I love classical music",
+			contentRating: "G",
+			expected:      "I love classical music", // "ass" in "classical" should not be replaced
 		},
 		{
-			name:     "non-pluralizable words should not match extra s",
-			input:    "I need to process this data",
-			expected: "I need to process this data", // "ass" in "process" should not match, even with 's'
+			name:          "mild profanity replacement",
+			input:         "You're such a bastard!",
+			contentRating: "PG",
+			expected:      "You're such a jerk!",
+		},
+		{
+			name:          "no profanity",
+			input:         "This is a perfectly clean sentence.",
+			contentRating: "G",
+			expected:      "This is a perfectly clean sentence.",
+		},
+		{
+			name:          "empty string",
+			input:         "",
+			contentRating: "G",
+			expected:      "",
+		},
+		{
+			name:          "profanity with punctuation",
+			input:         "What the hell?! That's damn crazy.",
+			contentRating: "PG",
+			expected:      "What the heck?! That's dang crazy.",
+		},
+		{
+			name:          "mixed case profanity",
+			input:         "HeLl yeah, that's DaMn good!",
+			contentRating: "PG",
+			expected:      "HeCk yeah, that's DaNg good!",
+		},
+		{
+			name:          "plural profanity",
+			input:         "There are too many assholes and bastards here!",
+			contentRating: "PG",
+			expected:      "There are too many jerks and jerks here!",
+		},
+		{
+			name:          "PG13 allows asshole",
+			input:         "That guy is such an asshole!",
+			contentRating: "PG13",
+			expected:      "That guy is such an asshole!", // asshole allowed in PG13
+		},
+		{
+			name:          "non-pluralizable words should not match extra s",
+			input:         "I need to process this data",
+			contentRating: "G",
+			expected:      "I need to process this data", // "ass" in "process" should not match, even with 's'
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := filter.FilterText(tt.input)
+			result := filter.FilterText(tt.input, tt.contentRating)
 			if result != tt.expected {
 				t.Errorf("FilterText() = %q, want %q", result, tt.expected)
 			}
@@ -144,79 +199,30 @@ func TestProfanityFilter_ContainsProfanity(t *testing.T) {
 	}
 }
 
-func TestShouldFilterContent(t *testing.T) {
-	tests := []struct {
-		name     string
-		rating   string
-		expected bool
-	}{
-		{
-			name:     "G rating should filter",
-			rating:   "G",
-			expected: true,
-		},
-		{
-			name:     "PG rating should filter",
-			rating:   "PG",
-			expected: true,
-		},
-		{
-			name:     "PG13 rating should filter",
-			rating:   "PG13",
-			expected: true,
-		},
-		{
-			name:     "PG-13 rating should filter",
-			rating:   "PG-13",
-			expected: true,
-		},
-		{
-			name:     "R rating should not filter",
-			rating:   "R",
-			expected: false,
-		},
-		{
-			name:     "lowercase ratings should work",
-			rating:   "pg",
-			expected: true,
-		},
-		{
-			name:     "rating with whitespace",
-			rating:   " PG13 ",
-			expected: true,
-		},
-		{
-			name:     "unknown rating should not filter",
-			rating:   "NC-17",
-			expected: false,
-		},
-		{
-			name:     "empty rating should not filter",
-			rating:   "",
-			expected: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := ShouldFilterContent(tt.rating)
-			if result != tt.expected {
-				t.Errorf("ShouldFilterContent() = %v, want %v for rating %q", result, tt.expected, tt.rating)
-			}
-		})
-	}
-}
-
 func TestProfanityFilter_Integration(t *testing.T) {
 	filter := NewProfanityFilter()
 
-	// Test a realistic user input scenario with plurals
+	// Test a realistic user input scenario with plurals for PG rating
 	userInput := "That boss fight was damn hard! What the hells were the developers thinking? There are too many assholes in this game."
-	filtered := filter.FilterText(userInput)
+	filtered := filter.FilterText(userInput, "PG")
 	expected := "That boss fight was dang hard! What the hecks were the developers thinking? There are too many jerks in this game."
 
 	if filtered != expected {
-		t.Errorf("Integration test failed:\nInput:    %q\nExpected: %q\nGot:      %q", userInput, expected, filtered)
+		t.Errorf("PG Integration test failed:\nInput:    %q\nExpected: %q\nGot:      %q", userInput, expected, filtered)
+	}
+
+	// Test PG13 rating allows some mild profanity
+	pg13Filtered := filter.FilterText(userInput, "PG13")
+	pg13Expected := "That boss fight was damn hard! What the hells were the developers thinking? There are too many assholes in this game."
+
+	if pg13Filtered != pg13Expected {
+		t.Errorf("PG13 Integration test failed:\nInput:    %q\nExpected: %q\nGot:      %q", userInput, pg13Expected, pg13Filtered)
+	}
+
+	// Test no filtering for mature content
+	noFilterFiltered := filter.FilterText(userInput, "R")
+	if noFilterFiltered != userInput {
+		t.Errorf("R rating should not filter:\nInput:    %q\nGot:      %q", userInput, noFilterFiltered)
 	}
 
 	// Verify the original contained profanity
@@ -224,8 +230,8 @@ func TestProfanityFilter_Integration(t *testing.T) {
 		t.Errorf("Original input should contain profanity")
 	}
 
-	// Verify the filtered version does not contain profanity
+	// Verify the PG filtered version does not contain profanity
 	if filter.ContainsProfanity(filtered) {
-		t.Errorf("Filtered input should not contain profanity")
+		t.Errorf("PG filtered input should not contain profanity")
 	}
 }

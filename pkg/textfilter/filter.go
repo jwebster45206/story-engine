@@ -11,7 +11,7 @@ import (
 
 // Common US English swear words that should be filtered for PG13 and lower content
 var swearWords = []string{
-	"fuck", "shit", "damn", "hell", "ass", "bitch", "bastard", "crap",
+	"fuck", "fucking", "shit", "damn", "hell", "ass", "bitch", "bastard", "crap",
 	"piss", "cock", "dick", "pussy", "tits", "boobs", "whore", "slut",
 	"fag", "retard", "nigger", "nigga", "spic", "chink", "kike",
 	"motherfucker", "goddamn", "jesus christ", "christ", "asshole",
@@ -22,6 +22,7 @@ var swearWords = []string{
 // swearWordReplacements maps swear words to family-friendly alternatives
 var swearWordReplacements = map[string]string{
 	"fuck":         "fudge",
+	"fucking":      "fudging",
 	"shit":         "shoot",
 	"damn":         "dang",
 	"hell":         "heck",
@@ -118,12 +119,40 @@ func canBePluralized(word string) bool {
 	return pluralizableWords[word]
 }
 
-// FilterText replaces profanity in the input text with family-friendly alternatives
-func (pf *ProfanityFilter) FilterText(text string) string {
+// FilterText replaces profanity in the input text based on content rating
+func (pf *ProfanityFilter) FilterText(text string, contentRating string) string {
+	rating := strings.ToUpper(strings.TrimSpace(contentRating))
+
+	// No filtering for unknown/empty ratings or mature content
+	if rating != "G" && rating != "PG" && rating != "PG13" && rating != "PG-13" {
+		return text
+	}
+
 	result := text
+
+	// Define words that are acceptable in PG13 content
+	pg13AllowedWords := map[string]bool{
+		"damn":     true,
+		"hell":     true,
+		"ass":      true,
+		"crap":     true,
+		"goddamn":  true,
+		"christ":   true,
+		"asshole":  true,
+		"jackass":  true,
+		"smartass": true,
+		"badass":   true,
+		"bastard":  true,
+		"bullshit": true,
+	}
 
 	// Replace each swear word with its family-friendly alternative
 	for _, word := range swearWords {
+		// Skip filtering for PG13-allowed words if rating is PG13
+		if (rating == "PG13" || rating == "PG-13") && pg13AllowedWords[word] {
+			continue
+		}
+
 		if regex, exists := pf.regexes[word]; exists {
 			if replacement, hasReplacement := swearWordReplacements[word]; hasReplacement {
 				result = regex.ReplaceAllStringFunc(result, func(match string) string {
@@ -198,15 +227,4 @@ func (pf *ProfanityFilter) ContainsProfanity(text string) bool {
 		}
 	}
 	return false
-}
-
-// ShouldFilterContent determines if content should be filtered based on rating
-func ShouldFilterContent(rating string) bool {
-	rating = strings.ToUpper(strings.TrimSpace(rating))
-	switch rating {
-	case "G", "PG", "PG13", "PG-13":
-		return true
-	default:
-		return false
-	}
 }
