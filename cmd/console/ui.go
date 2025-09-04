@@ -65,6 +65,18 @@ func smartWrap(text string, width int) []string {
 	return strings.Split(wrapped, "\n")
 }
 
+// calculateAverageLatency computes the average latency from a slice of latencies
+func calculateAverageLatency(latencies []float64) float64 {
+	if len(latencies) == 0 {
+		return 0
+	}
+	sum := 0.0
+	for _, latency := range latencies {
+		sum += latency
+	}
+	return sum / float64(len(latencies))
+}
+
 // ConsoleUI is the BubbleTea model that runs the UI.
 // https://github.com/charmbracelet/bubbletea
 type ConsoleUI struct {
@@ -112,6 +124,11 @@ type ConsoleUI struct {
 
 	// Game ending state
 	finalMessageSent bool // whether we've already sent the final message after game end
+
+	// Chat latency tracking
+	chatRequestStartTime time.Time // timestamp when the last chat request was sent
+	lastChatLatency      float64   // latency of the last chat request in seconds
+	chatLatencies        []float64 // all chat latencies for the session
 
 	// Pending user messages not yet confirmed in server game state
 	// Pending user messages awaiting server echo (assistant responses are applied only on chatResponse)
@@ -347,7 +364,7 @@ func (m *ConsoleUI) scenarioDisplayName() string {
 	return file // fallback to file name
 }
 
-func writeMetadata(gs *state.GameState, width int, scenarioDisplay string, pollingActive bool) string {
+func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollingActive bool, chatLatencies []float64) string {
 	var content strings.Builder
 
 	//castle := " _   |>  _\n[_]--'--[_]\n|'|\"\"`\"\"|'|\n| | /^\\ | |\n|_|_|I|_|_|"
@@ -355,14 +372,12 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string, polli
 	castle += "[_]--'--[_]   STORY ENGINE\n"
 	castle += "|'|\"\"`\"\"|'|   LLM-Powered Text\n"
 	castle += "| | /^\\ | |   Adventure Game\n"
-	castle += "|_|_|I|_|_|.  "
+	castle += "|_|_|I|_|_|  "
 
 	content.WriteString("\n" + titleStyle.Render(castle) + "\n\n")
 
 	content.WriteString(scenarioDisplay + "\n")
-	if gs.IsEnded {
-		content.WriteString(titleStyle.Render("GAME ENDED") + "\n")
-	} else if gs.SceneName != "" {
+	if gs.SceneName != "" {
 		content.WriteString(metaStyle.Render("Scene: "))
 		content.WriteString(gs.SceneName + "\n")
 	}
@@ -380,16 +395,28 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string, polli
 		}
 	}
 
-	content.WriteString("\n")
-	content.WriteString(metaStyle.Render("Commands:") + "\n")
-	content.WriteString("• Ctrl+C: Quit\n")
-	content.WriteString("• Ctrl+N: New Game\n")
-	content.WriteString("• Ctrl+Y: Copy GameState ID\n")
-	content.WriteString("• Ctrl+Z: Clear Text\n")
-	content.WriteString("• Enter: Send\n")
+	// content.WriteString("\n")
+	// content.WriteString(metaStyle.Render("Commands:") + "\n")
+	// content.WriteString("• Ctrl+C: Quit\n")
+	// content.WriteString("• Ctrl+N: New Game\n")
+	// content.WriteString("• Ctrl+Y: Copy GameState ID\n")
+	// content.WriteString("• Ctrl+Z: Clear Text\n")
+	// content.WriteString("• Enter: Send\n")
+
+	if gs.IsEnded {
+		content.WriteString("\n" + titleStyle.Render("GAME ENDED") + "\n")
+	}
 
 	if pollingActive {
 		content.WriteString("\n" + loadingStyle.Render("Syncing game state...") + "\n")
+	}
+
+	// chat latency
+	if len(chatLatencies) > 0 {
+		lastChatLatency := chatLatencies[len(chatLatencies)-1]
+		content.WriteString("\n" + promptStyle.Render(fmt.Sprintf("Last Chat: %.3fs", lastChatLatency)) + "\n")
+		avgLatency := calculateAverageLatency(chatLatencies)
+		content.WriteString(promptStyle.Render(fmt.Sprintf("Avg Chat: %.3fs", avgLatency)) + "\n")
 	}
 
 	content.WriteString("\n")
@@ -515,7 +542,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Update metadata panel content as well
 			if m.gameState != nil {
-				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+				m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
 			}
 		}
 
@@ -535,7 +562,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.gameState != nil {
 				_ = clipboard.WriteAll(m.gameState.ID.String())
 				// Optionally append a tiny notice to metadata (non-intrusive)
-				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+				m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
 			}
 			return m, nil
 
@@ -554,10 +581,8 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			// Apply profanity filtering if the scenario's content rating requires it
-			if textfilter.ShouldFilterContent(m.contentRating) {
-				input = m.profanityFilter.FilterText(input)
-			}
+			// Apply profanity filtering based on the scenario's content rating
+			input = m.profanityFilter.FilterText(input, m.contentRating)
 
 			if strings.HasPrefix(input, "/") {
 				return m.handleCommand(input)
@@ -588,6 +613,9 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Reformat content to include the new user message
 			m.writeChatContent()
+
+			// Record the start time for latency tracking
+			m.chatRequestStartTime = time.Now()
 
 			return m, tea.Batch(m.sendChatMessage(input), progressTick())
 		}
@@ -626,13 +654,19 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			assistantMessage := chat.ChatMessage{Role: "assistant", Content: msg.response.Message}
 			m.gameState.ChatHistory = append(m.gameState.ChatHistory, assistantMessage)
 
+			// Calculate latency in seconds with 3 decimal places
+			if !m.chatRequestStartTime.IsZero() {
+				m.lastChatLatency = time.Since(m.chatRequestStartTime).Seconds()
+				m.chatLatencies = append(m.chatLatencies, m.lastChatLatency)
+			}
+
 			// Start polling now that we have the chat response (only if game hasn't ended)
 			if m.gameState != nil && !m.gameState.IsEnded {
 				m.pollingActive = true
 				m.pollingStartedAt = time.Now() // Record time AFTER chat response, look for updates after this
 			}
 			// Update metadata to show polling indicator
-			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
 
 			m.writeChatContent()
 			if !m.userPinned {
@@ -678,13 +712,13 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if msg.gameState.IsEnded {
 					m.pollingActive = false
 					m.mergeServerGameState(msg.gameState)
-					m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+					m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
 				} else if m.pollingActive && msg.gameState.UpdatedAt.After(m.pollingStartedAt) {
 					// Check if we got an updated timestamp and should stop active polling
 					m.pollingActive = false
 					// Apply the full updated gamestate
 					m.mergeServerGameState(msg.gameState)
-					m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+					m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
 				} else {
 					// Just refresh metadata fields to avoid reordering chat mid-turn
 					m.gameState.ID = msg.gameState.ID
@@ -701,7 +735,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.gameState.IsEnded = msg.gameState.IsEnded
 					m.gameState.ContingencyPrompts = msg.gameState.ContingencyPrompts
 					m.gameState.UpdatedAt = msg.gameState.UpdatedAt
-					m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+					m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
 				}
 			}
 		}
@@ -710,7 +744,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gameStateMsg:
 		if msg.err == nil && msg.gameState != nil {
 			m.mergeServerGameState(msg.gameState)
-			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
 		}
 
 	case progressTickMsg:
@@ -831,7 +865,7 @@ func (m ConsoleUI) sendChatMessage(message string) tea.Cmd {
 		}
 		// Update metadata in case server mutated something quickly (turn counter etc.)
 		if m.gameState != nil {
-			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -907,7 +941,7 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Use display name instead of raw file name
 			m.chatViewport.SetContent(writeInitialContent(m.gameState, m.scenarioDisplayName(), m.chatViewport.Width-6))
-			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
 			m.textarea.Focus() // Ensure textarea gets focus when modal closes
 			m.ready = true
 		}
@@ -1045,6 +1079,10 @@ func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
 	m.pollingActive = false
 	m.pollingStartedAt = time.Time{}
 	m.finalMessageSent = false
+	// Reset latency tracking
+	m.lastChatLatency = 0
+	m.chatLatencies = nil
+	m.chatRequestStartTime = time.Time{}
 	return m, m.loadScenarios()
 }
 
