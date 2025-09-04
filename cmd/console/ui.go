@@ -347,7 +347,7 @@ func (m *ConsoleUI) scenarioDisplayName() string {
 	return file // fallback to file name
 }
 
-func writeMetadata(gs *state.GameState, width int, scenarioDisplay string, pollingActive bool) string {
+func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollingActive bool) string {
 	var content strings.Builder
 
 	//castle := " _   |>  _\n[_]--'--[_]\n|'|\"\"`\"\"|'|\n| | /^\\ | |\n|_|_|I|_|_|"
@@ -355,14 +355,12 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string, polli
 	castle += "[_]--'--[_]   STORY ENGINE\n"
 	castle += "|'|\"\"`\"\"|'|   LLM-Powered Text\n"
 	castle += "| | /^\\ | |   Adventure Game\n"
-	castle += "|_|_|I|_|_|.  "
+	castle += "|_|_|I|_|_|  "
 
 	content.WriteString("\n" + titleStyle.Render(castle) + "\n\n")
 
 	content.WriteString(scenarioDisplay + "\n")
-	if gs.IsEnded {
-		content.WriteString(titleStyle.Render("GAME ENDED") + "\n")
-	} else if gs.SceneName != "" {
+	if gs.SceneName != "" {
 		content.WriteString(metaStyle.Render("Scene: "))
 		content.WriteString(gs.SceneName + "\n")
 	}
@@ -380,13 +378,17 @@ func writeMetadata(gs *state.GameState, width int, scenarioDisplay string, polli
 		}
 	}
 
-	content.WriteString("\n")
-	content.WriteString(metaStyle.Render("Commands:") + "\n")
-	content.WriteString("• Ctrl+C: Quit\n")
-	content.WriteString("• Ctrl+N: New Game\n")
-	content.WriteString("• Ctrl+Y: Copy GameState ID\n")
-	content.WriteString("• Ctrl+Z: Clear Text\n")
-	content.WriteString("• Enter: Send\n")
+	// content.WriteString("\n")
+	// content.WriteString(metaStyle.Render("Commands:") + "\n")
+	// content.WriteString("• Ctrl+C: Quit\n")
+	// content.WriteString("• Ctrl+N: New Game\n")
+	// content.WriteString("• Ctrl+Y: Copy GameState ID\n")
+	// content.WriteString("• Ctrl+Z: Clear Text\n")
+	// content.WriteString("• Enter: Send\n")
+
+	if gs.IsEnded {
+		content.WriteString("\n" + titleStyle.Render("GAME ENDED") + "\n")
+	}
 
 	if pollingActive {
 		content.WriteString("\n" + loadingStyle.Render("Syncing game state...") + "\n")
@@ -515,7 +517,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Update metadata panel content as well
 			if m.gameState != nil {
-				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+				m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
 			}
 		}
 
@@ -535,7 +537,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.gameState != nil {
 				_ = clipboard.WriteAll(m.gameState.ID.String())
 				// Optionally append a tiny notice to metadata (non-intrusive)
-				m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+				m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
 			}
 			return m, nil
 
@@ -632,7 +634,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.pollingStartedAt = time.Now() // Record time AFTER chat response, look for updates after this
 			}
 			// Update metadata to show polling indicator
-			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
 
 			m.writeChatContent()
 			if !m.userPinned {
@@ -678,13 +680,13 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if msg.gameState.IsEnded {
 					m.pollingActive = false
 					m.mergeServerGameState(msg.gameState)
-					m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+					m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
 				} else if m.pollingActive && msg.gameState.UpdatedAt.After(m.pollingStartedAt) {
 					// Check if we got an updated timestamp and should stop active polling
 					m.pollingActive = false
 					// Apply the full updated gamestate
 					m.mergeServerGameState(msg.gameState)
-					m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+					m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
 				} else {
 					// Just refresh metadata fields to avoid reordering chat mid-turn
 					m.gameState.ID = msg.gameState.ID
@@ -701,7 +703,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.gameState.IsEnded = msg.gameState.IsEnded
 					m.gameState.ContingencyPrompts = msg.gameState.ContingencyPrompts
 					m.gameState.UpdatedAt = msg.gameState.UpdatedAt
-					m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+					m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
 				}
 			}
 		}
@@ -710,7 +712,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gameStateMsg:
 		if msg.err == nil && msg.gameState != nil {
 			m.mergeServerGameState(msg.gameState)
-			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
 		}
 
 	case progressTickMsg:
@@ -831,7 +833,7 @@ func (m ConsoleUI) sendChatMessage(message string) tea.Cmd {
 		}
 		// Update metadata in case server mutated something quickly (turn counter etc.)
 		if m.gameState != nil {
-			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -907,7 +909,7 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Use display name instead of raw file name
 			m.chatViewport.SetContent(writeInitialContent(m.gameState, m.scenarioDisplayName(), m.chatViewport.Width-6))
-			m.metaViewport.SetContent(writeMetadata(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive))
 			m.textarea.Focus() // Ensure textarea gets focus when modal closes
 			m.ready = true
 		}
