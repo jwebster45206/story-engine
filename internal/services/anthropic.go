@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 const (
@@ -218,7 +219,7 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 	}, nil
 }
 
-// getMetaUpdateTool returns the tool definition for meta updates
+// getMetaUpdateTool returns the tool definition for gamestate deltas
 func (a *AnthropicService) getMetaUpdateTool() AnthropicTool {
 	return AnthropicTool{
 		Name:        "apply_changes",
@@ -300,8 +301,8 @@ func (a *AnthropicService) getMetaUpdateTool() AnthropicTool {
 	}
 }
 
-// MetaUpdate processes a meta update request using Anthropic Claude
-func (a *AnthropicService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, string, error) {
+// MetaUpdate processes a gamestate delta request using Anthropic Claude
+func (a *AnthropicService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
 	// Determine which model to use for MetaUpdate
 	modelToUse := a.modelName
 	if a.backendModelName != "" {

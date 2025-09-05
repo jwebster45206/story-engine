@@ -24,7 +24,7 @@ type ChatHandler struct {
 	logger     *slog.Logger
 	storage    services.Storage
 
-	// For background meta update cancellation
+	// For background gamestate delta cancellation
 	metaCancelMu sync.Mutex
 	metaCancel   map[uuid.UUID]context.CancelFunc
 }
@@ -197,7 +197,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Cancel any in-process meta update for this game state
+	// Cancel any in-process gamestate delta for this game state
 	h.metaCancelMu.Lock()
 	if cancel, ok := h.metaCancel[gs.ID]; ok {
 		cancel()
@@ -210,7 +210,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Update turn counters before background updates
 		gs.IncrementTurnCounters()
 		// Start background goroutine to update game meta (PromptState)
-		go h.updateGameMeta(metaCtx, gs, request.Message, response.Message)
+		go h.syncGameState(metaCtx, gs, request.Message, response.Message)
 	}
 
 	// Exit early if the prompt is a system message
@@ -260,7 +260,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 var errSceneNotFound = errors.New("scene not found")
 
-func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdate *chat.MetaUpdate) error {
+func applyGameStateDelta(gs *state.GameState, scenario *scenario.Scenario, metaUpdate *state.GameStateDelta) error {
 	if metaUpdate == nil {
 		return nil
 	}
@@ -417,15 +417,13 @@ func toSnakeCase(s string) string {
 		prevUnderscore = false
 	}
 	return out.String()
-
-	// TODO: NPC changes
 }
 
-// updateGameMeta runs in the background to extract and update the stateful parts
-// of gamestate. This feels like the domain of gamestate. Might need to refactor.
-func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, userMessage string, responseMessage string) {
+// syncGameState runs in the background to extract and update the stateful parts
+// of gamestate.
+func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, userMessage string, responseMessage string) {
 	start := time.Now()
-	h.logger.Debug("Starting background game meta update", "game_state_id", gs.ID.String())
+	h.logger.Debug("Starting background game gamestate delta", "game_state_id", gs.ID.String())
 	defer func() {
 		h.metaCancelMu.Lock()
 		delete(h.metaCancel, gs.ID)
@@ -434,7 +432,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 
 	currentStateJSON, err := json.Marshal(state.ToBackgroundPromptState(gs))
 	if err != nil {
-		h.logger.Error("Failed to marshal current game state for meta update", "error", err, "game_state_id", gs.ID.String())
+		h.logger.Error("Failed to marshal current game state for gamestate delta", "error", err, "game_state_id", gs.ID.String())
 		return
 	}
 
@@ -472,8 +470,8 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 	metaCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Send the meta update request to the LLM
-	h.logger.Debug("Sending meta update request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
+	// Send the gamestate delta request to the LLM
+	h.logger.Debug("Sending gamestate delta request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
 	metaResponse, backendModel, err := h.llmService.MetaUpdate(metaCtx, messages)
 	if err != nil {
 		h.logger.Error("Failed to get meta extraction response from LLM", "error", err, "game_state_id", gs.ID.String())
@@ -485,20 +483,20 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 
 	latestGS, err := h.storage.LoadGameState(metaCtx, gs.ID)
 	if err != nil {
-		h.logger.Error("Failed to load latest game state for meta update", "error", err, "game_state_id", gs.ID.String())
+		h.logger.Error("Failed to load latest game state for gamestate delta", "error", err, "game_state_id", gs.ID.String())
 		return
 	}
 	if latestGS == nil {
-		h.logger.Warn("Game state not found during meta update", "game_state_id", gs.ID.String())
+		h.logger.Warn("Game state not found during gamestate delta", "game_state_id", gs.ID.String())
 		return
 	}
 
 	// Apply the calculated state to the latest game state
-	if err := applyMetaUpdate(latestGS, s, metaResponse); err != nil {
+	if err := applyGameStateDelta(latestGS, s, metaResponse); err != nil {
 		if errors.Is(err, errSceneNotFound) {
-			h.logger.Warn("Scene not found during meta update", "error", err, "game_state_id", latestGS.ID.String())
+			h.logger.Warn("Scene not found during applyGameStateDelta", "error", err, "game_state_id", latestGS.ID.String())
 		} else {
-			h.logger.Error("Failed to apply meta update", "error", err, "game_state_id", latestGS.ID.String())
+			h.logger.Error("Failed applyGameStateDelta", "error", err, "game_state_id", latestGS.ID.String())
 			return
 		}
 	}

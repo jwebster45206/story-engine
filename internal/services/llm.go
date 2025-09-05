@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 const (
@@ -21,13 +22,13 @@ type LLMService interface {
 
 	// Chat generates a chat response using the LLM
 	Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error)
-	MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, string, error)
+	MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error)
 }
 
 // parseMetaUpdateResponse parses an LLM response text into a MetaUpdate struct.
 // It handles various response formats including markdown code blocks, mixed content,
 // and other common artifacts that LLMs might include in their JSON responses.
-func parseMetaUpdateResponse(responseText string) (*chat.MetaUpdate, error) {
+func parseMetaUpdateResponse(responseText string) (*state.GameStateDelta, error) {
 	if responseText == "" {
 		return nil, nil
 	}
@@ -80,9 +81,9 @@ func parseMetaUpdateResponse(responseText string) (*chat.MetaUpdate, error) {
 	mTxt = strings.Join(cleanLines, "\n")
 	mTxt = strings.TrimSpace(mTxt)
 
-	var metaUpdate chat.MetaUpdate
+	var metaUpdate state.GameStateDelta
 	if err := json.Unmarshal([]byte(mTxt), &metaUpdate); err != nil {
-		return nil, fmt.Errorf("failed to parse meta update. Original response: %q, Cleaned text: %q, Error: %w", originalText, mTxt, err)
+		return nil, fmt.Errorf("failed to parse gamestate delta. Original response: %q, Cleaned text: %q, Error: %w", originalText, mTxt, err)
 	}
 
 	return &metaUpdate, nil

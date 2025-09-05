@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 const (
@@ -264,7 +265,7 @@ func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (
 	}, nil
 }
 
-func (v *VeniceService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, string, error) {
+func (v *VeniceService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
 	// Determine which model to use for MetaUpdate
 	modelToUse := v.modelName
 	if v.backendModelName != "" {

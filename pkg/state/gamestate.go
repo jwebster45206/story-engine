@@ -285,10 +285,7 @@ func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 		maps.Copy(gs.Vars, scene.Vars)
 	}
 
-	// TODO: Enforce item singletons
-	// - Priority1: user inventory
-	// - Priority2: NPC items
-	// - Priority3: location items
+	gs.NormalizeItems()
 
 	return nil
 }
@@ -298,4 +295,51 @@ func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 func (gs *GameState) IncrementTurnCounters() {
 	gs.TurnCounter++
 	gs.SceneTurnCounter++
+}
+
+// NormalizeItems enforces item singletons by removing duplicate items across:
+// - User inventory (highest priority)
+// - NPC items (second priority)
+// - Location items (lowest priority)
+// If an item exists in multiple places, it is removed from the lower priority locations.
+func (gs *GameState) NormalizeItems() {
+	if gs == nil {
+		return
+	}
+
+	// Create a set of items in user inventory for fast lookup
+	userItems := make(map[string]bool)
+	for _, item := range gs.Inventory {
+		userItems[item] = true
+	}
+
+	// Remove duplicates from NPCs and enforce singletons within NPC collection
+	npcItems := make(map[string]bool)
+	for npcName, npc := range gs.NPCs {
+		var filteredItems []string
+		for _, item := range npc.Items {
+			// Keep item only if it's not in user inventory and not already claimed by another NPC
+			if !userItems[item] && !npcItems[item] {
+				filteredItems = append(filteredItems, item)
+				npcItems[item] = true
+			}
+		}
+		// Update the NPC in the map
+		npc.Items = filteredItems
+		gs.NPCs[npcName] = npc
+	}
+
+	// Remove duplicates from locations
+	for locName, location := range gs.WorldLocations {
+		var filteredItems []string
+		for _, item := range location.Items {
+			// Keep item only if it's not in user inventory or with NPCs
+			if !userItems[item] && !npcItems[item] {
+				filteredItems = append(filteredItems, item)
+			}
+		}
+		// Update the location in the map
+		location.Items = filteredItems
+		gs.WorldLocations[locName] = location
+	}
 }

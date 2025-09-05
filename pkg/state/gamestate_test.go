@@ -459,3 +459,286 @@ func TestGameState_GetContingencyPrompts(t *testing.T) {
 		})
 	}
 }
+
+func TestGameState_NormalizeItems(t *testing.T) {
+	tests := []struct {
+		name              string
+		gameState         *GameState
+		expectedInventory []string
+		expectedNPCItems  map[string][]string
+		expectedLocItems  map[string][]string
+		description       string
+	}{
+		{
+			name:        "nil gamestate",
+			gameState:   nil,
+			description: "should handle nil gamestate gracefully",
+		},
+		{
+			name: "no duplicates",
+			gameState: &GameState{
+				Inventory: []string{"sword", "shield"},
+				NPCs: map[string]scenario.NPC{
+					"guard":    {Items: []string{"key", "armor"}},
+					"merchant": {Items: []string{"potion", "gold"}},
+				},
+				WorldLocations: map[string]scenario.Location{
+					"cave":   {Items: []string{"gem", "torch"}},
+					"forest": {Items: []string{"berries", "wood"}},
+				},
+			},
+			expectedInventory: []string{"sword", "shield"},
+			expectedNPCItems: map[string][]string{
+				"guard":    {"key", "armor"},
+				"merchant": {"potion", "gold"},
+			},
+			expectedLocItems: map[string][]string{
+				"cave":   {"gem", "torch"},
+				"forest": {"berries", "wood"},
+			},
+			description: "should not remove any items when no duplicates exist",
+		},
+		{
+			name: "user inventory takes priority over NPCs",
+			gameState: &GameState{
+				Inventory: []string{"sword", "key"},
+				NPCs: map[string]scenario.NPC{
+					"guard":    {Items: []string{"key", "armor", "sword"}},
+					"merchant": {Items: []string{"potion", "key"}},
+				},
+				WorldLocations: map[string]scenario.Location{
+					"cave": {Items: []string{"gem", "torch"}},
+				},
+			},
+			expectedInventory: []string{"sword", "key"},
+			expectedNPCItems: map[string][]string{
+				"guard":    {"armor"},
+				"merchant": {"potion"},
+			},
+			expectedLocItems: map[string][]string{
+				"cave": {"gem", "torch"},
+			},
+			description: "should remove items from NPCs when they exist in user inventory",
+		},
+		{
+			name: "user inventory takes priority over locations",
+			gameState: &GameState{
+				Inventory: []string{"sword", "gem"},
+				NPCs: map[string]scenario.NPC{
+					"guard": {Items: []string{"key", "armor"}},
+				},
+				WorldLocations: map[string]scenario.Location{
+					"cave":   {Items: []string{"gem", "torch", "sword"}},
+					"forest": {Items: []string{"berries", "gem"}},
+				},
+			},
+			expectedInventory: []string{"sword", "gem"},
+			expectedNPCItems: map[string][]string{
+				"guard": {"key", "armor"},
+			},
+			expectedLocItems: map[string][]string{
+				"cave":   {"torch"},
+				"forest": {"berries"},
+			},
+			description: "should remove items from locations when they exist in user inventory",
+		},
+		{
+			name: "NPC items take priority over locations",
+			gameState: &GameState{
+				Inventory: []string{"sword"},
+				NPCs: map[string]scenario.NPC{
+					"guard":    {Items: []string{"key", "armor"}},
+					"merchant": {Items: []string{"potion", "gem"}},
+				},
+				WorldLocations: map[string]scenario.Location{
+					"cave":   {Items: []string{"gem", "torch", "key"}},
+					"forest": {Items: []string{"berries", "armor"}},
+				},
+			},
+			expectedInventory: []string{"sword"},
+			expectedNPCItems: map[string][]string{
+				"guard":    {"key", "armor"},
+				"merchant": {"potion", "gem"},
+			},
+			expectedLocItems: map[string][]string{
+				"cave":   {"torch"},
+				"forest": {"berries"},
+			},
+			description: "should remove items from locations when they exist with NPCs",
+		},
+		{
+			name: "complex scenario with all priorities",
+			gameState: &GameState{
+				Inventory: []string{"legendary_sword", "master_key"},
+				NPCs: map[string]scenario.NPC{
+					"guard":    {Items: []string{"iron_key", "chain_mail", "legendary_sword"}},
+					"merchant": {Items: []string{"health_potion", "master_key", "gold_coin"}},
+					"wizard":   {Items: []string{"spell_book", "iron_key"}},
+				},
+				WorldLocations: map[string]scenario.Location{
+					"castle":  {Items: []string{"legendary_sword", "crown", "iron_key"}},
+					"dungeon": {Items: []string{"master_key", "torch", "health_potion"}},
+					"shop":    {Items: []string{"bread", "gold_coin"}},
+				},
+			},
+			// For complex test, we'll validate the singleton behavior rather than exact NPC assignments
+			expectedInventory: []string{"legendary_sword", "master_key"},
+			description:       "should handle complex scenarios with multiple overlaps correctly",
+		},
+		{
+			name: "empty collections",
+			gameState: &GameState{
+				Inventory:      []string{},
+				NPCs:           map[string]scenario.NPC{},
+				WorldLocations: map[string]scenario.Location{},
+			},
+			expectedInventory: []string{},
+			expectedNPCItems:  map[string][]string{},
+			expectedLocItems:  map[string][]string{},
+			description:       "should handle empty collections without issues",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Make a copy to avoid modifying the test data
+			var testGameState *GameState
+			if tt.gameState != nil {
+				copied, err := tt.gameState.DeepCopy()
+				if err != nil {
+					t.Fatalf("Failed to copy gamestate: %v", err)
+				}
+				testGameState = copied
+			}
+
+			// Execute the function
+			testGameState.NormalizeItems()
+
+			// Skip validation for nil gamestate test
+			if tt.gameState == nil {
+				return
+			}
+
+			// Check user inventory
+			if !stringSlicesEqual(testGameState.Inventory, tt.expectedInventory) {
+				t.Errorf("Expected user inventory %v, got %v", tt.expectedInventory, testGameState.Inventory)
+			}
+
+			// For the complex scenario, validate singleton behavior instead of exact assignments
+			if tt.name == "complex scenario with all priorities" {
+				// Validate that singleton behavior is enforced
+				validateItemSingletons(t, testGameState, tt.gameState)
+			} else {
+				// Check NPC items for simpler test cases
+				for npcName, expectedItems := range tt.expectedNPCItems {
+					if npc, exists := testGameState.NPCs[npcName]; !exists {
+						t.Errorf("Expected NPC '%s' to exist", npcName)
+					} else if !stringSlicesEqual(npc.Items, expectedItems) {
+						t.Errorf("Expected NPC '%s' items %v, got %v", npcName, expectedItems, npc.Items)
+					}
+				}
+
+				// Check location items for simpler test cases
+				for locName, expectedItems := range tt.expectedLocItems {
+					if loc, exists := testGameState.WorldLocations[locName]; !exists {
+						t.Errorf("Expected location '%s' to exist", locName)
+					} else if !stringSlicesEqual(loc.Items, expectedItems) {
+						t.Errorf("Expected location '%s' items %v, got %v", locName, expectedItems, loc.Items)
+					}
+				}
+			}
+		})
+	}
+}
+
+// Helper function to compare string slices
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// validateItemSingletons verifies that the item singleton behavior is enforced
+// It checks that no item appears in multiple places and that items are prioritized correctly
+func validateItemSingletons(t *testing.T, normalizedState *GameState, originalState *GameState) {
+	// Collect all items from normalized state
+	allItems := make(map[string]string) // item -> location type (user/npc/location)
+
+	// Track user items (highest priority)
+	for _, item := range normalizedState.Inventory {
+		allItems[item] = "user"
+	}
+
+	// Track NPC items (second priority)
+	for npcName, npc := range normalizedState.NPCs {
+		for _, item := range npc.Items {
+			if existing, exists := allItems[item]; exists {
+				t.Errorf("Item '%s' appears in both %s and NPC '%s'", item, existing, npcName)
+			}
+			allItems[item] = "npc:" + npcName
+		}
+	}
+
+	// Track location items (lowest priority)
+	for locName, location := range normalizedState.WorldLocations {
+		for _, item := range location.Items {
+			if existing, exists := allItems[item]; exists {
+				t.Errorf("Item '%s' appears in both %s and location '%s'", item, existing, locName)
+			}
+			allItems[item] = "location:" + locName
+		}
+	}
+
+	// Verify priority enforcement: items in user inventory should not appear anywhere else
+	for _, userItem := range normalizedState.Inventory {
+		for _, originalUserItem := range originalState.Inventory {
+			if userItem == originalUserItem {
+				// This item was originally in user inventory, so it should stay there
+				// Check that it's been removed from NPCs and locations
+				for npcName, npc := range normalizedState.NPCs {
+					for _, npcItem := range npc.Items {
+						if npcItem == userItem {
+							t.Errorf("Item '%s' should be removed from NPC '%s' because it's in user inventory", userItem, npcName)
+						}
+					}
+				}
+				for locName, location := range normalizedState.WorldLocations {
+					for _, locItem := range location.Items {
+						if locItem == userItem {
+							t.Errorf("Item '%s' should be removed from location '%s' because it's in user inventory", userItem, locName)
+						}
+					}
+				}
+				break
+			}
+		}
+	}
+
+	// Verify that all expected items still exist somewhere (no items should be lost)
+	originalItems := make(map[string]bool)
+	for _, item := range originalState.Inventory {
+		originalItems[item] = true
+	}
+	for _, npc := range originalState.NPCs {
+		for _, item := range npc.Items {
+			originalItems[item] = true
+		}
+	}
+	for _, location := range originalState.WorldLocations {
+		for _, item := range location.Items {
+			originalItems[item] = true
+		}
+	}
+
+	for originalItem := range originalItems {
+		if _, exists := allItems[originalItem]; !exists {
+			t.Errorf("Item '%s' was lost during normalization", originalItem)
+		}
+	}
+}
