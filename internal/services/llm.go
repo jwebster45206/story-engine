@@ -9,6 +9,12 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/chat"
 )
 
+const (
+	DefaultTemperature = 0.7
+	DefaultMaxTokens   = 180
+	BackendMaxTokens   = 512
+)
+
 // LLMService defines the interface for interacting with the LLM API
 type LLMService interface {
 	InitModel(ctx context.Context, modelName string) error

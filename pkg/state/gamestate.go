@@ -3,6 +3,7 @@ package state
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/google/uuid"
@@ -224,7 +225,10 @@ func (gs *GameState) DeepCopy() (*GameState, error) {
 	return &copy, nil
 }
 
-// LoadScene prepares game state with a new scene.
+// LoadScene prepares game state with a new scene:
+// - loads new locations, NPCs, and vars from the scene
+// - overrides pre-existing values for locations, NPCs, and vars
+// - removes locations, NPCs (NOT vars) that are not present in the new scene
 func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 	scene, ok := s.Scenes[sceneName]
 	if !ok {
@@ -235,28 +239,56 @@ func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 	// Reset scene turn counter when loading a new scene
 	gs.SceneTurnCounter = 0
 
-	// Initialize Vars map if it's nil
+	// Initialize maps
 	if gs.Vars == nil {
 		gs.Vars = make(map[string]string)
 	}
+	if gs.WorldLocations == nil {
+		gs.WorldLocations = make(map[string]scenario.Location)
+	}
+	if gs.NPCs == nil {
+		gs.NPCs = make(map[string]scenario.NPC)
+	}
 
-	// Copy scene-specific elements to gamestate
 	// Copy locations from scene
 	if scene.Locations != nil {
-		gs.WorldLocations = scene.Locations
+		maps.Copy(gs.WorldLocations, scene.Locations)
+	}
+
+	// Remove any locations that are not in the global scenario locations,
+	// and also not in the current scene locations
+	for locName := range gs.WorldLocations {
+		_, existsInScenario := s.Locations[locName]
+		_, existsInScene := scene.Locations[locName]
+		if !existsInScenario && !existsInScene {
+			delete(gs.WorldLocations, locName)
+		}
 	}
 
 	// Copy NPCs from scene
 	if scene.NPCs != nil {
-		gs.NPCs = scene.NPCs
+		maps.Copy(gs.NPCs, scene.NPCs)
 	}
 
-	// copy stateful elements to gamestate
-	for k, v := range scene.Vars {
-		if _, exists := gs.Vars[k]; !exists {
-			gs.Vars[k] = v
+	// Remove any NPCs that are not in the global scenario NPCs,
+	// and also not in the current scene NPCs
+	for npcName := range gs.NPCs {
+		_, existsInScenario := s.NPCs[npcName]
+		_, existsInScene := scene.NPCs[npcName]
+		if !existsInScenario && !existsInScene {
+			delete(gs.NPCs, npcName)
 		}
 	}
+
+	// Vars from scene
+	if scene.Vars != nil {
+		maps.Copy(gs.Vars, scene.Vars)
+	}
+
+	// TODO: Enforce item singletons
+	// - Priority1: user inventory
+	// - Priority2: NPC items
+	// - Priority3: location items
 
 	return nil
 }

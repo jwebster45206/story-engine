@@ -15,10 +15,6 @@ import (
 const (
 	veniceBaseURL = "https://api.venice.ai/api/v1"
 	msgNoResponse = "(no response)"
-
-	DefaultVeniceTemperature = 0.7
-	DefaultVeniceMaxTokens   = 512
-	BackendVeniceMaxTokens   = 512
 )
 
 // VeniceService implements LLMService for Venice AI
@@ -104,9 +100,9 @@ func (v *VeniceService) InitModel(ctx context.Context, modelName string) error {
 
 // chatCompletion makes a chat completion request to Venice AI with the specified model
 func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, responseFormat *VeniceResponseFormat) (string, error) {
-	maxTokens := DefaultVeniceMaxTokens
+	maxTokens := DefaultMaxTokens
 	if temperature == 0.0 {
-		maxTokens = BackendVeniceMaxTokens
+		maxTokens = BackendMaxTokens
 	}
 	veniceReq := VeniceChatRequest{
 		Model:       modelName,
@@ -258,7 +254,7 @@ func (v *VeniceService) getMetaUpdateResponseFormat() *VeniceResponseFormat {
 
 // Chat generates a chat response using Venice AI
 func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
-	content, err := v.chatCompletion(ctx, messages, v.modelName, DefaultVeniceTemperature, nil)
+	content, err := v.chatCompletion(ctx, messages, v.modelName, DefaultTemperature, nil)
 	if err != nil {
 		return nil, err
 	}
