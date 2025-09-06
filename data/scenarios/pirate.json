@@ -123,7 +123,7 @@
       "npcs": {},
       "vars": {},
       "contingency_prompts": [
-        "When the player boards the black pearl, if the repair ledger is not in inventory, mention the repair ledger when describing the ship's condition.",
+        "When the player boards the black pearl, if the repair ledger is not in inventory, mention the repair ledger when describing the ship's condition. (The ledger is on deck, and not in the cabin.)",
         "The shipwright can BEGIN work for a small deposit. To FINISH the repairs, he requires payment of 500 gold doubloons.",
         "The player may attempt to sail the Black Pearl without completing repairs, although the game will end badly.",
         "Calypso is the bartender at the Sleepy Mermaid. She greets her customers with a warm smile and a hint of mystery."
