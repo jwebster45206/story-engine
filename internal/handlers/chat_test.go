@@ -361,7 +361,7 @@ func TestApplyMetaUpdate(t *testing.T) {
 		},
 	}
 
-	meta := &chat.MetaUpdate{
+	meta := &state.GameStateDelta{
 		UserLocation:        "Forest",
 		AddToInventory:      []string{"Apple"},
 		RemoveFromInventory: []string{"Gold"},
@@ -379,9 +379,9 @@ func TestApplyMetaUpdate(t *testing.T) {
 		},
 	}
 
-	err := applyMetaUpdate(gs, s, meta)
+	err := applyGameStateDelta(gs, s, meta)
 	if err != nil {
-		t.Fatalf("Failed to apply meta update: %v", err)
+		t.Fatalf("Failed to apply gamestate delta: %v", err)
 	}
 
 	// Assertions

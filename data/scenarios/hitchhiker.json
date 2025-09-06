@@ -2,6 +2,20 @@
   "name": "Hitchhiker's Guide",
   "story": "The player is Arthur Dent, an ordinary Englishman whose life is about to be turned upside down. The player's house is about to be demolished, and Earth is about to be destroyed to make way for a hyperspace bypass. Adventure and absurdity await as the player tries to survive the destruction of Earth and navigate the galaxy.",
   "rating": "PG",
+  "npcs": {
+    "Ford Prefect": {
+      "name": "Ford Prefect",
+      "type": "strange friend",
+      "disposition": "calm and mysterious",
+      "description": "Your friend who claims to be from Guildford but is actually a researcher for the Hitchhiker's Guide to the Galaxy. He knows Earth is about to be destroyed.",
+      "important": true,
+      "location": "Kitchen",
+      "items": [
+        "Hitchhiker's Guide to the Galaxy electronic book",
+        "Ford's towel"
+      ]
+    }
+  },
   "scenes": {
     "earth_doom": {
       "story": "The player's house is about to be demolished by bulldozers. The player must find Ford Prefect, who has a plan to save them both. The player has no idea that Earth is about to be destroyed.",
@@ -37,7 +51,7 @@
           },
           "items": [
             "tea biscuits",
-            "towel"
+            "bath towel"
           ]
         },
         "Road": {
@@ -57,17 +71,6 @@
         }
       },
       "npcs": {
-        "Ford Prefect": {
-          "name": "Ford Prefect",
-          "type": "strange friend",
-          "disposition": "calm and mysterious",
-          "description": "Your friend who claims to be from Guildford but is actually a researcher for the Hitchhiker's Guide to the Galaxy. He knows Earth is about to be destroyed.",
-          "important": true,
-          "location": "Kitchen",
-          "items": [
-            "Hitchhiker's Guide to the Galaxy electronic book"
-          ]
-        },
         "Mr. Prosser": {
           "name": "Mr. Prosser",
           "type": "construction foreman",
@@ -78,18 +81,17 @@
           "items": []
         }
       },
-      "vars": {
-        "ford_found": "false",
-        "house_demolished": "false"
-      },
       "contingency_prompts": [
+        "Lying down in front of the bulldozers is a bold move of English civil disobedience.",
         "When the player first encounters Ford Prefect, he seems oddly unconcerned about the bulldozers.",
         "Ford Prefect never leaves the house until the player speaks with him.",
-        "To escape the demolition, the player must follow Ford Prefect's lead."
+        "To escape the demolition, the player must follow Ford Prefect's lead.",
+        "Stress the importance of acquiring the bath towel in the kitchen."
       ],
       "contingency_rules": [
-        "If the player stays in the house when the demolition begins, set `house_demolished` to true and the game ends poorly.",
-        "Update `scene_name` to 'hitchhiking' when the player leaves the house with Ford, or if he has already done so."
+        "If the player stays in the house and the demolition begins, set `house_demolished` to true and the game ends poorly.",
+        "Update `scene_name` to 'hitchhiking' when the player leaves the house with Ford, or if he has already done so.",
+        "If Ford hands the bath towel to the player, add it to the player's inventory."
       ]
     },
     "hitchhiking": {
@@ -304,9 +306,8 @@
     "cup of tea"
   ],
   "contingency_prompts": [
-    "Use British humor in responses.",
-    "Remember that the answer to life, the universe, and everything is 42.",
-    "The towel is the most important item in the universe. Occasionally remind the player of this."
+    "Arthur is English above all else. Use British humor in responses.",
+    "Remember that the answer to life, the universe, and everything is 42."
   ],
   "contingency_rules": [
     "Never let Ford Prefect leave the player's side once they've met. He is always ready to assist and will follow the player wherever they go."

@@ -7,6 +7,7 @@ import (
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 // MockLLMAPI is a mock implementation of LLMService for testing
@@ -22,9 +23,9 @@ type MockLLMAPI struct {
 }
 
 // MetaUpdate mocks the MetaUpdate functionality
-func (m *MockLLMAPI) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, string, error) {
+func (m *MockLLMAPI) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
 	// For testing, return a simple mock MetaUpdate
-	return &chat.MetaUpdate{
+	return &state.GameStateDelta{
 		UserLocation:        "mock_location",
 		AddToInventory:      []string{"mock_item"},
 		RemoveFromInventory: []string{"old_item"},
@@ -93,7 +94,7 @@ func (m *MockLLMAPI) Chat(ctx context.Context, messages []chat.ChatMessage) (*ch
 		return m.GenerateResponseFunc(ctx, messages)
 	}
 
-	// Detect if this is a PromptState extraction request (meta update)
+	// Detect if this is a PromptState extraction request (gamestate delta)
 	if len(messages) > 0 && messages[0].Role == chat.ChatRoleSystem {
 		promptPrefix := scenario.PromptStateExtractionInstructions
 		if len(promptPrefix) > 50 {

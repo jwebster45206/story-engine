@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 func TestNewAnthropicService(t *testing.T) {
@@ -262,7 +263,7 @@ func TestAnthropicService_MetaUpdateJSONParsing(t *testing.T) {
 			mTxt = strings.Join(cleanLines, "\n")
 			mTxt = strings.TrimSpace(mTxt)
 
-			var metaUpdate chat.MetaUpdate
+			var metaUpdate state.GameStateDelta
 			err := json.Unmarshal([]byte(mTxt), &metaUpdate)
 
 			if tt.expectedError {

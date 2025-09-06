@@ -24,7 +24,7 @@ type ChatHandler struct {
 	logger     *slog.Logger
 	storage    services.Storage
 
-	// For background meta update cancellation
+	// For background gamestate delta cancellation
 	metaCancelMu sync.Mutex
 	metaCancel   map[uuid.UUID]context.CancelFunc
 }
@@ -197,7 +197,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Cancel any in-process meta update for this game state
+	// Cancel any in-process gamestate delta for this game state
 	h.metaCancelMu.Lock()
 	if cancel, ok := h.metaCancel[gs.ID]; ok {
 		cancel()
@@ -210,7 +210,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Update turn counters before background updates
 		gs.IncrementTurnCounters()
 		// Start background goroutine to update game meta (PromptState)
-		go h.updateGameMeta(metaCtx, gs, request.Message, response.Message)
+		go h.syncGameState(metaCtx, gs, request.Message, response.Message)
 	}
 
 	// Exit early if the prompt is a system message
@@ -260,26 +260,26 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 var errSceneNotFound = errors.New("scene not found")
 
-func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdate *chat.MetaUpdate) error {
-	if metaUpdate == nil {
+func applyGameStateDelta(gs *state.GameState, scenario *scenario.Scenario, delta *state.GameStateDelta) error {
+	if delta == nil {
 		return nil
 	}
 
 	// Update Scene (invalid scene name fails silently for now)
-	if metaUpdate.SceneName != "" && metaUpdate.SceneName != gs.SceneName && scenario.HasScene(metaUpdate.SceneName) {
-		err := gs.LoadScene(scenario, metaUpdate.SceneName)
+	if delta.SceneName != "" && delta.SceneName != gs.SceneName && scenario.HasScene(delta.SceneName) {
+		err := gs.LoadScene(scenario, delta.SceneName)
 		if err != nil {
 			return fmt.Errorf("failed to load scene: %w", err)
 		}
-		gs.SceneName = metaUpdate.SceneName
+		gs.SceneName = delta.SceneName
 	}
 
 	// Handle location change
 	userLocationFound := false
-	if metaUpdate.UserLocation != "" {
+	if delta.UserLocation != "" {
 		// Loook for a location with this name in the game state
 		for _, loc := range gs.WorldLocations {
-			if loc.Name == metaUpdate.UserLocation {
+			if loc.Name == delta.UserLocation {
 				gs.Location = loc.Name
 				userLocationFound = true
 				break
@@ -289,7 +289,7 @@ func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdat
 		// names as substrings of the user location
 		if !userLocationFound {
 			for _, loc := range gs.WorldLocations {
-				if strings.Contains(strings.ToLower(metaUpdate.UserLocation), strings.ToLower(loc.Name)) {
+				if strings.Contains(strings.ToLower(delta.UserLocation), strings.ToLower(loc.Name)) {
 					gs.Location = loc.Name
 					break
 				}
@@ -297,7 +297,7 @@ func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdat
 		}
 	}
 
-	for _, item := range metaUpdate.AddToInventory {
+	for _, item := range delta.AddToInventory {
 		itemExists := false
 		for _, invItem := range gs.Inventory {
 			if invItem == item {
@@ -315,7 +315,7 @@ func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdat
 		}
 	}
 
-	for _, item := range metaUpdate.RemoveFromInventory {
+	for _, item := range delta.RemoveFromInventory {
 		for i, invItem := range gs.Inventory {
 			if invItem == item {
 				gs.Inventory = append(gs.Inventory[:i], gs.Inventory[i+1:]...)
@@ -324,7 +324,7 @@ func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdat
 		}
 	}
 
-	for _, movedItem := range metaUpdate.MovedItems {
+	for _, movedItem := range delta.MovedItems {
 		fmt.Println("Processing moved item:", movedItem.Item, "from:", movedItem.From, "to:", movedItem.To)
 		// Handle move FROM
 		if movedItem.From != "" && movedItem.From != "user_inventory" {
@@ -374,7 +374,7 @@ func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdat
 	}
 
 	// Handle SetVars
-	for k, v := range metaUpdate.SetVars {
+	for k, v := range delta.SetVars {
 		// Convert var name to lower case snake case
 		snake := toSnakeCase(strings.ToLower(k))
 		if gs.Vars == nil {
@@ -384,9 +384,12 @@ func applyMetaUpdate(gs *state.GameState, scenario *scenario.Scenario, metaUpdat
 	}
 
 	// Handle Game End
-	if metaUpdate.GameEnded != nil && *metaUpdate.GameEnded {
+	if delta.GameEnded != nil && *delta.GameEnded {
 		gs.IsEnded = true
 	}
+
+	// Ensure that items are singletons
+	gs.NormalizeItems()
 
 	return nil
 }
@@ -417,15 +420,13 @@ func toSnakeCase(s string) string {
 		prevUnderscore = false
 	}
 	return out.String()
-
-	// TODO: NPC changes
 }
 
-// updateGameMeta runs in the background to extract and update the stateful parts
-// of gamestate. This feels like the domain of gamestate. Might need to refactor.
-func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, userMessage string, responseMessage string) {
+// syncGameState runs in the background to extract and update the stateful parts
+// of gamestate.
+func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, userMessage string, responseMessage string) {
 	start := time.Now()
-	h.logger.Debug("Starting background game meta update", "game_state_id", gs.ID.String())
+	h.logger.Debug("Starting background game gamestate delta", "game_state_id", gs.ID.String())
 	defer func() {
 		h.metaCancelMu.Lock()
 		delete(h.metaCancel, gs.ID)
@@ -434,7 +435,7 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 
 	currentStateJSON, err := json.Marshal(state.ToBackgroundPromptState(gs))
 	if err != nil {
-		h.logger.Error("Failed to marshal current game state for meta update", "error", err, "game_state_id", gs.ID.String())
+		h.logger.Error("Failed to marshal current game state for gamestate delta", "error", err, "game_state_id", gs.ID.String())
 		return
 	}
 
@@ -472,33 +473,33 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 	metaCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Send the meta update request to the LLM
-	h.logger.Debug("Sending meta update request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
-	metaResponse, backendModel, err := h.llmService.MetaUpdate(metaCtx, messages)
+	// Send the gamestate delta request to the LLM
+	h.logger.Debug("Sending gamestate delta request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
+	delta, backendModel, err := h.llmService.MetaUpdate(metaCtx, messages)
 	if err != nil {
 		h.logger.Error("Failed to get meta extraction response from LLM", "error", err, "game_state_id", gs.ID.String())
 		return
 	}
-	if metaResponse == nil {
+	if delta == nil {
 		return
 	}
 
 	latestGS, err := h.storage.LoadGameState(metaCtx, gs.ID)
 	if err != nil {
-		h.logger.Error("Failed to load latest game state for meta update", "error", err, "game_state_id", gs.ID.String())
+		h.logger.Error("Failed to load latest game state for gamestate delta", "error", err, "game_state_id", gs.ID.String())
 		return
 	}
 	if latestGS == nil {
-		h.logger.Warn("Game state not found during meta update", "game_state_id", gs.ID.String())
+		h.logger.Warn("Game state not found during gamestate delta", "game_state_id", gs.ID.String())
 		return
 	}
 
 	// Apply the calculated state to the latest game state
-	if err := applyMetaUpdate(latestGS, s, metaResponse); err != nil {
+	if err := applyGameStateDelta(latestGS, s, delta); err != nil {
 		if errors.Is(err, errSceneNotFound) {
-			h.logger.Warn("Scene not found during meta update", "error", err, "game_state_id", latestGS.ID.String())
+			h.logger.Warn("Scene not found during applyGameStateDelta", "error", err, "game_state_id", latestGS.ID.String())
 		} else {
-			h.logger.Error("Failed to apply meta update", "error", err, "game_state_id", latestGS.ID.String())
+			h.logger.Error("Failed applyGameStateDelta", "error", err, "game_state_id", latestGS.ID.String())
 			return
 		}
 	}
@@ -509,9 +510,9 @@ func (h *ChatHandler) updateGameMeta(ctx context.Context, gs *state.GameState, u
 		return
 	}
 
-	h.logger.Debug("Successfully updated game meta",
+	h.logger.Debug("Updated game meta",
 		"game_state_id", gs.ID.String(),
-		"meta_response", metaResponse,
+		"delta", delta,
 		"duration_s", time.Since(start).Seconds(),
 		"backend_model", backendModel,
 	)

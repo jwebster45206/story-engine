@@ -163,15 +163,16 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// If it looks like a censored model, apply content filtering
+	// If using a censored model, check the scenario for compatibility
 	if isCensoredModel(h.modelName) &&
 		s.Rating != scenario.RatingG &&
 		s.Rating != scenario.RatingPG &&
-		s.Rating != scenario.RatingPG13 {
+		s.Rating != scenario.RatingPG13 &&
+		s.Rating != "PG13" {
 		h.logger.Error("Attempt to use censored model with wrong scenario rating", "model", h.modelName, "rating", s.Rating)
 		w.WriteHeader(http.StatusBadRequest)
 		response := ErrorResponse{
-			Error: "Censored model cannot be used with this scenario rating",
+			Error: "Censored model cannot be used with this scenario rating: " + s.Rating,
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Failed to encode error response", "error", err)

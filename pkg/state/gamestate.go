@@ -3,6 +3,7 @@ package state
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/google/uuid"
@@ -58,46 +59,26 @@ func (gs *GameState) Validate() error {
 // It also provides scenario context and current game state context.
 func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, error) {
 	if gs == nil {
-		return chat.ChatMessage{}, fmt.Errorf("game state is nil")
-	}
-
-	if gs.SceneName != "" {
-		scene, ok := s.Scenes[gs.SceneName]
-		if !ok {
-			return chat.ChatMessage{}, fmt.Errorf("scene %s not found in scenario %s", gs.SceneName, s.Name)
-		}
-		return gs.GetScenePrompt(s, &scene)
-	}
-
-	jsonState, err := json.Marshal(ToPromptState(gs))
-	if err != nil {
-		return chat.ChatMessage{}, err
-	}
-
-	return chat.ChatMessage{
-		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf(scenario.StatePromptTemplate, s.Story, jsonState),
-	}, nil
-}
-
-func (gs *GameState) GetScenePrompt(s *scenario.Scenario, scene *scenario.Scene) (chat.ChatMessage, error) {
-	if gs == nil || scene == nil {
 		return chat.ChatMessage{}, fmt.Errorf("game state or scene is nil")
 	}
 
-	ps := PromptState{
-		NPCs:           scene.NPCs,
-		WorldLocations: scene.Locations,
-		Location:       gs.Location,
-		Inventory:      gs.Inventory,
+	var scene *scenario.Scene
+	if gs.SceneName != "" {
+		sc, ok := s.Scenes[gs.SceneName]
+		if !ok {
+			return chat.ChatMessage{}, fmt.Errorf("scene %s not found in scenario %s", gs.SceneName, s.Name)
+		}
+		scene = &sc
 	}
+
+	ps := ToPromptState(gs)
 	jsonScene, err := json.Marshal(ps)
 	if err != nil {
 		return chat.ChatMessage{}, err
 	}
 
 	story := s.Story
-	if scene.Story != "" {
+	if scene != nil && scene.Story != "" {
 		story += "\n\n" + scene.Story
 	}
 	return chat.ChatMessage{
@@ -224,7 +205,10 @@ func (gs *GameState) DeepCopy() (*GameState, error) {
 	return &copy, nil
 }
 
-// LoadScene prepares game state with a new scene.
+// LoadScene prepares game state with a new scene:
+// - loads new locations, NPCs, and vars from the scene
+// - overrides pre-existing values for locations, NPCs, and vars
+// - removes locations, NPCs (NOT vars) that are not present in the new scene
 func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 	scene, ok := s.Scenes[sceneName]
 	if !ok {
@@ -235,28 +219,53 @@ func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 	// Reset scene turn counter when loading a new scene
 	gs.SceneTurnCounter = 0
 
-	// Initialize Vars map if it's nil
+	// Initialize maps
 	if gs.Vars == nil {
 		gs.Vars = make(map[string]string)
 	}
+	if gs.WorldLocations == nil {
+		gs.WorldLocations = make(map[string]scenario.Location)
+	}
+	if gs.NPCs == nil {
+		gs.NPCs = make(map[string]scenario.NPC)
+	}
 
-	// Copy scene-specific elements to gamestate
 	// Copy locations from scene
 	if scene.Locations != nil {
-		gs.WorldLocations = scene.Locations
+		maps.Copy(gs.WorldLocations, scene.Locations)
+	}
+
+	// Remove any locations that are not in the global scenario locations,
+	// and also not in the current scene locations
+	for locName := range gs.WorldLocations {
+		_, existsInScenario := s.Locations[locName]
+		_, existsInScene := scene.Locations[locName]
+		if !existsInScenario && !existsInScene {
+			delete(gs.WorldLocations, locName)
+		}
 	}
 
 	// Copy NPCs from scene
 	if scene.NPCs != nil {
-		gs.NPCs = scene.NPCs
+		maps.Copy(gs.NPCs, scene.NPCs)
 	}
 
-	// copy stateful elements to gamestate
-	for k, v := range scene.Vars {
-		if _, exists := gs.Vars[k]; !exists {
-			gs.Vars[k] = v
+	// Remove any NPCs that are not in the global scenario NPCs,
+	// and also not in the current scene NPCs
+	for npcName := range gs.NPCs {
+		_, existsInScenario := s.NPCs[npcName]
+		_, existsInScene := scene.NPCs[npcName]
+		if !existsInScenario && !existsInScene {
+			delete(gs.NPCs, npcName)
 		}
 	}
+
+	// Vars from scene
+	if scene.Vars != nil {
+		maps.Copy(gs.Vars, scene.Vars)
+	}
+
+	gs.NormalizeItems()
 
 	return nil
 }
@@ -266,4 +275,51 @@ func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 func (gs *GameState) IncrementTurnCounters() {
 	gs.TurnCounter++
 	gs.SceneTurnCounter++
+}
+
+// NormalizeItems enforces item singletons by removing duplicate items across:
+// - User inventory (highest priority)
+// - NPC items (second priority)
+// - Location items (lowest priority)
+// If an item exists in multiple places, it is removed from the lower priority locations.
+func (gs *GameState) NormalizeItems() {
+	if gs == nil {
+		return
+	}
+
+	// Create a set of items in user inventory for fast lookup
+	userItems := make(map[string]bool)
+	for _, item := range gs.Inventory {
+		userItems[item] = true
+	}
+
+	// Remove duplicates from NPCs and enforce singletons within NPC collection
+	npcItems := make(map[string]bool)
+	for npcName, npc := range gs.NPCs {
+		var filteredItems []string
+		for _, item := range npc.Items {
+			// Keep item only if it's not in user inventory and not already claimed by another NPC
+			if !userItems[item] && !npcItems[item] {
+				filteredItems = append(filteredItems, item)
+				npcItems[item] = true
+			}
+		}
+		// Update the NPC in the map
+		npc.Items = filteredItems
+		gs.NPCs[npcName] = npc
+	}
+
+	// Remove duplicates from locations
+	for locName, location := range gs.WorldLocations {
+		var filteredItems []string
+		for _, item := range location.Items {
+			// Keep item only if it's not in user inventory or with NPCs
+			if !userItems[item] && !npcItems[item] {
+				filteredItems = append(filteredItems, item)
+			}
+		}
+		// Update the location in the map
+		location.Items = filteredItems
+		gs.WorldLocations[locName] = location
+	}
 }

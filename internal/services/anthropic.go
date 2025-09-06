@@ -12,15 +12,12 @@ import (
 	"time"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 const (
 	anthropicBaseURL = "https://api.anthropic.com/v1"
 	anthropicVersion = "2023-06-01"
-
-	DefaultAnthropicTemperature = 0.7
-	DefaultAnthropicMaxTokens   = 512
-	BackendAnthropicMaxTokens   = 512
 )
 
 // AnthropicService implements LLMService for Anthropic Claude
@@ -123,9 +120,9 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 	// Extract system messages and convert to Anthropic format
 	systemPrompt, conversationMessages := a.splitChatMessages(messages)
 
-	maxTokens := DefaultAnthropicMaxTokens
+	maxTokens := DefaultMaxTokens
 	if temperature == 0 {
-		maxTokens = BackendAnthropicMaxTokens
+		maxTokens = BackendMaxTokens
 	}
 	anthropicReq := AnthropicChatRequest{
 		Model:       modelName,
@@ -191,9 +188,10 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 	// Extract content from the response (text or tool use)
 	var responseText string
 	for _, content := range anthropicResp.Content {
-		if content.Type == "text" {
+		switch content.Type {
+		case "text":
 			responseText += content.Text
-		} else if content.Type == "tool_use" {
+		case "tool_use":
 			// For tool use, return the input as JSON
 			inputBytes, err := json.Marshal(content.Input)
 			if err != nil {
@@ -211,7 +209,7 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 }
 
 func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
-	content, err := a.chatCompletion(ctx, messages, a.modelName, DefaultAnthropicTemperature, nil)
+	content, err := a.chatCompletion(ctx, messages, a.modelName, DefaultTemperature, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +219,7 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 	}, nil
 }
 
-// getMetaUpdateTool returns the tool definition for meta updates
+// getMetaUpdateTool returns the tool definition for gamestate deltas
 func (a *AnthropicService) getMetaUpdateTool() AnthropicTool {
 	return AnthropicTool{
 		Name:        "apply_changes",
@@ -303,8 +301,8 @@ func (a *AnthropicService) getMetaUpdateTool() AnthropicTool {
 	}
 }
 
-// MetaUpdate processes a meta update request using Anthropic Claude
-func (a *AnthropicService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, string, error) {
+// MetaUpdate processes a gamestate delta request using Anthropic Claude
+func (a *AnthropicService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
 	// Determine which model to use for MetaUpdate
 	modelToUse := a.modelName
 	if a.backendModelName != "" {

@@ -10,15 +10,12 @@ import (
 	"time"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 const (
 	veniceBaseURL = "https://api.venice.ai/api/v1"
 	msgNoResponse = "(no response)"
-
-	DefaultVeniceTemperature = 0.7
-	DefaultVeniceMaxTokens   = 512
-	BackendVeniceMaxTokens   = 512
 )
 
 // VeniceService implements LLMService for Venice AI
@@ -104,9 +101,9 @@ func (v *VeniceService) InitModel(ctx context.Context, modelName string) error {
 
 // chatCompletion makes a chat completion request to Venice AI with the specified model
 func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, responseFormat *VeniceResponseFormat) (string, error) {
-	maxTokens := DefaultVeniceMaxTokens
+	maxTokens := DefaultMaxTokens
 	if temperature == 0.0 {
-		maxTokens = BackendVeniceMaxTokens
+		maxTokens = BackendMaxTokens
 	}
 	veniceReq := VeniceChatRequest{
 		Model:       modelName,
@@ -258,7 +255,7 @@ func (v *VeniceService) getMetaUpdateResponseFormat() *VeniceResponseFormat {
 
 // Chat generates a chat response using Venice AI
 func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
-	content, err := v.chatCompletion(ctx, messages, v.modelName, DefaultVeniceTemperature, nil)
+	content, err := v.chatCompletion(ctx, messages, v.modelName, DefaultTemperature, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +265,7 @@ func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (
 	}, nil
 }
 
-func (v *VeniceService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*chat.MetaUpdate, string, error) {
+func (v *VeniceService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
 	// Determine which model to use for MetaUpdate
 	modelToUse := v.modelName
 	if v.backendModelName != "" {
