@@ -86,11 +86,12 @@
         "When the player first encounters Ford Prefect, he seems oddly unconcerned about the bulldozers.",
         "Ford Prefect never leaves the house until the player speaks with him.",
         "To escape the demolition, the player must follow Ford Prefect's lead.",
-        "Stress the importance of acquiring the towel in the kitchen."
+        "Stress the importance of acquiring the bath towel in the kitchen."
       ],
       "contingency_rules": [
         "If the player stays in the house and the demolition begins, set `house_demolished` to true and the game ends poorly.",
-        "Update `scene_name` to 'hitchhiking' when the player leaves the house with Ford, or if he has already done so."
+        "Update `scene_name` to 'hitchhiking' when the player leaves the house with Ford, or if he has already done so.",
+        "If Ford hands the bath towel to the player, add it to the player's inventory."
       ]
     },
     "hitchhiking": {

@@ -1,6 +1,6 @@
 {
   "name": "Egyptian Expedition",
-  "story": "The year is 1923. The player is Dr. Alexandra Kane, a renowned archaeologist who has just received a cryptic telegram about an extraordinary discovery in the Egyptian desert. The sender claims to have found something that will 'rewrite history itself.' Armed with the player's expertise and a thirst for knowledge, they must navigate the mysteries of ancient secrets and modern dangers.",
+  "story": "The year is 1923. The player is Dr. Alexandra Kane, a renowned woman archaeologist who has just received a cryptic telegram about an extraordinary discovery in the Egyptian desert. The sender claims to have found something that will 'rewrite history itself.' Armed with the player's expertise and a thirst for knowledge, they must navigate the mysteries of ancient secrets and modern dangers.",
   "rating": "PG13",
   "scenes": {
     "telegram_mystery": {
@@ -82,10 +82,7 @@
         "Provide subtle hints about meeting Amara in the market."
       ],
       "contingency_rules": [
-        "If the player meets The Messenger, set `messenger_met` to true.",
-        "If the player solves Amara's riddle about the stars, set `amara_riddle_solved` to true and add 'star chart' to inventory.",
-        "When the player has both `messenger_met` and `amara_riddle_solved`: set `telegram_decoded` to true.",
-        "If the telegram is decoded, or riddle is solved, update `scene_name` to 'desert_expedition'."
+        "When the telegram is decoded, update `scene_name` to 'desert_expedition'."
       ]
     },
     "desert_expedition": {
@@ -178,9 +175,6 @@
         "Professor Blackwood may try to follow the player or sabotage their expedition."
       ],
       "contingency_rules": [
-        "If the player demonstrates knowledge of ancient Egyptian customs to Hassan, set `hassan_trust` to true.",
-        "When `hassan_trust` is true, Hassan reveals the temple location and `temple_location_revealed` becomes true.",
-        "If the player confronts Professor Blackwood about his suspicious behavior, set `blackwood_confronted` to true.",
         "Set `scene_name` to 'temple_discovery' when Hassan reveals the temple location, or if he has previously revealed it."
       ]
     },
@@ -302,8 +296,8 @@
   ],
   "contingency_prompts": [
     "Maintain the atmosphere of 1920s archaeological adventure throughout.",
-    "Treat the content like a Call of Cthulhu mystery, filled with cosmic horror and ancient secrets.",
-    "Narrator speaks with the voice of Vincent Price.",
+    "Treat the content like an Call of Cthulhu mystery, filled with cosmic horror and ancient secrets.",
+    "Narrator speaks with the voice of Agatha Christie.",
     "Professor Blackwood's rivalry should escalate throughout the adventure, becoming more desperate as the player succeeds."
   ]
 }
