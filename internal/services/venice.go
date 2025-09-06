@@ -166,9 +166,9 @@ func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.Chat
 	return veniceResp.Choices[0].Message.Content, nil
 }
 
-// getMetaUpdateResponseFormat returns the response format
+// getDeltaUpdateResponseFormat returns the response format
 // for structured gamestate updates
-func (v *VeniceService) getMetaUpdateResponseFormat() *VeniceResponseFormat {
+func (v *VeniceService) getDeltaUpdateResponseFormat() *VeniceResponseFormat {
 	return &VeniceResponseFormat{
 		Type: "json_schema",
 		JSONSchema: VeniceJSONSchema{
@@ -181,22 +181,20 @@ func (v *VeniceService) getMetaUpdateResponseFormat() *VeniceResponseFormat {
 					"user_location": map[string]interface{}{
 						"type": "string",
 					},
-					"scene_name": map[string]interface{}{
-						"type": []string{"string", "null"},
-					},
-					"add_to_inventory": map[string]interface{}{
-						"type": "array",
-						"items": map[string]interface{}{
-							"type": "string",
+					"scene_change": map[string]interface{}{
+						"type":                 "object",
+						"additionalProperties": false,
+						"properties": map[string]interface{}{
+							"to": map[string]interface{}{
+								"type": "string",
+							},
+							"reason": map[string]interface{}{
+								"type": "string",
+							},
 						},
+						"required": []string{"to", "reason"},
 					},
-					"remove_from_inventory": map[string]interface{}{
-						"type": "array",
-						"items": map[string]interface{}{
-							"type": "string",
-						},
-					},
-					"moved_items": map[string]interface{}{
+					"item_events": map[string]interface{}{
 						"type": "array",
 						"items": map[string]interface{}{
 							"type":                 "object",
@@ -205,36 +203,43 @@ func (v *VeniceService) getMetaUpdateResponseFormat() *VeniceResponseFormat {
 								"item": map[string]interface{}{
 									"type": "string",
 								},
-								"from": map[string]interface{}{
+								"action": map[string]interface{}{
 									"type": "string",
+									"enum": []string{"acquire", "give", "drop", "move", "use"},
+								},
+								"from": map[string]interface{}{
+									"type":                 "object",
+									"additionalProperties": false,
+									"properties": map[string]interface{}{
+										"type": map[string]interface{}{
+											"type": "string",
+											"enum": []string{"player", "npc", "location"},
+										},
+										"name": map[string]interface{}{
+											"type": "string",
+										},
+									},
+									"required": []string{"type"},
 								},
 								"to": map[string]interface{}{
-									"type": []string{"string", "null"},
+									"type":                 "object",
+									"additionalProperties": false,
+									"properties": map[string]interface{}{
+										"type": map[string]interface{}{
+											"type": "string",
+											"enum": []string{"player", "npc", "location"},
+										},
+										"name": map[string]interface{}{
+											"type": "string",
+										},
+									},
+									"required": []string{"type"},
 								},
-								"to_location": map[string]interface{}{
-									"type": []string{"string", "null"},
-								},
-							},
-							"required": []string{"item", "from"},
-						},
-					},
-					"updated_npcs": map[string]interface{}{
-						"type": "array",
-						"items": map[string]interface{}{
-							"type":                 "object",
-							"additionalProperties": false,
-							"properties": map[string]interface{}{
-								"name": map[string]interface{}{
-									"type": "string",
-								},
-								"description": map[string]interface{}{
-									"type": []string{"string", "null"},
-								},
-								"location": map[string]interface{}{
-									"type": []string{"string", "null"},
+								"consumed": map[string]interface{}{
+									"type": "boolean",
 								},
 							},
-							"required": []string{"name"},
+							"required": []string{"item", "action"},
 						},
 					},
 					"set_vars": map[string]interface{}{
@@ -244,10 +249,9 @@ func (v *VeniceService) getMetaUpdateResponseFormat() *VeniceResponseFormat {
 						},
 					},
 					"game_ended": map[string]interface{}{
-						"type": []string{"boolean", "null"},
+						"type": "boolean",
 					},
 				},
-				"required": []string{"user_location", "scene_name", "add_to_inventory", "game_ended"},
 			},
 		},
 	}
@@ -265,24 +269,23 @@ func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (
 	}, nil
 }
 
-func (v *VeniceService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
-	// Determine which model to use for MetaUpdate
+func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
 	modelToUse := v.modelName
 	if v.backendModelName != "" {
 		modelToUse = v.backendModelName
 	}
 
 	// Use structured JSON response format with temperature 0 for deterministic output
-	responseFormat := v.getMetaUpdateResponseFormat()
+	responseFormat := v.getDeltaUpdateResponseFormat()
 	content, err := v.chatCompletion(ctx, messages, modelToUse, 0.0, responseFormat)
 	if err != nil {
 		return nil, "", err
 	}
 
-	metaUpdate, err := parseMetaUpdateResponse(content)
+	deltaUpdate, err := parseDeltaUpdateResponse(content)
 	if err != nil {
 		return nil, "", err
 	}
 
-	return metaUpdate, modelToUse, nil
+	return deltaUpdate, modelToUse, nil
 }

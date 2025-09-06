@@ -219,8 +219,8 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 	}, nil
 }
 
-// getMetaUpdateTool returns the tool definition for gamestate deltas
-func (a *AnthropicService) getMetaUpdateTool() AnthropicTool {
+// getDeltaUpdateTool returns the tool definition for gamestate deltas
+func (a *AnthropicService) getDeltaUpdateTool() AnthropicTool {
 	return AnthropicTool{
 		Name:        "apply_changes",
 		Description: "Return only the delta for game state updates.",
@@ -231,22 +231,20 @@ func (a *AnthropicService) getMetaUpdateTool() AnthropicTool {
 				"user_location": map[string]interface{}{
 					"type": "string",
 				},
-				"scene_name": map[string]interface{}{
-					"type": "string",
-				},
-				"add_to_inventory": map[string]interface{}{
-					"type": "array",
-					"items": map[string]interface{}{
-						"type": "string",
+				"scene_change": map[string]interface{}{
+					"type":                 "object",
+					"additionalProperties": false,
+					"properties": map[string]interface{}{
+						"to": map[string]interface{}{
+							"type": "string",
+						},
+						"reason": map[string]interface{}{
+							"type": "string",
+						},
 					},
+					"required": []string{"to", "reason"},
 				},
-				"remove_from_inventory": map[string]interface{}{
-					"type": "array",
-					"items": map[string]interface{}{
-						"type": "string",
-					},
-				},
-				"moved_items": map[string]interface{}{
+				"item_events": map[string]interface{}{
 					"type": "array",
 					"items": map[string]interface{}{
 						"type":                 "object",
@@ -255,35 +253,43 @@ func (a *AnthropicService) getMetaUpdateTool() AnthropicTool {
 							"item": map[string]interface{}{
 								"type": "string",
 							},
-							"from": map[string]interface{}{
+							"action": map[string]interface{}{
 								"type": "string",
+								"enum": []string{"acquire", "give", "drop", "move", "use"},
+							},
+							"from": map[string]interface{}{
+								"type":                 "object",
+								"additionalProperties": false,
+								"properties": map[string]interface{}{
+									"type": map[string]interface{}{
+										"type": "string",
+										"enum": []string{"player", "npc", "location"},
+									},
+									"name": map[string]interface{}{
+										"type": "string",
+									},
+								},
+								"required": []string{"type"},
 							},
 							"to": map[string]interface{}{
-								"type": "string",
+								"type":                 "object",
+								"additionalProperties": false,
+								"properties": map[string]interface{}{
+									"type": map[string]interface{}{
+										"type": "string",
+										"enum": []string{"player", "npc", "location"},
+									},
+									"name": map[string]interface{}{
+										"type": "string",
+									},
+								},
+								"required": []string{"type"},
 							},
-							"to_location": map[string]interface{}{
-								"type": "string",
-							},
-						},
-					},
-				},
-				"updated_npcs": map[string]interface{}{
-					"type": "array",
-					"items": map[string]interface{}{
-						"type":                 "object",
-						"additionalProperties": false,
-						"properties": map[string]interface{}{
-							"name": map[string]interface{}{
-								"type": "string",
-							},
-							"description": map[string]interface{}{
-								"type": "string",
-							},
-							"location": map[string]interface{}{
-								"type": "string",
+							"consumed": map[string]interface{}{
+								"type": "boolean",
 							},
 						},
-						"required": []string{"name"},
+						"required": []string{"item", "action"},
 					},
 				},
 				"set_vars": map[string]interface{}{
@@ -296,31 +302,30 @@ func (a *AnthropicService) getMetaUpdateTool() AnthropicTool {
 					"type": "boolean",
 				},
 			},
-			"required": []string{"user_location", "scene_name", "add_to_inventory", "game_ended"},
 		},
 	}
 }
 
-// MetaUpdate processes a gamestate delta request using Anthropic Claude
-func (a *AnthropicService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
-	// Determine which model to use for MetaUpdate
+// DeltaUpdate processes a gamestate delta request using Anthropic Claude
+func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
+	// Determine which model to use for DeltaUpdate
 	modelToUse := a.modelName
 	if a.backendModelName != "" {
 		modelToUse = a.backendModelName
 	}
 
 	// Create tools for structured output (first tool will be automatically chosen)
-	tools := []AnthropicTool{a.getMetaUpdateTool()}
+	tools := []AnthropicTool{a.getDeltaUpdateTool()}
 
 	content, err := a.chatCompletion(ctx, messages, modelToUse, 0.0, tools)
 	if err != nil {
 		return nil, "", err
 	}
 
-	metaUpdate, err := parseMetaUpdateResponse(content)
+	deltaUpdate, err := parseDeltaUpdateResponse(content)
 	if err != nil {
 		return nil, "", err
 	}
 
-	return metaUpdate, modelToUse, nil
+	return deltaUpdate, modelToUse, nil
 }
