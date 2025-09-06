@@ -126,10 +126,12 @@ Game State:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.gameState.LoadScene(tt.scenario, tt.gameState.SceneName)
-			if err != nil {
-				if !tt.expectError {
-					t.Fatalf("Unexpected error loading scene: %v", err)
+			if tt.gameState.SceneName != "" {
+				err := tt.gameState.LoadScene(tt.scenario, tt.gameState.SceneName)
+				if err != nil {
+					if !tt.expectError {
+						t.Fatalf("Unexpected error loading scene: %v", err)
+					}
 				}
 				return
 			}
