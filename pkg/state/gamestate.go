@@ -59,46 +59,26 @@ func (gs *GameState) Validate() error {
 // It also provides scenario context and current game state context.
 func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, error) {
 	if gs == nil {
-		return chat.ChatMessage{}, fmt.Errorf("game state is nil")
-	}
-
-	if gs.SceneName != "" {
-		scene, ok := s.Scenes[gs.SceneName]
-		if !ok {
-			return chat.ChatMessage{}, fmt.Errorf("scene %s not found in scenario %s", gs.SceneName, s.Name)
-		}
-		return gs.GetScenePrompt(s, &scene)
-	}
-
-	jsonState, err := json.Marshal(ToPromptState(gs))
-	if err != nil {
-		return chat.ChatMessage{}, err
-	}
-
-	return chat.ChatMessage{
-		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf(scenario.StatePromptTemplate, s.Story, jsonState),
-	}, nil
-}
-
-func (gs *GameState) GetScenePrompt(s *scenario.Scenario, scene *scenario.Scene) (chat.ChatMessage, error) {
-	if gs == nil || scene == nil {
 		return chat.ChatMessage{}, fmt.Errorf("game state or scene is nil")
 	}
 
-	ps := PromptState{
-		NPCs:           scene.NPCs,
-		WorldLocations: scene.Locations,
-		Location:       gs.Location,
-		Inventory:      gs.Inventory,
+	var scene *scenario.Scene
+	if gs.SceneName != "" {
+		sc, ok := s.Scenes[gs.SceneName]
+		if !ok {
+			return chat.ChatMessage{}, fmt.Errorf("scene %s not found in scenario %s", gs.SceneName, s.Name)
+		}
+		scene = &sc
 	}
+
+	ps := ToPromptState(gs)
 	jsonScene, err := json.Marshal(ps)
 	if err != nil {
 		return chat.ChatMessage{}, err
 	}
 
 	story := s.Story
-	if scene.Story != "" {
+	if scene != nil && scene.Story != "" {
 		story += "\n\n" + scene.Story
 	}
 	return chat.ChatMessage{

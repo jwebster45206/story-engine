@@ -2,133 +2,137 @@
   "name": "Pirate Captain",
   "story": "The player is the captain of The Black Pearl, a legendary pirate ship. The player's crew has just docked at Tortuga, a notorious pirate haven. Adventure and treasure await as the player explores the Caribbean during the Golden Age of Piracy.",
   "rating": "PG-13",
+  "locations": {
+    "Tortuga": {
+      "name": "Tortuga",
+      "description": "A bustling pirate port filled with taverns, traders, and trouble.",
+      "exits": {
+        "east": "Black Pearl",
+        "south": "Sleepy Mermaid",
+        "west": "Tortuga Market"
+      },
+      "blocked_exits": {
+        "north": "Lots of British soldiers in northern docks."
+      }
+    },
+    "Black Pearl": {
+      "name": "Black Pearl",
+      "description": "The player's ship, moored at the docks, ready for the next voyage. ",
+      "exits": {
+        "west": "Tortuga",
+        "cabin door": "Captain's Cabin",
+        "open sea": "Open Sea"
+      },
+      "items": [
+        "ship repair ledger",
+        "billy the parrot"
+      ]
+    },
+    "Captain's Cabin": {
+      "name": "Captain's Cabin",
+      "description": "The player's personal quarters on the ship, filled with maps and treasures.",
+      "exits": {
+        "cabin door": "Black Pearl"
+      },
+      "items": [
+        "bag of pieces of eight",
+        "bag of gems",
+        "map of the Caribbean",
+        "letter from Calypso"
+      ]
+    },
+    "Sleepy Mermaid": {
+      "name": "Sleepy Mermaid",
+      "description": "A rowdy inn filled with pirates and rumors of treasure. Calypso serves drinks and shares tales of the sea. The shipwright sits at a corner table, sketching designs for ship repairs and scowling. ",
+      "exits": {
+        "north": "Tortuga",
+        "back door": "Tortuga Market"
+      }
+    },
+    "Tortuga Market": {
+      "name": "Tortuga Market",
+      "description": "A bustling market filled with merchants, pirates, and rare goods. The air is thick with the scent of spices and the sound of haggling.",
+      "exits": {
+        "main street": "Tortuga",
+        "Sleepy Mermaid back door": "Sleepy Mermaid"
+      },
+      "items": [
+        "forged documents",
+        "rare spices"
+      ]
+    },
+    "Open Sea": {
+      "name": "Open Sea",
+      "description": "The vast and treacherous waters of the Caribbean, certain death for an unrepaired ship.",
+      "blocked_exits": {
+        "tortuga": "Once it departs, the Pearl is deteriorating too quickly to return to port."
+      }
+    }
+  },
+  "npcs": {
+    "Gibbs": {
+      "name": "Gibbs",
+      "type": "pirate",
+      "disposition": "loyal",
+      "description": "The player's loyal first mate with a keen sense of duty.",
+      "important": true,
+      "location": "Black Pearl",
+      "items": []
+    },
+    "Calypso": {
+      "name": "Calypso",
+      "type": "bartender",
+      "disposition": "friendly but mysterious",
+      "description": "A bartender at the Sleepy Mermaid, known for her enchanting stories and elusive nature. Speaks with a Haitian accent.",
+      "important": true,
+      "location": "Sleepy Mermaid",
+      "items": [
+        "flagon of ale",
+        "deck of cards"
+      ]
+    },
+    "Charming Danny": {
+      "name": "Charming Danny",
+      "type": "merchant",
+      "disposition": "shrewd and cunning",
+      "description": "A merchant who deals in common items necessary for life at sea. Unpleasant smell and unpleasant demeanor, but has what the player needs. He owes a debt to the player, but is loath to repay it. With some persuasion, he will eventually give any of his wares to the player.",
+      "important": false,
+      "location": "Tortuga Market",
+      "items": [
+        "forged documents",
+        "rare spices",
+        "bottle of rum",
+        "black powder",
+        "flintlock pistol"
+      ]
+    },
+    "Shipwright": {
+      "name": "Shipwright",
+      "type": "shipwright",
+      "disposition": "gruff but helpful",
+      "description": "A burly shipwright who will repair the player's ship. He requires a ship repair ledger to begin the work, and a payment of 500 gold doubloons to complete the repairs.",
+      "important": true,
+      "location": "Sleepy Mermaid",
+      "items": []
+    }
+  },
   "scenes": {
     "shipwright": {
       "story": "The player's ship badly needs repairs. The player must identify this problem and find the shipwright to hire him to fix The Black Pearl.",
-      "locations": {
-        "Tortuga": {
-          "name": "Tortuga",
-          "description": "A bustling pirate port filled with taverns, traders, and trouble.",
-          "exits": {
-            "east": "Black Pearl",
-            "south": "Sleepy Mermaid",
-            "west": "Tortuga Market"
-          }
-        },
-        "Black Pearl": {
-          "name": "Black Pearl",
-          "description": "The player's ship, moored at the docks, ready for the next voyage.",
-          "exits": {
-            "west": "Tortuga",
-            "cabin door": "Captain's Cabin",
-            "open sea": "Open Sea"
-          },
-          "items": [
-            "ship repair ledger",
-            "prickles the parrot"
-          ]
-        },
-        "Captain's Cabin": {
-          "name": "Captain's Cabin",
-          "description": "The player's personal quarters on the ship, filled with maps and treasures.",
-          "exits": {
-            "cabin door": "Black Pearl"
-          },
-          "items": [
-            "bag of pieces of eight"
-          ]
-        },
-        "Sleepy Mermaid": {
-          "name": "Sleepy Mermaid",
-          "description": "A rowdy inn filled with pirates and rumors of treasure.",
-          "exits": {
-            "north": "Tortuga",
-            "back door": "Tortuga Market"
-          }
-        },
-        "Tortuga Market": {
-          "name": "Tortuga Market",
-          "description": "A bustling market filled with merchants, pirates, and rare goods. The air is thick with the scent of spices and the sound of haggling.",
-          "exits": {
-            "main street": "Tortuga",
-            "Sleepy Mermaid back door": "Sleepy Mermaid"
-          },
-          "items": [
-            "forged documents",
-            "rare spices"
-          ]
-        },
-        "Open Sea": {
-          "name": "Open Sea",
-          "description": "The vast and treacherous waters of the Caribbean, certain death for an unrepaired ship.",
-          "blocked_exits": {
-            "tortuga": "Once it departs, the Pearl is deteriorating too quickly to return to port."
-          }
-        }
-      },
-      "npcs": {
-        "Gibbs": {
-          "name": "Gibbs",
-          "type": "pirate",
-          "disposition": "loyal",
-          "description": "The player's loyal first mate with a keen sense of duty.",
-          "important": true,
-          "location": "Black Pearl",
-          "items": []
-        },
-        "Calypso": {
-          "name": "Calypso",
-          "type": "bartender",
-          "disposition": "teasing and tricky",
-          "description": "A bartender at the Sleepy Mermaid, known for her enchanting stories and elusive nature.",
-          "important": true,
-          "location": "Sleepy Mermaid",
-          "items": [
-            "Bottle of rum"
-          ]
-        },
-        "Shipwright": {
-          "name": "Shipwright",
-          "type": "shipwright",
-          "disposition": "gruff but helpful",
-          "description": "A burly shipwright who will repair the player's ship. He requires a ship repair ledger to begin the work, and a payment of 500 gold doubloons to complete the repairs.",
-          "important": true,
-          "location": "Sleepy Mermaid",
-          "items": []
-        },
-        "Charming Marvin": {
-          "name": "Charming Marvin",
-          "type": "merchant",
-          "disposition": "shrewd and cunning",
-          "description": "A merchant who deals in common items necessary for life at sea. Unpleasant smell and unpleasant demeanor, but has what the player needs.",
-          "important": false,
-          "location": "Tortuga Market",
-          "items": [
-            "forged documents",
-            "rare spices",
-            "bottle of rum",
-            "black powder",
-            "flintlock pistol"
-          ]
-        }
-      },
-      "vars": {
-        "black_pearl_repairs_started": "false",
-        "calypso_met": "false"
-      },
+      "locations": {},
+      "npcs": {},
+      "vars": {},
       "contingency_prompts": [
-        "When the player first enters the Sleepy Mermaid, Calypso greets them.",
-        "Calypso never leaves the Sleepy Mermaid, so the player must find her there.",
+        "When the player boards the black pearl, if the repair ledger is not in inventory, mention the repair ledger when describing the ship's condition.",
         "The shipwright can BEGIN work for a small deposit. To FINISH the repairs, he requires payment of 500 gold doubloons.",
-        "After cautioning them against it, allow the player to sail the Black Pearl without completing repairs."
+        "The player may attempt to sail the Black Pearl without completing repairs, although the game will end badly.",
+        "Calypso is the bartender at the Sleepy Mermaid. She greets her customers with a warm smile and a hint of mystery."
       ],
       "contingency_rules": [
-        "If the player has met Calypso, set the var `calypso_met` to `true`.",
-        "If the shipwright agrees to start repairs on the Black Pearl, set `black_pearl_repairs_started` to true and remove the ship repair ledger from inventory.",
-        "Set `scene_name` to 'british_docks' when `black_pearl_repairs_started` is true.",
-        "If `black_pearl_repairs_started` is true and `calypso_met` is true, set `scene_name` to 'british_docks'.",
-        "If `scene_turn_counter` exceeds 20, the repairs take too long and rival pirates attack - this causes the game to end.",
-        "If the player tries to leave Tortuga without starting repairs, the ship sinks and the game ends."
+        "When the shipwright agrees to repair the Black Pearl, set `scene_name` to 'british_docks'.",
+        "Reading the ship repair ledger adds it to inventory. Observing that it exists does not. ",
+        "When the shipwright agrees to repair the Black Pearl, remove the ship repair ledger from inventory.",
+        "If the Black Pearl leaves Tortuga in disrepair, the ship sinks and the game ends."
       ]
     },
     "british_docks": {
@@ -156,81 +160,16 @@
             "british naval uniform"
           ]
         },
-        "Black Pearl": {
-          "name": "Black Pearl",
-          "description": "The player's ship, moored at the docks, repairs in progress.",
-          "exits": {
-            "west": "Tortuga",
-            "cabin door": "Captain's Cabin"
-          },
-          "blocked_exits": {
-            "open sea": "The Black Pearl is still being repaired."
-          },
-          "items": [
-            "prickles the parrot"
-          ]
-        },
-        "Captain's Cabin": {
-          "name": "Captain's Cabin",
-          "description": "The player's personal quarters on the ship, filled with maps and treasures.",
-          "exits": {
-            "cabin door": "Black Pearl"
-          },
-          "items": [
-            "bag of pieces of eight"
-          ]
-        },
         "Sleepy Mermaid": {
           "name": "Sleepy Mermaid",
-          "description": "A rowdy inn filled with pirates and rumors of treasure.",
+          "description": "A rowdy inn, empty but for a few patrons. Calypso is trying to close up for the night.",
           "exits": {
             "north": "Tortuga",
             "back door": "Tortuga Market"
           }
-        },
-        "Tortuga Market": {
-          "name": "Tortuga Market",
-          "description": "A bustling market filled with merchants, pirates, and rare goods. The air is thick with the scent of spices and the sound of haggling.",
-          "exits": {
-            "main street": "Tortuga",
-            "Sleepy Mermaid back door": "Sleepy Mermaid"
-          },
-          "items": [
-            "forged documents",
-            "rare spices"
-          ]
         }
       },
       "npcs": {
-        "Gibbs": {
-          "name": "Gibbs",
-          "type": "pirate",
-          "disposition": "loyal",
-          "description": "The player's loyal first mate with a keen sense of duty.",
-          "important": true,
-          "location": "Black Pearl",
-          "items": []
-        },
-        "Calypso": {
-          "name": "Calypso",
-          "type": "bartender",
-          "disposition": "teasing and tricky",
-          "description": "A bartender at the Sleepy Mermaid, known for her enchanting stories and elusive nature.",
-          "important": true,
-          "location": "Sleepy Mermaid",
-          "items": [
-            "Bottle of rum"
-          ]
-        },
-        "Shipwright": {
-          "name": "Shipwright",
-          "type": "shipwright",
-          "disposition": "gruff but helpful",
-          "description": "A burly shipwright working on the player's ship repairs. He still needs payment of 500 gold doubloons to complete the work.",
-          "important": true,
-          "location": "Black Pearl",
-          "items": []
-        },
         "Davey": {
           "name": "Davey",
           "type": "pirate",
@@ -239,109 +178,45 @@
           "important": false,
           "location": "Tortuga Market",
           "items": []
-        },
-        "Charming Marvin": {
-          "name": "Charming Marvin",
-          "type": "merchant",
-          "disposition": "shrewd and cunning",
-          "description": "A merchant who deals in common items necessary for life at sea. Unpleasant smell and unpleasant demeanor, but has what the player needs.",
-          "important": false,
-          "location": "Tortuga Market",
-          "items": [
-            "forged documents",
-            "rare spices",
-            "british naval uniform",
-            "bottle of rum",
-            "black powder",
-            "flintlock pistol"
-          ]
         }
       },
-      "vars": {
-        "british_docks_accessed": "false",
-        "gold_stolen": "false",
-        "shipright_paid": "false"
-      },
       "contingency_prompts": [
-        "Allow the player to access the British Docks through creative in-world solutions, but not brute force.",
-        "The chest on the British Docks is too heavy for one person to carry.",
-        "British naval uniforms and forged documents might be useful for infiltrating the British Docks."
+        "The British docks are not easy to access. The player must use cunning and disguise.",
+        "The player should be advised to make a plan, gather resources, and get some minions and allies to help.",
+        "British naval uniforms and forged documents could be useful for infiltrating the British Docks.",
+        "The shipwright is now located in the Black Pearl, working on repairs. He does not like to be bothered at a time like this."
       ],
       "contingency_rules": [
-        "Only when the player accesses the British Docks, set `british_docks_accessed` to true.",
-        "Only when the player steals the chest of gold doubloons, set `gold_stolen` to true and add '510 gold doubloons' to inventory.",
-        "When the player has returned to the Black Pearl and paid the shipwright, remove 500 gold doubloons from inventory, leaving 10 gold doubloons, and set shipright_paid to true.",
-        "As soon as `shipwright_paid` is true, the scene advances to 'calypsos_map'.",
+        "When the player has returned to the Black Pearl and paid the shipwright, set `scene_name` to 'calypsos_map'.",
         "If the player is caught stealing at the British Docks without proper disguise, they are captured - the game ends with imprisonment.",
-        "If `scene_turn_counter` exceeds 10, British reinforcements arrive and the docks become too dangerous - the game ends with the player fleeing empty-handed.",
-        "If the player attacks British guards directly, they are overwhelmed and captured - the game ends poorly."
+        "If the player attacks British guards directly, the player is overwhelmed and captured - the game ends poorly."
       ]
     },
-     "calypsos_map": {
-      "story": "With gold in hand, the player can pay the shipwright. But Calypso has something special for the player - a treasure map that will lead to even greater riches. The player must complete their business and claim the map.",
+    "calypsos_map": {
+      "story": "With gold in hand, the player can pay the shipwright. But Calypso has something special for the player - a treasure map that will lead to even greater riches. The player must complete their business and claim the map. The hour is late, and the streets are quiet.",
       "locations": {
         "Tortuga": {
           "name": "Tortuga",
-          "description": "A bustling pirate port filled with taverns, traders, and trouble.",
+          "description": "A bustling pirate port, closed down for the night. Shadows flicker in the alleys. ",
           "exits": {
             "east": "Black Pearl",
-            "south": "Sleepy Mermaid",
-            "west": "Tortuga Market"
+            "south": "Sleepy Mermaid"
+          },
+          "blocked_exits": {
+            "north": "Nothing useful for pirates in the British Docks.",
+            "west": "Tortuga Market, closed"
           }
-        },
-        "Black Pearl": {
-          "name": "Black Pearl",
-          "description": "The player's ship, moored at the docks, nearly ready to sail.",
-          "exits": {
-            "west": "Tortuga",
-            "cabin door": "Captain's Cabin",
-            "open sea": "The open sea. It calls to a pirate's heart."
-          },
-          "items": [
-            "prickles the parrot"
-          ]
-        },
-        "Captain's Cabin": {
-          "name": "Captain's Cabin",
-          "description": "The player's personal quarters on the ship, filled with maps and treasures.",
-          "exits": {
-            "cabin door": "Black Pearl"
-          },
-          "items": [
-            "bag of pieces of eight"
-          ]
         },
         "Sleepy Mermaid": {
           "name": "Sleepy Mermaid",
-          "description": "A rowdy inn filled with pirates and rumors of treasure.",
+          "description": "A rowdy inn, empty but for a few patrons. Calypso is trying to close up for the night.",
           "exits": {
             "north": "Tortuga",
             "back door": "Tortuga Market"
           }
-        },
-        "Tortuga Market": {
-          "name": "Tortuga Market",
-          "description": "A bustling market filled with merchants, pirates, and rare goods. The air is thick with the scent of spices and the sound of haggling.",
-          "exits": {
-            "main street": "Tortuga",
-            "Sleepy Mermaid back door": "Sleepy Mermaid"
-          },
-          "items": [
-            "forged documents",
-            "rare spices"
-          ]
         }
       },
       "npcs": {
-        "Gibbs": {
-          "name": "Gibbs",
-          "type": "pirate",
-          "disposition": "loyal",
-          "description": "The player's loyal first mate with a keen sense of duty.",
-          "important": true,
-          "location": "Black Pearl",
-          "items": []
-        },
         "Calypso": {
           "name": "Calypso",
           "type": "bartender",
@@ -351,37 +226,19 @@
           "location": "Sleepy Mermaid",
           "items": [
             "treasure map",
-            "Bottle of rum"
+            "flagon of ale",
+            "deck of cards"
           ]
-        },
-        "Shipwright": {
-          "name": "Shipwright",
-          "type": "shipwright",
-          "disposition": "gruff but helpful",
-          "description": "A burly shipwright working on the player's ship repairs. He's ready to complete the work once the player pays him 500 gold doubloons.",
-          "important": true,
-          "location": "Black Pearl",
-          "items": []
         }
-      },
-      "vars": {
-        "blacksmith_paid": "false",
-        "map_obtained": "false",
-        "treasure_found": "false",
-        "rival_pirates_encountered": "false"
       },
       "contingency_prompts": [
         "Calypso will only give the treasure map to someone she trusts - someone who has proven themselves worthy.",
         "The treasure map leads to Dead Man's Cove, but rival pirates may also be seeking the same treasure.",
-        "The Black Pearl is now seaworthy and ready for the final adventure."
+        "The Black Pearl is now seaworthy and ready for the final adventure.",
+        "The shipwright does not participate in this part of the adventure."
       ],
       "contingency_rules": [
-        "Only when the player receives the treasure map from Calypso, set `map_obtained` to true and add 'treasure map' to inventory.",
-        "If the player sets sail with the treasure map, set `treasure_found` to true - the game ends with legendary pirate success.",
-        "If the player obtains the map but waits too long to leave, set `rival_pirates_encountered` to true and rival pirates steal the map - the game ends with bitter defeat.",
-        "If the player leaves without the treasure map, they have modest success but miss the greatest treasure - the game ends with moderate success.",
-        "If `scene_turn_counter` exceeds 6, rival pirates arrive at Tortuga seeking the same treasure - the game ends with the player having to flee.",
-        "The game always ends when the player sets sail from Tortuga with or without the map."
+        "IMPORTANT: The game ends when the player sets sail from Tortuga, with or without the map. Final score is based on whether the player obtained the treasure map."
       ]
     }
   },
@@ -395,14 +252,14 @@
   ],
   "contingency_prompts": [
     "Use some humor in responses.",
-    "Time is always a factor in pirate adventures - rival crews and the Royal Navy are constant threats.",
-    "The Caribbean is dangerous - direct confrontation usually leads to defeat, but cunning and wit often triumph.",
-    "Calypso has mysterious powers and knowledge that can help or hinder the player's quest."
+    "Encourage the player to embrace their villainous and piratical nature.",
+    "If stuck, the player should consult Calypso.",
+    "Calypso does not reciprocate flirtation."
   ],
   "contingency_rules": [
     "Never let Gibbs leave the player's side. He is always ready to assist and will follow the player wherever they go.",
     "If the player becomes reckless or takes too long, rival pirates or the Royal Navy will interfere.",
     "The game should end within 25 total turns across all scenes to maintain urgency."
   ],
-  "game_end_prompt": "Weigh anchor and evaluate the player's pirate career! Rate their performance like a seasoned pirate captain would - from 'Scurvy Dog' (terrible) to 'Pirate King' (legendary). Consider their cunning, speed, treasure acquired, and whether they lived up to the pirate code. Give them a proper pirate sendoff with humor and maritime flair!"
+  "game_end_prompt": "Weigh anchor and evaluate the player's pirate career! Rate their performance using with humor. Consider cunning, speed, treasure acquired, and whether they lived up to the pirate code. Give them a proper pirate sendoff with humor and maritime flair!"
 }
