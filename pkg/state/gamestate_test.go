@@ -126,7 +126,13 @@ Game State:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.gameState.LoadScene(tt.scenario, tt.gameState.SceneName)
+			err := tt.gameState.LoadScene(tt.scenario, tt.gameState.SceneName)
+			if err != nil {
+				if !tt.expectError {
+					t.Fatalf("Unexpected error loading scene: %v", err)
+				}
+				return
+			}
 			result, err := tt.gameState.GetStatePrompt(tt.scenario)
 			if tt.expectError {
 				if err == nil {
@@ -187,7 +193,10 @@ func TestGameState_GetStatePrompt_JSONStructure(t *testing.T) {
 		},
 	}
 
-	gameState.LoadScene(scenario, "test_scene")
+	err := gameState.LoadScene(scenario, "test_scene")
+	if err != nil {
+		t.Fatalf("Error loading scene: %v", err)
+	}
 	result, err := gameState.GetStatePrompt(scenario)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
