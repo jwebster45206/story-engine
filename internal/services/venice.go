@@ -32,9 +32,9 @@ type VeniceResponseFormat struct {
 }
 
 type VeniceJSONSchema struct {
-	Name   string                 `json:"name"`
-	Strict bool                   `json:"strict"`
-	Schema map[string]interface{} `json:"schema"`
+	Name   string         `json:"name"`
+	Strict bool           `json:"strict"`
+	Schema map[string]any `json:"schema"`
 }
 
 type VeniceParameters struct {
@@ -174,84 +174,85 @@ func (v *VeniceService) getDeltaUpdateResponseFormat() *VeniceResponseFormat {
 		JSONSchema: VeniceJSONSchema{
 			Name:   "apply_changes",
 			Strict: true,
-			Schema: map[string]interface{}{
+			Schema: map[string]any{
 				"type":                 "object",
 				"additionalProperties": false,
-				"properties": map[string]interface{}{
-					"user_location": map[string]interface{}{
+				"properties": map[string]any{
+					"user_location": map[string]any{
 						"type": "string",
 					},
-					"scene_change": map[string]interface{}{
+					"scene_change": map[string]any{
 						"type":                 "object",
 						"additionalProperties": false,
-						"properties": map[string]interface{}{
-							"to": map[string]interface{}{
+						"properties": map[string]any{
+							"to": map[string]any{
 								"type": "string",
 							},
-							"reason": map[string]interface{}{
+							"reason": map[string]any{
 								"type": "string",
 							},
 						},
 						"required": []string{"to", "reason"},
 					},
-					"item_events": map[string]interface{}{
+					"item_events": map[string]any{
 						"type": "array",
-						"items": map[string]interface{}{
+						"items": map[string]any{
 							"type":                 "object",
 							"additionalProperties": false,
-							"properties": map[string]interface{}{
-								"item": map[string]interface{}{
+							"properties": map[string]any{
+								"item": map[string]any{
 									"type": "string",
 								},
-								"action": map[string]interface{}{
+								"action": map[string]any{
 									"type": "string",
 									"enum": []string{"acquire", "give", "drop", "move", "use"},
 								},
-								"from": map[string]interface{}{
+								"from": map[string]any{
 									"type":                 "object",
 									"additionalProperties": false,
-									"properties": map[string]interface{}{
-										"type": map[string]interface{}{
+									"properties": map[string]any{
+										"type": map[string]any{
 											"type": "string",
 											"enum": []string{"player", "npc", "location"},
 										},
-										"name": map[string]interface{}{
+										"name": map[string]any{
 											"type": "string",
 										},
 									},
 									"required": []string{"type"},
 								},
-								"to": map[string]interface{}{
+								"to": map[string]any{
 									"type":                 "object",
 									"additionalProperties": false,
-									"properties": map[string]interface{}{
-										"type": map[string]interface{}{
+									"properties": map[string]any{
+										"type": map[string]any{
 											"type": "string",
 											"enum": []string{"player", "npc", "location"},
 										},
-										"name": map[string]interface{}{
+										"name": map[string]any{
 											"type": "string",
 										},
 									},
 									"required": []string{"type"},
 								},
-								"consumed": map[string]interface{}{
+								"consumed": map[string]any{
 									"type": "boolean",
 								},
 							},
 							"required": []string{"item", "action"},
 						},
 					},
-					"set_vars": map[string]interface{}{
+					"set_vars": map[string]any{
 						"type": "object",
-						"additionalProperties": map[string]interface{}{
+						"additionalProperties": map[string]any{
 							"type": "string",
 						},
 					},
-					"game_ended": map[string]interface{}{
+					"game_ended": map[string]any{
 						"type": "boolean",
 					},
 				},
+				"required": []string{"user_location", "scene_change", "item_events", "game_ended"},
 			},
 		},
 	}

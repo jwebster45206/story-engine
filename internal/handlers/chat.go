@@ -568,6 +568,7 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 		h.logger.Error("Failed to get meta extraction response from LLM", "error", err, "game_state_id", gs.ID.String())
 		return
 	}
+	h.logger.Debug("Received gamestate delta from LLM", "game_state_id", gs.ID.String(), "delta", delta, "backend_model", backendModel)
 	if delta == nil {
 		return
 	}
