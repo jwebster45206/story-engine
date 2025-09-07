@@ -21,114 +21,71 @@ Move the story forward gradually, allowing the user to explore and discover thin
 const GameEndSystemPrompt = `This user's session has ended. Regardless of the user's input, the game will not continue. Respond in a way that will wrap up the game in a narrative manner. End with a fancy "*.*.*.*.*.*. THE END .*.*.*.*.*.*" line, followed by instructions to use Ctrl+N to start a new game or Ctrl+C to exit.`
 
 // Prompt for extracting PromptState JSON from the LLM
-const PromptStateExtractionInstructions = `
-You are a backend system translating narrative into structured JSON changes. Your task is to read the most recent agent narrative response and the current game state, then output the changes resulting from the agent's response.
+const PromptStateExtractionInstructions = `You are a backend reducer. Read the latest narrative and current game state, then output ONLY a JSON object matching the provided schema. No prose.
 
-### Location Updates:
-- With every request, provide a "user_location" value with the current location of the user.
-- Select the most appropriate location from those available in the scenario. 
-- Do not permit movement to locations not in the scenario. 
-- IMPORTANT: Players can ONLY move to locations that are listed in the "exits" object of their current location. If a location is not in the exits list, movement is IMPOSSIBLE in one turn. 
-- Players cannot teleport or move multiple locations in a single turn. They must use the defined exits one at a time.
-- Do not permit movement through blocked exits. 
-- Do not invent new locations.
-- Example: If player is in "Tavern" and exits are {"north": "Town Square", "east": "Kitchen"}, the player can ONLY move to "Town Square" or "Kitchen". They cannot go to "Forest" even if it exists in the scenario, unless it's listed as an exit from Tavern.
-- Example: To go from "Tavern" to "Forest", the player must first move to an intermediate location that has "Forest" as an exit. 
+OUTPUT SCHEMA (strict)
+- user_location: string (always required)
+- scene_change: object { to, reason } or null when no change
+- item_events: array of { item, action, from?, to?, consumed?, evidence? } (always required, may be empty)
+  • action ∈ {"acquire","give","drop","move","use"}
+  • from/to.type ∈ {"player","npc","location"}; include name when type ≠ "player"
+- set_vars: object (always required, may be empty)
+- game_ended: boolean (always required)
 
-### Item Updates:
-CRITICAL RULE: Items go into inventory ONLY when the player TAKES POSSESSION. Seeing, examining, touching, or discussing items does NOT add them to inventory.
+GENERAL RULES
+- Do not invent scenes, locations, items, NPCs, or variables beyond those in the scenario.
+- It is acceptable to output empty arrays or empty objects when nothing changes.
+- Include all required fields every time.
 
-WHEN TO ADD ITEMS (add_to_inventory):
-- Player "takes", "grabs", "picks up", "pockets", "stores", "receives" an item
-- Player "puts the [item] in their bag/pocket"
-- NPC "gives", "hands over", "passes" an item to the player
-- Player "collects", "gathers", "acquires" physical possession
+LOCATION
+- Always set user_location to the player’s current location.
+- Movement only if destination is in current_location.exits, not blocked, and exactly one step.
+- If no move, repeat the current location.
 
-WHEN NOT TO ADD ITEMS (make NO changes):
-- Player "sees", "looks at", "notices", "spots", "observes" an item
-- Player "examines", "inspects", "studies", "reads" an item
-- Player "touches", "feels", "handles" an item briefly
-- Player "considers", "thinks about", "wants" an item
-- Player "negotiates for", "asks about", "discusses" an item
-- Player "tries to take" but fails (locked, heavy, refused, etc.)
-- Item is simply mentioned as being present in a location
+ITEMS
+- Emit item_events only when possession changes or an item is used.
+  • Observing/examining/mentioning/negotiating/failed attempts → no event.
+  • acquire: item ends with player.
+  • give: player → NPC.
+  • drop: player → location.
+  • move: explicit from→to between holders.
+  • use: player uses an item they hold; set consumed=true only if narrative says so.
+- Use canonical item IDs from the scenario/state.
 
-REMOVING ITEMS:
-- DISCARDING: Player "drops", "throws", "abandons", "discards" -> remove_from_inventory
-- GIVING: Player "gives", "hands to", "offers to" an NPC -> remove_from_inventory
-- USING: Player actively uses an item they possess -> used_items (but keep in inventory unless consumed)
+SCENES
+- If a rule triggers a scene progression, output scene_change {to, reason}.
+- Otherwise set scene_change=null.
 
-Examples:
-- "The player sees a sword on the wall." -> [] (only observing)
-- "The player examines the sword closely." -> [] (examining, not taking)  
-- "The player touches the sword's blade." -> [] (touching, not taking)
-- "The player wants the sword badly." -> [] (wanting, not taking)
-- "The guard refuses to let the player take the sword." -> [] (failed attempt)
-- "The player picks up the sword." -> "add_to_inventory": ["sword"]
-- "The merchant hands the player a sword after payment." -> "add_to_inventory": ["sword"]
-- "The player gives the bottle of rum to Calypso." -> "remove_from_inventory": ["bottle of rum"]
-- "The player sees oranges at the market stall." -> [] (only observing)
-- "The player haggling with a merchant over oranges." -> [] (still negotiating, no possession)
-- "The merchant refuses to sell the sword." -> [] (failed attempt, no possession)
-- "The merchant hands over the sword after payment." -> "add_to_inventory": ["sword"] (successful acquisition)
-- "The player picks up the key from the table." -> "add_to_inventory": ["key"] (successful acquisition)
-- "The player enters the library. An ancient tome sits on a pedestal." -> [] (only observing, no acquisition)
-- "The player examines the tome closely, reading its cover." -> [] (examining, not taking)
-- "The player carefully lifts the tome from the pedestal." -> "add_to_inventory": ["ancient tome"] (physical possession)
+VARIABLES
+- When a rule or action changes a variable, update set_vars accordingly.
+- If no variables change, output an empty object {}.
 
-### NPC Updates:
-IMPORTANT: Only update NPCs when the narrative explicitly describes a change. Mentioning an NPC without changes requires NO updates.
+GAME END
+- Always include game_ended.
+- true if narrative describes a definitive ending OR a rule ends the game this turn.
+- false otherwise.
 
-- LOCATION CHANGES: Add NPC to "updated_npcs" ONLY when the narrative explicitly states the NPC moves, walks, goes, travels, or changes location. Include name, description, and new location.
-- BEHAVIOR CHANGES: Add NPC to "updated_npcs" ONLY when the narrative describes a clear change in mood, attitude, appearance, or behavior. Update the description to reflect the change.
-- NO CHANGES: If an NPC simply speaks, is mentioned, or appears without any described changes, make NO NPC updates.
-- Use only locations that exist in the scenario.
-- Never invent new NPCs or new locations.
+CONTINGENCY RULES
+These scenario-provided rules can affect ANY field. Apply all that are satisfied this turn. Rules:
+—%s
 
-Examples:
-- "The guard walks from the courtyard to the armory." -> "updated_npcs": [{"name": "Guard", "description": "...", "location": "armory"}]
-- "The merchant becomes angry and starts shouting." -> "updated_npcs": [{"name": "Merchant", "description": "An angry merchant shouting at customers", "location": "market"}]
-- "The captain speaks to you calmly." -> [] (no change described, just dialogue)
-- "You see the blacksmith working at his forge." -> [] (no change, just observation)
-- "The tavern keeper continues serving drinks." -> [] (ongoing action, no change)
-
-### Scene Updates:
-Scenes are sections of the story. SCENES ARE NOT LOCATIONS. Advance scenes when story conditions are met to keep the narrative progressing.
-- Use only scenes that are defined in the scenario. 
-- NEVER INVENT NEW SCENES.
-- When contingency rules indicate a scene change should occur, make the change to advance the story.
-
-### Contingency Rules:
-Apply these rules when the most recent narrative shows that the condition has been met. Check each rule against what actually happened in the narrative.
-
-- VARIABLE UPDATES: When narrative describes actions that trigger variable changes, update "set_vars" accordingly.
-- SCENE PROGRESSION: When contingency rules for scene change are met, set "scene_name" to advance the story. Don't hesitate to progress scenes when conditions are satisfied.
-- RULE CHECKING: Compare the narrative against each contingency rule to see if conditions are satisfied.
-
-Examples:
-- Rule: "Scene changes to 'treasure_room' when player finds the golden key." + Narrative: "Player picks up the golden key." -> "scene_name": "treasure_room"
-- Rule: "Set 'door_unlocked' to true when player uses key on door." + Narrative: "Player unlocks the door with the key." -> "set_vars": {"door_unlocked": "true"}
-- Rule: "Set 'guards_alerted' to true if player makes noise." + Narrative: "Player carefully sneaks past." -> [] (condition not met)
-
-Contingency Rules for this scenario:
--%s
-
-### Game End Rules:
-CRITICAL: Set "game_ended" to true when the narrative describes a definitive ending or when contingency rules are triggered.
-
-- EXPLICIT ENDINGS: Set "game_ended" to true when the narrative describes death, victory, failure, or other clear story conclusion.
-- CONTINGENCY TRIGGERS: Set "game_ended" to true when contingency rules specifically state the game should end and those conditions are met.
-- CLOSE CALLS: If the player is in danger, injured, or facing challenges but NOT definitively dead/defeated, and other end conditions do not apply, do NOT end the game.
-- TEMPORARY SETBACKS: Failures, mistakes, or bad situations that don't explicitly end the story should NOT trigger game_ended.
-
-Examples:
-- "The player collapses and dies from the poison." -> "game_ended": true (explicit death)
-- "The player has rescued the princess and the kingdom celebrates." -> "game_ended": true (explicit victory)
-- "Contingency rule: Game ends when turn_counter exceeds 10. Current turn_counter is 11." -> "game_ended": true (rule triggered)
-- "Contingency rule: Game ends if player is captured. Player is captured by goblins." -> "game_ended": true (rule triggered)
-- "The player is badly injured and falls unconscious." -> "game_ended": false (injured but not dead)
-- "The player fails to convince the guard and is thrown in jail." -> "game_ended": false (setback, not ending)
-- "The ship is damaged but still afloat." -> "game_ended": false (danger but continuing)
+EXAMPLES
+- "sees a sword" → item_events: []
+- "picks up the sword from the table" →
+  item_events:[{item:"Sword", action:"acquire", from:{type:"location", name:"Sword Chamber"}}]
+- "gives bottle of rum to Calypso" →
+  item_events:[{item:"Rum Bottle", action:"give", from:{type:"player"}, to:{type:"npc", name:"Calypso"}}]
+- "uses bandage and it is consumed" →
+  item_events:[{item:"Bandage", action:"use", consumed:true}]
+- "repairs begin (rule:'Change scene to british_docks when repairs are started.')" →
+  scene_change:{to:"british_docks", reason:"contingency rule"}
+- "repairs are discussed (rule:'Change scene to british_docks when repairs are started.')" →
+  scene_change:{} (no change, rule not triggered)
+- "sees the sword in stone (rule:'Set the scene to sword_achieved when the sword is pulled from the stone.')" →
+  scene_change:{} (no change, rule not triggered)
+- "pulls the sword from the stone (rule:'Set the scene to sword_achieved when the sword is pulled from the stone.')" →
+  scene_change:{to:"sword_achieved", reason:"contingency rule"},
+  item_events:[{item:"Sword", action:"acquire", from:{type:"location", name:"sword room"}}]
 `
 
 // GlobalContingencyRules contains the contingency rules that apply to all scenes.

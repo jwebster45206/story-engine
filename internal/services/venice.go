@@ -32,9 +32,9 @@ type VeniceResponseFormat struct {
 }
 
 type VeniceJSONSchema struct {
-	Name   string                 `json:"name"`
-	Strict bool                   `json:"strict"`
-	Schema map[string]interface{} `json:"schema"`
+	Name   string         `json:"name"`
+	Strict bool           `json:"strict"`
+	Schema map[string]any `json:"schema"`
 }
 
 type VeniceParameters struct {
@@ -166,88 +166,95 @@ func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.Chat
 	return veniceResp.Choices[0].Message.Content, nil
 }
 
-// getMetaUpdateResponseFormat returns the response format
+// getDeltaUpdateResponseFormat returns the response format
 // for structured gamestate updates
-func (v *VeniceService) getMetaUpdateResponseFormat() *VeniceResponseFormat {
+func (v *VeniceService) getDeltaUpdateResponseFormat() *VeniceResponseFormat {
 	return &VeniceResponseFormat{
 		Type: "json_schema",
 		JSONSchema: VeniceJSONSchema{
 			Name:   "apply_changes",
 			Strict: true,
-			Schema: map[string]interface{}{
+			Schema: map[string]any{
 				"type":                 "object",
 				"additionalProperties": false,
-				"properties": map[string]interface{}{
-					"user_location": map[string]interface{}{
+				"properties": map[string]any{
+					"user_location": map[string]any{
 						"type": "string",
 					},
-					"scene_name": map[string]interface{}{
-						"type": []string{"string", "null"},
-					},
-					"add_to_inventory": map[string]interface{}{
-						"type": "array",
-						"items": map[string]interface{}{
-							"type": "string",
+					// REQUIRED + NULLABLE scene_change
+					"scene_change": map[string]any{
+						"anyOf": []any{
+							map[string]any{
+								"type":                 "object",
+								"additionalProperties": false,
+								"properties": map[string]any{
+									"to":     map[string]any{"type": "string"},
+									"reason": map[string]any{"type": "string"},
+								},
+								"required": []string{"to", "reason"},
+							},
+							map[string]any{"type": "null"},
 						},
 					},
-					"remove_from_inventory": map[string]interface{}{
+					"item_events": map[string]any{
 						"type": "array",
-						"items": map[string]interface{}{
-							"type": "string",
-						},
-					},
-					"moved_items": map[string]interface{}{
-						"type": "array",
-						"items": map[string]interface{}{
+						"items": map[string]any{
 							"type":                 "object",
 							"additionalProperties": false,
-							"properties": map[string]interface{}{
-								"item": map[string]interface{}{
+							"properties": map[string]any{
+								"item": map[string]any{
 									"type": "string",
 								},
-								"from": map[string]interface{}{
+								"action": map[string]any{
 									"type": "string",
+									"enum": []string{"acquire", "give", "drop", "move", "use"},
 								},
-								"to": map[string]interface{}{
-									"type": []string{"string", "null"},
+								"from": map[string]any{
+									"type":                 "object",
+									"additionalProperties": false,
+									"properties": map[string]any{
+										"type": map[string]any{
+											"type": "string",
+											"enum": []string{"player", "npc", "location"},
+										},
+										"name": map[string]any{
+											"type": "string",
+										},
+									},
+									"required": []string{"type"},
 								},
-								"to_location": map[string]interface{}{
-									"type": []string{"string", "null"},
+								"to": map[string]any{
+									"type":                 "object",
+									"additionalProperties": false,
+									"properties": map[string]any{
+										"type": map[string]any{
+											"type": "string",
+											"enum": []string{"player", "npc", "location"},
+										},
+										"name": map[string]any{
+											"type": "string",
+										},
+									},
+									"required": []string{"type"},
+								},
+								"consumed": map[string]any{
+									"type": "boolean",
 								},
 							},
-							"required": []string{"item", "from"},
+							"required": []string{"item", "action"},
 						},
 					},
-					"updated_npcs": map[string]interface{}{
-						"type": "array",
-						"items": map[string]interface{}{
-							"type":                 "object",
-							"additionalProperties": false,
-							"properties": map[string]interface{}{
-								"name": map[string]interface{}{
-									"type": "string",
-								},
-								"description": map[string]interface{}{
-									"type": []string{"string", "null"},
-								},
-								"location": map[string]interface{}{
-									"type": []string{"string", "null"},
-								},
-							},
-							"required": []string{"name"},
-						},
-					},
-					"set_vars": map[string]interface{}{
+					"set_vars": map[string]any{
 						"type": "object",
-						"additionalProperties": map[string]interface{}{
+						"additionalProperties": map[string]any{
 							"type": "string",
 						},
 					},
-					"game_ended": map[string]interface{}{
-						"type": []string{"boolean", "null"},
+					"game_ended": map[string]any{
+						"type": "boolean",
 					},
 				},
-				"required": []string{"user_location", "scene_name", "add_to_inventory", "game_ended"},
+				"required": []string{"user_location", "scene_change", "item_events", "game_ended"},
 			},
 		},
 	}
@@ -265,24 +272,23 @@ func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (
 	}, nil
 }
 
-func (v *VeniceService) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
-	// Determine which model to use for MetaUpdate
+func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
 	modelToUse := v.modelName
 	if v.backendModelName != "" {
 		modelToUse = v.backendModelName
 	}
 
 	// Use structured JSON response format with temperature 0 for deterministic output
-	responseFormat := v.getMetaUpdateResponseFormat()
+	responseFormat := v.getDeltaUpdateResponseFormat()
 	content, err := v.chatCompletion(ctx, messages, modelToUse, 0.0, responseFormat)
 	if err != nil {
 		return nil, "", err
 	}
 
-	metaUpdate, err := parseMetaUpdateResponse(content)
+	deltaUpdate, err := parseDeltaUpdateResponse(content)
 	if err != nil {
 		return nil, "", err
 	}
 
-	return metaUpdate, modelToUse, nil
+	return deltaUpdate, modelToUse, nil
 }

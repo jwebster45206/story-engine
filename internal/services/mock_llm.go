@@ -22,35 +22,57 @@ type MockLLMAPI struct {
 	mu sync.Mutex // protects all fields above
 }
 
-// MetaUpdate mocks the MetaUpdate functionality
-func (m *MockLLMAPI) MetaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
-	// For testing, return a simple mock MetaUpdate
+// DeltaUpdate mocks the DeltaUpdate functionality
+func (m *MockLLMAPI) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
+	// For testing, return a simple mock DeltaUpdate
+	t := true
+	f := false
 	return &state.GameStateDelta{
-		UserLocation:        "mock_location",
-		AddToInventory:      []string{"mock_item"},
-		RemoveFromInventory: []string{"old_item"},
-		MovedItems: []struct {
-			Item string `json:"item"`
-			From string `json:"from"`
-			To   string `json:"to,omitempty"`
+		UserLocation: "mock_location",
+		SceneChange: &struct {
+			To     string `json:"to"`
+			Reason string `json:"reason"`
+		}{
+			To:     "mock_scene",
+			Reason: "testing",
+		},
+		ItemEvents: []struct {
+			Item   string `json:"item"`
+			Action string `json:"action"` // enum
+			From   *struct {
+				Type string `json:"type"`
+				Name string `json:"name,omitempty"`
+			} `json:"from,omitempty"`
+			To *struct {
+				Type string `json:"type"`
+				Name string `json:"name,omitempty"`
+			} `json:"to,omitempty"`
+			Consumed *bool `json:"consumed,omitempty"`
 		}{
 			{
-				Item: "mock_item",
-				From: "start",
-				To:   "user_inventory",
+				Item:   "mock_item",
+				Action: "add",
+				From: &struct {
+					Type string `json:"type"`
+					Name string `json:"name,omitempty"`
+				}{
+					Type: "inventory",
+					Name: "user_inventory",
+				},
+				To: &struct {
+					Type string `json:"type"`
+					Name string `json:"name,omitempty"`
+				}{
+					Type: "inventory",
+					Name: "user_inventory",
+				},
+				Consumed: &t,
 			},
 		},
-		UpdatedNPCs: []struct {
-			Name        string `json:"name"`
-			Description string `json:"description"`
-			Location    string `json:"location"`
-		}{
-			{
-				Name:        "Mock NPC",
-				Description: "A mock NPC for testing.",
-				Location:    "mock_location",
-			},
+		SetVars: map[string]string{
+			"mock_var": "mock_value",
 		},
+		GameEnded: &f,
 	}, "mock-model", nil
 }
 

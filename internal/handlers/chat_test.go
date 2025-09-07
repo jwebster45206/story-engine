@@ -362,16 +362,42 @@ func TestApplyMetaUpdate(t *testing.T) {
 	}
 
 	meta := &state.GameStateDelta{
-		UserLocation:        "Forest",
-		AddToInventory:      []string{"Apple"},
-		RemoveFromInventory: []string{"Gold"},
-		MovedItems: []struct {
-			Item string `json:"item"`
-			From string `json:"from"`
-			To   string `json:"to,omitempty"`
+		UserLocation: "Forest",
+		ItemEvents: []struct {
+			Item   string `json:"item"`
+			Action string `json:"action"` // enum "acquire" | "give" | "drop" | "move" | "use"
+			From   *struct {
+				Type string `json:"type"` // enum "player" | "npc" | "location"
+				Name string `json:"name,omitempty"`
+			} `json:"from,omitempty"`
+			To *struct {
+				Type string `json:"type"` // enum "player" | "npc" | "location"
+				Name string `json:"name,omitempty"`
+			} `json:"to,omitempty"`
+			Consumed *bool `json:"consumed,omitempty"`
 		}{
-			{Item: "Apple", From: "Tavern", To: "user_inventory"},
-			{Item: "Gold", From: "user_inventory", To: "Tavern"},
+			{
+				Item:   "Apple",
+				Action: "acquire",
+				From: &struct {
+					Type string `json:"type"`
+					Name string `json:"name,omitempty"`
+				}{
+					Type: "location",
+					Name: "Tavern",
+				},
+			},
+			{
+				Item:   "Gold",
+				Action: "drop",
+				To: &struct {
+					Type string `json:"type"`
+					Name string `json:"name,omitempty"`
+				}{
+					Type: "location",
+					Name: "Tavern",
+				},
+			},
 		},
 		SetVars: map[string]string{
 			"test Var":    "value1",
