@@ -129,9 +129,9 @@
         "Calypso is the bartender at the Sleepy Mermaid. She greets her customers with a warm smile and a hint of mystery."
       ],
       "contingency_rules": [
-        "When the shipwright agrees to repair the Black Pearl, set `scene_name` to 'british_docks'.",
+        "When the shipwright starts repairs, or agrees to start repairs, the scene changes 'british_docks'.",
         "Reading the ship repair ledger adds it to inventory. Observing that it exists does not. ",
-        "When the shipwright agrees to repair the Black Pearl, remove the ship repair ledger from inventory.",
+        "Showing the ship repair ledger to the shipwright removes it from the player's inventory, and gives it to the shipwright. ",
         "If the Black Pearl leaves Tortuga in disrepair, the ship sinks and the game ends."
       ]
     },
