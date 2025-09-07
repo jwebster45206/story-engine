@@ -300,7 +300,8 @@ func applyGameStateDelta(gs *state.GameState, scenario *scenario.Scenario, delta
 
 	// Handle item events
 	for _, itemEvent := range delta.ItemEvents {
-		fmt.Println("Processing item event:", itemEvent.Item, "action:", itemEvent.Action)
+		fmt.Printf("Processing item event: item=%s action=%s from=%+v to=%+v\n",
+			itemEvent.Item, itemEvent.Action, itemEvent.From, itemEvent.To)
 
 		switch itemEvent.Action {
 		case "acquire":
@@ -340,6 +341,14 @@ func applyGameStateDelta(gs *state.GameState, scenario *scenario.Scenario, delta
 			// Remove from source
 			if itemEvent.From != nil {
 				removeItemFromSource(gs, itemEvent.Item, itemEvent.From)
+			} else {
+				// Default to removing from player inventory if no source specified
+				for i, invItem := range gs.Inventory {
+					if invItem == itemEvent.Item {
+						gs.Inventory = append(gs.Inventory[:i], gs.Inventory[i+1:]...)
+						break
+					}
+				}
 			}
 			// Add to destination
 			if itemEvent.To != nil {

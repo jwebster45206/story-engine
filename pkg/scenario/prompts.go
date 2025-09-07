@@ -53,12 +53,11 @@ ITEMS
 - Use canonical item IDs from the scenario/state.
 
 SCENES
-- If a rule triggers a scene progression, output scene_change {to, reason}.
+- If a rule triggers a change in scene name, it is VERY IMPORTANT to include 'scene_change {to, reason}'.
 - Otherwise set scene_change=null.
 
 VARIABLES
-- When a rule or action changes a variable, update set_vars accordingly.
-- If no variables change, output an empty object {}.
+- This field is currently not in use and should be omitted. 
 
 GAME END
 - Always include game_ended.
@@ -66,7 +65,9 @@ GAME END
 - false otherwise.
 
 CONTINGENCY RULES
-These scenario-provided rules can affect ANY field. Apply all that are satisfied this turn. Rules:
+These scenario-provided rules can affect ANY field. Review all rules and apply all that are satisfied this turn. 
+If a rule triggers a change in scene name, it is VERY IMPORTANT to include 'scene_change {to, reason}'.
+Rules:
 —%s
 
 EXAMPLES
@@ -78,13 +79,13 @@ EXAMPLES
 - "uses bandage and it is consumed" →
   item_events:[{item:"Bandage", action:"use", consumed:true}]
 - "repairs begin (rule:'Change scene to british_docks when repairs are started.')" →
-  scene_change:{to:"british_docks", reason:"contingency rule"}
+  scene_change:{to:"british_docks", reason:"repairs were started"}
 - "repairs are discussed (rule:'Change scene to british_docks when repairs are started.')" →
   scene_change:{} (no change, rule not triggered)
 - "sees the sword in stone (rule:'Set the scene to sword_achieved when the sword is pulled from the stone.')" →
   scene_change:{} (no change, rule not triggered)
 - "pulls the sword from the stone (rule:'Set the scene to sword_achieved when the sword is pulled from the stone.')" →
-  scene_change:{to:"sword_achieved", reason:"contingency rule"},
+  scene_change:{to:"sword_achieved", reason:"player pulled sword from stone"},
   item_events:[{item:"Sword", action:"acquire", from:{type:"location", name:"sword room"}}]
 `
 
