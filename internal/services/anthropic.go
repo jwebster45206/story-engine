@@ -30,9 +30,9 @@ type AnthropicService struct {
 }
 
 type AnthropicTool struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	InputSchema map[string]interface{} `json:"input_schema"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	InputSchema map[string]any `json:"input_schema"`
 }
 
 type AnthropicToolChoice struct {
@@ -55,11 +55,11 @@ type AnthropicChatRequest struct {
 }
 
 type AnthropicContentBlock struct {
-	Type  string                 `json:"type"`
-	Text  string                 `json:"text,omitempty"`
-	ID    string                 `json:"id,omitempty"`
-	Name  string                 `json:"name,omitempty"`
-	Input map[string]interface{} `json:"input,omitempty"`
+	Type  string         `json:"type"`
+	Text  string         `json:"text,omitempty"`
+	ID    string         `json:"id,omitempty"`
+	Name  string         `json:"name,omitempty"`
+	Input map[string]any `json:"input,omitempty"`
 }
 
 type AnthropicChatResponse struct {
@@ -224,84 +224,86 @@ func (a *AnthropicService) getDeltaUpdateTool() AnthropicTool {
 	return AnthropicTool{
 		Name:        "apply_changes",
 		Description: "Return only the delta for game state updates.",
-		InputSchema: map[string]interface{}{
+		InputSchema: map[string]any{
 			"type":                 "object",
 			"additionalProperties": false,
-			"properties": map[string]interface{}{
-				"user_location": map[string]interface{}{
+			"properties": map[string]any{
+				"user_location": map[string]any{
 					"type": "string",
 				},
-				"scene_change": map[string]interface{}{
-					"type":                 "object",
-					"additionalProperties": false,
-					"properties": map[string]interface{}{
-						"to": map[string]interface{}{
-							"type": "string",
+				"scene_change": map[string]any{
+					"anyOf": []any{
+						map[string]any{
+							"type":                 "object",
+							"additionalProperties": false,
+							"properties": map[string]any{
+								"to":     map[string]any{"type": "string"},
+								"reason": map[string]any{"type": "string"},
+							},
+							"required": []string{"to", "reason"},
 						},
-						"reason": map[string]interface{}{
-							"type": "string",
-						},
+						map[string]any{"type": "null"},
 					},
-					"required": []string{"to", "reason"},
 				},
-				"item_events": map[string]interface{}{
+				"item_events": map[string]any{
 					"type": "array",
-					"items": map[string]interface{}{
+					"items": map[string]any{
 						"type":                 "object",
 						"additionalProperties": false,
-						"properties": map[string]interface{}{
-							"item": map[string]interface{}{
+						"properties": map[string]any{
+							"item": map[string]any{
 								"type": "string",
 							},
-							"action": map[string]interface{}{
+							"action": map[string]any{
 								"type": "string",
 								"enum": []string{"acquire", "give", "drop", "move", "use"},
 							},
-							"from": map[string]interface{}{
+							"from": map[string]any{
 								"type":                 "object",
 								"additionalProperties": false,
-								"properties": map[string]interface{}{
-									"type": map[string]interface{}{
+								"properties": map[string]any{
+									"type": map[string]any{
 										"type": "string",
 										"enum": []string{"player", "npc", "location"},
 									},
-									"name": map[string]interface{}{
+									"name": map[string]any{
 										"type": "string",
 									},
 								},
 								"required": []string{"type"},
 							},
-							"to": map[string]interface{}{
+							"to": map[string]any{
 								"type":                 "object",
 								"additionalProperties": false,
-								"properties": map[string]interface{}{
-									"type": map[string]interface{}{
+								"properties": map[string]any{
+									"type": map[string]any{
 										"type": "string",
 										"enum": []string{"player", "npc", "location"},
 									},
-									"name": map[string]interface{}{
+									"name": map[string]any{
 										"type": "string",
 									},
 								},
 								"required": []string{"type"},
 							},
-							"consumed": map[string]interface{}{
+							"consumed": map[string]any{
 								"type": "boolean",
 							},
 						},
 						"required": []string{"item", "action"},
 					},
 				},
-				"set_vars": map[string]interface{}{
+				"set_vars": map[string]any{
 					"type": "object",
-					"additionalProperties": map[string]interface{}{
+					"additionalProperties": map[string]any{
 						"type": "string",
 					},
 				},
-				"game_ended": map[string]interface{}{
+				"game_ended": map[string]any{
 					"type": "boolean",
 				},
 			},
+			"required": []string{"user_location", "scene_change", "item_events", "game_ended"},
 		},
 	}
 }

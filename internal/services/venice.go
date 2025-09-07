@@ -181,18 +181,20 @@ func (v *VeniceService) getDeltaUpdateResponseFormat() *VeniceResponseFormat {
 					"user_location": map[string]any{
 						"type": "string",
 					},
+					// REQUIRED + NULLABLE scene_change
 					"scene_change": map[string]any{
-						"type":                 "object",
-						"additionalProperties": false,
-						"properties": map[string]any{
-							"to": map[string]any{
-								"type": "string",
+						"anyOf": []any{
+							map[string]any{
+								"type":                 "object",
+								"additionalProperties": false,
+								"properties": map[string]any{
+									"to":     map[string]any{"type": "string"},
+									"reason": map[string]any{"type": "string"},
+								},
+								"required": []string{"to", "reason"},
 							},
-							"reason": map[string]any{
-								"type": "string",
-							},
+							map[string]any{"type": "null"},
 						},
-						"required": []string{"to", "reason"},
 					},
 					"item_events": map[string]any{
 						"type": "array",
