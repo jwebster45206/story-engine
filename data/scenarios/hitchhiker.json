@@ -90,7 +90,7 @@
       ],
       "contingency_rules": [
         "If the player stays in the house and the demolition begins, set `house_demolished` to true and the game ends poorly.",
-        "Update `scene_name` to 'hitchhiking' when the player leaves the house with Ford, or if he has already done so.",
+        "The scene changes to 'hitchhiking' when the player reaches the sidewalk with Ford, or if he has already done so.",
         "If Ford hands the bath towel to the player, add it to the player's inventory."
       ]
     },
