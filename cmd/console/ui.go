@@ -661,9 +661,16 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			// Start polling now that we have the chat response (only if game hasn't ended)
+			var startPollingCmd tea.Cmd
 			if m.gameState != nil && !m.gameState.IsEnded {
+				wasPollingActive := m.pollingActive
 				m.pollingActive = true
 				m.pollingStartedAt = time.Now() // Record time AFTER chat response, look for updates after this
+
+				// Only start the polling loop if it wasn't already active
+				if !wasPollingActive {
+					startPollingCmd = schedulePoll()
+				}
 			}
 			// Update metadata to show polling indicator
 			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
@@ -673,8 +680,10 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.chatViewport.GotoBottom()
 			}
 			// Continue polling to detect when the server has updated the gamestate with our changes
+
+			// Continue the existing polling loop and refresh game state
+			return m, tea.Batch(m.refreshGameState(), startPollingCmd)
 		}
-		return m, tea.Batch(m.refreshGameState(), schedulePoll())
 
 	case pollTickMsg:
 		// Don't poll if the game has ended
