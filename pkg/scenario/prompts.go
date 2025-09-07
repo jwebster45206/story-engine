@@ -62,13 +62,14 @@ VARIABLES
 GAME END
 - Always include game_ended.
 - true if narrative describes a definitive ending OR a rule ends the game this turn.
+- true if a rule should have ended the game previously. 
 - false otherwise.
 
 CONTINGENCY RULES
 These scenario-provided rules can affect ANY field. Review all rules and apply all that are satisfied this turn. 
 If a rule triggers a change in scene name, it is VERY IMPORTANT to include 'scene_change {to, reason}'.
 Rules:
-—%s
+— %s
 
 EXAMPLES
 - "sees a sword" → item_events: []

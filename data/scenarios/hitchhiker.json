@@ -86,12 +86,11 @@
         "When the player first encounters Ford Prefect, he seems oddly unconcerned about the bulldozers.",
         "Ford Prefect never leaves the house until the player speaks with him.",
         "To escape the demolition, the player must follow Ford Prefect's lead.",
-        "Stress the importance of acquiring the bath towel in the kitchen."
+        "Ford Prefect stresses the importance of acquiring the bath towel in the kitchen."
       ],
       "contingency_rules": [
-        "If the player stays in the house and the demolition begins, set `house_demolished` to true and the game ends poorly.",
-        "The scene changes to 'hitchhiking' when the player reaches the sidewalk with Ford, or if he has already done so.",
-        "If Ford hands the bath towel to the player, add it to the player's inventory."
+        "If the player stays in the house and the demolition begins, the game ends.",
+        "The scene changes to 'hitchhiking' when the player reaches the Sidewalk or Road."
       ]
     },
     "hitchhiking": {
@@ -168,11 +167,9 @@
         "Ford stresses the importance of keeping a towel handy."
       ],
       "contingency_rules": [
-        "Only when the player boards the Vogon ship with Ford, set `in_vogon_ship` to true.",
-        "When Earth is destroyed (automatically after a few turns), set `earth_destroyed` to true.",
-        "When the player boards the Vogon ship with Ford, update `scene_name` to 'vogon_poetry'.",
-        "If the player has already boarded the ship with Ford, update `scene_name` to 'vogon_poetry'.",
-        "If earth_destroyed is true and the player is not on the Vogon ship, the game ends immediately."
+        "When the player boards the ship with Ford, the scene name changes to 'vogon_poetry'.",
+        "If the player has previously boarded the ship with Ford, the scene name changes to 'vogon_poetry'.",
+        "If earth_destroyed is true and the player is not on the Vogon ship, the game ends."
       ]
     },
     "vogon_poetry": {
@@ -288,12 +285,11 @@
       "contingency_prompts": [
         "Vogon poetry is so bad it can kill. The player must find a way to survive it.",
         "The only known defense against Vogon poetry is having no imagination or being dead.",
-        "Ford suggests using a towel as a psychological weapon against Vogon poetry."
+        "Ford suggests using a towel as a psychological weapon against Vogon poetry.",
+        "If the player has escaped the ship, make it easy to reach the Heart of Gold."
       ],
       "contingency_rules": [
-        "If the player survives the Vogon poetry reading, set `poetry_survived` to true.",
-        "When the player is thrown out of the Vogon ship and into space, set `escaped_vogons` to true.",
-        "Only when `escaped_vogons` is true and the player has reached the Heart of Gold, the game ends successfully."
+        "When the player is thrown out of the Vogon ship and into space, and the player has reached the Heart of Gold, the game ends successfully."
       ]
     }
   },
