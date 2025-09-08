@@ -129,9 +129,10 @@
         "Calypso is the bartender at the Sleepy Mermaid. She greets her customers with a warm smile and a hint of mystery."
       ],
       "contingency_rules": [
-        "When the shipwright starts repairs, or agrees to start repairs, the scene changes 'british_docks'.",
-        "Reading the ship repair ledger adds it to inventory. Observing that it exists does not. ",
-        "Showing the ship repair ledger to the shipwright removes it from the player's inventory, and gives it to the shipwright. ",
+        "When the shipwright starts repairs, the scene changes to 'british_docks'.",
+        "If the shipwright has previously agreed to start repairs, the scene changes to 'british_docks'.",
+        "Reading the ship repair ledger adds it to inventory. Observing that it is on the ship does not. ",
+        "Showing the ship repair ledger to the shipwright removes it from the player's inventory.",
         "If the Black Pearl leaves Tortuga in disrepair, the ship sinks and the game ends."
       ]
     },
@@ -187,9 +188,10 @@
         "The shipwright is now located in the Black Pearl, working on repairs. He does not like to be bothered at a time like this."
       ],
       "contingency_rules": [
-        "When the player has returned to the Black Pearl and paid the shipwright, set `scene_name` to 'calypsos_map'.",
-        "If the player is caught stealing at the British Docks without proper disguise, they are captured - the game ends with imprisonment.",
-        "If the player attacks British guards directly, the player is overwhelmed and captured - the game ends poorly."
+        "When the player has returned to the Black Pearl and paid the shipwright 500 gold, the scene changes to 'calypsos_map'.",
+        "If the player has previously paid the shipwright 500 gold, the scene changes to 'calypsos_map'.",
+        "If the player is caught stealing at the British Docks without proper disguise, they are captured and the game ends with imprisonment.",
+        "If the player attacks British guards directly, the player is overwhelmed and captured and the game ends with imprisonment."
       ]
     },
     "calypsos_map": {

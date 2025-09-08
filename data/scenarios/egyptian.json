@@ -82,7 +82,7 @@
         "Provide subtle hints about meeting Amara in the market."
       ],
       "contingency_rules": [
-        "When the telegram is decoded, update `scene_name` to 'desert_expedition'."
+        "When the telegram is decoded, the scene name changes to 'desert_expedition'."
       ]
     },
     "desert_expedition": {
@@ -175,7 +175,7 @@
         "Professor Blackwood may try to follow the player or sabotage their expedition."
       ],
       "contingency_rules": [
-        "Set `scene_name` to 'temple_discovery' when Hassan reveals the temple location, or if he has previously revealed it."
+        "When Hassan reveals the temple location, the scene name changes to 'temple_discovery'. If he has previously revealed it, the scene name also changes."
       ]
     },
     "temple_discovery": {
@@ -278,11 +278,9 @@
         "Professor Blackwood's desperation makes him dangerous."
       ],
       "contingency_rules": [
-        "If the player uses the star chart and hieroglyph guide to solve the temple puzzle, set `puzzle_solved` to true.",
-        "When `puzzle_solved` is true, the Underground Chamber becomes accessible and `chamber_accessed` becomes true.",
-        "If the player correctly answers the Ancient Guardian's riddles, set `guardian_approval` to true.",
-        "When `guardian_approval` is true, the player can activate the ancient device and `ancient_device_activated` becomes true.",
-        "When `ancient_device_activated` is true, the expedition concludes successfully."
+        "When the player uses the star chart and hieroglyph guide to solve the temple puzzle, the Underground Chamber becomes accessible.",
+        "If the player correctly answers the Ancient Guardian's riddles, the player can activate the ancient device.",
+        "When the player activates the ancient device, the expedition concludes successfully."
       ]
     }
   },
@@ -298,6 +296,6 @@
     "Maintain the atmosphere of 1920s archaeological adventure throughout.",
     "Treat the content like an Call of Cthulhu mystery, filled with cosmic horror and ancient secrets.",
     "Narrator speaks with the voice of Agatha Christie.",
-    "Professor Blackwood's rivalry should escalate throughout the adventure, becoming more desperate as the player succeeds."
+    "Professor Blackwood could be a rival or an ally, depending on the player's actions."
   ]
 }
