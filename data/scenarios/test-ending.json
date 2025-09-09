@@ -1,7 +1,7 @@
 {
   "name": "Space Disaster",
-  "story": "The player is a space explorer who has discovered an ancient alien artifact. The artifact pulses with mysterious energy and seems to respond to the player's presence. Time is running out as the ship's systems begin to fail.",
-  "rating": "PG",
+  "story": "The player is the science officer aboard a deep space exploration craft. The crew has discovered an ancient alien artifact. The artifact pulses with mysterious energy and seems to respond to the player's presence. It is interfering with the ship's power reactor. Time is running out as the ship's systems begin to fail.",
+  "rating": "PG-13",
   "scenes": {
     "artifact_chamber": {
       "story": "The player stands before a glowing alien artifact in the ship's cargo bay. The ship's power is failing, and critical decisions must be made quickly.",
@@ -16,7 +16,7 @@
           "items": [
             "alien artifact",
             "emergency beacon",
-            "power cell"
+            "power gloves"
           ]
         },
         "Bridge": {
@@ -74,15 +74,6 @@
         "The alien artifact responds to direct contact with living beings.",
         "The emergency beacon can send a distress signal, but requires power to function.",
         "The reactor is becoming increasingly unstable and will explode without intervention."
-      ],
-      "contingency_rules": [
-        "If the player touches the alien artifact, set `artifact_touched` to true.",
-        "If the player activates the emergency beacon, set `beacon_activated` to true.",
-        "If the player uses the reactor stabilizer or pulls the emergency shutdown lever, set `reactor_stabilized` to true.",
-        "If `artifact_touched` is true, the game ends with the player being transported to safety by the alien technology.",
-        "If `beacon_activated` is true and `reactor_stabilized` is true, the game ends with a successful rescue.",
-        "If the player waits too long without taking action, set `ship_destroyed` to true and the game ends with the ship's destruction.",
-        "If `beacon_activated` is true but `reactor_stabilized` is false, the game ends with the player being rescued but the ship is lost."
       ]
     }
   },
@@ -97,7 +88,12 @@
     "Time is of the essence - the ship's condition is deteriorating rapidly."
   ],
   "contingency_rules": [
-    "IMPORTANT: If `scene_turn_counter` is 3 or greater, the game ends immediately. "
+    "IMPORTANT: The player only has 3 turns. If the `scene_turn_counter` is 3 or greater, and reactor is not stabilized, the reactor explodes, and the game ends. Most sessions will end like this. ",
+    "Touching the artifact causes the player to go unconscious, and THE GAME ENDS.",
+    "Only by wearing the power gloves can the player safely interact with the artifact.",
+    "Touching the artifact with the power gloves transfers the artifact's power to the gloves, making them highly radioactive, and sure to cause harm to the wearer.",
+    "After successfully transferring the power out of the gloves, the player goes unconscious and THE GAME ENDS.",
+    "If the emergency beacon is activated, the game ends with a rescue."
   ],
-  "game_end_prompt": "Things probably didn't end well for the user. Remind him that even Captain Kirk failed a training mission or two, if so. Also provide a grade similar to a Cracker Barrel peg game grade."
+  "game_end_prompt": "If the ship exploded, it exploded silently in the vacuum of space. Make it peaceful, and quote Gene Roddenberry."
 }
