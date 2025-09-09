@@ -549,11 +549,13 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
+			m.err = nil // Clear any stale errors when opening quit modal
 			m.showQuitModal = true
 			return m, nil
 
 		case tea.KeyCtrlN:
 			// Show new game confirmation modal
+			m.err = nil // Clear any stale errors when opening new game modal
 			m.showNewGameModal = true
 			return m, nil
 
@@ -580,6 +582,9 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if input == "" {
 				return m, nil
 			}
+
+			// Clear any previous errors when attempting a new chat
+			m.err = nil
 
 			// Apply profanity filtering based on the scenario's content rating
 			input = m.profanityFilter.FilterText(input, m.contentRating)
@@ -1027,6 +1032,7 @@ func (m ConsoleUI) updateQuitModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			case "n", "N":
 				m.showQuitModal = false
+				m.err = nil // Clear any stale errors when canceling quit
 				// Return focus to the appropriate component
 				if m.showScenarioModal {
 					// We're in scenario selection, no need to focus textarea
@@ -1053,6 +1059,7 @@ func (m ConsoleUI) updateNewGameModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			m.showNewGameModal = false
+			m.err = nil // Clear any stale errors when canceling new game
 			return m, nil
 		case tea.KeyEnter:
 			return m.startNewGame()
@@ -1062,6 +1069,7 @@ func (m ConsoleUI) updateNewGameModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.startNewGame()
 			case "n", "N":
 				m.showNewGameModal = false
+				m.err = nil // Clear any stale errors when canceling new game
 				return m, nil
 			}
 		}
@@ -1092,6 +1100,7 @@ func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
 	m.lastChatLatency = 0
 	m.chatLatencies = nil
 	m.chatRequestStartTime = time.Time{}
+	m.err = nil // Clear any stale errors when starting new game
 	return m, m.loadScenarios()
 }
 
