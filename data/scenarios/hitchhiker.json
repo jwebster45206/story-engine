@@ -86,7 +86,8 @@
         "When the player first encounters Ford Prefect, he seems oddly unconcerned about the bulldozers.",
         "Ford Prefect never leaves the house until the player speaks with him.",
         "To escape the demolition, the player must follow Ford Prefect's lead.",
-        "Ford Prefect stresses the importance of acquiring the bath towel in the kitchen."
+        "Ford Prefect stresses the importance of acquiring the bath towel in the kitchen.",
+        "There is no back door exit from Arthur's House. Ford and Arthur exit through the front door."
       ],
       "contingency_rules": [
         "If the player stays in the house and the demolition begins, the game ends.",
@@ -284,6 +285,7 @@
       },
       "contingency_prompts": [
         "Vogon poetry is so bad it can kill. The player must find a way to survive it.",
+        "Vogon poetry resembles Sesame Street combined with Kanye West lyrics.",
         "The only known defense against Vogon poetry is having no imagination or being dead.",
         "Ford suggests using a towel as a psychological weapon against Vogon poetry.",
         "If the player has escaped the ship, make it easy to reach the Heart of Gold."

@@ -264,8 +264,8 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 	copy(capturedMessagesCopy, capturedMainChatMessages)
 	mu.Unlock()
 
-	if len(capturedMessagesCopy) != 2 {
-		t.Fatalf("Expected 2 messages, got %d", len(capturedMessagesCopy))
+	if len(capturedMessagesCopy) != 3 {
+		t.Fatalf("Expected 3 messages, got %d", len(capturedMessagesCopy))
 	}
 
 	// Check that the user message (second message) is correct
@@ -283,6 +283,11 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 		t.Errorf("Expected first message to be system message, got %s", capturedMessagesCopy[0].Role)
 	}
 
+	// Check that we have a final system message (UserPostPrompt)
+	if capturedMessagesCopy[2].Role != chat.ChatRoleSystem {
+		t.Errorf("Expected third message to be system message, got %s", capturedMessagesCopy[2].Role)
+	}
+
 	// Verify the system message contains all expected components
 	systemContent := capturedMessagesCopy[0].Content
 	if !strings.Contains(systemContent, "omniscient narrator") {
@@ -291,8 +296,11 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 	if !strings.Contains(systemContent, "Game State:") {
 		t.Errorf("Expected system message to contain game state JSON")
 	}
-	if !strings.Contains(systemContent, "Treat the user's message as a request") {
-		t.Errorf("Expected system message to contain user post prompt")
+
+	// Verify the final system message contains the UserPostPrompt
+	finalSystemContent := capturedMessagesCopy[2].Content
+	if !strings.Contains(finalSystemContent, "Treat the user's message as a request") {
+		t.Errorf("Expected final system message to contain user post prompt")
 	}
 }
 

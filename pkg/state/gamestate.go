@@ -139,9 +139,6 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 	// Add state context
 	systemPrompt += "\n\n" + statePrompt.Content
 
-	// Add message instructions and contingency prompts
-	systemPrompt += "\n\n" + scenario.UserPostPrompt
-
 	if gs.IsEnded {
 		// if the game is over, add the end prompt
 		systemPrompt += "\n\n" + scenario.GameEndSystemPrompt
@@ -180,6 +177,11 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 	messages = append(messages, chat.ChatMessage{
 		Role:    requestRole,
 		Content: requestMessage,
+	})
+
+	messages = append(messages, chat.ChatMessage{
+		Role:    chat.ChatRoleSystem,
+		Content: scenario.UserPostPrompt,
 	})
 
 	return messages, nil
