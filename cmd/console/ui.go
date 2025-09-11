@@ -395,13 +395,12 @@ func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollin
 		}
 	}
 
-	// content.WriteString("\n")
-	// content.WriteString(metaStyle.Render("Commands:") + "\n")
-	// content.WriteString("• Ctrl+C: Quit\n")
-	// content.WriteString("• Ctrl+N: New Game\n")
-	// content.WriteString("• Ctrl+Y: Copy GameState ID\n")
-	// content.WriteString("• Ctrl+Z: Clear Text\n")
-	// content.WriteString("• Enter: Send\n")
+	content.WriteString("\n")
+	content.WriteString(metaStyle.Render("Commands:") + "\n")
+	content.WriteString("• Ctrl+C: Quit\n")
+	content.WriteString("• Ctrl+N: New Game\n")
+	content.WriteString("• Ctrl+Z: Clear Text\n")
+	content.WriteString("• Enter: Send\n")
 
 	if gs.IsEnded {
 		content.WriteString("\n" + titleStyle.Render("GAME ENDED") + "\n")
@@ -421,15 +420,15 @@ func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollin
 
 	content.WriteString("\n")
 	content.WriteString(promptStyle.Render(gs.ModelName) + "\n\n")
-	width = max(8, width) // min width of 8
+	// width = max(8, width) // min width of 8
 
-	// Format the UUID to wrap nicely
-	idStr := gs.ID.String()
-	wrappedIDLines := smartWrap(idStr, width)
-	for _, line := range wrappedIDLines {
-		content.WriteString(promptStyle.Render(line) + "\n")
-	}
-	content.WriteString("\n")
+	// // Format the UUID to wrap nicely
+	// idStr := gs.ID.String()
+	// wrappedIDLines := smartWrap(idStr, width)
+	// for _, line := range wrappedIDLines {
+	// 	content.WriteString(promptStyle.Render(line) + "\n")
+	// }
+	// content.WriteString("\n")
 
 	content.WriteString(promptStyle.Render("© 2025 Joseph Webster"))
 
