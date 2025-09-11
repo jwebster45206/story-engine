@@ -139,20 +139,12 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 	// Add state context
 	systemPrompt += "\n\n" + statePrompt.Content
 
-	if gs.IsEnded {
-		// if the game is over, add the end prompt
-		systemPrompt += "\n\n" + scenario.GameEndSystemPrompt
-		if s.GameEndPrompt != "" {
-			systemPrompt += "\n\n" + s.GameEndPrompt
-		}
-	} else {
-		// contingency prompts otherwise
-		contingencyPrompts := gs.GetContingencyPrompts(s)
-		if len(contingencyPrompts) > 0 {
-			systemPrompt += "\n\nApply the following conditional rules if their conditions are met:\n\n"
-			for i, prompt := range contingencyPrompts {
-				systemPrompt += fmt.Sprintf("%d. %s\n", i+1, prompt)
-			}
+	// contingency prompts otherwise
+	contingencyPrompts := gs.GetContingencyPrompts(s)
+	if len(contingencyPrompts) > 0 {
+		systemPrompt += "\n\nApply the following conditional rules if their conditions are met:\n\n"
+		for i, prompt := range contingencyPrompts {
+			systemPrompt += fmt.Sprintf("%d. %s\n", i+1, prompt)
 		}
 	}
 
@@ -179,10 +171,25 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 		Content: requestMessage,
 	})
 
-	messages = append(messages, chat.ChatMessage{
-		Role:    chat.ChatRoleSystem,
-		Content: scenario.UserPostPrompt,
-	})
+	// Final Reminders about how to respond.
+	// If the llm provider allows it, this will be appended after chat messages.
+	// If the llm provider does not, it will be appended to the system prompt.
+	if gs.IsEnded {
+		// if the game is over, add the end prompt
+		endPrompt := "" + scenario.GameEndSystemPrompt
+		if s.GameEndPrompt != "" {
+			endPrompt += "\n\n" + s.GameEndPrompt
+		}
+		messages = append(messages, chat.ChatMessage{
+			Role:    chat.ChatRoleSystem,
+			Content: endPrompt,
+		})
+	} else {
+		messages = append(messages, chat.ChatMessage{
+			Role:    chat.ChatRoleSystem,
+			Content: scenario.UserPostPrompt,
+		})
+	}
 
 	return messages, nil
 }
