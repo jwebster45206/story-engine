@@ -64,12 +64,6 @@
           ]
         }
       },
-      "vars": {
-        "artifact_touched": "false",
-        "beacon_activated": "false",
-        "reactor_stabilized": "false",
-        "ship_destroyed": "false"
-      },
       "contingency_prompts": [
         "The alien artifact responds to direct contact with living beings.",
         "The emergency beacon can send a distress signal, but requires power to function.",
@@ -88,12 +82,12 @@
     "Time is of the essence - the ship's condition is deteriorating rapidly."
   ],
   "contingency_rules": [
-    "IMPORTANT: The player only has 3 turns. If the `scene_turn_counter` is 3 or greater, and reactor is not stabilized, the reactor explodes, and the game ends. Most sessions will end like this. ",
+    "CRITICAL: At the start of each turn, if scene_turn_counter >= 3 AND the reactor is not stabilized, the game ends and the reactor explodes immediately.",
     "Touching the artifact causes the player to go unconscious, and THE GAME ENDS.",
     "Only by wearing the power gloves can the player safely interact with the artifact.",
     "Touching the artifact with the power gloves transfers the artifact's power to the gloves, making them highly radioactive, and sure to cause harm to the wearer.",
     "After successfully transferring the power out of the gloves, the player goes unconscious and THE GAME ENDS.",
     "If the emergency beacon is activated, the game ends with a rescue."
   ],
-  "game_end_prompt": "If the ship exploded, it exploded silently in the vacuum of space. Make it peaceful, and quote Gene Roddenberry."
+  "game_end_prompt": "If the reactor exploded, it exploded silently in the vacuum of space. Make it peaceful, and quote Gene Roddenberry."
 }
