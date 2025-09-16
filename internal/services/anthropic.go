@@ -86,7 +86,7 @@ func NewAnthropicService(apiKey string, modelName string, backendModelName strin
 		modelName:        modelName,
 		backendModelName: backendModelName,
 		httpClient: &http.Client{
-			Timeout: 120 * time.Second,
+			Timeout: 60 * time.Second,
 		},
 		logger: logger,
 	}
