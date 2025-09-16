@@ -29,41 +29,41 @@ const (
 )
 
 // smartWrap wraps text at natural break points including spaces, slashes, and dashes
-func smartWrap(text string, width int) []string {
-	if width <= 0 {
-		return []string{text}
-	}
+// func smartWrap(text string, width int) []string {
+// 	if width <= 0 {
+// 		return []string{text}
+// 	}
 
-	// For simple cases like URLs, use a simpler approach
-	if !strings.Contains(text, " ") {
-		// This is likely a URL or similar - split on / and -
-		var lines []string
-		var currentLine strings.Builder
+// 	// For simple cases like URLs, use a simpler approach
+// 	if !strings.Contains(text, " ") {
+// 		// This is likely a URL or similar - split on / and -
+// 		var lines []string
+// 		var currentLine strings.Builder
 
-		for _, char := range text {
-			currentLine.WriteRune(char)
+// 		for _, char := range text {
+// 			currentLine.WriteRune(char)
 
-			// Check if we should break after certain characters
-			if (char == '/' || char == '-') && currentLine.Len() >= width/2 {
-				lines = append(lines, currentLine.String())
-				currentLine.Reset()
-			} else if currentLine.Len() >= width {
-				lines = append(lines, currentLine.String())
-				currentLine.Reset()
-			}
-		}
+// 			// Check if we should break after certain characters
+// 			if (char == '/' || char == '-') && currentLine.Len() >= width/2 {
+// 				lines = append(lines, currentLine.String())
+// 				currentLine.Reset()
+// 			} else if currentLine.Len() >= width {
+// 				lines = append(lines, currentLine.String())
+// 				currentLine.Reset()
+// 			}
+// 		}
 
-		if currentLine.Len() > 0 {
-			lines = append(lines, currentLine.String())
-		}
+// 		if currentLine.Len() > 0 {
+// 			lines = append(lines, currentLine.String())
+// 		}
 
-		return lines
-	}
+// 		return lines
+// 	}
 
-	// For text with spaces, use the existing wordwrap
-	wrapped := wordwrap.String(text, width)
-	return strings.Split(wrapped, "\n")
-}
+// 	// For text with spaces, use the existing wordwrap
+// 	wrapped := wordwrap.String(text, width)
+// 	return strings.Split(wrapped, "\n")
+// }
 
 // calculateAverageLatency computes the average latency from a slice of latencies
 func calculateAverageLatency(latencies []float64) float64 {
@@ -395,13 +395,12 @@ func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollin
 		}
 	}
 
-	// content.WriteString("\n")
-	// content.WriteString(metaStyle.Render("Commands:") + "\n")
-	// content.WriteString("• Ctrl+C: Quit\n")
-	// content.WriteString("• Ctrl+N: New Game\n")
-	// content.WriteString("• Ctrl+Y: Copy GameState ID\n")
-	// content.WriteString("• Ctrl+Z: Clear Text\n")
-	// content.WriteString("• Enter: Send\n")
+	content.WriteString("\n")
+	content.WriteString(metaStyle.Render("Commands:") + "\n")
+	content.WriteString("• Ctrl+C: Quit\n")
+	content.WriteString("• Ctrl+N: New Game\n")
+	content.WriteString("• Ctrl+Z: Clear Text\n")
+	content.WriteString("• Enter: Send\n")
 
 	if gs.IsEnded {
 		content.WriteString("\n" + titleStyle.Render("GAME ENDED") + "\n")
@@ -421,15 +420,15 @@ func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollin
 
 	content.WriteString("\n")
 	content.WriteString(promptStyle.Render(gs.ModelName) + "\n\n")
-	width = max(8, width) // min width of 8
+	// width = max(8, width) // min width of 8
 
-	// Format the UUID to wrap nicely
-	idStr := gs.ID.String()
-	wrappedIDLines := smartWrap(idStr, width)
-	for _, line := range wrappedIDLines {
-		content.WriteString(promptStyle.Render(line) + "\n")
-	}
-	content.WriteString("\n")
+	// // Format the UUID to wrap nicely
+	// idStr := gs.ID.String()
+	// wrappedIDLines := smartWrap(idStr, width)
+	// for _, line := range wrappedIDLines {
+	// 	content.WriteString(promptStyle.Render(line) + "\n")
+	// }
+	// content.WriteString("\n")
 
 	content.WriteString(promptStyle.Render("© 2025 Joseph Webster"))
 
