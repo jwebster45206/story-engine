@@ -29,41 +29,41 @@ const (
 )
 
 // smartWrap wraps text at natural break points including spaces, slashes, and dashes
-func smartWrap(text string, width int) []string {
-	if width <= 0 {
-		return []string{text}
-	}
+// func smartWrap(text string, width int) []string {
+// 	if width <= 0 {
+// 		return []string{text}
+// 	}
 
-	// For simple cases like URLs, use a simpler approach
-	if !strings.Contains(text, " ") {
-		// This is likely a URL or similar - split on / and -
-		var lines []string
-		var currentLine strings.Builder
+// 	// For simple cases like URLs, use a simpler approach
+// 	if !strings.Contains(text, " ") {
+// 		// This is likely a URL or similar - split on / and -
+// 		var lines []string
+// 		var currentLine strings.Builder
 
-		for _, char := range text {
-			currentLine.WriteRune(char)
+// 		for _, char := range text {
+// 			currentLine.WriteRune(char)
 
-			// Check if we should break after certain characters
-			if (char == '/' || char == '-') && currentLine.Len() >= width/2 {
-				lines = append(lines, currentLine.String())
-				currentLine.Reset()
-			} else if currentLine.Len() >= width {
-				lines = append(lines, currentLine.String())
-				currentLine.Reset()
-			}
-		}
+// 			// Check if we should break after certain characters
+// 			if (char == '/' || char == '-') && currentLine.Len() >= width/2 {
+// 				lines = append(lines, currentLine.String())
+// 				currentLine.Reset()
+// 			} else if currentLine.Len() >= width {
+// 				lines = append(lines, currentLine.String())
+// 				currentLine.Reset()
+// 			}
+// 		}
 
-		if currentLine.Len() > 0 {
-			lines = append(lines, currentLine.String())
-		}
+// 		if currentLine.Len() > 0 {
+// 			lines = append(lines, currentLine.String())
+// 		}
 
-		return lines
-	}
+// 		return lines
+// 	}
 
-	// For text with spaces, use the existing wordwrap
-	wrapped := wordwrap.String(text, width)
-	return strings.Split(wrapped, "\n")
-}
+// 	// For text with spaces, use the existing wordwrap
+// 	wrapped := wordwrap.String(text, width)
+// 	return strings.Split(wrapped, "\n")
+// }
 
 // calculateAverageLatency computes the average latency from a slice of latencies
 func calculateAverageLatency(latencies []float64) float64 {
