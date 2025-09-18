@@ -325,7 +325,9 @@ func TestAnthropicService_ChatStream(t *testing.T) {
 			}
 
 			for _, response := range responses {
-				w.Write([]byte(response + "\n"))
+				if _, err := w.Write([]byte(response + "\n")); err != nil {
+					return // Exit on write error in test
+				}
 				if f, ok := w.(http.Flusher); ok {
 					f.Flush()
 				}
