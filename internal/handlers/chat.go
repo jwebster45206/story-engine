@@ -98,6 +98,17 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if request.Stream {
+		h.handleStreamChat(w, r, request)
+	} else {
+		h.handleRestChat(w, r, request)
+	}
+}
+
+// handleRestChat handles non-streaming chat requests
+func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, request chat.ChatRequest) {
+	w.Header().Set("Content-Type", "application/json")
+
 	// Load game state
 	gs, err := h.storage.LoadGameState(r.Context(), request.GameStateID)
 	if err != nil {
@@ -216,7 +227,6 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Exit early if the prompt is a system message
 	if cmdResult.Role == chat.ChatRoleSystem {
 		response.GameStateID = gs.ID
-		//response.ChatHistory = gs.ChatHistory
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Error encoding chat response", "error", err)
@@ -251,11 +261,175 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.GameStateID = gs.ID
-	//response.ChatHistory = gs.ChatHistory
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		h.logger.Error("Error encoding chat response", "error", err)
 	}
+}
+
+// handleStreamChat handles streaming chat requests
+func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, request chat.ChatRequest) {
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// Load game state
+	gs, err := h.storage.LoadGameState(r.Context(), request.GameStateID)
+	if err != nil {
+		h.logger.Error("Error loading game state", "error", err)
+		h.sendSSEError(w, "Failed to load game state.")
+		return
+	}
+
+	if gs == nil {
+		h.logger.Warn("Game state not found", "requested_id", request.GameStateID.String())
+		h.sendSSEError(w, "Game state not found. Please provide a valid game state ID.")
+		return
+	}
+
+	// Get Scenario for the chat
+	scenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
+	if err != nil {
+		h.logger.Error("Error loading scenario for chat", "error", err, "scenario_filename", gs.Scenario)
+		h.sendSSEError(w, "Failed to load scenario for chat.")
+		return
+	}
+
+	cmdResult, err := gs.TryHandleCommand(request.Message)
+	if err != nil {
+		h.logger.Error("Error handling command in chat", "error", err, "command", request.Message)
+		h.sendSSEError(w, "Failed to handle command in chat.")
+		return
+	}
+	if cmdResult.Handled {
+		h.logger.Debug("Command handled in chat", "command", request.Message, "response", cmdResult.Message)
+		// Send command response as a single chunk
+		h.sendSSEChunk(w, services.StreamChunk{Content: cmdResult.Message, Done: true})
+		return
+	}
+
+	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, scenario, PromptHistoryLimit)
+	if err != nil {
+		h.logger.Error("Error getting chat messages", "error", err)
+		h.sendSSEError(w, "Failed to get chat messages.")
+		return
+	}
+
+	// Generate streaming response using LLM
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	h.logger.Debug("Sending streaming chat request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
+	streamChan, err := h.llmService.ChatStream(ctx, messages)
+	if err != nil {
+		h.logger.Error("Error generating streaming chat response",
+			"error", err,
+			"user_message", request.Message,
+			"message_count", len(messages))
+		h.sendSSEError(w, "Failed to generate response. Please try again.")
+		return
+	}
+
+	// Stream the response
+	var fullResponse strings.Builder
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		h.logger.Error("Streaming not supported")
+		h.sendSSEError(w, "Streaming not supported by this server.")
+		return
+	}
+
+	for chunk := range streamChan {
+		select {
+		case <-r.Context().Done():
+			h.logger.Debug("Client disconnected during streaming")
+			return
+		default:
+		}
+
+		if chunk.Error != nil {
+			h.logger.Error("Error in streaming response", "error", chunk.Error)
+			h.sendSSEError(w, "Error generating response.")
+			return
+		}
+
+		// Send the chunk
+		h.sendSSEChunk(w, chunk)
+		flusher.Flush()
+
+		// Accumulate content for game state update
+		if chunk.Content != "" {
+			fullResponse.WriteString(chunk.Content)
+		}
+
+		if chunk.Done {
+			// Start background game state update
+			go h.updateGameStateAfterStreaming(gs, request.Message, fullResponse.String(), cmdResult.Role)
+			return
+		}
+	}
+}
+
+// sendSSEChunk sends a streaming chunk in SSE format
+func (h *ChatHandler) sendSSEChunk(w http.ResponseWriter, chunk services.StreamChunk) {
+	data, err := json.Marshal(chunk)
+	if err != nil {
+		h.logger.Error("Error marshaling SSE chunk", "error", err)
+		return
+	}
+	_, _ = fmt.Fprintf(w, "data: %s\n\n", data)
+}
+
+// sendSSEError sends an error in SSE format
+func (h *ChatHandler) sendSSEError(w http.ResponseWriter, message string) {
+	errorChunk := services.StreamChunk{
+		Error: errors.New(message),
+		Done:  true,
+	}
+	h.sendSSEChunk(w, errorChunk)
+}
+
+// updateGameStateAfterStreaming updates game state after streaming is complete
+func (h *ChatHandler) updateGameStateAfterStreaming(gs *state.GameState, userMessage, responseMessage, userRole string) {
+	ctx := context.Background()
+
+	// Cancel any in-process gamestate delta for this game state
+	h.metaCancelMu.Lock()
+	if cancel, ok := h.metaCancel[gs.ID]; ok {
+		cancel()
+	}
+	metaCtx, metaCancel := context.WithCancel(context.Background())
+	h.metaCancel[gs.ID] = metaCancel
+	h.metaCancelMu.Unlock()
+
+	if !gs.IsEnded {
+		gs.IncrementTurnCounters()
+	}
+
+	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
+		Role:    userRole,
+		Content: userMessage,
+	})
+
+	responseMessage = strings.TrimRight(responseMessage, "\n")
+	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
+		Role:    chat.ChatRoleAgent,
+		Content: responseMessage,
+	})
+
+	if err := h.storage.SaveGameState(ctx, gs.ID, gs); err != nil {
+		h.logger.Error("Failed to save game state after streaming", "error", err, "game_state_id", gs.ID.String())
+		return
+	}
+
+	// Start background gamestate delta update if game is not ended
+	if !gs.IsEnded {
+		go h.syncGameState(metaCtx, gs, userMessage, responseMessage)
+	}
+
+	h.logger.Debug("Game state updated after streaming", "game_state_id", gs.ID.String())
 }
 
 var errSceneNotFound = errors.New("scene not found")

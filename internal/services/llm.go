@@ -16,11 +16,27 @@ const (
 	BackendMaxTokens   = 512
 )
 
-// StreamChunk represents a chunk of streaming response
 type StreamChunk struct {
-	Content string `json:"content"`
-	Done    bool   `json:"done"`
-	Error   error  `json:"error,omitempty"`
+	Content  string `json:"content"`
+	Done     bool   `json:"done"`
+	Error    error  `json:"-"`               // Don't serialize directly
+	ErrorMsg string `json:"error,omitempty"` // Serialize error message as string
+}
+
+func (sc StreamChunk) MarshalJSON() ([]byte, error) {
+	type Alias StreamChunk
+	aux := struct {
+		Alias
+		ErrorMsg string `json:"error,omitempty"`
+	}{
+		Alias: Alias(sc),
+	}
+
+	if sc.Error != nil {
+		aux.ErrorMsg = sc.Error.Error()
+	}
+
+	return json.Marshal(aux)
 }
 
 // LLMService defines the interface for interacting with the LLM API
@@ -29,10 +45,10 @@ type LLMService interface {
 
 	// Chat generates a chat response using the LLM
 	Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error)
-	
+
 	// ChatStream generates a streaming chat response using the LLM
 	ChatStream(ctx context.Context, messages []chat.ChatMessage) (<-chan StreamChunk, error)
-	
+
 	DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error)
 }
 
