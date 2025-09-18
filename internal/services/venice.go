@@ -1,12 +1,14 @@
 package services
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
@@ -76,6 +78,30 @@ type VeniceChatResponse struct {
 		TotalTokens      int `json:"total_tokens"`
 	} `json:"usage,omitempty"`
 	Error *struct {
+		Message string `json:"message"`
+		Type    string `json:"type"`
+		Code    string `json:"code"`
+	} `json:"error,omitempty"`
+}
+
+// VeniceStreamChoice represents a streaming choice in Venice AI response
+type VeniceStreamChoice struct {
+	Index int `json:"index"`
+	Delta struct {
+		Role    string `json:"role,omitempty"`
+		Content string `json:"content,omitempty"`
+	} `json:"delta"`
+	FinishReason *string `json:"finish_reason"`
+}
+
+// VeniceStreamResponse represents the streaming response structure for Venice AI
+type VeniceStreamResponse struct {
+	ID      string               `json:"id"`
+	Object  string               `json:"object"`
+	Created int64                `json:"created"`
+	Model   string               `json:"model"`
+	Choices []VeniceStreamChoice `json:"choices"`
+	Error   *struct {
 		Message string `json:"message"`
 		Type    string `json:"type"`
 		Code    string `json:"code"`
@@ -270,6 +296,113 @@ func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (
 	return &chat.ChatResponse{
 		Message: content,
 	}, nil
+}
+
+// ChatStream generates a streaming chat response using Venice AI
+func (v *VeniceService) ChatStream(ctx context.Context, messages []chat.ChatMessage) (<-chan StreamChunk, error) {
+	reqBody := VeniceChatRequest{
+		Model:       v.modelName,
+		Messages:    messages,
+		Temperature: DefaultTemperature,
+		MaxTokens:   DefaultMaxTokens,
+		Stream:      true,
+		VeniceParameters: VeniceParameters{
+			IncludeVeniceSystemPrompt: false,
+			EnableWebSearch:           "off",
+		},
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", veniceBaseURL+"/chat/completions", bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+v.apiKey)
+
+	resp, err := v.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
+	}
+
+	chunkChan := make(chan StreamChunk, 10)
+
+	go func() {
+		defer func() { _ = resp.Body.Close() }()
+		defer close(chunkChan)
+
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			select {
+			case <-ctx.Done():
+				chunkChan <- StreamChunk{Error: ctx.Err()}
+				return
+			default:
+			}
+
+			line := scanner.Text()
+			if line == "" {
+				continue
+			}
+
+			// Venice streaming responses are in SSE format: "data: {json}"
+			if !strings.HasPrefix(line, "data: ") {
+				continue
+			}
+
+			// Remove "data: " prefix
+			jsonData := strings.TrimPrefix(line, "data: ")
+
+			// Check for end of stream
+			if jsonData == "[DONE]" {
+				chunkChan <- StreamChunk{Done: true}
+				return
+			}
+
+			var streamResp VeniceStreamResponse
+			if err := json.Unmarshal([]byte(jsonData), &streamResp); err != nil {
+				chunkChan <- StreamChunk{Error: fmt.Errorf("failed to decode streaming response: %w", err)}
+				return
+			}
+
+			// Check for API errors
+			if streamResp.Error != nil {
+				chunkChan <- StreamChunk{Error: fmt.Errorf("venice API error: %s", streamResp.Error.Message)}
+				return
+			}
+
+			// Extract content from the first choice
+			if len(streamResp.Choices) > 0 {
+				choice := streamResp.Choices[0]
+				chunkChan <- StreamChunk{
+					Content: choice.Delta.Content,
+					Done:    choice.FinishReason != nil,
+				}
+
+				// Check if streaming is complete
+				if choice.FinishReason != nil {
+					chunkChan <- StreamChunk{Done: true}
+					return
+				}
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			chunkChan <- StreamChunk{Error: fmt.Errorf("error reading stream: %w", err)}
+		}
+	}()
+
+	return chunkChan, nil
 }
 
 func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
