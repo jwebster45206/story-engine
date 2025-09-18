@@ -11,6 +11,7 @@ import (
 type ChatRequest struct {
 	GameStateID uuid.UUID `json:"gamestate_id"` // Unique ID for the game state
 	Message     string    `json:"message"`
+	Stream      bool      `json:"stream,omitempty"` // Whether to stream the response
 }
 
 // ChatResponse represents a chat message response returned by the story engine api.

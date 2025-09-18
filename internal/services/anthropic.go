@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -60,6 +61,30 @@ type AnthropicContentBlock struct {
 	ID    string         `json:"id,omitempty"`
 	Name  string         `json:"name,omitempty"`
 	Input map[string]any `json:"input,omitempty"`
+}
+
+type AnthropicStreamEvent struct {
+	Type string `json:"type"`
+	// For message_start, content_block_start, etc.
+	Message      *AnthropicChatResponse `json:"message,omitempty"`
+	ContentBlock *AnthropicContentBlock `json:"content_block,omitempty"`
+	Index        *int                   `json:"index,omitempty"`
+	// For content_block_delta
+	Delta *AnthropicStreamDelta `json:"delta,omitempty"`
+	// For message_delta
+	Usage *struct {
+		OutputTokens int `json:"output_tokens"`
+	} `json:"usage,omitempty"`
+	// For errors
+	Error *struct {
+		Type    string `json:"type"`
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
+}
+
+type AnthropicStreamDelta struct {
+	Type string `json:"type"`
+	Text string `json:"text,omitempty"`
 }
 
 type AnthropicChatResponse struct {
@@ -217,6 +242,128 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 	return &chat.ChatResponse{
 		Message: content,
 	}, nil
+}
+
+// ChatStream generates a streaming chat response using Anthropic
+func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatMessage) (<-chan StreamChunk, error) {
+	// Extract system messages and convert to Anthropic format
+	systemPrompt, conversationMessages := a.splitChatMessages(messages)
+
+	temp := DefaultTemperature
+	anthropicReq := AnthropicChatRequest{
+		Model:       a.modelName,
+		MaxTokens:   DefaultMaxTokens,
+		Temperature: &temp,
+		Messages:    conversationMessages,
+		Stream:      true,
+	}
+
+	// Add system prompt if we have one
+	if systemPrompt != "" {
+		anthropicReq.System = systemPrompt
+	}
+
+	reqBody, err := json.Marshal(anthropicReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", anthropicBaseURL+"/messages", bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set required Anthropic headers
+	req.Header.Set("x-api-key", a.apiKey)
+	req.Header.Set("anthropic-version", anthropicVersion)
+	req.Header.Set("content-type", "application/json")
+
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
+	}
+
+	chunkChan := make(chan StreamChunk, 10)
+
+	go func() {
+		defer func() { _ = resp.Body.Close() }()
+		defer close(chunkChan)
+
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			select {
+			case <-ctx.Done():
+				chunkChan <- StreamChunk{Error: ctx.Err()}
+				return
+			default:
+			}
+
+			line := scanner.Text()
+			if line == "" {
+				continue
+			}
+
+			// Anthropic streaming responses are in SSE format
+			// Lines can be "event: <event_type>" or "data: <json>"
+			if strings.HasPrefix(line, "event: ") {
+				// Event type line, we can ignore these as we parse by data content
+				continue
+			}
+
+			if !strings.HasPrefix(line, "data: ") {
+				continue
+			}
+
+			// Remove "data: " prefix
+			jsonData := strings.TrimPrefix(line, "data: ")
+
+			var streamEvent AnthropicStreamEvent
+			if err := json.Unmarshal([]byte(jsonData), &streamEvent); err != nil {
+				chunkChan <- StreamChunk{Error: fmt.Errorf("failed to decode streaming response: %w", err)}
+				return
+			}
+
+			// Check for API errors
+			if streamEvent.Error != nil {
+				chunkChan <- StreamChunk{Error: fmt.Errorf("anthropic API error: %s", streamEvent.Error.Message)}
+				return
+			}
+
+			// Handle different event types
+			switch streamEvent.Type {
+			case "content_block_delta":
+				// This contains the actual text content
+				if streamEvent.Delta != nil && streamEvent.Delta.Type == "text_delta" {
+					chunkChan <- StreamChunk{
+						Content: streamEvent.Delta.Text,
+						Done:    false,
+					}
+				}
+			case "message_stop":
+				// End of stream
+				chunkChan <- StreamChunk{Done: true}
+				return
+			case "message_start", "content_block_start", "content_block_stop", "message_delta", "ping":
+				// These are structural events we can ignore for our streaming purposes
+				continue
+			default:
+				// Unknown event type, log and continue
+				a.logger.Debug("Unknown Anthropic stream event type", "type", streamEvent.Type)
+				continue
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			chunkChan <- StreamChunk{Error: fmt.Errorf("error reading stream: %w", err)}
+		}
+	}()
+
+	return chunkChan, nil
 }
 
 // getDeltaUpdateTool returns the tool definition for gamestate deltas

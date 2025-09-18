@@ -432,3 +432,88 @@ func TestApplyMetaUpdate(t *testing.T) {
 		assert.Equal(t, "value2", gs.Vars["another_var"], "another var should be upserted as another_var")
 	}
 }
+
+func TestChatHandler_StreamingChat(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError, // Reduce noise in tests
+	}))
+
+	mockLLM := services.NewMockLLMAPI()
+	mockSto := services.NewMockStorage()
+
+	// Create a test game state
+	testGS := state.NewGameState("foo_scenario.json", "foo_model")
+	if err := mockSto.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
+		t.Fatalf("Failed to save test game state: %v", err)
+	}
+
+	handler := NewChatHandler(mockLLM, logger, mockSto)
+
+	t.Run("streaming request with unsupported provider", func(t *testing.T) {
+		requestBody := chat.ChatRequest{
+			GameStateID: testGS.ID,
+			Message:     "Hello, streaming world!",
+			Stream:      true,
+		}
+		body, _ := json.Marshal(requestBody)
+
+		req := httptest.NewRequest(http.MethodPost, "/v1/chat", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+
+		// Should get SSE headers
+		assert.Equal(t, "text/event-stream", rr.Header().Get("Content-Type"))
+		assert.Equal(t, "no-cache", rr.Header().Get("Cache-Control"))
+		assert.Equal(t, "keep-alive", rr.Header().Get("Connection"))
+
+		// Should get an error since mock LLM doesn't support streaming
+		responseBody := rr.Body.String()
+		assert.Contains(t, responseBody, "data: ")
+		assert.Contains(t, responseBody, "Failed to generate response. Please try again.")
+	})
+
+	t.Run("non-streaming request still works", func(t *testing.T) {
+		requestBody := chat.ChatRequest{
+			GameStateID: testGS.ID,
+			Message:     "Hello, regular world!",
+			Stream:      false, // Explicit non-streaming
+		}
+		body, _ := json.Marshal(requestBody)
+
+		req := httptest.NewRequest(http.MethodPost, "/v1/chat", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+
+		// Should get regular JSON response
+		assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		var response chat.ChatResponse
+		err := json.Unmarshal(rr.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "Mock response", response.Message)
+	})
+
+	t.Run("default behavior is non-streaming", func(t *testing.T) {
+		requestBody := chat.ChatRequest{
+			GameStateID: testGS.ID,
+			Message:     "Hello, default world!",
+			// Stream field omitted - should default to false
+		}
+		body, _ := json.Marshal(requestBody)
+
+		req := httptest.NewRequest(http.MethodPost, "/v1/chat", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+
+		// Should get regular JSON response
+		assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+		assert.Equal(t, http.StatusOK, rr.Code)
+	})
+}

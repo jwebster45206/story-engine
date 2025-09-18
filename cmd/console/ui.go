@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/jwebster45206/story-engine/internal/services"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/state"
 	"github.com/jwebster45206/story-engine/pkg/textfilter"
@@ -131,8 +133,14 @@ type ConsoleUI struct {
 	chatLatencies        []float64 // all chat latencies for the session
 
 	// Pending user messages not yet confirmed in server game state
-	// Pending user messages awaiting server echo (assistant responses are applied only on chatResponse)
+	// Pending user messages awaiting server echo (assistant responses are applied when streaming completes)
 	pendingUserMessages []chat.ChatMessage
+
+	// Streaming state
+	isStreaming         bool                        // whether we're currently receiving a streaming response
+	streamingContent    string                      // accumulated content from streaming chunks
+	streamingMessageIdx int                         // index of the message being streamed in ChatHistory
+	streamingChunks     <-chan services.StreamChunk // channel for receiving streaming chunks
 }
 
 // mergeServerGameState reconciles the authoritative server game state with any locally
@@ -209,9 +217,13 @@ func (m *ConsoleUI) mergeServerGameState(serverGS *state.GameState) {
 	}
 }
 
-type chatResponseMsg struct {
-	response *chat.ChatResponse
-	err      error
+type streamingChatMsg struct {
+	chunks <-chan services.StreamChunk
+	err    error
+}
+
+type streamChunkMsg struct {
+	chunk services.StreamChunk
 }
 
 type gameStateMsg struct {
@@ -573,7 +585,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case tea.KeyEnter:
-			if m.loading {
+			if m.loading || m.isStreaming {
 				return m, nil
 			}
 
@@ -639,55 +651,95 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case chatResponseMsg:
+	case streamingChatMsg:
 		m.loading = false
 		if msg.err != nil {
 			m.err = msg.err
+			m.isStreaming = false
 			// Remove loading message and add error by reformatting
 			m.writeChatContent()
 			currentContent := m.chatViewport.View()
 			errorMsg := errorStyle.Render("Error: "+msg.err.Error()) + "\n\n"
 			m.chatViewport.SetContent(currentContent + errorMsg)
-			// After an error, only scroll if user was already at bottom
 			if m.chatViewport.AtBottom() {
 				m.chatViewport.GotoBottom()
 			}
-			// Don't start polling on error
 		} else {
-			// Add assistant response to game state (server will echo later; we'll de-dupe then)
-			assistantMessage := chat.ChatMessage{Role: "assistant", Content: msg.response.Message}
+			// Start streaming - create placeholder assistant message
+			m.isStreaming = true
+			m.streamingContent = ""
+			m.streamingChunks = msg.chunks
+			assistantMessage := chat.ChatMessage{Role: "assistant", Content: ""}
 			m.gameState.ChatHistory = append(m.gameState.ChatHistory, assistantMessage)
+			m.streamingMessageIdx = len(m.gameState.ChatHistory) - 1
 
-			// Calculate latency in seconds with 3 decimal places
+			// Start consuming chunks
+			return m, m.consumeStreamChunks(msg.chunks)
+		}
+
+	case streamChunkMsg:
+		if msg.chunk.Error != nil {
+			// Handle streaming error
+			m.isStreaming = false
+			m.streamingChunks = nil
+			m.err = msg.chunk.Error
+			m.writeChatContent()
+			currentContent := m.chatViewport.View()
+			errorMsg := errorStyle.Render("Error: "+msg.chunk.Error.Error()) + "\n\n"
+			m.chatViewport.SetContent(currentContent + errorMsg)
+			if m.chatViewport.AtBottom() {
+				m.chatViewport.GotoBottom()
+			}
+			return m, nil
+		}
+
+		if msg.chunk.Content != "" {
+			// Append content to current streaming response
+			m.streamingContent += msg.chunk.Content
+			if m.streamingMessageIdx < len(m.gameState.ChatHistory) {
+				m.gameState.ChatHistory[m.streamingMessageIdx].Content = m.streamingContent
+			}
+			// Refresh display with new content
+			m.writeChatContent()
+			if !m.userPinned {
+				m.chatViewport.GotoBottom()
+			}
+		}
+
+		if msg.chunk.Done {
+			// Streaming complete
+			m.isStreaming = false
+			m.streamingChunks = nil
+
+			// Calculate latency
 			if !m.chatRequestStartTime.IsZero() {
 				m.lastChatLatency = time.Since(m.chatRequestStartTime).Seconds()
 				m.chatLatencies = append(m.chatLatencies, m.lastChatLatency)
 			}
 
-			// Start polling now that we have the chat response (only if game hasn't ended)
+			// Start polling now that streaming is complete (only if game hasn't ended)
 			var startPollingCmd tea.Cmd
 			if m.gameState != nil && !m.gameState.IsEnded {
 				wasPollingActive := m.pollingActive
 				m.pollingActive = true
-				m.pollingStartedAt = time.Now() // Record time AFTER chat response, look for updates after this
+				m.pollingStartedAt = time.Now()
 
-				// Only start the polling loop if it wasn't already active
 				if !wasPollingActive {
 					startPollingCmd = schedulePoll()
 				}
 			}
+
 			// Update metadata to show polling indicator
 			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
 
-			m.writeChatContent()
-			if !m.userPinned {
-				m.chatViewport.GotoBottom()
-			}
-			// Continue polling to detect when the server has updated the gamestate with our changes
-
-			// Continue the existing polling loop and refresh game state
 			return m, tea.Batch(m.refreshGameState(), startPollingCmd)
 		}
+
+		// Continue consuming chunks if not done - use stored channel
+		if m.isStreaming && m.streamingChunks != nil {
+			return m, m.consumeStreamChunks(m.streamingChunks)
+		}
+		return m, nil
 
 	case pollTickMsg:
 		// Don't poll if the game has ended
@@ -853,48 +905,94 @@ func (m ConsoleUI) sendChatMessage(message string) tea.Cmd {
 		chatReq := chat.ChatRequest{
 			GameStateID: m.gameState.ID,
 			Message:     message,
+			Stream:      true, // Enable streaming
 		}
 
 		jsonData, err := json.Marshal(chatReq)
 		if err != nil {
-			return chatResponseMsg{nil, fmt.Errorf("failed to marshal request: %w", err)}
+			return streamingChatMsg{nil, fmt.Errorf("failed to marshal request: %w", err)}
 		}
 
-		resp, err := m.client.Post(
-			m.config.APIBaseURL+"/v1/chat",
-			"application/json",
-			bytes.NewBuffer(jsonData),
-		)
+		req, err := http.NewRequest("POST", m.config.APIBaseURL+"/v1/chat", bytes.NewBuffer(jsonData))
 		if err != nil {
-			return chatResponseMsg{nil, fmt.Errorf("failed to send request: %w", err)}
+			return streamingChatMsg{nil, fmt.Errorf("failed to create request: %w", err)}
 		}
-		defer func() {
-			_ = resp.Body.Close() // Ignore error in defer
-		}()
 
-		body, err := io.ReadAll(resp.Body)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "text/event-stream")
+
+		resp, err := m.client.Do(req)
 		if err != nil {
-			return chatResponseMsg{nil, fmt.Errorf("failed to read response: %w", err)}
-		}
-		// Update metadata in case server mutated something quickly (turn counter etc.)
-		if m.gameState != nil {
-			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
+			return streamingChatMsg{nil, fmt.Errorf("failed to send request: %w", err)}
 		}
 
 		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			body, _ := io.ReadAll(resp.Body)
 			var errorResp ErrorResponse
 			if err := json.Unmarshal(body, &errorResp); err != nil {
-				return chatResponseMsg{nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))}
+				return streamingChatMsg{nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))}
 			}
-			return chatResponseMsg{nil, fmt.Errorf("chat request failed: %s", errorResp.Error)}
+			return streamingChatMsg{nil, fmt.Errorf("chat request failed: %s", errorResp.Error)}
 		}
 
-		var chatResp chat.ChatResponse
-		if err := json.Unmarshal(body, &chatResp); err != nil {
-			return chatResponseMsg{nil, fmt.Errorf("failed to parse response: %w", err)}
-		}
+		// Create channel for streaming chunks
+		chunkChan := make(chan services.StreamChunk, 10)
 
-		return chatResponseMsg{&chatResp, nil}
+		// Start goroutine to read SSE stream
+		go func() {
+			defer resp.Body.Close()
+			defer close(chunkChan)
+
+			scanner := bufio.NewScanner(resp.Body)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if line == "" {
+					continue
+				}
+
+				// Parse SSE format: "data: {json}"
+				if !strings.HasPrefix(line, "data: ") {
+					continue
+				}
+
+				jsonData := strings.TrimPrefix(line, "data: ")
+				var chunk services.StreamChunk
+				if err := json.Unmarshal([]byte(jsonData), &chunk); err != nil {
+					chunkChan <- services.StreamChunk{Error: fmt.Errorf("failed to decode chunk: %w", err)}
+					return
+				}
+
+				chunkChan <- chunk
+
+				if chunk.Done {
+					return
+				}
+			}
+
+			if err := scanner.Err(); err != nil {
+				chunkChan <- services.StreamChunk{Error: fmt.Errorf("error reading stream: %w", err)}
+			}
+		}()
+
+		return streamingChatMsg{chunkChan, nil}
+	}
+}
+
+// consumeStreamChunks converts streaming chunks from a channel into Bubble Tea messages
+func (m ConsoleUI) consumeStreamChunks(chunks <-chan services.StreamChunk) tea.Cmd {
+	return func() tea.Msg {
+		select {
+		case chunk, ok := <-chunks:
+			if !ok {
+				// Channel closed, streaming is done
+				return streamChunkMsg{services.StreamChunk{Done: true}}
+			}
+			return streamChunkMsg{chunk}
+		case <-time.After(30 * time.Second):
+			// Timeout - treat as error
+			return streamChunkMsg{services.StreamChunk{Error: fmt.Errorf("streaming timeout")}}
+		}
 	}
 }
 
