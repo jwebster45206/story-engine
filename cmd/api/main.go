@@ -91,11 +91,11 @@ func main() {
 
 	handler := middleware.Logger(mux)
 	server := &http.Server{
-		Addr:         ":" + cfg.Port,
-		Handler:      handler,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 45 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:        ":" + cfg.Port,
+		Handler:     handler,
+		ReadTimeout: 15 * time.Second,
+		// WriteTimeout removed to enable streaming - streaming endpoints handle their own timeouts
+		IdleTimeout: 60 * time.Second,
 	}
 
 	go func() {
