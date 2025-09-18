@@ -16,12 +16,23 @@ const (
 	BackendMaxTokens   = 512
 )
 
+// StreamChunk represents a chunk of streaming response
+type StreamChunk struct {
+	Content string `json:"content"`
+	Done    bool   `json:"done"`
+	Error   error  `json:"error,omitempty"`
+}
+
 // LLMService defines the interface for interacting with the LLM API
 type LLMService interface {
 	InitModel(ctx context.Context, modelName string) error
 
 	// Chat generates a chat response using the LLM
 	Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error)
+	
+	// ChatStream generates a streaming chat response using the LLM
+	ChatStream(ctx context.Context, messages []chat.ChatMessage) (<-chan StreamChunk, error)
+	
 	DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error)
 }
 

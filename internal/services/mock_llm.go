@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -132,6 +133,11 @@ func (m *MockLLMAPI) Chat(ctx context.Context, messages []chat.ChatMessage) (*ch
 	return &chat.ChatResponse{
 		Message: "Mock response",
 	}, nil
+}
+
+// ChatStream mocks streaming response generation
+func (m *MockLLMAPI) ChatStream(ctx context.Context, messages []chat.ChatMessage) (<-chan StreamChunk, error) {
+	return nil, fmt.Errorf("streaming not implemented for mock LLM")
 }
 
 // Reset clears all call tracking
