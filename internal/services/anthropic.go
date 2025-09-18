@@ -219,9 +219,9 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 	}, nil
 }
 
-// ChatStream generates a streaming chat response using Anthropic Claude
+// ChatStream generates a streaming chat response using Anthropic
 func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatMessage) (<-chan StreamChunk, error) {
-	return nil, fmt.Errorf("streaming not implemented for Anthropic Claude")
+	return nil, fmt.Errorf("streaming not implemented for Anthropic")
 }
 
 // getDeltaUpdateTool returns the tool definition for gamestate deltas

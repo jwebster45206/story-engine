@@ -474,9 +474,6 @@ func applyGameStateDelta(gs *state.GameState, scenario *scenario.Scenario, delta
 
 	// Handle item events
 	for _, itemEvent := range delta.ItemEvents {
-		fmt.Printf("Processing item event: item=%s action=%s from=%+v to=%+v\n",
-			itemEvent.Item, itemEvent.Action, itemEvent.From, itemEvent.To)
-
 		switch itemEvent.Action {
 		case "acquire":
 			// Add item to player inventory
