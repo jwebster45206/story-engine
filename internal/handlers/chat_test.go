@@ -90,7 +90,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 				m.SetGenerateResponseError(errors.New("LLM service unavailable"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedError:  "Failed to generate response. Please try again.",
+			expectedError:  "Failed to generate response. Internal error.",
 		},
 	}
 
@@ -471,7 +471,7 @@ func TestChatHandler_StreamingChat(t *testing.T) {
 		// Should get an error since mock LLM doesn't support streaming
 		responseBody := rr.Body.String()
 		assert.Contains(t, responseBody, "data: ")
-		assert.Contains(t, responseBody, "Failed to generate response. Please try again.")
+		assert.Contains(t, responseBody, "Failed to generate response. Internal error.")
 	})
 
 	t.Run("non-streaming request still works", func(t *testing.T) {

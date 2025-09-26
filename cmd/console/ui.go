@@ -280,7 +280,7 @@ var (
 			Foreground(lipgloss.Color("39")) // teal
 
 	errorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("196")) // red
+			Foreground(lipgloss.Color("203")) // lighter red/pink for better visibility on black
 
 	loadingStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("214")) // yellow
@@ -473,9 +473,19 @@ func (m *ConsoleUI) writeChatContent() {
 
 	for _, msg := range m.gameState.ChatHistory {
 		switch msg.Role {
-		case "assistant", "system":
+		case "assistant":
 			formattedMsg := formatNarratorResponse(msg.Content, chatWidth)
 			content.WriteString(formattedMsg + "\n\n")
+		case "system":
+			// Check if this is an error message (already styled) or regular system message
+			if strings.Contains(msg.Content, "Error:") && strings.Contains(msg.Content, "\x1b[") {
+				// This is a pre-styled error message, display as-is
+				content.WriteString(msg.Content + "\n\n")
+			} else {
+				// Regular system message, format normally
+				formattedMsg := formatNarratorResponse(msg.Content, chatWidth)
+				content.WriteString(formattedMsg + "\n\n")
+			}
 		case "user":
 			userMsg := userStyle.Render(wordwrap.String(msg.Content, chatWidth-3))
 			content.WriteString(userMsg + "\n\n")
@@ -656,14 +666,31 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.err = msg.err
 			m.isStreaming = false
-			// Remove loading message and add error by reformatting
+
+			// Remove the failed user message from pending messages and chat history
+			if len(m.pendingUserMessages) > 0 {
+				m.pendingUserMessages = m.pendingUserMessages[:len(m.pendingUserMessages)-1]
+			}
+			if len(m.gameState.ChatHistory) > 0 {
+				lastMsg := m.gameState.ChatHistory[len(m.gameState.ChatHistory)-1]
+				if lastMsg.Role == "user" {
+					m.gameState.ChatHistory = m.gameState.ChatHistory[:len(m.gameState.ChatHistory)-1]
+				}
+			}
+
+			// Add error message as a system message in chat history so it appears in the chat flow
+			errorMessage := chat.ChatMessage{
+				Role:    "system",
+				Content: errorStyle.Render("Error: " + msg.err.Error()),
+			}
+			m.gameState.ChatHistory = append(m.gameState.ChatHistory, errorMessage)
+
+			// Rewrite chat content with the error message included
 			m.writeChatContent()
-			currentContent := m.chatViewport.View()
-			errorMsg := errorStyle.Render("Error: "+msg.err.Error()) + "\n\n"
-			m.chatViewport.SetContent(currentContent + errorMsg)
-			if m.chatViewport.AtBottom() {
+			if !m.userPinned {
 				m.chatViewport.GotoBottom()
 			}
+			return m, nil // Don't start gamestate sync
 		} else {
 			// Start streaming - create placeholder assistant message
 			m.isStreaming = true
@@ -683,14 +710,31 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.isStreaming = false
 			m.streamingChunks = nil
 			m.err = msg.chunk.Error
+
+			// Remove the failed user message from pending messages and chat history
+			if len(m.pendingUserMessages) > 0 {
+				m.pendingUserMessages = m.pendingUserMessages[:len(m.pendingUserMessages)-1]
+			}
+			if len(m.gameState.ChatHistory) > 0 {
+				lastMsg := m.gameState.ChatHistory[len(m.gameState.ChatHistory)-1]
+				if lastMsg.Role == "user" {
+					m.gameState.ChatHistory = m.gameState.ChatHistory[:len(m.gameState.ChatHistory)-1]
+				}
+			}
+
+			// Add error message as a system message in chat history so it appears in the chat flow
+			errorMessage := chat.ChatMessage{
+				Role:    "system",
+				Content: errorStyle.Render("Error: " + msg.chunk.Error.Error()),
+			}
+			m.gameState.ChatHistory = append(m.gameState.ChatHistory, errorMessage)
+
+			// Rewrite chat content with the error message included
 			m.writeChatContent()
-			currentContent := m.chatViewport.View()
-			errorMsg := errorStyle.Render("Error: "+msg.chunk.Error.Error()) + "\n\n"
-			m.chatViewport.SetContent(currentContent + errorMsg)
-			if m.chatViewport.AtBottom() {
+			if !m.userPinned {
 				m.chatViewport.GotoBottom()
 			}
-			return m, nil
+			return m, nil // Don't start gamestate sync
 		}
 
 		if msg.chunk.Content != "" {
@@ -927,13 +971,13 @@ func (m ConsoleUI) sendChatMessage(message string) tea.Cmd {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
 			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
 			var errorResp ErrorResponse
 			if err := json.Unmarshal(body, &errorResp); err != nil {
 				return streamingChatMsg{nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))}
 			}
-			return streamingChatMsg{nil, fmt.Errorf("chat request failed: %s", errorResp.Error)}
+			return streamingChatMsg{nil, fmt.Errorf("%s (%d)", errorResp.Error, resp.StatusCode)}
 		}
 
 		// Create channel for streaming chunks
