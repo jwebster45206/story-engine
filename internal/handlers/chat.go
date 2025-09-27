@@ -200,7 +200,7 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 			"message_count", len(messages))
 		w.WriteHeader(http.StatusInternalServerError)
 		errorResponse := ErrorResponse{
-			Error: "Failed to generate response. Please try again.",
+			Error: "Failed to generate response. Internal error.",
 		}
 		if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
 			h.logger.Error("Error encoding error response", "error", err)
@@ -252,7 +252,7 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		h.logger.Error("Failed to save game state", "error", err, "game_state_id", gs.ID.String())
 		w.WriteHeader(http.StatusInternalServerError)
 		errorResponse := ErrorResponse{
-			Error: "Failed to save conversation. Please try again.",
+			Error: "Failed to save conversation. Internal error.",
 		}
 		if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
 			h.logger.Error("Error encoding error response", "error", err)
@@ -269,23 +269,31 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 
 // handleStreamChat handles streaming chat requests
 func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, request chat.ChatRequest) {
-	// Set SSE headers
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
 	// Load game state
 	gs, err := h.storage.LoadGameState(r.Context(), request.GameStateID)
 	if err != nil {
 		h.logger.Error("Error loading game state", "error", err)
-		h.sendSSEError(w, "Failed to load game state.")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		response := ErrorResponse{
+			Error: "Failed to load game state.",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
 		return
 	}
 
 	if gs == nil {
 		h.logger.Warn("Game state not found", "requested_id", request.GameStateID.String())
-		h.sendSSEError(w, "Game state not found. Please provide a valid game state ID.")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		response := ErrorResponse{
+			Error: "Game state not found. Please provide a valid game state ID.",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
 		return
 	}
 
@@ -293,19 +301,38 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 	scenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
 	if err != nil {
 		h.logger.Error("Error loading scenario for chat", "error", err, "scenario_filename", gs.Scenario)
-		h.sendSSEError(w, "Failed to load scenario for chat.")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		response := ErrorResponse{
+			Error: "Failed to load scenario for chat.",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
 		return
 	}
 
 	cmdResult, err := gs.TryHandleCommand(request.Message)
 	if err != nil {
 		h.logger.Error("Error handling command in chat", "error", err, "command", request.Message)
-		h.sendSSEError(w, "Failed to handle command in chat.")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		response := ErrorResponse{
+			Error: "Failed to handle command in chat.",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
 		return
 	}
+	// Handle commands before streaming setup
 	if cmdResult.Handled {
 		h.logger.Debug("Command handled in chat", "command", request.Message, "response", cmdResult.Message)
-		// Send command response as a single chunk
+		// For commands, we can still stream the response
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		h.sendSSEChunk(w, services.StreamChunk{Content: cmdResult.Message, Done: true})
 		return
 	}
@@ -313,11 +340,18 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, scenario, PromptHistoryLimit)
 	if err != nil {
 		h.logger.Error("Error getting chat messages", "error", err)
-		h.sendSSEError(w, "Failed to get chat messages.")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		response := ErrorResponse{
+			Error: "Failed to get chat messages.",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
 		return
 	}
 
-	// Generate streaming response using LLM
+	// Initialize LLM streaming (final validation step before committing to SSE)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -328,9 +362,22 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 			"error", err,
 			"user_message", request.Message,
 			"message_count", len(messages))
-		h.sendSSEError(w, "Failed to generate response. Please try again.")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		response := ErrorResponse{
+			Error: "Failed to generate response. Internal Error.",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
 		return
 	}
+
+	// ONLY NOW set SSE headers - ALL validation passed including LLM initialization
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	// Stream the response
 	var fullResponse strings.Builder
