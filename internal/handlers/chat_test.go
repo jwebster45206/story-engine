@@ -463,15 +463,15 @@ func TestChatHandler_StreamingChat(t *testing.T) {
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		// Should get SSE headers
-		assert.Equal(t, "text/event-stream", rr.Header().Get("Content-Type"))
-		assert.Equal(t, "no-cache", rr.Header().Get("Cache-Control"))
-		assert.Equal(t, "keep-alive", rr.Header().Get("Connection"))
+		// Should get HTTP 500 error response (not SSE) when LLM service fails
+		assert.Equal(t, http.StatusInternalServerError, rr.Code)
+		assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
-		// Should get an error since mock LLM doesn't support streaming
-		responseBody := rr.Body.String()
-		assert.Contains(t, responseBody, "data: ")
-		assert.Contains(t, responseBody, "Failed to generate response. Internal error.")
+		// Should get JSON error response since mock LLM doesn't support streaming
+		var errorResp ErrorResponse
+		err := json.Unmarshal(rr.Body.Bytes(), &errorResp)
+		assert.NoError(t, err)
+		assert.Contains(t, errorResp.Error, "Failed to generate response. Internal Error.")
 	})
 
 	t.Run("non-streaming request still works", func(t *testing.T) {
