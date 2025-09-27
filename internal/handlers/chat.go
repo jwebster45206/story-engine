@@ -278,7 +278,9 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		response := ErrorResponse{
 			Error: "Failed to load game state.",
 		}
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
 		return
 	}
 
@@ -289,7 +291,9 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		response := ErrorResponse{
 			Error: "Game state not found. Please provide a valid game state ID.",
 		}
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
 		return
 	}
 
@@ -302,7 +306,9 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		response := ErrorResponse{
 			Error: "Failed to load scenario for chat.",
 		}
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
 		return
 	}
 
@@ -314,7 +320,9 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		response := ErrorResponse{
 			Error: "Failed to handle command in chat.",
 		}
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
 		return
 	}
 	// Handle commands before streaming setup
@@ -337,7 +345,9 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		response := ErrorResponse{
 			Error: "Failed to get chat messages.",
 		}
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
 		return
 	}
 
@@ -357,7 +367,9 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		response := ErrorResponse{
 			Error: "Failed to generate response. Internal Error.",
 		}
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Error encoding error response", "error", err)
+		}
 		return
 	}
 
