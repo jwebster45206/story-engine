@@ -35,6 +35,7 @@ func NewGameStateHandler(modelName string, storage services.Storage, logger *slo
 // Routes:
 // POST /gamestate        - Create new game state
 // GET /gamestate/{id}    - Read game state by ID
+// PATCH /gamestate/{id}  - Update game state
 // DELETE /gamestate/{id} - Delete game state by ID
 func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -79,6 +80,19 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		h.handleRead(w, r, gameStateID)
 
+	case http.MethodPatch:
+		if gameStateID == uuid.Nil {
+			w.WriteHeader(http.StatusBadRequest)
+			response := ErrorResponse{
+				Error: "Game state ID is required for PATCH requests",
+			}
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				h.logger.Error("Failed to encode error response", "error", err)
+			}
+			return
+		}
+		h.handlePatch(w, r, gameStateID)
+
 	case http.MethodDelete:
 		if gameStateID == uuid.Nil {
 			h.logger.Warn("DELETE request without game state ID")
@@ -97,7 +111,7 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.logger.Warn("Method not allowed for game state endpoint", "method", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		response := ErrorResponse{
-			Error: "Method not allowed. Supported methods: POST, GET, DELETE",
+			Error: "Method not allowed. Supported methods: POST, GET, PATCH, DELETE",
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Failed to encode error response", "error", err)
@@ -264,6 +278,106 @@ func (h *GameStateHandler) handleRead(w http.ResponseWriter, r *http.Request, ga
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(gs); err != nil {
 		h.logger.Error("Failed to encode game state response", "error", err)
+	}
+}
+
+// handlePatch updates an existing game state.
+// It doesn't do extensive validation of the update, so use with caution.
+// Integ tests are the current use case.
+func (h *GameStateHandler) handlePatch(w http.ResponseWriter, r *http.Request, gameStateID uuid.UUID) {
+	existingGS, err := h.storage.LoadGameState(r.Context(), gameStateID)
+	if err != nil {
+		h.logger.Error("Failed to load game state for patch", "error", err, "id", gameStateID.String())
+		w.WriteHeader(http.StatusInternalServerError)
+		response := ErrorResponse{
+			Error: "Failed to load game state",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
+		return
+	}
+
+	if existingGS == nil {
+		h.logger.Warn("Game state not found for patch", "id", gameStateID.String())
+		w.WriteHeader(http.StatusNotFound)
+		response := ErrorResponse{
+			Error: "Game state not found",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
+		return
+	}
+
+	// Parse patch request body
+	var patchData state.GameState
+	if err := json.NewDecoder(r.Body).Decode(&patchData); err != nil {
+		h.logger.Warn("Invalid JSON in PATCH request body", "error", err)
+		w.WriteHeader(http.StatusBadRequest)
+		response := ErrorResponse{
+			Error: "Invalid JSON in request body",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
+		return
+	}
+
+	// Apply patch fields to existing gamestate (only non-zero values)
+	updatedGS := *existingGS
+
+	// Apply patch fields
+	if patchData.SceneName != "" {
+		updatedGS.SceneName = patchData.SceneName
+	}
+	if patchData.Location != "" {
+		updatedGS.Location = patchData.Location
+	}
+	if patchData.TurnCounter != 0 {
+		updatedGS.TurnCounter = patchData.TurnCounter
+	}
+	if patchData.SceneTurnCounter != 0 {
+		updatedGS.SceneTurnCounter = patchData.SceneTurnCounter
+	}
+	if len(patchData.Inventory) > 0 {
+		updatedGS.Inventory = patchData.Inventory
+	}
+	if len(patchData.ChatHistory) > 0 {
+		updatedGS.ChatHistory = patchData.ChatHistory
+	}
+	if len(patchData.Vars) > 0 {
+		updatedGS.Vars = patchData.Vars
+	}
+	if len(patchData.NPCs) > 0 {
+		updatedGS.NPCs = patchData.NPCs
+	}
+	if len(patchData.WorldLocations) > 0 {
+		updatedGS.WorldLocations = patchData.WorldLocations
+	}
+	if len(patchData.ContingencyPrompts) > 0 {
+		updatedGS.ContingencyPrompts = patchData.ContingencyPrompts
+	}
+	if patchData.IsEnded != existingGS.IsEnded {
+		updatedGS.IsEnded = patchData.IsEnded
+	}
+
+	if err := h.storage.SaveGameState(r.Context(), gameStateID, &updatedGS); err != nil {
+		h.logger.Error("Failed to save patched game state", "error", err, "id", gameStateID.String())
+		w.WriteHeader(http.StatusInternalServerError)
+		response := ErrorResponse{
+			Error: "Failed to save game state",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
+		return
+	}
+
+	h.logger.Info("Game state patched successfully", "id", gameStateID.String(), "scenario", updatedGS.Scenario, "location", updatedGS.Location)
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(updatedGS); err != nil {
+		h.logger.Error("Failed to encode patched game state response", "error", err)
 	}
 }
 

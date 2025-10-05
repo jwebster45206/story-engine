@@ -205,8 +205,8 @@ func TestGameStateHandler_MethodNotAllowed(t *testing.T) {
 	mockStorage := services.NewMockStorage()
 	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
-	// Test unsupported methods (DELETE is now supported)
-	methods := []string{http.MethodPut, http.MethodPatch, http.MethodHead}
+	// Test unsupported methods
+	methods := []string{http.MethodPut, http.MethodHead}
 
 	for _, method := range methods {
 		t.Run(method, func(t *testing.T) {
