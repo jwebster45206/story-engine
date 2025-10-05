@@ -218,8 +218,6 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 	h.metaCancelMu.Unlock()
 
 	if !gs.IsEnded {
-		// Update turn counters before background updates
-		gs.IncrementTurnCounters()
 		// Start background goroutine to update game meta (PromptState)
 		go h.syncGameState(metaCtx, gs, request.Message, response.Message)
 	}
@@ -450,10 +448,6 @@ func (h *ChatHandler) updateGameStateAfterStreaming(gs *state.GameState, userMes
 	metaCtx, metaCancel := context.WithCancel(context.Background())
 	h.metaCancel[gs.ID] = metaCancel
 	h.metaCancelMu.Unlock()
-
-	if !gs.IsEnded {
-		gs.IncrementTurnCounters()
-	}
 
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
 		Role:    userRole,
@@ -808,6 +802,11 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 	if latestGS == nil {
 		h.logger.Warn("Game state not found during gamestate delta", "game_state_id", gs.ID.String())
 		return
+	}
+
+	// Increment turn counters on the latest game state
+	if !latestGS.IsEnded {
+		latestGS.IncrementTurnCounters()
 	}
 
 	// Apply the calculated state to the latest game state
