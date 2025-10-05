@@ -1,0 +1,85 @@
+name: "Pirate British Docks to Calypsos Map Scene Transition"
+scenario: "pirate.json"
+
+seed_game_state:
+  scene_name: "british_docks"
+  location: "Black Pearl"
+  turn_counter: 15
+  scene_turn_counter: 6
+  inventory: 
+    - "cutlass"
+    - "spyglass"
+    - "lockpicks"
+    - "chest of 510 gold doubloons"
+    - "british naval uniform"
+    - "wanted poster with a handsome scoundrel's face"
+  vars:
+    met_shipwright: "true"
+    examined_ship: "true"
+    repairs_started: "true"
+    infiltrated_british_docks: "true"
+  world_locations:
+    "Tortuga":
+      name: "Tortuga"
+      items: []
+    "Black Pearl": 
+      name: "Black Pearl"
+      items: ["billy the parrot"]
+    "Captain's Cabin":
+      name: "Captain's Cabin"
+      items: ["bag of pieces of eight", "bag of gems", "map of the Caribbean", "letter from Calypso"]
+    "Sleepy Mermaid":
+      name: "Sleepy Mermaid"
+      items: []
+    "Tortuga Market":
+      name: "Tortuga Market"
+      items: ["forged documents", "rare spices"]
+    "British Docks":
+      name: "British Docks"
+      items: []
+    "Open Sea":
+      name: "Open Sea"
+      items: []
+  npcs:
+    "Gibbs":
+      name: "Gibbs"
+      location: "Black Pearl"
+      items: []
+    "Calypso":
+      name: "Calypso"
+      location: "Sleepy Mermaid"
+      items: ["flagon of ale", "deck of cards"]
+    "Charming Danny":
+      name: "Charming Danny"
+      location: "Tortuga Market"
+      items: ["forged documents", "rare spices", "bottle of rum", "black powder", "flintlock pistol"]
+    "Shipwright":
+      name: "Shipwright"
+      location: "Black Pearl"
+      items: []
+    "Davey":
+      name: "Davey"
+      location: "Tortuga Market"
+      items: []
+  chat_history:
+    - role: "user"
+      content: "I successfully infiltrated the British Docks and acquired the gold. Now I need to pay the shipwright."
+    - role: "assistant"
+      content: "You've returned to The Black Pearl with your hard-won treasure. The shipwright is aboard, hammering away at the ship's hull with determined efficiency. He looks up as you approach, wiping sweat from his brow. 'Ah, Captain! The repairs are coming along nicely, but I'll need me payment of 500 gold doubloons to finish the work proper-like.'"
+    - role: "user"
+      content: "I examine the progress on my ship's repairs."
+    - role: "assistant"
+      content: "The Black Pearl is looking much better already. New planks have been fitted, the rigging is being replaced, and the hull damage is nearly sealed. The shipwright has done good work, but you can see he's waiting for payment before completing the final touches that will make her truly seaworthy again."
+
+steps:
+  - name: "Pay shipwright to complete repairs"
+    user_prompt: "I count out 500 gold doubloons from my chest and pay the shipwright to complete the repairs."
+    expect:
+      scene_change: "calypsos_map"
+      response_contains:
+        - "500"
+        - "gold"
+        - "paid"
+        - "complete"
+        - "finished"
+      turn_increment: 1

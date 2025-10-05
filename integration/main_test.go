@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,12 +14,13 @@ import (
 	"github.com/jwebster45206/story-engine/integration/runner"
 )
 
+var caseFlag = flag.String("case", "", "Name of test case to run (from integration/cases/)")
+
 func TestMain(m *testing.M) {
 	// Check required environment variables
 	apiBaseURL := os.Getenv("API_BASE_URL")
 	if apiBaseURL == "" {
-		fmt.Fprintf(os.Stderr, "API_BASE_URL environment variable is required\n")
-		os.Exit(1)
+		apiBaseURL = "http://localhost:8080" // Default to localhost
 	}
 
 	fmt.Printf("Running Story Engine Integration Tests\n")
@@ -31,6 +33,9 @@ func TestMain(m *testing.M) {
 
 func TestIntegrationSuites(t *testing.T) {
 	apiBaseURL := os.Getenv("API_BASE_URL")
+	if apiBaseURL == "" {
+		apiBaseURL = "http://localhost:8080" // Default to localhost
+	}
 	timeoutSeconds := getIntEnv("TEST_TIMEOUT_SECONDS", 30)
 
 	// Create runner (no concurrency)
@@ -133,13 +138,24 @@ func TestIntegrationSuites(t *testing.T) {
 
 // TestSingleSuite allows running individual test suites for debugging
 func TestSingleSuite(t *testing.T) {
+	// Parse command line flags
+	flag.Parse()
+
 	// Skip if not explicitly requested
-	suiteFile := os.Getenv("TEST_SUITE_FILE")
-	if suiteFile == "" {
-		t.Skip("Skipping single suite test (set TEST_SUITE_FILE to run)")
+	if *caseFlag == "" {
+		t.Skip("Skipping single suite test (use -case flag to run)")
+	}
+
+	// Build the full path to the test case
+	suiteFile := "cases/" + *caseFlag
+	if !strings.HasSuffix(suiteFile, ".yaml") {
+		suiteFile += ".yaml"
 	}
 
 	apiBaseURL := os.Getenv("API_BASE_URL")
+	if apiBaseURL == "" {
+		apiBaseURL = "http://localhost:8080" // Default to localhost
+	}
 	timeoutSeconds := getIntEnv("TEST_TIMEOUT_SECONDS", 30)
 
 	testRunner := runner.NewRunner(apiBaseURL)

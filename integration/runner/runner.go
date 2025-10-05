@@ -66,7 +66,9 @@ func (r *Runner) RunSuite(ctx context.Context, suite TestSuite) (TestRunResult, 
 	result.GameState = gameStateID
 
 	// Seed the gamestate (creates a new one)
-	actualGameStateID, err := r.seedGameState(ctx, suite.SeedGameState)
+	seedData := suite.SeedGameState
+	seedData.Scenario = suite.Scenario // Use suite-level scenario
+	actualGameStateID, err := r.seedGameState(ctx, seedData)
 	if err != nil {
 		result.Error = fmt.Errorf("failed to seed gamestate: %w", err)
 		result.Duration = time.Since(start)
@@ -350,6 +352,26 @@ func (r *Runner) checkExpectations(exp Expectations, preState, postState *state.
 	if exp.SceneName != nil {
 		if postState.SceneName != *exp.SceneName {
 			return fmt.Errorf("expected scene %s, got %s", *exp.SceneName, postState.SceneName)
+		}
+	}
+
+	// Scene change check
+	if exp.SceneChange != nil {
+		if postState.SceneName != *exp.SceneChange {
+			return fmt.Errorf("expected scene to change to %s, but it's %s", *exp.SceneChange, postState.SceneName)
+		}
+		if preState.SceneName == postState.SceneName {
+			return fmt.Errorf("expected scene to change from %s to %s, but it didn't change", preState.SceneName, *exp.SceneChange)
+		}
+	}
+
+	// Scene unchanged check
+	if exp.SceneUnchanged != nil {
+		if postState.SceneName != *exp.SceneUnchanged {
+			return fmt.Errorf("expected scene to remain %s, but it's %s", *exp.SceneUnchanged, postState.SceneName)
+		}
+		if preState.SceneName != postState.SceneName {
+			return fmt.Errorf("expected scene to remain %s, but it changed from %s to %s", *exp.SceneUnchanged, preState.SceneName, postState.SceneName)
 		}
 	}
 

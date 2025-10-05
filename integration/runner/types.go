@@ -25,8 +25,10 @@ type TestStep struct {
 // Expectations defines what to check after a test step executes
 type Expectations struct {
 	// Location & Scene
-	Location  *string `yaml:"location,omitempty"`
-	SceneName *string `yaml:"scene_name,omitempty"`
+	Location       *string `yaml:"location,omitempty"`
+	SceneName      *string `yaml:"scene_name,omitempty"`
+	SceneChange    *string `yaml:"scene_change,omitempty"`    // expect scene to change to this value
+	SceneUnchanged *string `yaml:"scene_unchanged,omitempty"` // expect scene to remain this value
 
 	// Inventory Changes (check for additions/removals)
 	InventoryAdded   []string `yaml:"inventory_added,omitempty"`
