@@ -972,7 +972,7 @@ func (m ConsoleUI) sendChatMessage(message string) tea.Cmd {
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			var errorResp ErrorResponse
 			if err := json.Unmarshal(body, &errorResp); err != nil {
 				return streamingChatMsg{nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))}
@@ -985,7 +985,7 @@ func (m ConsoleUI) sendChatMessage(message string) tea.Cmd {
 
 		// Start goroutine to read SSE stream
 		go func() {
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			defer close(chunkChan)
 
 			scanner := bufio.NewScanner(resp.Body)
