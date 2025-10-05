@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # Integration test runner service
+  integration-tests:
+    build:
+      context: .
+      dockerfile: integration/Dockerfile
+    environment:
+      - API_BASE_URL=http://story-engine-api:8080
+      - TEST_CONCURRENCY=${TEST_CONCURRENCY:-5}
+      - TEST_TIMEOUT=${TEST_TIMEOUT:-30s}
+    depends_on:
+      story-engine-api:
+        condition: service_healthy
+    volumes:
+      - ./integration/cases:/app/integration/cases:ro
+    command: ["go", "test", "-tags=integration", "./integration/...", "-v"]
+    networks:
+      - story-engine-network
+
+  # Override the API service for testing
+  story-engine-api:
+    extends:
+      file: docker-compose.yml
+      service: story-engine-api
+    environment:
+      - PORT=8080
+      - REDIS_URL=redis://redis:6379
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
+      - MODEL_NAME=${MODEL_NAME:-claude-3-5-sonnet-20241022}
+      - BACKEND_MODEL_NAME=${BACKEND_MODEL_NAME:-claude-3-5-sonnet-20241022}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - VENICE_API_KEY=${VENICE_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - story-engine-network
+
+  redis:
+    extends:
+      file: docker-compose.yml  
+      service: redis
+    networks:
+      - story-engine-network
+
+networks:
+  story-engine-network:
+    driver: bridge
