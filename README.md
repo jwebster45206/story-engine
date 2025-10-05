@@ -119,6 +119,33 @@ GET /v1/gamestate/{id}
 }
 ```
 
+**Update Game State**
+```bash
+PATCH /v1/gamestate/{id}
+Content-Type: application/json
+
+{
+  "location": "Pirate Ship",
+  "turn_counter": 5,
+  "inventory": ["sword", "map"],
+  "vars": {
+    "has_key": "true"
+  },
+  "chat_history": [
+    {"role": "user", "content": "Look around"},
+    {"role": "assistant", "content": "You see a vast ocean..."}
+  ]
+}
+
+# Response: 200 OK
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "location": "Pirate Ship",
+  "turn_counter": 5,
+  ...
+}
+```
+
 **Delete Game State**
 ```bash
 DELETE /v1/gamestate/{id}
