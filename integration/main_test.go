@@ -81,7 +81,6 @@ func TestIntegrationSuites(t *testing.T) {
 
 	t.Logf("Running %d test suites sequentially...", len(jobs))
 
-	var results []runner.TestRunResult
 	var failed []string
 	var passed []string
 
@@ -93,7 +92,6 @@ func TestIntegrationSuites(t *testing.T) {
 			result.Error = err
 		}
 		result.Job = job
-		results = append(results, result)
 
 		// Process result immediately for real-time feedback
 		t.Logf("GameState ID: %s", result.GameState.String())

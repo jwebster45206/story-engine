@@ -137,7 +137,7 @@ func (r *Runner) seedGameState(ctx context.Context, seed state.GameState) (uuid.
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("failed to create gamestate: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
@@ -181,7 +181,7 @@ func (r *Runner) seedGameState(ctx context.Context, seed state.GameState) (uuid.
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("failed to patch gamestate: %w", err)
 	}
-	defer patchResp.Body.Close()
+	defer func() { _ = patchResp.Body.Close() }()
 
 	if patchResp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(patchResp.Body)
@@ -263,7 +263,7 @@ func (r *Runner) sendChatMessage(ctx context.Context, gameStateID uuid.UUID, mes
 	if err != nil {
 		return "", fmt.Errorf("failed to send chat request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -298,7 +298,7 @@ func (r *Runner) getGameState(ctx context.Context, gameStateID uuid.UUID) (*stat
 	if err != nil {
 		return nil, fmt.Errorf("failed to send gamestate request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
