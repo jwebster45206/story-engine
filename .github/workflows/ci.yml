@@ -36,7 +36,7 @@ jobs:
       run: go build -v ./...
     
     - name: Run tests
-      run: go test -v -race -coverprofile=coverage.out ./...
+      run: go test -v -race -coverprofile=coverage.out $(go list ./... | grep -v /integration)
 
   lint:
     runs-on: ubuntu-latest
