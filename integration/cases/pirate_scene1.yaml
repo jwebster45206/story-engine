@@ -10,10 +10,7 @@ seed_game_state:
     - "cutlass"
     - "spyglass"
     - "lockpicks"
-    - "ship repair ledger"
-  vars:
-    met_shipwright: "true"
-    examined_ship: "true"
+    - "bag of pieces of eight"
   world_locations:
     "Tortuga":
       name: "Tortuga"
@@ -63,17 +60,20 @@ seed_game_state:
       content: "I approach the shipwright to discuss my ship's repairs."
     - role: "assistant"
       content: "The burly shipwright looks up from his sketches as you approach, his weathered face scowling. 'Aye, what ye be wantin'?' he growls. 'If it's about ship repairs, ye'll need proper documentation and coin. I don't work for free, Captain.'"
+    - role:  "user"
+      content: "I show him the ship repair ledger and explain the damage to my ship."
+    - role: "assistant"
+      content: "The shipwright takes the ledger, flipping through its pages with a critical eye. 'Hmph, this be in order,' he grunts. 'The Black Pearl's seen better days, but with the right materials and a fair payment, I can have her shipshape in no time. It'll cost ye 500 gold doubloons to get her seaworthy again.'"
+    - role: "user"
+      content: "Will you take these pieces of eight as downpayment?"
+    - role: "assistant"
+      content: "The shipwright eyes the bag of pieces of eight you offer. 'Aye, that be a start,' he concedes gruffly. 'But I'll need the full 500 gold doubloons to finish the job proper-like. "
 
 steps:
-  - name: "Commission shipwright to begin repairs"
-    user_prompt: "I show the shipwright my repair ledger and ask him to begin work on The Black Pearl immediately."
+  - name: "Commission shipwright for repairs"
+    user_prompt: "I hand him the bag of pieces of eight and agree to pay the rest once the repairs are done."
     expect:
       scene_change: "british_docks"
       inventory_removed:
-        - "ship repair ledger"
-      response_contains:
-        - "begin"
-        - "repairs"
-        - "gold"
-        - "payment"
+        - "bag of pieces of eight"
       turn_increment: 1

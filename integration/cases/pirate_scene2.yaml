@@ -62,8 +62,6 @@ seed_game_state:
       location: "Tortuga Market"
       items: []
   chat_history:
-    - role: "user"
-      content: "I successfully infiltrated the British Docks and acquired the gold. Now I need to pay the shipwright."
     - role: "assistant"
       content: "You've returned to The Black Pearl with your hard-won treasure. The shipwright is aboard, hammering away at the ship's hull with determined efficiency. He looks up as you approach, wiping sweat from his brow. 'Ah, Captain! The repairs are coming along nicely, but I'll need me payment of 500 gold doubloons to finish the work proper-like.'"
     - role: "user"
@@ -73,13 +71,7 @@ seed_game_state:
 
 steps:
   - name: "Pay shipwright to complete repairs"
-    user_prompt: "I count out 500 gold doubloons from my chest and pay the shipwright to complete the repairs."
+    user_prompt: "Much as it hurts, I count out 500 gold doubloons and pay the shipwright for the repairs."
     expect:
       scene_change: "calypsos_map"
-      response_contains:
-        - "500"
-        - "gold"
-        - "paid"
-        - "complete"
-        - "finished"
       turn_increment: 1

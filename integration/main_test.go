@@ -137,6 +137,7 @@ func TestIntegrationSuites(t *testing.T) {
 }
 
 // TestSingleSuite allows running individual test suites for debugging
+// Supports multiple cases comma-separated: -case "case1,case2,case3"
 func TestSingleSuite(t *testing.T) {
 	// Parse command line flags
 	flag.Parse()
@@ -146,10 +147,25 @@ func TestSingleSuite(t *testing.T) {
 		t.Skip("Skipping single suite test (use -case flag to run)")
 	}
 
-	// Build the full path to the test case
-	suiteFile := "cases/" + *caseFlag
-	if !strings.HasSuffix(suiteFile, ".yaml") {
-		suiteFile += ".yaml"
+	// Parse comma-separated case names
+	caseNames := strings.Split(*caseFlag, ",")
+	var suiteFiles []string
+	for _, caseName := range caseNames {
+		caseName = strings.TrimSpace(caseName)
+		if caseName == "" {
+			continue
+		}
+
+		// Build the full path to the test case
+		suiteFile := "cases/" + caseName
+		if !strings.HasSuffix(suiteFile, ".yaml") {
+			suiteFile += ".yaml"
+		}
+		suiteFiles = append(suiteFiles, suiteFile)
+	}
+
+	if len(suiteFiles) == 0 {
+		t.Fatalf("No valid test cases found in -case flag: %s", *caseFlag)
 	}
 
 	apiBaseURL := os.Getenv("API_BASE_URL")
@@ -164,36 +180,71 @@ func TestSingleSuite(t *testing.T) {
 		fmt.Printf(format+"\n", args...)
 	}
 
-	// Load the specific test suite
-	suite, err := runner.LoadTestSuite(suiteFile)
-	if err != nil {
-		t.Fatalf("Failed to load test suite %s: %v", suiteFile, err)
-	}
+	t.Logf("Running %d test suite(s): %s", len(suiteFiles), strings.Join(caseNames, ", "))
 
-	t.Logf("Running single test suite: %s", suite.Name)
-
-	// Run the test
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	// Run each test case
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	result, err := testRunner.RunSuite(ctx, suite)
-	if err != nil {
-		t.Fatalf("Test suite failed: %v", err)
+	var failed []string
+	var passed []string
+
+	for i, suiteFile := range suiteFiles {
+		// Load the specific test suite
+		suite, err := runner.LoadTestSuite(suiteFile)
+		if err != nil {
+			t.Errorf("[%d/%d] Failed to load test suite %s: %v", i+1, len(suiteFiles), suiteFile, err)
+			failed = append(failed, fmt.Sprintf("%s: load error", suiteFile))
+			continue
+		}
+
+		t.Logf("[%d/%d] Running test suite: %s", i+1, len(suiteFiles), suite.Name)
+
+		// Run the test
+		result, err := testRunner.RunSuite(ctx, suite)
+		if err != nil && result.Error == nil {
+			result.Error = err
+		}
+
+		// Log detailed results
+		t.Logf("GameState ID: %s", result.GameState.String())
+
+		if result.Error != nil {
+			failed = append(failed, fmt.Sprintf("%s: %v", suite.Name, result.Error))
+			t.Errorf("[%d/%d] FAILED: Test suite '%s' failed: %v", i+1, len(suiteFiles), suite.Name, result.Error)
+		} else {
+			passed = append(passed, suite.Name)
+			t.Logf("[%d/%d] PASSED: Test suite '%s' completed in %v", i+1, len(suiteFiles), suite.Name, result.Duration)
+		}
+
+		// Log step details
+		for _, stepResult := range result.Results {
+			if stepResult.Success {
+				t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
+			} else {
+				t.Errorf("   ✗ %s: %v", stepResult.StepName, stepResult.Error)
+			}
+		}
+
+		t.Logf("") // Empty line for readability between suites
 	}
 
-	// Log detailed results
-	t.Logf("GameState ID: %s", result.GameState.String())
-	t.Logf("Test suite '%s' completed in %v", suite.Name, result.Duration)
-	for _, stepResult := range result.Results {
-		if stepResult.Success {
-			t.Logf("   PASS %s (%v)", stepResult.StepName, stepResult.Duration)
-		} else {
-			t.Errorf("   FAIL %s: %v", stepResult.StepName, stepResult.Error)
+	// Summary for multiple cases
+	if len(suiteFiles) > 1 {
+		t.Logf("Test Suite Summary:")
+		t.Logf("   Passed: %d", len(passed))
+		t.Logf("   Failed: %d", len(failed))
+
+		if len(failed) > 0 {
+			t.Logf("Failed suites:")
+			for _, failure := range failed {
+				t.Logf("   - %s", failure)
+			}
 		}
 	}
 
-	if result.Error != nil {
-		t.Fatalf("Test suite had errors: %v", result.Error)
+	if len(failed) > 0 {
+		t.Fatalf("Test suite(s) had errors")
 	}
 }
 
