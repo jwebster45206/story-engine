@@ -1,0 +1,121 @@
+{
+  "name": "Pirate Shipwright to British Docks Scene Transition",
+  "scenario": "pirate.json",
+  "seed_game_state": {
+    "scene_name": "shipwright",
+    "location": "Sleepy Mermaid",
+    "turn_counter": 8,
+    "scene_turn_counter": 4,
+    "inventory": [
+      "cutlass",
+      "spyglass",
+      "lockpicks",
+      "bag of pieces of eight"
+    ],
+    "world_locations": {
+      "Tortuga": {
+        "name": "Tortuga",
+        "items": []
+      },
+      "Black Pearl": {
+        "name": "Black Pearl",
+        "items": ["billy the parrot"]
+      },
+      "Captain's Cabin": {
+        "name": "Captain's Cabin",
+        "items": ["bag of pieces of eight", "bag of gems", "map of the Caribbean", "letter from Calypso"]
+      },
+      "Sleepy Mermaid": {
+        "name": "Sleepy Mermaid",
+        "items": []
+      },
+      "Tortuga Market": {
+        "name": "Tortuga Market",
+        "items": ["forged documents", "rare spices"]
+      },
+      "Open Sea": {
+        "name": "Open Sea",
+        "items": []
+      }
+    },
+    "npcs": {
+      "Gibbs": {
+        "name": "Gibbs",
+        "location": "Black Pearl",
+        "items": []
+      },
+      "Calypso": {
+        "name": "Calypso",
+        "location": "Sleepy Mermaid",
+        "items": ["flagon of ale", "deck of cards"]
+      },
+      "Charming Danny": {
+        "name": "Charming Danny",
+        "location": "Tortuga Market",
+        "items": ["forged documents", "rare spices", "bottle of rum", "black powder", "flintlock pistol"]
+      },
+      "Shipwright": {
+        "name": "Shipwright",
+        "location": "Sleepy Mermaid",
+        "items": []
+      }
+    },
+    "chat_history": [
+      {
+        "role": "user",
+        "content": "I examine my ship carefully for damage."
+      },
+      {
+        "role": "assistant",
+        "content": "You survey The Black Pearl with a captain's eye, noting the loose planks, frayed rigging, and water damage from your recent adventures. The ship needs serious attention before she'll be seaworthy again. You spot the ship repair ledger lying on deck - essential documentation for any proper repairs."
+      },
+      {
+        "role": "user",
+        "content": "I pick up the ship repair ledger and head to the Sleepy Mermaid."
+      },
+      {
+        "role": "assistant",
+        "content": "You secure the ship repair ledger and make your way to the Sleepy Mermaid. The tavern buzzes with the usual crowd of pirates and rogues. In the corner, you spot the gruff shipwright hunched over his ale, sketching ship designs. Calypso tends bar with her usual mysterious smile."
+      },
+      {
+        "role": "user",
+        "content": "I approach the shipwright to discuss my ship's repairs."
+      },
+      {
+        "role": "assistant",
+        "content": "The burly shipwright looks up from his sketches as you approach, his weathered face scowling. 'Aye, what ye be wantin'?' he growls. 'If it's about ship repairs, ye'll need proper documentation and coin. I don't work for free, Captain.'"
+      },
+      {
+        "role": "user",
+        "content": "I show him the ship repair ledger and explain the damage to my ship."
+      },
+      {
+        "role": "assistant",
+        "content": "The shipwright takes the ledger, flipping through its pages with a critical eye. 'Hmph, this be in order,' he grunts. 'The Black Pearl's seen better days, but with the right materials and a fair payment, I can have her shipshape in no time. It'll cost ye 500 gold doubloons to get her seaworthy again.'"
+      },
+      {
+        "role": "user",
+        "content": "Will you take these pieces of eight as downpayment?"
+      },
+      {
+        "role": "assistant",
+        "content": "The shipwright eyes the bag of pieces of eight you offer. 'Aye, that be a start,' he concedes gruffly. 'But I'll need the full 500 gold doubloons to finish the job proper-like."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Commission shipwright for repairs",
+      "user_prompt": "I hand him the bag of pieces of eight and agree to pay the rest once the repairs are done.",
+      "expect": {
+        "scene_name": "british_docks",
+        "inventory": [
+          "cutlass",
+          "spyglass",
+          "lockpicks"
+        ],
+        "turn_counter": 9
+      }
+    }
+  ]
+}

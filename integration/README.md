@@ -14,7 +14,7 @@ go test -v -tags=integration ./integration/
 
 ### Run a Specific Test Case
 ```bash
-# Run by case name (automatically adds .yaml extension and cases/ path)
+# Run by case name (automatically adds .json extension and cases/ path)
 go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_shipwright_to_british_docks
 
 # Other examples:
@@ -34,39 +34,50 @@ These tests validate:
 ## Test Structure
 
 ### Test Files
-- `cases/` - YAML test case definitions
+- `cases/` - JSON test case definitions
 - `runner/` - Test execution framework
   - `types.go` - Data structures for test definitions
   - `runner.go` - Core test execution logic
 
 ### Test Case Format
 
-```yaml
-name: "Test Name"
-scenario: "scenario.json" 
-
-seed_game_state:
-  model_name: "claude-3-5-sonnet-20241022"
-  scenario: "scenario.json"
-  location: "Starting Location"
-  turn_counter: 0
-  inventory: ["item1", "item2"]
-  vars:
-    some_flag: "true"
-  chat_history:
-    - role: "user"
-      content: "Previous user message"
-    - role: "assistant" 
-      content: "Previous assistant response"
-
-steps:
-  - name: "Step Name"
-    user_prompt: "What the user types"
-    expect:
-      location: "Expected Location"
-      inventory_added: ["new_item"]
-      response_contains: ["expected", "words"]
-      turn_increment: 1
+```json
+{
+  "name": "Test Name",
+  "scenario": "scenario.json",
+  "seed_game_state": {
+    "model_name": "claude-3-5-sonnet-20241022",
+    "scenario": "scenario.json",
+    "location": "Starting Location",
+    "turn_counter": 0,
+    "inventory": ["item1", "item2"],
+    "vars": {
+      "some_flag": "true"
+    },
+    "chat_history": [
+      {
+        "role": "user",
+        "content": "Previous user message"
+      },
+      {
+        "role": "assistant",
+        "content": "Previous assistant response"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Step Name",
+      "user_prompt": "What the user types",
+      "expect": {
+        "location": "Expected Location",
+        "inventory_added": ["new_item"],
+        "response_contains": ["expected", "words"],
+        "turn_increment": 1
+      }
+    }
+  ]
+}
 ```
 
 ## Configuration
@@ -96,7 +107,7 @@ TEST_TIMEOUT_SECONDS=60 go test -v -tags=integration ./integration/
 
 ### Adding New Tests
 
-1. Create a new YAML file in `integration/cases/`
+1. Create a new JSON file in `integration/cases/`
 2. Define your test scenario using existing scenarios from `data/scenarios/`
 3. Set up realistic seed state with minimal chat history
 4. Define test steps with specific expectations

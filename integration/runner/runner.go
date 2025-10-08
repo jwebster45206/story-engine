@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gopkg.in/yaml.v3"
 
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -42,7 +41,7 @@ func NewRunner(baseURL string) *Runner {
 	}
 }
 
-// LoadTestSuite loads a test suite from a YAML file
+// LoadTestSuite loads a test suite from a JSON file
 func LoadTestSuite(filename string) (TestSuite, error) {
 	content, err := os.ReadFile(filename)
 	if err != nil {
@@ -50,8 +49,8 @@ func LoadTestSuite(filename string) (TestSuite, error) {
 	}
 
 	var suite TestSuite
-	if err := yaml.Unmarshal(content, &suite); err != nil {
-		return TestSuite{}, fmt.Errorf("failed to parse YAML in %s: %w", filename, err)
+	if err := json.Unmarshal(content, &suite); err != nil {
+		return TestSuite{}, fmt.Errorf("failed to parse JSON in %s: %w", filename, err)
 	}
 
 	return suite, nil

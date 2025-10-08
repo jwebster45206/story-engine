@@ -15,7 +15,7 @@ import (
 )
 
 var caseFlag = flag.String("case", "", "Name of test case to run (from integration/cases/)")
-var errFlag = flag.String("err", "exit", "Error handling mode: 'exit' (stop on first failure) or 'continue' (run all steps)")
+var errFlag = flag.String("err", "continue", "Error handling mode: 'continue' (run all steps) or 'exit' (stop on first failure)")
 var runsFlag = flag.Int("runs", 1, "Number of times to run each test suite (useful for testing non-deterministic behavior)")
 
 func TestMain(m *testing.M) {
@@ -43,7 +43,7 @@ func TestIntegrationSuites(t *testing.T) {
 	// Create runner (no concurrency)
 	testRunner := runner.NewRunner(apiBaseURL)
 	testRunner.Timeout = time.Duration(timeoutSeconds) * time.Second
-	testRunner.ErrorHandlingMode = "exit" // Use default for bulk tests
+	testRunner.ErrorHandlingMode = "continue" // Use continue mode for bulk tests to see all results
 	testRunner.Logger = func(format string, args ...interface{}) {
 		fmt.Printf(format+"\n", args...)
 	}
@@ -161,8 +161,8 @@ func TestSingleSuite(t *testing.T) {
 
 		// Build the full path to the test case
 		suiteFile := "cases/" + caseName
-		if !strings.HasSuffix(suiteFile, ".yaml") {
-			suiteFile += ".yaml"
+		if !strings.HasSuffix(suiteFile, ".json") {
+			suiteFile += ".json"
 		}
 		suiteFiles = append(suiteFiles, suiteFile)
 	}
@@ -348,7 +348,7 @@ func discoverTestFiles(dir string) ([]string, error) {
 			return err
 		}
 
-		if !info.IsDir() && (strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")) {
+		if !info.IsDir() && strings.HasSuffix(path, ".json") {
 			files = append(files, path)
 		}
 

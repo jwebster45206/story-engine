@@ -1,0 +1,100 @@
+{
+  "name": "Pirate Calypsos Map Scene to Game End",
+  "scenario": "pirate.json",
+  "seed_game_state": {
+    "scene_name": "calypsos_map",
+    "location": "Sleepy Mermaid",
+    "turn_counter": 22,
+    "scene_turn_counter": 4,
+    "inventory": [
+      "cutlass",
+      "spyglass",
+      "lockpicks",
+      "chest of 10 gold doubloons",
+      "british naval uniform",
+      "treasure map"
+    ],
+    "vars": {
+      "met_shipwright": "true",
+      "examined_ship": "true",
+      "repairs_started": "true",
+      "repairs_completed": "true",
+      "infiltrated_british_docks": "true",
+      "paid_shipwright": "true",
+      "met_calypso": "true"
+    },
+    "world_locations": {
+      "Tortuga": {
+        "name": "Tortuga",
+        "items": []
+      },
+      "Black Pearl": {
+        "name": "Black Pearl",
+        "items": ["billy the parrot"]
+      },
+      "Captain's Cabin": {
+        "name": "Captain's Cabin",
+        "items": ["bag of pieces of eight", "bag of gems", "map of the Caribbean", "letter from Calypso"]
+      },
+      "Sleepy Mermaid": {
+        "name": "Sleepy Mermaid",
+        "items": []
+      },
+      "Tortuga Market": {
+        "name": "Tortuga Market",
+        "items": []
+      },
+      "Open Sea": {
+        "name": "Open Sea",
+        "items": []
+      }
+    },
+    "npcs": {
+      "Gibbs": {
+        "name": "Gibbs",
+        "location": "Black Pearl",
+        "items": []
+      },
+      "Calypso": {
+        "name": "Calypso",
+        "location": "Sleepy Mermaid",
+        "items": ["flagon of ale", "deck of cards"]
+      }
+    },
+    "chat_history": [
+      {
+        "role": "user",
+        "content": "I approach Calypso about the treasure map she promised."
+      },
+      {
+        "role": "assistant",
+        "content": "Calypso's eyes sparkle with mischief as she leans across the bar. 'Ah, Captain, you've proven yourself worthy indeed. The repairs are complete, the British gold flows through your fingers, and you've shown the cunning of a true pirate.' She slides an ancient, weathered map across the wooden surface. 'This leads to Dead Man's Cove - treasure beyond your wildest dreams awaits.'"
+      },
+      {
+        "role": "user",
+        "content": "I take the treasure map and study it carefully."
+      },
+      {
+        "role": "assistant",
+        "content": "The treasure map reveals intricate details of hidden coves and secret passages. Dead Man's Cove is marked with an ornate 'X', and the path is treacherous but clear. Your ship is now seaworthy, your crew loyal, and adventure beckons from the open seas. The night grows late, and Tortuga's streets are quiet - perfect for a stealthy departure."
+      },
+      {
+        "role": "user",
+        "content": "I kiss Calypso goodbye and head to The Black Pearl."
+      },
+      {
+        "role": "assistant",
+        "content": "You give Calypso a grateful nod, her enigmatic smile lingering as you turn away. The streets of Tortuga are hushed, the usual raucous energy subdued under the cloak of night. You make your way to The Black Pearl, where Gibbs is already preparing the ship for departure. The crew is eager, the sails are ready, and the sea calls to you. Adventure awaits, Captain."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Set sail from Tortuga to end the adventure",
+      "user_prompt": "Gibbs, my man, we have been ashore long enough. Let's set sail for adventure.",
+      "expect": {
+        "is_ended": true
+      }
+    }
+  ]
+}
