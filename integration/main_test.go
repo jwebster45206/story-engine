@@ -16,6 +16,7 @@ import (
 
 var caseFlag = flag.String("case", "", "Name of test case to run (from integration/cases/)")
 var errFlag = flag.String("err", "exit", "Error handling mode: 'exit' (stop on first failure) or 'continue' (run all steps)")
+var runsFlag = flag.Int("runs", 1, "Number of times to run each test suite (useful for testing non-deterministic behavior)")
 
 func TestMain(m *testing.M) {
 	// Check required environment variables
@@ -188,70 +189,148 @@ func TestSingleSuite(t *testing.T) {
 		fmt.Printf(format+"\n", args...)
 	}
 
-	t.Logf("Running %d test suite(s) with error mode '%s': %s", len(suiteFiles), *errFlag, strings.Join(caseNames, ", "))
+	runs := *runsFlag
+	if runs < 1 {
+		t.Fatalf("Number of runs must be >= 1, got: %d", runs)
+	}
 
-	// Run each test case
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
+	t.Logf("Running %d test suite(s) %d time(s) each with error mode '%s': %s", len(suiteFiles), runs, *errFlag, strings.Join(caseNames, ", "))
 
-	var failed []string
-	var passed []string
+	// Track overall statistics
+	totalTests := 0
+	totalPasses := 0
+	totalFailures := 0
+	caseStats := make(map[string]struct{ passes, failures int })
 
-	for i, suiteFile := range suiteFiles {
-		// Load the specific test suite
-		suite, err := runner.LoadTestSuite(suiteFile)
-		if err != nil {
-			t.Errorf("[%d/%d] Failed to load test suite %s: %v", i+1, len(suiteFiles), suiteFile, err)
-			failed = append(failed, fmt.Sprintf("%s: load error", suiteFile))
-			continue
+	// Run test suites multiple times
+	for run := 1; run <= runs; run++ {
+		if runs > 1 {
+			t.Logf("=== RUN %d/%d ===", run, runs)
 		}
 
-		t.Logf("[%d/%d] Running test suite: %s", i+1, len(suiteFiles), suite.Name)
+		// Run each test case
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
 
-		// Run the test
-		result, err := testRunner.RunSuite(ctx, suite)
-		if err != nil && result.Error == nil {
-			result.Error = err
-		}
+		var failed []string
+		var passed []string
 
-		// Log detailed results
-		t.Logf("GameState ID: %s", result.GameState.String())
+		for i, suiteFile := range suiteFiles {
+			// Load the specific test suite
+			suite, err := runner.LoadTestSuite(suiteFile)
+			if err != nil {
+				t.Errorf("[%d/%d] Failed to load test suite %s: %v", i+1, len(suiteFiles), suiteFile, err)
+				failed = append(failed, fmt.Sprintf("%s: load error", suiteFile))
+				continue
+			}
 
-		if result.Error != nil {
-			failed = append(failed, fmt.Sprintf("%s: %v", suite.Name, result.Error))
-			t.Errorf("[%d/%d] FAILED: Test suite '%s' failed: %v", i+1, len(suiteFiles), suite.Name, result.Error)
-		} else {
-			passed = append(passed, suite.Name)
-			t.Logf("[%d/%d] PASSED: Test suite '%s' completed in %v", i+1, len(suiteFiles), suite.Name, result.Duration)
-		}
+			t.Logf("[%d/%d] Running test suite: %s", i+1, len(suiteFiles), suite.Name)
 
-		// Log step details
-		for _, stepResult := range result.Results {
-			if stepResult.Success {
-				t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
+			// Run the test
+			result, err := testRunner.RunSuite(ctx, suite)
+			if err != nil && result.Error == nil {
+				result.Error = err
+			}
+
+			// Log detailed results
+			t.Logf("GameState ID: %s", result.GameState.String())
+
+			totalTests++
+			stats := caseStats[suite.Name]
+
+			if result.Error != nil {
+				totalFailures++
+				stats.failures++
+				caseStats[suite.Name] = stats
+
+				failed = append(failed, fmt.Sprintf("%s: %v", suite.Name, result.Error))
+				t.Errorf("[%d/%d] FAILED: Test suite '%s' failed: %v", i+1, len(suiteFiles), suite.Name, result.Error)
+
+				// For exit mode with multi-run, still report partial statistics
+				if *errFlag == "exit" && runs > 1 {
+					t.Logf("\n=== MULTI-RUN STATISTICS (partial after %d runs) ===", run)
+					t.Logf("Tests executed: %d", totalTests)
+					t.Logf("Passes: %d (%.1f%%)", totalPasses, float64(totalPasses)/float64(totalTests)*100)
+					t.Logf("Failures: %d (%.1f%%)", totalFailures, float64(totalFailures)/float64(totalTests)*100)
+					for name, s := range caseStats {
+						total := s.passes + s.failures
+						passRate := float64(s.passes) / float64(total) * 100
+						t.Logf("  %s: %d/%d passes (%.1f%%)", name, s.passes, total, passRate)
+					}
+					t.Fatalf("Test suite(s) had errors")
+				}
 			} else {
-				t.Errorf("   ✗ %s: %v", stepResult.StepName, stepResult.Error)
+				totalPasses++
+				stats.passes++
+				caseStats[suite.Name] = stats
+
+				passed = append(passed, suite.Name)
+				t.Logf("[%d/%d] PASSED: Test suite '%s' completed in %v", i+1, len(suiteFiles), suite.Name, result.Duration)
+			}
+
+			// Log step details
+			for _, stepResult := range result.Results {
+				if stepResult.Success {
+					t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
+				} else {
+					t.Errorf("   ✗ %s: %v", stepResult.StepName, stepResult.Error)
+				}
+			}
+
+			t.Logf("--------------------------------") // Separator between suites
+		}
+
+		// Summary for multiple cases within this run
+		if len(suiteFiles) > 1 {
+			t.Logf("Run %d Summary:", run)
+			t.Logf("   Passed: %d", len(passed))
+			t.Logf("   Failed: %d", len(failed))
+
+			if len(failed) > 0 {
+				t.Logf("Failed suites:")
+				for _, failure := range failed {
+					t.Logf("   - %s", failure)
+				}
 			}
 		}
 
-		t.Logf("") // Empty line for readability between suites
-	}
-
-	// Summary for multiple cases
-	if len(suiteFiles) > 1 {
-		t.Logf("Test Suite Summary:")
-		t.Logf("   Passed: %d", len(passed))
-		t.Logf("   Failed: %d", len(failed))
-
-		if len(failed) > 0 {
-			t.Logf("Failed suites:")
-			for _, failure := range failed {
-				t.Logf("   - %s", failure)
-			}
+		// For exit mode, fail immediately if any test failed
+		if len(failed) > 0 && *errFlag == "exit" {
+			t.Fatalf("Test suite(s) had errors")
 		}
 	}
 
-	if len(failed) > 0 {
+	// Report final statistics for multi-run
+	if runs > 1 {
+		t.Logf("\n=== FINAL MULTI-RUN STATISTICS ===")
+		t.Logf("Total test executions: %d", totalTests)
+		t.Logf("Total passes: %d (%.1f%%)", totalPasses, float64(totalPasses)/float64(totalTests)*100)
+		t.Logf("Total failures: %d (%.1f%%)", totalFailures, float64(totalFailures)/float64(totalTests)*100)
+
+		t.Logf("\nPer-suite statistics:")
+		for _, caseName := range caseNames {
+			stats := caseStats[caseName]
+			total := stats.passes + stats.failures
+			if total > 0 {
+				passRate := float64(stats.passes) / float64(total) * 100
+				t.Logf("  %s: %d/%d passes (%.1f%%)", caseName, stats.passes, total, passRate)
+
+				// Flag potentially flaky tests
+				if stats.passes > 0 && stats.failures > 0 {
+					t.Logf("    ⚠️  FLAKY: This test both passed and failed across runs")
+				}
+			}
+		}
+	} else {
+		// Single run summary (existing behavior)
+		if len(suiteFiles) > 1 {
+			t.Logf("Test Suite Summary:")
+			t.Logf("   Passed: %d", totalPasses)
+			t.Logf("   Failed: %d", totalFailures)
+		}
+	}
+
+	if totalFailures > 0 {
 		t.Fatalf("Test suite(s) had errors")
 	}
 }
