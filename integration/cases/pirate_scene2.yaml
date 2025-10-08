@@ -73,5 +73,5 @@ steps:
   - name: "Pay shipwright to complete repairs"
     user_prompt: "Much as it hurts, I count out 500 gold doubloons and pay the shipwright for the repairs."
     expect:
-      scene_change: "calypsos_map"
-      turn_increment: 1
+      scene_name: "calypsos_map"
+      turn_counter: 16

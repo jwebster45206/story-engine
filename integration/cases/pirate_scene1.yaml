@@ -73,7 +73,9 @@ steps:
   - name: "Commission shipwright for repairs"
     user_prompt: "I hand him the bag of pieces of eight and agree to pay the rest once the repairs are done."
     expect:
-      scene_change: "british_docks"
-      inventory_removed:
-        - "bag of pieces of eight"
-      turn_increment: 1
+      scene_name: "british_docks"
+      inventory:
+        - "cutlass"
+        - "spyglass"  
+        - "lockpicks"
+      turn_counter: 9

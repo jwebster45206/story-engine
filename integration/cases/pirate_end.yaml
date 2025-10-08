@@ -67,4 +67,4 @@ steps:
   - name: "Set sail from Tortuga to end the adventure"
     user_prompt: "Gibbs, my man, we have been ashore long enough. Let's set sail for adventure."
     expect:
-      game_ended: true
+      is_ended: true

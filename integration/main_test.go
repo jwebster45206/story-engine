@@ -15,6 +15,7 @@ import (
 )
 
 var caseFlag = flag.String("case", "", "Name of test case to run (from integration/cases/)")
+var errFlag = flag.String("err", "exit", "Error handling mode: 'exit' (stop on first failure) or 'continue' (run all steps)")
 
 func TestMain(m *testing.M) {
 	// Check required environment variables
@@ -41,6 +42,7 @@ func TestIntegrationSuites(t *testing.T) {
 	// Create runner (no concurrency)
 	testRunner := runner.NewRunner(apiBaseURL)
 	testRunner.Timeout = time.Duration(timeoutSeconds) * time.Second
+	testRunner.ErrorHandlingMode = "exit" // Use default for bulk tests
 	testRunner.Logger = func(format string, args ...interface{}) {
 		fmt.Printf(format+"\n", args...)
 	}
@@ -174,13 +176,19 @@ func TestSingleSuite(t *testing.T) {
 	}
 	timeoutSeconds := getIntEnv("TEST_TIMEOUT_SECONDS", 30)
 
+	// Validate error handling mode
+	if *errFlag != "exit" && *errFlag != "continue" {
+		t.Fatalf("Invalid -err flag value: %s (must be 'exit' or 'continue')", *errFlag)
+	}
+
 	testRunner := runner.NewRunner(apiBaseURL)
 	testRunner.Timeout = time.Duration(timeoutSeconds) * time.Second
+	testRunner.ErrorHandlingMode = runner.ErrorHandlingMode(*errFlag)
 	testRunner.Logger = func(format string, args ...interface{}) {
 		fmt.Printf(format+"\n", args...)
 	}
 
-	t.Logf("Running %d test suite(s): %s", len(suiteFiles), strings.Join(caseNames, ", "))
+	t.Logf("Running %d test suite(s) with error mode '%s': %s", len(suiteFiles), *errFlag, strings.Join(caseNames, ", "))
 
 	// Run each test case
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)

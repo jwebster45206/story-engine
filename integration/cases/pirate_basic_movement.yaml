@@ -34,7 +34,7 @@ steps:
         - "ship"
         - "deck"
       response_min_length: 50
-      turn_increment: 1
+      turn_counter: 3
 
   - name: "Look around ship deck"  
     user_prompt: "I look around the ship deck."
@@ -42,17 +42,23 @@ steps:
       response_contains:
         - "repair"
         - "ledger"  
-      inventory_added: []  # Should not pick up ledger just by looking
-      turn_increment: 1
+      inventory:  # Should not pick up ledger just by looking
+        - "cutlass"
+        - "spyglass"
+        - "lockpicks"
+      turn_counter: 4
 
   - name: "Pick up ship repair ledger"
     user_prompt: "I review the ship repair ledger."
     expect:
-      inventory_added: 
+      inventory: 
+        - "cutlass"
+        - "spyglass"
+        - "lockpicks"
         - "ship repair ledger"
       response_contains:
         - "ledger"
-      turn_increment: 1
+      turn_counter: 5
 
   - name: "Go to Captain's Cabin"
     user_prompt: "I go through the cabin door."
@@ -62,7 +68,7 @@ steps:
         - "cabin"
         - "maps"
         - "treasure"
-      turn_increment: 1
+      turn_counter: 6
 
   - name: "Return to deck"
     user_prompt: "I go back through the cabin door."
@@ -71,4 +77,4 @@ steps:
       response_contains:
         - "deck"
         - "ship"
-      turn_increment: 1
+      turn_counter: 7

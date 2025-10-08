@@ -7,6 +7,11 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
+// Special user prompt values that trigger non-chat actions
+const (
+	ResetGameStatePrompt = "RESET_GAMESTATE"
+)
+
 // TestSuite defines a complete integration test scenario
 type TestSuite struct {
 	Name          string          `yaml:"name"`
@@ -16,6 +21,7 @@ type TestSuite struct {
 }
 
 // TestStep defines a single test interaction and its expected outcomes
+// Use user_prompt: "RESET_GAMESTATE" to reset to the original seed state
 type TestStep struct {
 	Name         string       `yaml:"name,omitempty"`
 	UserPrompt   string       `yaml:"user_prompt"`
@@ -24,19 +30,14 @@ type TestStep struct {
 
 // Expectations defines what to check after a test step executes
 type Expectations struct {
-	// Location & Scene
-	Location       *string `yaml:"location,omitempty"`
-	SceneName      *string `yaml:"scene_name,omitempty"`
-	SceneChange    *string `yaml:"scene_change,omitempty"`    // expect scene to change to this value
-	SceneUnchanged *string `yaml:"scene_unchanged,omitempty"` // expect scene to remain this value
-
-	// Inventory Changes (check for additions/removals)
-	InventoryAdded   []string `yaml:"inventory_added,omitempty"`
-	InventoryRemoved []string `yaml:"inventory_removed,omitempty"`
-
-	// Variables (check only specified keys)
-	Vars map[string]string `yaml:"vars,omitempty"`
-
+	// GameState properties - aligned with pkg/state/gamestate.go
+	Location         *string           `yaml:"location,omitempty"`           // User location
+	SceneName        *string           `yaml:"scene_name,omitempty"`         // Current scene name
+	Inventory        []string          `yaml:"inventory,omitempty"`          // Full inventory contents (order independent)
+	TurnCounter      *int              `yaml:"turn_counter,omitempty"`       // Total turn count
+	SceneTurnCounter *int              `yaml:"scene_turn_counter,omitempty"` // Scene-specific turn count
+	IsEnded          *bool             `yaml:"is_ended,omitempty"`           // Game ended state
+	Vars             map[string]string `yaml:"vars,omitempty"`               // Game variables
 	// NPC Locations (check specific NPC locations)
 	NPCLocations map[string]string `yaml:"npc_locations,omitempty"`
 
@@ -46,10 +47,6 @@ type Expectations struct {
 	ResponseRegex       string   `yaml:"response_regex,omitempty"`
 	ResponseMinLength   *int     `yaml:"response_min_length,omitempty"`
 	ResponseMaxLength   *int     `yaml:"response_max_length,omitempty"`
-
-	// Game Flow
-	GameEnded     *bool `yaml:"game_ended,omitempty"`
-	TurnIncrement *int  `yaml:"turn_increment,omitempty"` // relative to previous step
 }
 
 // TestResult contains the outcome of running a test step
