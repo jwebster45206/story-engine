@@ -182,19 +182,29 @@ func TestSingleSuite(t *testing.T) {
 		t.Fatalf("Invalid -err flag value: %s (must be 'exit' or 'continue')", *errFlag)
 	}
 
-	testRunner := runner.NewRunner(apiBaseURL)
-	testRunner.Timeout = time.Duration(timeoutSeconds) * time.Second
-	testRunner.ErrorHandlingMode = runner.ErrorHandlingMode(*errFlag)
-	testRunner.Logger = func(format string, args ...interface{}) {
-		fmt.Printf(format+"\n", args...)
-	}
-
 	runs := *runsFlag
 	if runs < 1 {
 		t.Fatalf("Number of runs must be >= 1, got: %d", runs)
 	}
 
-	t.Logf("Running %d test suite(s) %d time(s) each with error mode '%s': %s", len(suiteFiles), runs, *errFlag, strings.Join(caseNames, ", "))
+	testRunner := runner.NewRunner(apiBaseURL)
+	testRunner.Timeout = time.Duration(timeoutSeconds) * time.Second
+	// For multi-run, always use continue mode to collect complete data
+	// For single run, respect the user's error flag
+	if runs > 1 {
+		testRunner.ErrorHandlingMode = runner.ErrorHandlingContinue
+	} else {
+		testRunner.ErrorHandlingMode = runner.ErrorHandlingMode(*errFlag)
+	}
+	testRunner.Logger = func(format string, args ...interface{}) {
+		fmt.Printf(format+"\n", args...)
+	}
+
+	errorMode := *errFlag
+	if runs > 1 {
+		errorMode = "continue (forced for multi-run statistics)"
+	}
+	t.Logf("Running %d test suite(s) %d time(s) each with error mode '%s': %s", len(suiteFiles), runs, errorMode, strings.Join(caseNames, ", "))
 
 	// Track overall statistics
 	totalTests := 0
@@ -246,17 +256,9 @@ func TestSingleSuite(t *testing.T) {
 				failed = append(failed, fmt.Sprintf("%s: %v", suite.Name, result.Error))
 				t.Errorf("[%d/%d] FAILED: Test suite '%s' failed: %v", i+1, len(suiteFiles), suite.Name, result.Error)
 
-				// For exit mode with multi-run, still report partial statistics
-				if *errFlag == "exit" && runs > 1 {
-					t.Logf("\n=== MULTI-RUN STATISTICS (partial after %d runs) ===", run)
-					t.Logf("Tests executed: %d", totalTests)
-					t.Logf("Passes: %d (%.1f%%)", totalPasses, float64(totalPasses)/float64(totalTests)*100)
-					t.Logf("Failures: %d (%.1f%%)", totalFailures, float64(totalFailures)/float64(totalTests)*100)
-					for name, s := range caseStats {
-						total := s.passes + s.failures
-						passRate := float64(s.passes) / float64(total) * 100
-						t.Logf("  %s: %d/%d passes (%.1f%%)", name, s.passes, total, passRate)
-					}
+				if runs > 1 {
+					t.Logf("Test suite '%s' failed (run %d/%d): %v", suite.Name, run, runs, result.Error)
+				} else if *errFlag == "exit" {
 					t.Fatalf("Test suite(s) had errors")
 				}
 			} else {
@@ -294,8 +296,9 @@ func TestSingleSuite(t *testing.T) {
 			}
 		}
 
-		// For exit mode, fail immediately if any test failed
-		if len(failed) > 0 && *errFlag == "exit" {
+		// For single run with exit mode, fail immediately if any test failed
+		// For multi-run, we always continue to gather complete statistics
+		if len(failed) > 0 && *errFlag == "exit" && runs == 1 {
 			t.Fatalf("Test suite(s) had errors")
 		}
 	}
