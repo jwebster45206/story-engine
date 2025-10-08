@@ -13,29 +13,35 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gopkg.in/yaml.v3"
 
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
+type ErrorHandlingMode string
+
+const ErrorHandlingExit ErrorHandlingMode = "exit"
+const ErrorHandlingContinue ErrorHandlingMode = "continue"
+
 // Runner executes integration tests against a running story-engine API
 type Runner struct {
-	BaseURL string
-	Client  *http.Client
-	Timeout time.Duration
-	Logger  func(format string, args ...interface{})
+	BaseURL           string
+	Client            *http.Client
+	Timeout           time.Duration
+	Logger            func(format string, args ...interface{})
+	ErrorHandlingMode ErrorHandlingMode
 }
 
 // NewRunner creates a new test runner
 func NewRunner(baseURL string) *Runner {
 	return &Runner{
-		BaseURL: strings.TrimSuffix(baseURL, "/"),
-		Client:  &http.Client{Timeout: 60 * time.Second},
-		Timeout: 30 * time.Second,
+		BaseURL:           strings.TrimSuffix(baseURL, "/"),
+		Client:            &http.Client{Timeout: 60 * time.Second},
+		Timeout:           30 * time.Second,
+		ErrorHandlingMode: ErrorHandlingContinue,
 	}
 }
 
-// LoadTestSuite loads a test suite from a YAML file
+// LoadTestSuite loads a test suite from a JSON file
 func LoadTestSuite(filename string) (TestSuite, error) {
 	content, err := os.ReadFile(filename)
 	if err != nil {
@@ -43,8 +49,8 @@ func LoadTestSuite(filename string) (TestSuite, error) {
 	}
 
 	var suite TestSuite
-	if err := yaml.Unmarshal(content, &suite); err != nil {
-		return TestSuite{}, fmt.Errorf("failed to parse YAML in %s: %w", filename, err)
+	if err := json.Unmarshal(content, &suite); err != nil {
+		return TestSuite{}, fmt.Errorf("failed to parse JSON in %s: %w", filename, err)
 	}
 
 	return suite, nil
@@ -66,7 +72,9 @@ func (r *Runner) RunSuite(ctx context.Context, suite TestSuite) (TestRunResult, 
 	result.GameState = gameStateID
 
 	// Seed the gamestate (creates a new one)
-	actualGameStateID, err := r.seedGameState(ctx, suite.SeedGameState)
+	seedData := suite.SeedGameState
+	seedData.Scenario = suite.Scenario // Use suite-level scenario
+	actualGameStateID, err := r.seedGameState(ctx, seedData)
 	if err != nil {
 		result.Error = fmt.Errorf("failed to seed gamestate: %w", err)
 		result.Duration = time.Since(start)
@@ -85,13 +93,19 @@ func (r *Runner) RunSuite(ctx context.Context, suite TestSuite) (TestRunResult, 
 	// Execute each test step
 	for i, step := range suite.Steps {
 		r.Logger("    [%d/%d] Running step: %s", i+1, len(suite.Steps), step.Name)
-		stepResult := r.runStep(ctx, gameStateID, step, prevTurnCounter, prevInventory)
+		stepResult := r.runStep(ctx, gameStateID, step, prevTurnCounter, prevInventory, &suite.SeedGameState)
 		result.Results = append(result.Results, stepResult)
 
 		if stepResult.Error != nil {
 			r.Logger("    [%d/%d] ✗ %s: %v", i+1, len(suite.Steps), step.Name, stepResult.Error)
-			result.Error = fmt.Errorf("step %d (%s) failed: %w", i, step.Name, stepResult.Error)
-			break
+			if result.Error == nil {
+				result.Error = fmt.Errorf("step %d (%s) failed: %w", i, step.Name, stepResult.Error)
+			}
+			// Break only if error handling mode is "exit"
+			if r.ErrorHandlingMode == ErrorHandlingExit {
+				break
+			}
+			// Continue to next step if mode is "continue"
 		}
 
 		r.Logger("    [%d/%d] ✓ %s (%v)", i+1, len(suite.Steps), step.Name, stepResult.Duration)
@@ -150,53 +164,98 @@ func (r *Runner) seedGameState(ctx context.Context, seed state.GameState) (uuid.
 		return uuid.UUID{}, fmt.Errorf("failed to decode created gamestate: %w", err)
 	}
 
-	// Step 2: PATCH the gamestate with our seed data
-	// Create patch data (excluding immutable fields like ModelName and Scenario)
-	patchData := state.GameState{
-		// ModelName and Scenario are NOT patchable - they're set at creation time
-		SceneName:        seed.SceneName,
-		Location:         seed.Location,
-		TurnCounter:      seed.TurnCounter,
-		SceneTurnCounter: seed.SceneTurnCounter,
-		Inventory:        seed.Inventory,
-		Vars:             seed.Vars,
-		ChatHistory:      seed.ChatHistory, // No conversion needed - same type
-		IsEnded:          seed.IsEnded,
-	}
-
-	patchBody, err := json.Marshal(patchData)
-	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("failed to marshal patch request: %w", err)
-	}
-
-	// PATCH the created gamestate with our seed data
-	patchURL := fmt.Sprintf("%s/v1/gamestate/%s", r.BaseURL, createdGS.ID.String())
-	patchReq, err := http.NewRequestWithContext(ctx, "PATCH", patchURL, bytes.NewBuffer(patchBody))
-	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("failed to create PATCH request: %w", err)
-	}
-	patchReq.Header.Set("Content-Type", "application/json")
-
-	patchResp, err := r.Client.Do(patchReq)
-	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("failed to patch gamestate: %w", err)
-	}
-	defer func() { _ = patchResp.Body.Close() }()
-
-	if patchResp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(patchResp.Body)
-		return uuid.UUID{}, fmt.Errorf("patch gamestate returned %d: %s", patchResp.StatusCode, string(body))
+	// Step 2: Use resetGameState to apply all seed data consistently
+	if err := r.resetGameState(ctx, createdGS.ID, &seed); err != nil {
+		return uuid.UUID{}, fmt.Errorf("failed to seed gamestate: %w", err)
 	}
 
 	// Return the ID of the successfully seeded gamestate
 	return createdGS.ID, nil
 }
 
+// resetGameState resets the gamestate to the original seed data
+func (r *Runner) resetGameState(ctx context.Context, gameStateID uuid.UUID, seedState *state.GameState) error {
+	// Use the same PATCH logic as seedGameState, but exclude immutable fields
+	patchData := state.GameState{
+		SceneName:          seedState.SceneName,
+		Location:           seedState.Location,
+		TurnCounter:        seedState.TurnCounter,
+		SceneTurnCounter:   seedState.SceneTurnCounter,
+		Inventory:          seedState.Inventory,
+		Vars:               seedState.Vars,
+		ChatHistory:        seedState.ChatHistory,
+		IsEnded:            seedState.IsEnded,
+		NPCs:               seedState.NPCs,
+		WorldLocations:     seedState.WorldLocations,
+		ContingencyPrompts: seedState.ContingencyPrompts,
+	}
+
+	patchBody, err := json.Marshal(patchData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal reset patch data: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "PATCH", r.BaseURL+"/v1/gamestate/"+gameStateID.String(), bytes.NewReader(patchBody))
+	if err != nil {
+		return fmt.Errorf("failed to create PATCH request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := r.Client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to execute PATCH request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("PATCH request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
 // runStep executes a single test step and checks expectations
-func (r *Runner) runStep(ctx context.Context, gameStateID uuid.UUID, step TestStep, prevTurnCounter int, prevInventory []string) TestResult {
+// If step.UserPrompt is ResetGameStatePrompt, resets the gamestate to seedState
+func (r *Runner) runStep(ctx context.Context, gameStateID uuid.UUID, step TestStep, prevTurnCounter int, prevInventory []string, seedState *state.GameState) TestResult {
 	start := time.Now()
 	result := TestResult{
 		StepName: step.Name,
+	}
+
+	// Check if this is a reset step
+	if step.UserPrompt == ResetGameStatePrompt {
+		err := r.resetGameState(ctx, gameStateID, seedState)
+		if err != nil {
+			result.Error = fmt.Errorf("failed to reset gamestate: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+
+		// For reset steps, we just check expectations against the reset state
+		if step.Expectations.Location != nil || step.Expectations.SceneName != nil ||
+			len(step.Expectations.Inventory) > 0 || len(step.Expectations.Vars) > 0 ||
+			len(step.Expectations.NPCLocations) > 0 {
+
+			resetState, err := r.getGameState(ctx, gameStateID)
+			if err != nil {
+				result.Error = fmt.Errorf("failed to get reset gamestate for expectations: %w", err)
+				result.Duration = time.Since(start)
+				return result
+			}
+
+			// Check expectations against reset state (use seedState as "previous" state)
+			if err := r.checkExpectations(step.Expectations, seedState, resetState, prevTurnCounter, prevInventory, ""); err != nil {
+				result.Error = fmt.Errorf("reset expectation failed: %w", err)
+				result.Duration = time.Since(start)
+				return result
+			}
+		}
+
+		result.Success = true
+		result.ResponseText = "[GAMESTATE RESET]"
+		result.Duration = time.Since(start)
+		return result
 	}
 
 	// Get gamestate before chat for expectations comparison
@@ -353,57 +412,30 @@ func (r *Runner) checkExpectations(exp Expectations, preState, postState *state.
 		}
 	}
 
-	// Inventory additions check
-	if len(exp.InventoryAdded) > 0 {
-		for _, expectedItem := range exp.InventoryAdded {
-			found := false
-			for _, item := range postState.Inventory {
-				if item == expectedItem {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return fmt.Errorf("expected item %s to be added to inventory, but it wasn't found", expectedItem)
-			}
-			// Also verify it wasn't in the previous inventory
-			prevHad := false
-			for _, item := range prevInventory {
-				if item == expectedItem {
-					prevHad = true
-					break
-				}
-			}
-			if prevHad {
-				return fmt.Errorf("expected item %s to be added, but it was already in inventory", expectedItem)
+	// Full inventory check (order independent)
+	if len(exp.Inventory) > 0 {
+		// Create maps for efficient comparison
+		expected := make(map[string]bool)
+		for _, item := range exp.Inventory {
+			expected[item] = true
+		}
+
+		actual := make(map[string]bool)
+		for _, item := range postState.Inventory {
+			actual[item] = true
+		}
+
+		// Check for missing items
+		for expectedItem := range expected {
+			if !actual[expectedItem] {
+				return fmt.Errorf("expected inventory to contain '%s', but it's missing. Actual inventory: %v", expectedItem, postState.Inventory)
 			}
 		}
-	}
 
-	// Inventory removal check
-	if len(exp.InventoryRemoved) > 0 {
-		for _, expectedRemovedItem := range exp.InventoryRemoved {
-			// Verify it was in previous inventory
-			prevHad := false
-			for _, item := range prevInventory {
-				if item == expectedRemovedItem {
-					prevHad = true
-					break
-				}
-			}
-			if !prevHad {
-				return fmt.Errorf("expected item %s to be removed, but it wasn't in previous inventory", expectedRemovedItem)
-			}
-			// Verify it's not in current inventory
-			found := false
-			for _, item := range postState.Inventory {
-				if item == expectedRemovedItem {
-					found = true
-					break
-				}
-			}
-			if found {
-				return fmt.Errorf("expected item %s to be removed from inventory, but it's still there", expectedRemovedItem)
+		// Check for extra items
+		for actualItem := range actual {
+			if !expected[actualItem] {
+				return fmt.Errorf("inventory contains unexpected item '%s'. Expected inventory: %v, Actual: %v", actualItem, exp.Inventory, postState.Inventory)
 			}
 		}
 	}
@@ -476,19 +508,21 @@ func (r *Runner) checkExpectations(exp Expectations, preState, postState *state.
 		}
 	}
 
-	// Game ended check
-	if exp.GameEnded != nil {
-		if postState.IsEnded != *exp.GameEnded {
-			return fmt.Errorf("expected game ended to be %t, got %t", *exp.GameEnded, postState.IsEnded)
+	if exp.TurnCounter != nil {
+		if postState.TurnCounter != *exp.TurnCounter {
+			return fmt.Errorf("expected turn_counter to be %d, got %d", *exp.TurnCounter, postState.TurnCounter)
 		}
 	}
 
-	// Turn increment check
-	if exp.TurnIncrement != nil {
-		expectedTurnCount := prevTurnCounter + *exp.TurnIncrement
-		if postState.TurnCounter != expectedTurnCount {
-			return fmt.Errorf("expected turn counter to be %d (prev %d + %d), got %d",
-				expectedTurnCount, prevTurnCounter, *exp.TurnIncrement, postState.TurnCounter)
+	if exp.SceneTurnCounter != nil {
+		if postState.SceneTurnCounter != *exp.SceneTurnCounter {
+			return fmt.Errorf("expected scene_turn_counter to be %d, got %d", *exp.SceneTurnCounter, postState.SceneTurnCounter)
+		}
+	}
+
+	if exp.IsEnded != nil {
+		if postState.IsEnded != *exp.IsEnded {
+			return fmt.Errorf("expected is_ended to be %t, got %t", *exp.IsEnded, postState.IsEnded)
 		}
 	}
 

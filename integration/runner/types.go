@@ -7,47 +7,46 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
+// Special user prompt values that trigger non-chat actions
+const (
+	ResetGameStatePrompt = "RESET_GAMESTATE"
+)
+
 // TestSuite defines a complete integration test scenario
 type TestSuite struct {
-	Name          string          `yaml:"name"`
-	Scenario      string          `yaml:"scenario"`
-	SeedGameState state.GameState `yaml:"seed_game_state"`
-	Steps         []TestStep      `yaml:"steps"`
+	Name          string          `json:"name"`
+	Scenario      string          `json:"scenario"`
+	SeedGameState state.GameState `json:"seed_game_state"`
+	Steps         []TestStep      `json:"steps"`
 }
 
 // TestStep defines a single test interaction and its expected outcomes
+// Use user_prompt: "RESET_GAMESTATE" to reset to the original seed state
 type TestStep struct {
-	Name         string       `yaml:"name,omitempty"`
-	UserPrompt   string       `yaml:"user_prompt"`
-	Expectations Expectations `yaml:"expect"`
+	Name         string       `json:"name,omitempty"`
+	UserPrompt   string       `json:"user_prompt"`
+	Expectations Expectations `json:"expect"`
 }
 
 // Expectations defines what to check after a test step executes
 type Expectations struct {
-	// Location & Scene
-	Location  *string `yaml:"location,omitempty"`
-	SceneName *string `yaml:"scene_name,omitempty"`
-
-	// Inventory Changes (check for additions/removals)
-	InventoryAdded   []string `yaml:"inventory_added,omitempty"`
-	InventoryRemoved []string `yaml:"inventory_removed,omitempty"`
-
-	// Variables (check only specified keys)
-	Vars map[string]string `yaml:"vars,omitempty"`
-
+	// GameState properties - aligned with pkg/state/gamestate.go
+	Location         *string           `json:"location,omitempty"`           // User location
+	SceneName        *string           `json:"scene_name,omitempty"`         // Current scene name
+	Inventory        []string          `json:"inventory,omitempty"`          // Full inventory contents (order independent)
+	TurnCounter      *int              `json:"turn_counter,omitempty"`       // Total turn count
+	SceneTurnCounter *int              `json:"scene_turn_counter,omitempty"` // Scene-specific turn count
+	IsEnded          *bool             `json:"is_ended,omitempty"`           // Game ended state
+	Vars             map[string]string `json:"vars,omitempty"`               // Game variables
 	// NPC Locations (check specific NPC locations)
-	NPCLocations map[string]string `yaml:"npc_locations,omitempty"`
+	NPCLocations map[string]string `json:"npc_locations,omitempty"`
 
 	// Response Analysis
-	ResponseContains    []string `yaml:"response_contains,omitempty"`
-	ResponseNotContains []string `yaml:"response_not_contains,omitempty"`
-	ResponseRegex       string   `yaml:"response_regex,omitempty"`
-	ResponseMinLength   *int     `yaml:"response_min_length,omitempty"`
-	ResponseMaxLength   *int     `yaml:"response_max_length,omitempty"`
-
-	// Game Flow
-	GameEnded     *bool `yaml:"game_ended,omitempty"`
-	TurnIncrement *int  `yaml:"turn_increment,omitempty"` // relative to previous step
+	ResponseContains    []string `json:"response_contains,omitempty"`
+	ResponseNotContains []string `json:"response_not_contains,omitempty"`
+	ResponseRegex       string   `json:"response_regex,omitempty"`
+	ResponseMinLength   *int     `json:"response_min_length,omitempty"`
+	ResponseMaxLength   *int     `json:"response_max_length,omitempty"`
 }
 
 // TestResult contains the outcome of running a test step

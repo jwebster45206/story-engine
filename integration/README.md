@@ -1,6 +1,26 @@
 # Integration Tests
 
-This directory contains integration tests for the Story Engine that test the complete flow from API requests through LLM responses to gamestate updates.
+Integration tests for the Story Engine that test against a real running API.
+
+## Quick Start
+
+### Prerequisites
+- Start the Story Engine API (defaults to `http://localhost:8080`)
+
+### Run All Integration Tests
+```bash
+go test -v -tags=integration ./integration/
+```
+
+### Run a Specific Test Case
+```bash
+# Run by case name (automatically adds .json extension and cases/ path)
+go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_shipwright_to_british_docks
+
+# Other examples:
+go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_british_docks_to_calypsos_map
+go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_basic_movement
+```
 
 ## Overview
 
@@ -9,70 +29,71 @@ These tests validate:
 - API endpoint functionality 
 - Gamestate persistence and updates
 - Game mechanics (inventory, location changes, variables)
+- Scene transitions and game flow
 
 ## Test Structure
 
 ### Test Files
-- `cases/` - YAML test case definitions
+- `cases/` - JSON test case definitions
 - `runner/` - Test execution framework
   - `types.go` - Data structures for test definitions
   - `runner.go` - Core test execution logic
 
 ### Test Case Format
 
-```yaml
-name: "Test Name"
-scenario: "scenario.json" 
-
-seed_game_state:
-  model_name: "claude-3-5-sonnet-20241022"
-  scenario: "scenario.json"
-  location: "Starting Location"
-  turn_counter: 0
-  inventory: ["item1", "item2"]
-  vars:
-    some_flag: "true"
-  chat_history:
-    - role: "user"
-      content: "Previous user message"
-    - role: "assistant" 
-      content: "Previous assistant response"
-
-steps:
-  - name: "Step Name"
-    user_prompt: "What the user types"
-    expect:
-      location: "Expected Location"
-      inventory_added: ["new_item"]
-      response_contains: ["expected", "words"]
-      turn_increment: 1
+```json
+{
+  "name": "Test Name",
+  "scenario": "scenario.json",
+  "seed_game_state": {
+    "model_name": "claude-3-5-sonnet-20241022",
+    "scenario": "scenario.json",
+    "location": "Starting Location",
+    "turn_counter": 0,
+    "inventory": ["item1", "item2"],
+    "vars": {
+      "some_flag": "true"
+    },
+    "chat_history": [
+      {
+        "role": "user",
+        "content": "Previous user message"
+      },
+      {
+        "role": "assistant",
+        "content": "Previous assistant response"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Step Name",
+      "user_prompt": "What the user types",
+      "expect": {
+        "location": "Expected Location",
+        "inventory_added": ["new_item"],
+        "response_contains": ["expected", "words"],
+        "turn_increment": 1
+      }
+    }
+  ]
+}
 ```
 
-## Running Tests
+## Configuration
 
-### Prerequisites
-- Docker and Docker Compose
-- Running Story Engine API (with LLM keys configured on the API side)
-
-### Full Test Suite
+### API Base URL
+Default: `http://localhost:8080`
+Override with environment variable:
 ```bash
-# Run all integration tests with default settings
-docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm integration-tests
-
-# With custom configuration
-TEST_CONCURRENCY=3 docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm integration-tests
-
-# Against existing API instance
-API_BASE_URL=http://localhost:8080 docker compose -f docker-compose.test.yml run --rm integration-tests
-
-# Service in docker, integ tests running locally
-API_BASE_URL=http://localhost:8080 go test -tags=integration ./integration/... -v
+API_BASE_URL=http://api.example.com:8080 go test -v -tags=integration ./integration/
 ```
 
-### Single Test Suite
+### Test Timeout  
+Default: 30 seconds per test step
+Override with environment variable:
 ```bash
-# Run a specific test file
-TEST_SUITE_FILE=integration/cases/pirate_basic_movement.yaml docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm integration-tests go test -tags=integration ./integration/... -run TestSingleSuite -v
+TEST_TIMEOUT_SECONDS=60 go test -v -tags=integration ./integration/
 ```
 
 ### Environment Variables
@@ -86,7 +107,7 @@ TEST_SUITE_FILE=integration/cases/pirate_basic_movement.yaml docker compose -f d
 
 ### Adding New Tests
 
-1. Create a new YAML file in `integration/cases/`
+1. Create a new JSON file in `integration/cases/`
 2. Define your test scenario using existing scenarios from `data/scenarios/`
 3. Set up realistic seed state with minimal chat history
 4. Define test steps with specific expectations
