@@ -65,10 +65,12 @@ SCENES
 - Otherwise set scene_change=null.
 
 VARIABLES
-- This field is currently not in use and should be omitted. 
+- Use variables to reflect events and story state changes.
+- Only update variables that already exist in the current game state.
+- Set variables based on events in the player's most recent prompt and the narrator's response.
+- The narrator's response may override the player's prompt.
 
 GAME END
-- Always include game_ended.
 - true if narrative describes a definitive ending OR a rule ends the game this turn.
 - true if a rule should have ended the game previously. 
 - false otherwise.

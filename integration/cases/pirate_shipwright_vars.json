@@ -1,0 +1,109 @@
+{
+  "name": "Pirate Shipwright Hiring Variable Test", 
+  "scenario": "pirate.vars.json",
+  "seed_game_state": {
+    "model_name": "claude-3-5-sonnet-20241022",
+    "scenario": "pirate.vars.json",
+    "scene_name": "shipwright",
+    "location": "Sleepy Mermaid",
+    "turn_counter": 7,
+    "scene_turn_counter": 5,
+    "inventory": [
+      "cutlass",
+      "spyglass", 
+      "lockpicks",
+      "ship repair ledger",
+      "bag of pieces of eight"
+    ],
+    "vars": {
+      "ship_repair_ledger_acquired": "true",
+      "shipwright_hired": "false"
+    },
+    "world_locations": {
+      "Tortuga": {
+        "name": "Tortuga",
+        "items": []
+      },
+      "Black Pearl": {
+        "name": "Black Pearl",
+        "items": ["billy the parrot"]
+      },
+      "Captain's Cabin": {
+        "name": "Captain's Cabin",
+        "items": ["bag of gems", "map of the Caribbean", "letter from Calypso"]
+      },
+      "Sleepy Mermaid": {
+        "name": "Sleepy Mermaid",
+        "items": []
+      },
+      "Tortuga Market": {
+        "name": "Tortuga Market",
+        "items": ["forged documents", "rare spices"]
+      },
+      "Open Sea": {
+        "name": "Open Sea",
+        "items": []
+      }
+    },
+    "npcs": {
+      "Gibbs": {
+        "name": "Gibbs",
+        "location": "Black Pearl", 
+        "items": []
+      },
+      "Calypso": {
+        "name": "Calypso",
+        "location": "Sleepy Mermaid",
+        "items": ["flagon of ale", "deck of cards"]
+      },
+      "Charming Danny": {
+        "name": "Charming Danny",
+        "location": "Tortuga Market",
+        "items": ["forged documents", "rare spices", "bottle of rum", "black powder", "flintlock pistol"]
+      },
+      "Shipwright": {
+        "name": "Shipwright",
+        "location": "Sleepy Mermaid",
+        "items": []
+      }
+    },
+    "chat_history": [
+      {
+        "role": "user",
+        "content": "I approach Calypso at the bar."
+      },
+      {
+        "role": "assistant", 
+        "content": "You stride over to where Calypso tends bar, her mysterious smile greeting you as always. 'Ah, Captain,' she says with her lilting Haitian accent, 'what brings you to my humble establishment today? Perhaps you be needin' some refreshment, or maybe you have business with someone else in here?' She glances meaningfully toward the corner where the gruff shipwright sits hunched over his sketches and ale."
+      },
+      {
+        "role": "user",
+        "content": "I approach the shipwright to discuss my ship's repairs."
+      },
+      {
+        "role": "assistant",
+        "content": "The burly shipwright looks up from his sketches as you approach, his weathered face bearing its usual scowl. 'Aye, what ye be wantin'?' he growls, setting down his tankard. 'If it's about ship repairs, ye'll need proper documentation and coin. I don't work for free, Captain.' His eyes narrow as he sizes you up, clearly waiting to see if you're serious about business."
+      },
+      {
+        "role": "user", 
+        "content": "I show him the ship repair ledger and explain the damage to my ship."
+      },
+      {
+        "role": "assistant",
+        "content": "The shipwright takes the ledger from your hands, his calloused fingers flipping through its pages with practiced efficiency. His scowl deepens as he studies the detailed entries. 'Hmph, this be proper documentation,' he grunts with grudging approval. 'The Black Pearl's taken quite a beating, I can see. Loose planks, frayed rigging, water damage...' He looks up at you directly. 'I can get her seaworthy again, but it'll cost ye 500 gold doubloons for the full job. I'll need a deposit to start work though - even a bag of pieces of eight would do to get me started.'"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Agree to terms and give deposit", 
+      "user_prompt": "\"Take these pieces of eight as a deposit. Please begin the repairs.\"",
+      "expect": {
+        "vars": {
+          "shipwright_hired": "true"
+        },
+        "game_ended": false
+      }
+    }
+  ]
+}
