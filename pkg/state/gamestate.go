@@ -332,3 +332,11 @@ func (gs *GameState) NormalizeItems() {
 		gs.WorldLocations[locName] = location
 	}
 }
+
+func (gs *GameState) GetSceneName() string {
+	return gs.SceneName
+}
+
+func (gs *GameState) GetVars() map[string]string {
+	return gs.Vars
+}

@@ -99,10 +99,8 @@
       "name": "Agree to terms and give deposit", 
       "user_prompt": "\"Take these pieces of eight as a deposit. Please begin the repairs.\"",
       "expect": {
-        "vars": {
-          "shipwright_hired": "true"
-        },
-        "game_ended": false
+        "game_ended": false,
+        "scene_name": "british_docks"
       }
     }
   ]

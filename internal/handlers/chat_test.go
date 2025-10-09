@@ -413,7 +413,11 @@ func TestApplyMetaUpdate(t *testing.T) {
 		},
 	}
 
-	err := applyGameStateDelta(gs, s, meta)
+	// Use DeltaWorker to apply delta
+	worker := state.NewDeltaWorker(gs, meta, s)
+	worker.ApplyVars()
+	worker.ApplyConditionalOverrides()
+	err := worker.Apply()
 	if err != nil {
 		t.Fatalf("Failed to apply gamestate delta: %v", err)
 	}

@@ -130,27 +130,125 @@ These define hard mechanical rules that change game state:
 - **Game flow**: "game ends", "scene transitions to"
 - **Availability**: "becomes accessible", "is blocked"
 
-### Scene Change Fallbacks
+### Variables (Vars)
 
-When writing scene transition rules, always include fallback conditions to handle cases where items were acquired in previous sessions or scenes:
+Variables track important story state and enable deterministic scene transitions. Use them **sparingly** - primarily to scaffold critical story progression points.
 
-**Basic scene change:**
+**Define variables at the scene level:**
+```json
+"scenes": {
+  "shipwright": {
+    "vars": {
+      "ship_repair_ledger_acquired": "false",
+      "shipwright_hired": "false"
+    }
+  }
+}
 ```
-"When the player collects both the ancient grimoire and vampire lore book, the scene changes to 'preparation'."
+
+**Use clear, descriptive names:**
+- `ship_repair_ledger_acquired` - Better than `got_ledger` or `ledger_flag`
+- `shipwright_hired` - Better than `hired` or `npc_status`
+- Use snake_case format
+- All values are strings: `"true"`, `"false"`, `"ready"`, `"incomplete"`
+
+**Provide narrative guidance for setting variables:**
+```json
+"contingency_prompts": [
+  "When the player reviews the ship repair ledger, set ship_repair_ledger_acquired to true.",
+  "When the shipwright agrees to begin repairs, set shipwright_hired to true."
+]
 ```
 
-**With fallback condition:**
-```
-"When the player collects both the ancient grimoire and vampire lore book, the scene changes to 'preparation'."
-"If the ancient grimoire and vampire lore book are both in inventory, the scene changes to 'preparation'."
+### Conditionals (Deterministic Scene Changes)
+
+Conditionals enforce reliable scene transitions based on variable state. They override any scene changes suggested by the AI.
+
+**Define conditionals at the scene level:**
+```json
+"scenes": {
+  "shipwright": {
+    "conditionals": [
+      {
+        "name": "transition_to_british_docks",
+        "when": {
+          "shipwright_hired": "true"
+        },
+        "then": {
+          "scene": "british_docks"
+        }
+      }
+    ]
+  }
+}
 ```
 
-This ensures scene progression works even if:
-- Items were collected in a previous scene
-- The player obtained items through alternative methods
-- Game state was restored from a save
+**Multiple conditions (all must be true):**
+```json
+"conditionals": [
+  {
+    "name": "proceed_to_finale",
+    "when": {
+      "gold_acquired": "true",
+      "shipwright_paid_in_full": "true"
+    },
+    "then": {
+      "scene": "calypsos_map"
+    }
+  }
+]
+```
 
-Always write scene transition rules with both "when collected" and "if in inventory" conditions.
+**Conditionals can also end the game:**
+```json
+"conditionals": [
+  {
+    "name": "game_over_captured",
+    "when": {
+      "caught_by_guards": "true",
+      "disguise_acquired": "false"
+    },
+    "then": {
+      "game_ended": true
+    }
+  }
+]
+```
+
+### Best Practice: Combine Narrative and Deterministic Approaches
+
+For reliable scene progression, use **both** contingency prompts and conditionals:
+
+**1. Guide the AI with contingency prompts:**
+```json
+"contingency_prompts": [
+  "When the shipwright agrees to begin repairs and accepts payment, set shipwright_hired to true."
+]
+```
+
+**2. Provide a narrative scene change rule:**
+```json
+"contingency_rules": [
+  "When the shipwright starts repairs, the scene changes to 'british_docks'."
+]
+```
+
+**3. Enforce it with a conditional:**
+```json
+"conditionals": [
+  {
+    "name": "shipwright_scene_transition",
+    "when": {"shipwright_hired": "true"},
+    "then": {"scene": "british_docks"}
+  }
+]
+```
+
+This layered approach ensures:
+- The AI understands when and why to set variables
+- The AI attempts scene transitions naturally through contingency rules
+- The conditional guarantees the transition happens regardless of AI compliance
+- Story progression remains reliable and predictable
 
 ## Scene System (Optional)
 
