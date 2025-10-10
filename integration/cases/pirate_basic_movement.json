@@ -5,10 +5,10 @@
     "model_name": "claude-3-5-sonnet-20241022",
     "scenario": "pirate.json",
     "scene_name": "shipwright",
-    "location": "Tortuga",
+    "user_location": "Tortuga",
     "turn_counter": 2,
     "scene_turn_counter": 2,
-    "inventory": [
+    "user_inventory": [
       "cutlass",
       "spyglass",
       "lockpicks"
@@ -40,7 +40,7 @@
       "name": "Move to Black Pearl",
       "user_prompt": "I board The Black Pearl.",
       "expect": {
-        "location": "Black Pearl",
+        "user_location": "Black Pearl",
         "response_contains": [
           "black pearl",
           "ship",
@@ -58,7 +58,7 @@
           "repair",
           "ledger"
         ],
-        "inventory": [
+        "user_inventory": [
           "cutlass",
           "spyglass",
           "lockpicks"
@@ -70,7 +70,7 @@
       "name": "Pick up ship repair ledger",
       "user_prompt": "I review the ship repair ledger.",
       "expect": {
-        "inventory": [
+        "user_inventory": [
           "cutlass",
           "spyglass",
           "lockpicks",
@@ -86,7 +86,7 @@
       "name": "Go to Captain's Cabin",
       "user_prompt": "I go through the cabin door.",
       "expect": {
-        "location": "Captain's Cabin",
+        "user_location": "Captain's Cabin",
         "response_contains": [
           "cabin",
           "maps",
@@ -99,7 +99,7 @@
       "name": "Return to deck",
       "user_prompt": "I go back through the cabin door.",
       "expect": {
-        "location": "Black Pearl",
+        "user_location": "Black Pearl",
         "response_contains": [
           "deck",
           "ship"

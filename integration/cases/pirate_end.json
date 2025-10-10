@@ -3,10 +3,10 @@
   "scenario": "pirate.json",
   "seed_game_state": {
     "scene_name": "calypsos_map",
-    "location": "Sleepy Mermaid",
+    "user_location": "Sleepy Mermaid",
     "turn_counter": 22,
     "scene_turn_counter": 4,
-    "inventory": [
+    "user_inventory": [
       "cutlass",
       "spyglass",
       "lockpicks",

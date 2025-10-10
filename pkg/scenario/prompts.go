@@ -72,7 +72,6 @@ VARIABLES
 
 GAME END
 - true if narrative describes a definitive ending OR a rule ends the game this turn.
-- true if a rule should have ended the game previously. 
 - false otherwise.
 
 CONTINGENCY RULES

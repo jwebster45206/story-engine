@@ -128,7 +128,6 @@
         "Calypso is the bartender at the Sleepy Mermaid. She greets her customers with a warm smile and a hint of mystery."
       ],
       "contingency_rules": [
-        "When the shipwright agrees to start repairs, the scene changes to 'british_docks'.",
         "When the shipwright agrees to start repairs, set the variable \"shipwright_hired\" to \"true\".",
         "Reading the ship repair ledger adds it to inventory and sets the variable \"ship_repair_ledger_acquired\" to \"true\". Observing that it is on the ship does not. ",
         "Showing the ship repair ledger to the shipwright removes it from the player's inventory.",
@@ -200,9 +199,7 @@
         "The shipwright is now located in the Black Pearl, working on repairs. He does not like to be bothered at a time like this."
       ],
       "contingency_rules": [
-        "When the player has returned to the Black Pearl and paid the shipwright 500 gold, the scene changes to 'calypsos_map'.",
         "When the player has returned to the Black Pearl and paid the shipwright 500 gold, set the variable \"shipwright_paid_in_full\" to \"true\".",
-        "If the player has previously paid the shipwright 500 gold, the scene changes to 'calypsos_map'.",
         "If the player is caught stealing at the British Docks without proper disguise, they are captured and the game ends with imprisonment.",
         "If the player attacks British guards directly, the player is overwhelmed and captured and the game ends with imprisonment."
       ],
@@ -272,7 +269,6 @@
         "The shipwright does not participate in this part of the adventure."
       ],
       "contingency_rules": [
-        "The game ends when the player sets sail from Tortuga, with or without the map. Final score is based on whether the player obtained the treasure map.",
         "when the Black Pearl departs Tortuga, set the variable \"pearl_departed_tortuga\" to \"true\"."
       ],
       "conditionals": [

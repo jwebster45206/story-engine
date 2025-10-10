@@ -5,10 +5,10 @@
     "model_name": "claude-3-5-sonnet-20241022",
     "scenario": "pirate.vars.json",
     "scene_name": "shipwright",
-    "location": "Black Pearl",
+    "user_location": "Black Pearl",
     "turn_counter": 3,
     "scene_turn_counter": 3,
-    "inventory": [
+    "user_inventory": [
       "cutlass",
       "spyglass",
       "lockpicks"

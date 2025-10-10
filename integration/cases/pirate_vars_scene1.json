@@ -1,6 +1,6 @@
 {
   "name": "Pirate Shipwright to British Docks Scene Transition",
-  "scenario": "pirate.json",
+  "scenario": "pirate.vars.json",
   "seed_game_state": {
     "scene_name": "shipwright",
     "user_location": "Sleepy Mermaid",
@@ -23,7 +23,7 @@
       },
       "Captain's Cabin": {
         "name": "Captain's Cabin",
-        "items": ["bag of gems", "map of the Caribbean", "letter from Calypso"]
+        "items": ["bag of pieces of eight", "bag of gems", "map of the Caribbean", "letter from Calypso"]
       },
       "Sleepy Mermaid": {
         "name": "Sleepy Mermaid",

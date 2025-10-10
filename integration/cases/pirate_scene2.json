@@ -3,10 +3,10 @@
   "scenario": "pirate.json",
   "seed_game_state": {
     "scene_name": "british_docks",
-    "location": "Black Pearl",
+    "user_location": "Black Pearl",
     "turn_counter": 15,
     "scene_turn_counter": 6,
-    "inventory": [
+    "user_inventory": [
       "cutlass",
       "spyglass",
       "lockpicks",
