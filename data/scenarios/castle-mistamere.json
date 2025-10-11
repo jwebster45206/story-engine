@@ -1,0 +1,505 @@
+{
+  "name": "Castle Mistamere: Bargle's Shadow",
+  "story": "An infamous renegade mage—Bargle—has turned the ruined halls of Castle Mistamere into a nest of schemes. The player approaches the shattered towers, seeking gold, glory, and justice. Delving from wind-scoured ruins into lightless vaults, the player must outwit cunning kobolds, resist insidious songs, and breach arcane seals before finally confronting Bargle himself.",
+  "rating": "PG-13",
+  "opening_scene": "outer_ruins",
+  "opening_prompt": "You are a human fighter on your very first adventure—broke as a church mouse, but stubborn as an ox. Last night at the Gold Dragon Inn you listened, wide-eyed, as old hands muttered about Castle Mistamere: a ruined keep once held by the wizard Gygar, its halls now haunted by vermin, restless dead… and a renegade mage named Bargle.\n\nThey spoke of farmsteads bled by tithe collectors who answer to no lord, of caravans that vanish on the north road, and of a bounty quietly posted for anyone who can drive Bargle out—or prove he’s gone for good. A few practical tips stuck: kobolds skulk the outer yard; there’s a locked postern by the old gate; and something slimy lairs in a trench near the wall. Light, noise, and patience matter more than brute steel.\n\nDawn finds you at the shattered approach. Wind hisses through teeth of broken stone; vines choke the fallen gatehouse. Your lantern sputters to life in your shaking hand. You own little beyond your blade, your wits, and the courage that brought you here.\n\nAhead: the sagging gate and a watchful yard. To one side: a rubble-choked breach with a view into darkness. Somewhere nearby: that trench the teamsters warned you about. Behind you, the road curls back toward the inn and a warm hearth.\n\nWhat do you do?",
+  "opening_location": "Outer Ruins",
+  "opening_inventory": [
+    "worn longsword",
+    "lantern",
+    "oil flask",
+    "rope (50 ft)",
+    "rations (1 day)"
+  ],
+
+  "locations": {
+    "Gold Dragon Inn": {
+      "name": "Gold Dragon Inn",
+      "description": "Smoke-stained rafters and boar-hide banners crowd the ceiling. Tankards thud like war drums; talk runs on iron and blood. A hearth the size of a smithy throws wolfish light across faces hard as knuckles—sailors, sellswords, and stray priests. Rumors coil here like pipe smoke, thick with gold and treachery.",
+      "exits": {
+        "road to castle": "Outer Ruins"
+      },
+      "items": [
+        "chalk",
+        "hand-drawn rumor map"
+      ]
+    },
+    "Outer Ruins": {
+      "name": "Outer Ruins",
+      "description": "Stone teeth gnaw at the sky where battlements once stood. Brambles clutch the shattered gatehouse and creep over toppled lions. Wind prowls the gaps with a jackal’s whine, stirring ash-gray dust and the spoor of crawling things. The place feels old as a curse and twice as patient.",
+      "exits": {
+        "north gate": "Courtyard Gate",
+        "back to road": "Gold Dragon Inn"
+      },
+      "items": [
+        "brass key (tarnished)",
+        "coil of frayed rope"
+      ]
+    }
+  },
+
+  "npcs": {
+    "Town Elder": {
+      "name": "Town Elder",
+      "type": "questgiver",
+      "disposition": "stern but hopeful",
+      "description": "A stooped official who remembers when Gygar’s banner still flew from the towers. Offers a reward if Bargle is driven away or captured.",
+      "important": true,
+      "location": "Gold Dragon Inn",
+      "items": []
+    }
+  },
+
+  "scenes": {
+    "outer_ruins": {
+      "story": "The player scouts the shattered approaches to Mistamere. Kobold sentries and a carrion crawler force careful choices about entry.",
+      "vars": {
+        "entered_first_level": "false",
+        "heard_town_briefing": "false"
+      },
+      "locations": {
+        "Outer Ruins": {
+          "name": "Outer Ruins",
+          "description": "Stone teeth gnaw at the sky where battlements once stood. Brambles clutch the shattered gatehouse and creep over toppled lions. Wind prowls the gaps with a jackal’s whine, stirring ash-gray dust and the spoor of crawling things. The place feels old as a curse and twice as patient.",
+          "exits": {
+            "north gate": "Courtyard Gate",
+            "collapsed breach": "Courtyard Gate",
+            "back to road": "Gold Dragon Inn"
+          },
+          "items": [
+            "brass key (tarnished)",
+            "broken spearhead"
+          ]
+        },
+        "Courtyard Gate": {
+          "name": "Courtyard Gate",
+          "description": "A portcullis sags like a broken jaw over a yard gone wild. Weeds spear through flagstones; walls sweat with damp. From behind the stones comes the click of nails and the thin laughter of small hunters. A postern door, iron-sick and stubborn, watches like a lidded eye.",
+          "exits": {
+            "postern door": "First Landing",
+            "yard gap": "First Landing",
+            "back to ruins": "Outer Ruins"
+          },
+          "blocked_exits": {
+            "postern door": "Locked without the brass key; the hinges shriek.",
+            "yard gap": "Kobolds watch the open gap; a bold distraction might work."
+          }
+        },
+        "Crawler Trench": {
+          "name": "Crawler Trench",
+          "description": "A gutter gouged by siege-water now slick with alien slime. Shed feelers lie like gray whips; the air tastes of copper and paralysis. Something wakes when you breathe too loud, and the weeds lean as if listening.",
+          "exits": {
+            "scramble up": "Outer Ruins"
+          },
+          "items": [
+            "amber vial (antidote, crude)",
+            "stiff leather glove (single)"
+          ]
+        },
+        "First Landing": {
+          "name": "First Landing",
+          "description": "A spill of steps yawns into dark like a giant’s throat. The air cools to cellar-cold; dust lies unbroken save for the trace of many small feet. Your breath plumes like battle-smoke in winter.",
+          "exits": {
+            "down the stairs": "West Hall",
+            "back to courtyard": "Courtyard Gate"
+          }
+        },
+        "West Hall": {
+          "name": "West Hall",
+          "description": "A corridor split by time and old malice. Tattered pennons hang like flayed skins; mortar crumbles at a touch. The lower stones are scored with claw and spear—but once, men marched here under proud colors.",
+          "exits": {
+            "back up": "First Landing"
+          }
+        }
+      },
+      "npcs": {
+        "Carrion Crawler": {
+          "name": "Carrion Crawler",
+          "type": "monster",
+          "disposition": "hungry and territorial",
+          "description": "Pale feelers tasting the air; it lurks near the trench, drawn by movement and noise.",
+          "important": false,
+          "location": "Crawler Trench",
+          "items": []
+        },
+        "Kobold Sentries": {
+          "name": "Kobold Sentries",
+          "type": "monsters",
+          "disposition": "nervous and mean",
+          "description": "Chattering sentries with makeshift spears. They prefer alarms and ambush to fair fights.",
+          "important": false,
+          "location": "Courtyard Gate",
+          "items": [
+            "kobold whistle",
+            "bundle of nails"
+          ]
+        }
+      },
+      "contingency_prompts": [
+        "If the player investigates the rubble or postern, hint that the brass key fits a nearby lock.",
+        "If the player studies the trench, foreshadow the crawler with sensory detail before any confrontation.",
+        "Offer non-combat options: distraction with thrown stones, bribery with rations, or sneaking while the wind gusts.",
+        "If the player makes loud noise at the gate, describe kobold chatter rising and footfalls scurrying away."
+      ],
+      "contingency_rules": [
+        "When the player unlocks the postern with the brass key, set entered_first_level to true.",
+        "When the player sneaks or distracts through the yard gap, set entered_first_level to true.",
+        "When the player explicitly requests rumors or backstory at the Inn, set heard_town_briefing to true."
+      ],
+      "conditionals": [
+        {"name": "enter_first_level_when_ready", "when": {"entered_first_level": "true"}, "then": {"scene": "castle_first_level"}}
+      ]
+    },
+
+    "castle_first_level": {
+      "story": "The player explores Mistamere’s first level—kobold rooms, a harpy-haunted hall, undead closets, and hints of deeper passages.",
+      "vars": {
+        "stair_unbarred": "false",
+        "harpies_dealt_with": "false"
+      },
+      "locations": {
+        "West Hall": {
+          "name": "West Hall",
+          "description": "Faded banners crumble to powder. Footprints track dust between rooms.",
+          "exits": {
+            "dining hall": "Dining Hall",
+            "statue room": "Statue Room",
+            "east stair": "East Stair",
+            "back up": "First Landing"
+          }
+        },
+        "Dining Hall": {
+          "name": "Dining Hall",
+          "description": "A feasting table sprawls on a broken leg, cups overturned like slain kings. Feathers drift in the drafts, and somewhere beyond the cracked ceiling a voice warms its throat with honeyed poison.",
+          "exits": {
+            "west hall": "West Hall",
+            "service passage": "Service Passage"
+          },
+          "items": [
+            "silver serving fork",
+            "wine-stained ledger page"
+          ]
+        },
+        "Statue Room": {
+          "name": "Statue Room",
+          "description": "Gygar’s stone effigy stands battle-chipped and patient, finger extended toward a hairline seam. Cold creeps from the east wall, and a dust of centuries powders your knuckles.",
+          "exits": {
+            "west hall": "West Hall",
+            "secret seam": "Secret Niche"
+          },
+          "items": [
+            "gygar sigil (carved token)"
+          ]
+        },
+        "Secret Niche": {
+          "name": "Secret Niche",
+          "description": "A coffin-long wound in the masonry, scorched and narrow. Wax runs have hardened like pale stalagmites. A draft whispers of spaces that never see the sun.",
+          "exits": {
+            "back": "Statue Room"
+          },
+          "items": [
+            "crowbar",
+            "bundle of wax candles"
+          ]
+        },
+        "Service Passage": {
+          "name": "Service Passage",
+          "description": "Low, mean, and close as a thief’s breath. Grease-sour air clings to the tongue. The walls wear the shine of many shoulders and the scratches of hasty retreats.",
+          "exits": {
+            "dining hall": "Dining Hall",
+            "storeroom": "Storeroom"
+          }
+        },
+        "Storeroom": {
+          "name": "Storeroom",
+          "description": "Crates burst their ribs; salt spills like pale sand across the floor. Something small scuttles behind a broken lid, leaving a snake of dust.",
+          "exits": {
+            "service passage": "Service Passage"
+          },
+          "items": [
+            "kobold token (truce bead)",
+            "salted jerky"
+          ]
+        },
+        "East Stair": {
+          "name": "East Stair",
+          "description": "Steps plunge into chill like a blade into water. Someone has jammed a plank as a barring-spear, and the stone bites it like a set of teeth.",
+          "exits": {
+            "up to west hall": "West Hall",
+            "down (barred)": "Second Landing"
+          },
+          "blocked_exits": {
+            "down (barred)": "The plank must be pried free, or a kobold truce might convince them to remove it."
+          }
+        },
+        "Second Landing": {
+          "name": "Second Landing",
+          "description": "Dark presses here like a mailed fist. Far below, a faint chime tolls as if a smith tapped a goblet with a knife. The air smells of spider-den and cold iron.",
+          "exits": {
+            "back up": "East Stair"
+          }
+        }
+      },
+      "npcs": {
+        "Harpies": {
+          "name": "Harpies",
+          "type": "monsters",
+          "disposition": "sly and taunting",
+          "description": "Voices like honey over broken glass. Their song bids travelers to forget their names.",
+          "important": false,
+          "location": "Dining Hall",
+          "items": [
+            "feather charm"
+          ]
+        },
+        "Kobold Foragers": {
+          "name": "Kobold Foragers",
+          "type": "monsters",
+          "disposition": "skittish and bargaining",
+          "description": "More interested in food and safe passage than pointless death.",
+          "important": false,
+          "location": "Storeroom",
+          "items": [
+            "rope snare",
+            "crumbly chalk marks"
+          ]
+        },
+        "Restless Dead": {
+          "name": "Restless Dead",
+          "type": "undead",
+          "disposition": "mindless hunger",
+          "description": "A cupboard rattles; dusty fingers probe the crack.",
+          "important": false,
+          "location": "Service Passage",
+          "items": []
+        }
+      },
+      "contingency_prompts": [
+        "If the player listens at the Dining Hall before entering, foreshadow the harpy song—offer choices: wax the ears, retreat, interrupt with loud noise.",
+        "If the player shows the kobold token, kobolds allow the plank at the East Stair to be removed.",
+        "If the player found a crowbar in the Secret Niche, remind them it could pry the stair plank.",
+        "Use atmospheric cues—cold drafts, distant chimes—to tug the player toward the deeper stairs."
+      ],
+      "contingency_rules": [
+        "When the player pries the stair plank with the crowbar, set stair_unbarred to true.",
+        "When the player presents the kobold token at the East Stair, set stair_unbarred to true.",
+        "When the player cleverly bypasses the plank using improvised tools, set stair_unbarred to true.",
+        "When the player neutralizes the harpies through any means, set harpies_dealt_with to true."
+      ],
+      "conditionals": [
+        {"name": "descend_when_unbarred", "when": {"stair_unbarred": "true"}, "then": {"scene": "castle_second_level"}}
+      ]
+    },
+
+    "castle_second_level": {
+      "story": "Deeper halls hold spider lairs, tight caverns, and the arcane seal that guards Bargle’s sanctum. Rumors of Gygar’s lost wards prove true.",
+      "vars": {
+        "gygar_sigil_fitted": "false",
+        "sanctum_path_revealed": "false"
+      },
+      "locations": {
+        "Second Landing": {
+          "name": "Second Landing",
+          "description": "Moisture beads on the stone. Something skitters just beyond the lantern’s reach.",
+          "exits": {
+            "spider run": "Spider Run",
+            "kobold warren": "Kobold Warren",
+            "arcane antechamber": "Arcane Antechamber",
+            "back up": "East Stair"
+          }
+        },
+        "Spider Run": {
+          "name": "Spider Run",
+          "description": "Web-curtains hang wet and heavy, beading your light into a hundred cold eyes. Every angle of ceiling seems sharpened for an ambush; silk clings with the promise of patient hunger.",
+          "exits": {
+            "back": "Second Landing"
+          },
+          "items": [
+            "phial of sticky webbing",
+            "spider fang"
+          ]
+        },
+        "Kobold Warren": {
+          "name": "Kobold Warren",
+          "description": "Low tunnels breathe smoke and stew-vapor. Bone charms rattle like dice; small voices argue in the dark with the pride of cornered jackals.",
+          "exits": {
+            "back": "Second Landing"
+          },
+          "items": [
+            "bundle of crude picks",
+            "string of bone charms"
+          ]
+        },
+        "Arcane Antechamber": {
+          "name": "Arcane Antechamber",
+          "description": "Tiles are etched with circles within triangles, their lines bitten deep and blackened by old fires. A door of night-colored stone hums—a sober, steady threat—waiting for the key that is not a key.",
+          "exits": {
+            "back": "Second Landing",
+            "sealed door": "Sanctum Threshold"
+          },
+          "blocked_exits": {
+            "sealed door": "The black stone bears a shallow sigil recess. A faint seam suggests it slides rather than swings."
+          }
+        },
+        "Sanctum Threshold": {
+          "name": "Sanctum Threshold",
+          "description": "A short hall where air turns thin as glass. Witchlight breathes beyond a gauze of shimmer, and the hair along your forearms stirs to a silent charge.",
+          "exits": {
+            "back": "Arcane Antechamber",
+            "through veil": "Bargle’s Study"
+          }
+        },
+        "Bargle’s Study": {
+          "name": "Bargle’s Study",
+          "description": "Books brood in ranks; bottled shadows twitch like trapped eels. Sealed letters litter a desk scarred by quick tempers. The chair is currently empty.",
+          "exits": {
+            "back": "Sanctum Threshold"
+          },
+          "items": [
+            "letter to unknown patron",
+            "scroll of warding (spent)",
+            "purse with 40 coins"
+          ]
+        }
+      },
+      "npcs": {
+        "Giant Spiders": {
+          "name": "Giant Spiders",
+          "type": "monsters",
+          "disposition": "patient ambushers",
+          "description": "They prefer still prey. Torches and smoke unsettle them.",
+          "important": false,
+          "location": "Spider Run",
+          "items": []
+        },
+        "Kobold Matriarch": {
+          "name": "Kobold Matriarch",
+          "type": "monster leader",
+          "disposition": "pragmatic and proud",
+          "description": "Keeps a brittle peace if shown respect; easily offended by bluster.",
+          "important": false,
+          "location": "Kobold Warren",
+          "items": [
+            "writ of passage (kobold mark)"
+          ]
+        }
+      },
+      "contingency_prompts": [
+        "Remind the player that the Gygar sigil from the first level may fit the recess in the black door.",
+        "If the player lacks the sigil, offer alternate approaches: bargain with the Matriarch for guidance, or use webbing and picks to improvise a slide mechanism.",
+        "If the study is found empty, sprinkle clues: warm ink, a half-drunk cup, footprints leading to the veil."
+      ],
+      "contingency_rules": [
+        "When the player fits the Gygar sigil into the sealed door, set sanctum_path_revealed to true.",
+        "When the player earns kobold assistance (holds the writ of passage) and asks for the sanctum path, set sanctum_path_revealed to true.",
+        "When the player bypasses the seal with ingenuity (tools or webbing), set sanctum_path_revealed to true."
+      ],
+      "conditionals": [
+        {"name": "sanctum_opens", "when": {"sanctum_path_revealed": "true"}, "then": {"scene": "bargle_encounter"}}
+      ]
+    },
+
+    "bargle_encounter": {
+      "story": "Within a warded sanctum, Bargle’s schemes are in motion. The confrontation may end in capture, exile, or an infuriating escape.",
+      "vars": {
+        "bargle_cornered": "false",
+        "bargle_exiled": "false",
+        "bargle_escaped": "false"
+      },
+      "locations": {
+        "Bargle’s Study": {
+          "name": "Bargle’s Study",
+          "description": "Shelves whisper as pages turn themselves. A mirror glows like a stormy eye.",
+          "exits": {
+            "mirror arch": "Mirror Gallery",
+            "back to veil": "Sanctum Threshold"
+          }
+        },
+        "Mirror Gallery": {
+          "name": "Mirror Gallery",
+          "description": "Three high mirrors brood beneath a ceiling veined with soot. One smokes like a slaughtered fire, one holds a hunter’s clarity, and one sags with a wound of cracks—each a promise, each a lie.",
+          "exits": {
+            "smoky mirror": "Escape Catwalk",
+            "clear mirror": "Ward Circle",
+            "cracked mirror": "Decoy Chamber",
+            "back": "Bargle’s Study"
+          }
+        },
+        "Escape Catwalk": {
+          "name": "Escape Catwalk",
+          "description": "A narrow lattice spans a throat of black machinery and cold light. Far ahead a dark cloak snaps around a turning—flight made arrogant.",
+          "exits": {
+            "back": "Mirror Gallery"
+          }
+        },
+        "Ward Circle": {
+          "name": "Ward Circle",
+          "description": "Chalk triangles and guttering candles hem a circle that will not be crossed lightly. Inside a bell-jar, a moth of living night beats its wings and dims the room with every stroke.",
+          "exits": {
+            "back": "Mirror Gallery"
+          },
+          "items": [
+            "bell jar with shadow moth"
+          ]
+        },
+        "Decoy Chamber": {
+          "name": "Decoy Chamber",
+          "description": "The scent of alchemical citrus masks a clever lie: Bargle slumped over a desk that was never there. Dust swirls wrong in here, like a tale with a false ending.",
+          "exits": {
+            "back": "Mirror Gallery"
+          },
+          "items": [
+            "illusory decoy focus (glass bead)"
+          ]
+        }
+      },
+      "npcs": {
+        "Bargle": {
+          "name": "Bargle",
+          "type": "renegade wizard",
+          "disposition": "amused and cruel",
+          "description": "A velvet voice and fast hands. He prefers escape to risk, and humiliation to mercy.",
+          "important": true,
+          "location": "Bargle’s Study",
+          "items": [
+            "ring of mist-step (limited charges)",
+            "sealed letter to patron"
+          ]
+        }
+      },
+      "contingency_prompts": [
+        "Bargle taunts first; he favors tricks and retreats over direct confrontation.",
+        "Offer multiple resolutions: negotiation with leverage (letters, shadow moth), outwitting the escape route, or forcing surrender by disrupting wards.",
+        "If the player uses the shadow moth in the ward circle, describe Bargle’s wards flickering like wet chalk."
+      ],
+      "contingency_rules": [
+        "When the player corners Bargle on the Escape Catwalk and disrupts his ring (using the shadow moth or other leverage), set bargle_cornered to true.",
+        "When the player brandishes the sealed letters and bargains for Bargle’s departure, set bargle_exiled to true.",
+        "When the player dithers or chooses the wrong mirror repeatedly, set bargle_escaped to true.",
+        "When the player destroys the ward circle and banishes Bargle through the cracked mirror, set bargle_exiled to true."
+      ],
+      "conditionals": [
+        {"name": "victory_cornered", "when": {"bargle_cornered": "true"}, "then": {"game_ended": true}},
+        {"name": "victory_exile", "when": {"bargle_exiled": "true"}, "then": {"game_ended": true}},
+        {"name": "bargle_slips_away", "when": {"bargle_escaped": "true"}, "then": {"game_ended": true}}
+      ]
+    }
+  },
+
+  "contingency_prompts": [
+    "Write with moody, adventurous flair but keep responses concise and actionable.",
+    "Offer non-combat solutions whenever possible—distraction, negotiation, clever tools.",
+    "Track light and time; hint at risk when light runs low or noise builds.",
+    "If the player seems stuck, remind them of discovered items and unexplored exits.",
+    "Avoid mechanical dice language; narrate consequences directly.",
+    "Address the player as a first-time human fighter—green but determined; let NPCs gently rib their lack of coin while respecting their courage."
+  ],
+
+  "contingency_rules": [
+    "Scene transitions must include fallback checks: if required items are already in inventory, allow progression when the player attempts the relevant exit.",
+    "If the player tries to brute-force every problem loudly and repeatedly, nearby factions converge and force a retreat to the Gold Dragon Inn.",
+    "If the player leaves Mistamere after reaching the second level, returning later resumes from the entrance to the most recently reached scene."
+  ],
+
+  "game_end_prompt": "The torches gutter out and the tale is told. Weigh the player’s courage, cunning, and kindness. Did they spare lives? Unmask tricks? Did Bargle fall, flee, or bargain? Tally trophies, secrets revealed, and the state of Mistamere. Offer a closing toast worthy of a tavern’s hush: a few lines of praise or pointed wit to christen their legend."
+}

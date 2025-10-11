@@ -3,64 +3,15 @@
   "scenario": "pirate.json",
   "seed_game_state": {
     "scene_name": "calypsos_map",
-    "location": "Sleepy Mermaid",
+    "user_location": "Black Pearl",
     "turn_counter": 22,
     "scene_turn_counter": 4,
-    "inventory": [
+    "user_inventory": [
       "cutlass",
       "spyglass",
       "lockpicks",
-      "chest of 10 gold doubloons",
-      "british naval uniform",
-      "treasure map"
+      "british naval uniform"
     ],
-    "vars": {
-      "met_shipwright": "true",
-      "examined_ship": "true",
-      "repairs_started": "true",
-      "repairs_completed": "true",
-      "infiltrated_british_docks": "true",
-      "paid_shipwright": "true",
-      "met_calypso": "true"
-    },
-    "world_locations": {
-      "Tortuga": {
-        "name": "Tortuga",
-        "items": []
-      },
-      "Black Pearl": {
-        "name": "Black Pearl",
-        "items": ["billy the parrot"]
-      },
-      "Captain's Cabin": {
-        "name": "Captain's Cabin",
-        "items": ["bag of pieces of eight", "bag of gems", "map of the Caribbean", "letter from Calypso"]
-      },
-      "Sleepy Mermaid": {
-        "name": "Sleepy Mermaid",
-        "items": []
-      },
-      "Tortuga Market": {
-        "name": "Tortuga Market",
-        "items": []
-      },
-      "Open Sea": {
-        "name": "Open Sea",
-        "items": []
-      }
-    },
-    "npcs": {
-      "Gibbs": {
-        "name": "Gibbs",
-        "location": "Black Pearl",
-        "items": []
-      },
-      "Calypso": {
-        "name": "Calypso",
-        "location": "Sleepy Mermaid",
-        "items": ["flagon of ale", "deck of cards"]
-      }
-    },
     "chat_history": [
       {
         "role": "user",
@@ -90,8 +41,8 @@
   },
   "steps": [
     {
-      "name": "Set sail from Tortuga to end the adventure",
-      "user_prompt": "Gibbs, my man, we have been ashore long enough. Let's set sail for adventure.",
+      "name": "game end",
+      "user_prompt": "I see Gibbs, standing by. I call to crew to pull up the anchor and set sail for the open sea, following the treasure map to Dead Man's Cove.",
       "expect": {
         "is_ended": true
       }

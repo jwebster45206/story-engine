@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package integration
 
 import (
@@ -6,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,6 +21,7 @@ import (
 var caseFlag = flag.String("case", "", "Name of test case to run (from integration/cases/)")
 var errFlag = flag.String("err", "continue", "Error handling mode: 'continue' (run all steps) or 'exit' (stop on first failure)")
 var runsFlag = flag.Int("runs", 1, "Number of times to run each test suite (useful for testing non-deterministic behavior)")
+var scenarioFlag = flag.String("scenario", "", "Override scenario for all test cases (e.g., 'pirate.json', 'pirate.vars.json', 'pirate.both.json')")
 
 func TestMain(m *testing.M) {
 	// Check required environment variables
@@ -44,8 +49,13 @@ func TestIntegrationSuites(t *testing.T) {
 	testRunner := runner.NewRunner(apiBaseURL)
 	testRunner.Timeout = time.Duration(timeoutSeconds) * time.Second
 	testRunner.ErrorHandlingMode = "continue" // Use continue mode for bulk tests to see all results
+	testRunner.ScenarioOverride = *scenarioFlag
 	testRunner.Logger = func(format string, args ...interface{}) {
 		fmt.Printf(format+"\n", args...)
+	}
+
+	if testRunner.ScenarioOverride != "" {
+		t.Logf("Scenario override enabled: %s", testRunner.ScenarioOverride)
 	}
 
 	// Discover test case files
@@ -196,6 +206,7 @@ func TestSingleSuite(t *testing.T) {
 	} else {
 		testRunner.ErrorHandlingMode = runner.ErrorHandlingMode(*errFlag)
 	}
+	testRunner.ScenarioOverride = *scenarioFlag
 	testRunner.Logger = func(format string, args ...interface{}) {
 		fmt.Printf(format+"\n", args...)
 	}
@@ -204,13 +215,21 @@ func TestSingleSuite(t *testing.T) {
 	if runs > 1 {
 		errorMode = "continue (forced for multi-run statistics)"
 	}
-	t.Logf("Running %d test suite(s) %d time(s) each with error mode '%s': %s", len(suiteFiles), runs, errorMode, strings.Join(caseNames, ", "))
+
+	scenarioInfo := ""
+	if testRunner.ScenarioOverride != "" {
+		scenarioInfo = fmt.Sprintf(" [scenario override: %s]", testRunner.ScenarioOverride)
+	}
+	t.Logf("Running %d test suite(s) %d time(s) each with error mode '%s'%s: %s", len(suiteFiles), runs, errorMode, scenarioInfo, strings.Join(caseNames, ", "))
 
 	// Track overall statistics
 	totalTests := 0
 	totalPasses := 0
 	totalFailures := 0
 	caseStats := make(map[string]struct{ passes, failures int })
+
+	// Track detailed failures per case and step
+	var allFailures []failureDetail
 
 	// Run test suites multiple times
 	for run := 1; run <= runs; run++ {
@@ -276,6 +295,13 @@ func TestSingleSuite(t *testing.T) {
 					t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
 				} else {
 					t.Errorf("   ✗ %s: %v", stepResult.StepName, stepResult.Error)
+					// Record failure detail
+					allFailures = append(allFailures, failureDetail{
+						caseName: result.Job.Name,
+						stepName: stepResult.StepName,
+						error:    stepResult.Error.Error(),
+						run:      run + 1,
+					})
 				}
 			}
 
@@ -303,39 +329,122 @@ func TestSingleSuite(t *testing.T) {
 		}
 	}
 
-	// Report final statistics for multi-run
-	if runs > 1 {
-		t.Logf("\n=== FINAL MULTI-RUN STATISTICS ===")
-		t.Logf("Total test executions: %d", totalTests)
-		t.Logf("Total passes: %d (%.1f%%)", totalPasses, float64(totalPasses)/float64(totalTests)*100)
-		t.Logf("Total failures: %d (%.1f%%)", totalFailures, float64(totalFailures)/float64(totalTests)*100)
+	// Report final statistics
+	summary := buildFinalReport(runs, len(suiteFiles), totalTests, totalPasses, totalFailures, caseNames, caseStats)
+	if summary != "" {
+		t.Log(summary)
+	}
 
-		t.Logf("\nPer-suite statistics:")
-		for _, caseName := range caseNames {
-			stats := caseStats[caseName]
-			total := stats.passes + stats.failures
-			if total > 0 {
-				passRate := float64(stats.passes) / float64(total) * 100
-				t.Logf("  %s: %d/%d passes (%.1f%%)", caseName, stats.passes, total, passRate)
-
-				// Flag potentially flaky tests
-				if stats.passes > 0 && stats.failures > 0 {
-					t.Logf("    ⚠️  FLAKY: This test both passed and failed across runs")
-				}
-			}
-		}
-	} else {
-		// Single run summary (existing behavior)
-		if len(suiteFiles) > 1 {
-			t.Logf("Test Suite Summary:")
-			t.Logf("   Passed: %d", totalPasses)
-			t.Logf("   Failed: %d", totalFailures)
-		}
+	// Detailed failure report
+	if len(allFailures) > 0 {
+		t.Log(buildFailureReport(allFailures))
 	}
 
 	if totalFailures > 0 {
 		t.Fatalf("Test suite(s) had errors")
 	}
+}
+
+// buildFinalReport creates the final statistics summary
+func buildFinalReport(runs int, numSuites int, totalTests int, totalPasses int, totalFailures int, caseNames []string, caseStats map[string]struct{ passes, failures int }) string {
+	var sb strings.Builder
+
+	// Multi-run statistics
+	if runs > 1 {
+		sb.WriteString("\n=== FINAL MULTI-RUN STATISTICS ===\n")
+		sb.WriteString(fmt.Sprintf("Total test executions: %d\n", totalTests))
+		sb.WriteString(fmt.Sprintf("Total passes: %d (%.1f%%)\n", totalPasses, float64(totalPasses)/float64(totalTests)*100))
+		sb.WriteString(fmt.Sprintf("Total failures: %d (%.1f%%)\n", totalFailures, float64(totalFailures)/float64(totalTests)*100))
+
+		sb.WriteString("\nPer-suite statistics:\n")
+		for _, caseName := range caseNames {
+			stats := caseStats[caseName]
+			total := stats.passes + stats.failures
+			if total > 0 {
+				passRate := float64(stats.passes) / float64(total) * 100
+				sb.WriteString(fmt.Sprintf("  %s: %d/%d passes (%.1f%%)\n", caseName, stats.passes, total, passRate))
+
+				// Flag potentially flaky tests
+				if stats.passes > 0 && stats.failures > 0 {
+					sb.WriteString("    ⚠️  FLAKY: This test both passed and failed across runs\n")
+				}
+			}
+		}
+	} else {
+		// Single run summary (only if multiple suites)
+		if numSuites > 1 {
+			sb.WriteString("Test Suite Summary:\n")
+			sb.WriteString(fmt.Sprintf("   Passed: %d\n", totalPasses))
+			sb.WriteString(fmt.Sprintf("   Failed: %d\n", totalFailures))
+		}
+	}
+
+	return sb.String()
+}
+
+// buildFailureReport creates a detailed failure report from collected failure details
+func buildFailureReport(allFailures []failureDetail) string {
+	var sb strings.Builder
+
+	sb.WriteString("\n========================================\n")
+	sb.WriteString("Detailed Failure Report\n")
+	sb.WriteString("========================================\n")
+
+	// Group failures by case name
+	failuresByCase := make(map[string][]failureDetail)
+	for _, failure := range allFailures {
+		failuresByCase[failure.caseName] = append(failuresByCase[failure.caseName], failure)
+	}
+
+	// Sort case names for consistent output
+	var caseNames []string
+	for caseName := range failuresByCase {
+		caseNames = append(caseNames, caseName)
+	}
+	sort.Strings(caseNames)
+
+	// Report failures grouped by case
+	for _, caseName := range caseNames {
+		failures := failuresByCase[caseName]
+		sb.WriteString(fmt.Sprintf("\n%s (%d step failure(s)):\n", caseName, len(failures)))
+
+		// Group by step name to show which steps failed across runs
+		stepFailures := make(map[string][]failureDetail)
+		for _, failure := range failures {
+			stepFailures[failure.stepName] = append(stepFailures[failure.stepName], failure)
+		}
+
+		// Sort step names for consistent output
+		var stepNames []string
+		for stepName := range stepFailures {
+			stepNames = append(stepNames, stepName)
+		}
+		sort.Strings(stepNames)
+
+		// Report each step's failures
+		for _, stepName := range stepNames {
+			stepFails := stepFailures[stepName]
+			if len(stepFails) == 1 {
+				sb.WriteString(fmt.Sprintf("  ✗ %s (run %d):\n", stepName, stepFails[0].run))
+				sb.WriteString(fmt.Sprintf("      %s\n", stepFails[0].error))
+			} else {
+				sb.WriteString(fmt.Sprintf("  ✗ %s (failed %d times):\n", stepName, len(stepFails)))
+				for _, fail := range stepFails {
+					sb.WriteString(fmt.Sprintf("      Run %d: %s\n", fail.run, fail.error))
+				}
+			}
+		}
+	}
+	sb.WriteString("\n========================================\n")
+	return sb.String()
+}
+
+// failureDetail tracks information about a specific step failure
+type failureDetail struct {
+	caseName string
+	stepName string
+	error    string
+	run      int
 }
 
 // Helper functions

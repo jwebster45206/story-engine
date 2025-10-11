@@ -15,11 +15,14 @@ go test -v -tags=integration ./integration/
 ### Run a Specific Test Case
 ```bash
 # Run by case name (automatically adds .json extension and cases/ path)
-go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_shipwright_to_british_docks
+go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_scene1
 
-# Other examples:
-go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_british_docks_to_calypsos_map
-go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_basic_movement
+# Run multiple cases:
+go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_scene1,pirate_scene2
+
+# Override scenario for test cases (test same cases against different scenario variants):
+go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_scene1 -scenario pirate.vars.json
+go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_scene1 -scenario pirate.both.json
 ```
 
 ## Overview
@@ -82,6 +85,34 @@ These tests validate:
 
 ## Configuration
 
+### Command Line Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-case` | "" | Comma-separated list of test case names to run (e.g., `pirate_scene1,pirate_scene2`) |
+| `-scenario` | "" | Override scenario for all test cases (e.g., `pirate.vars.json`, `pirate.both.json`) |
+| `-err` | "continue" | Error handling mode: `continue` (run all steps) or `exit` (stop on first failure) |
+| `-runs` | 1 | Number of times to run each test suite (useful for testing non-deterministic behavior) |
+
+### Scenario Override
+
+The `-scenario` flag allows you to test the same test cases against different scenario variants without duplicating test files. This is useful for comparing:
+- Reducer-inferred scene changes (`pirate.json`)
+- Deterministic conditionals (`pirate.vars.json`)
+- Combined approach (`pirate.both.json`)
+
+Example:
+```bash
+# Test with base scenario
+go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_scene1
+
+# Test same case with vars scenario
+go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_scene1 -scenario pirate.vars.json
+
+# Test same case with combined scenario
+go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_scene1 -scenario pirate.both.json
+```
+
 ### API Base URL
 Default: `http://localhost:8080`
 Override with environment variable:
@@ -100,7 +131,7 @@ TEST_TIMEOUT_SECONDS=60 go test -v -tags=integration ./integration/
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `API_BASE_URL` | `http://story-engine-api:8080` | Base URL of the API to test |
+| `API_BASE_URL` | `http://localhost:8080` | Base URL of the API to test |
 | `TEST_TIMEOUT_SECONDS` | `30` | Timeout per test step in seconds |
 
 ## Test Development

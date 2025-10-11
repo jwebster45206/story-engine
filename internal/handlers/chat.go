@@ -473,264 +473,6 @@ func (h *ChatHandler) updateGameStateAfterStreaming(gs *state.GameState, userMes
 	h.logger.Debug("Game state updated after streaming", "game_state_id", gs.ID.String())
 }
 
-var errSceneNotFound = errors.New("scene not found")
-
-// applyGameStateDelta applies a GameStateDelta to the given GameState.
-func applyGameStateDelta(gs *state.GameState, scenario *scenario.Scenario, delta *state.GameStateDelta) error {
-	if delta == nil {
-		return nil
-	}
-
-	// Handle scene change
-	if delta.SceneChange != nil && delta.SceneChange.To != "" && delta.SceneChange.To != gs.SceneName && scenario.HasScene(delta.SceneChange.To) {
-		err := gs.LoadScene(scenario, delta.SceneChange.To)
-		if err != nil {
-			return fmt.Errorf("failed to load scene: %w", err)
-		}
-		gs.SceneName = delta.SceneChange.To
-	}
-
-	// Handle location change
-	userLocationFound := false
-	if delta.UserLocation != "" {
-		// Look for a location with this name in the game state
-		for _, loc := range gs.WorldLocations {
-			if loc.Name == delta.UserLocation {
-				gs.Location = loc.Name
-				userLocationFound = true
-				break
-			}
-		}
-		// If not found, do a best-effort match for world location
-		// names as substrings of the user location
-		if !userLocationFound {
-			for _, loc := range gs.WorldLocations {
-				if strings.Contains(strings.ToLower(delta.UserLocation), strings.ToLower(loc.Name)) {
-					gs.Location = loc.Name
-					break
-				}
-			}
-		}
-	}
-
-	// Handle item events
-	for _, itemEvent := range delta.ItemEvents {
-		switch itemEvent.Action {
-		case "acquire":
-			// Add item to player inventory
-			itemExists := false
-			for _, invItem := range gs.Inventory {
-				if invItem == itemEvent.Item {
-					itemExists = true
-					break
-				}
-			}
-			if !itemExists {
-				if gs.Inventory == nil {
-					gs.Inventory = make([]string, 0)
-				}
-				gs.Inventory = append(gs.Inventory, itemEvent.Item)
-			}
-			// Remove from source if specified and not consumed
-			if itemEvent.From != nil && (itemEvent.Consumed == nil || !*itemEvent.Consumed) {
-				removeItemFromSource(gs, itemEvent.Item, itemEvent.From)
-			}
-
-		case "drop":
-			// Remove from player inventory
-			for i, invItem := range gs.Inventory {
-				if invItem == itemEvent.Item {
-					gs.Inventory = append(gs.Inventory[:i], gs.Inventory[i+1:]...)
-					break
-				}
-			}
-			// Add to destination if specified
-			if itemEvent.To != nil {
-				addItemToDestination(gs, itemEvent.Item, itemEvent.To)
-			}
-
-		case "give":
-			// Remove from source
-			if itemEvent.From != nil {
-				removeItemFromSource(gs, itemEvent.Item, itemEvent.From)
-			} else {
-				// Default to removing from player inventory if no source specified
-				for i, invItem := range gs.Inventory {
-					if invItem == itemEvent.Item {
-						gs.Inventory = append(gs.Inventory[:i], gs.Inventory[i+1:]...)
-						break
-					}
-				}
-			}
-			// Add to destination
-			if itemEvent.To != nil {
-				addItemToDestination(gs, itemEvent.Item, itemEvent.To)
-			}
-
-		case "move":
-			// Remove from source
-			if itemEvent.From != nil {
-				removeItemFromSource(gs, itemEvent.Item, itemEvent.From)
-			}
-			// Add to destination
-			if itemEvent.To != nil {
-				addItemToDestination(gs, itemEvent.Item, itemEvent.To)
-			}
-
-		case "use":
-			// If item is consumed, remove it from source
-			if itemEvent.Consumed != nil && *itemEvent.Consumed {
-				if itemEvent.From != nil {
-					removeItemFromSource(gs, itemEvent.Item, itemEvent.From)
-				} else {
-					// Default to removing from player inventory if no source specified
-					for i, invItem := range gs.Inventory {
-						if invItem == itemEvent.Item {
-							gs.Inventory = append(gs.Inventory[:i], gs.Inventory[i+1:]...)
-							break
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// Handle SetVars
-	for k, v := range delta.SetVars {
-		// Convert var name to lower case snake case
-		snake := toSnakeCase(strings.ToLower(k))
-		if gs.Vars == nil {
-			gs.Vars = make(map[string]string)
-		}
-		gs.Vars[snake] = v
-	}
-
-	// Handle Game End
-	if delta.GameEnded != nil && *delta.GameEnded {
-		gs.IsEnded = true
-	}
-
-	// Ensure that items are singletons
-	gs.NormalizeItems()
-
-	return nil
-}
-
-// removeItemFromSource removes an item from the specified source
-func removeItemFromSource(gs *state.GameState, item string, from *struct {
-	Type string `json:"type"`
-	Name string `json:"name,omitempty"`
-}) {
-	switch from.Type {
-	case "player":
-		// Remove from player inventory
-		for i, invItem := range gs.Inventory {
-			if invItem == item {
-				gs.Inventory = append(gs.Inventory[:i], gs.Inventory[i+1:]...)
-				break
-			}
-		}
-	case "location":
-		// Remove from location
-		for key, loc := range gs.WorldLocations {
-			if loc.Name == from.Name {
-				for i, invItem := range loc.Items {
-					if invItem == item {
-						loc.Items = append(loc.Items[:i], loc.Items[i+1:]...)
-						gs.WorldLocations[key] = loc // Write back
-						break
-					}
-				}
-				break
-			}
-		}
-	case "npc":
-		// Remove from NPC
-		if npc, ok := gs.NPCs[from.Name]; ok {
-			for i, invItem := range npc.Items {
-				if invItem == item {
-					npc.Items = append(npc.Items[:i], npc.Items[i+1:]...)
-					gs.NPCs[from.Name] = npc // Write back
-					break
-				}
-			}
-		}
-	}
-}
-
-// addItemToDestination adds an item to the specified destination
-func addItemToDestination(gs *state.GameState, item string, to *struct {
-	Type string `json:"type"`
-	Name string `json:"name,omitempty"`
-}) {
-	switch to.Type {
-	case "player":
-		// Add to player inventory (check for duplicates)
-		itemExists := false
-		for _, invItem := range gs.Inventory {
-			if invItem == item {
-				itemExists = true
-				break
-			}
-		}
-		if !itemExists {
-			if gs.Inventory == nil {
-				gs.Inventory = make([]string, 0)
-			}
-			gs.Inventory = append(gs.Inventory, item)
-		}
-	case "location":
-		// Add to location
-		for key, loc := range gs.WorldLocations {
-			if loc.Name == to.Name {
-				if loc.Items == nil {
-					loc.Items = make([]string, 0)
-				}
-				loc.Items = append(loc.Items, item)
-				gs.WorldLocations[key] = loc // Write back
-				break
-			}
-		}
-	case "npc":
-		// Add to NPC
-		if npc, ok := gs.NPCs[to.Name]; ok {
-			if npc.Items == nil {
-				npc.Items = make([]string, 0)
-			}
-			npc.Items = append(npc.Items, item)
-			gs.NPCs[to.Name] = npc // Write back
-		}
-	}
-}
-
-// toSnakeCase converts a string to lower snake_case
-func toSnakeCase(s string) string {
-	var out strings.Builder
-	prevUnderscore := false
-	for i, r := range s {
-		if r >= 'A' && r <= 'Z' {
-			r = r + ('a' - 'A')
-		}
-		if r == ' ' || r == '-' || r == '.' {
-			if !prevUnderscore && i > 0 {
-				out.WriteRune('_')
-				prevUnderscore = true
-			}
-			continue
-		}
-		if r == '_' {
-			if !prevUnderscore && i > 0 {
-				out.WriteRune('_')
-				prevUnderscore = true
-			}
-			continue
-		}
-		out.WriteRune(r)
-		prevUnderscore = false
-	}
-	return out.String()
-}
-
 // syncGameState runs in the background to extract and update the stateful parts
 // of gamestate.
 func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, userMessage string, responseMessage string) {
@@ -809,14 +551,35 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 		latestGS.IncrementTurnCounters()
 	}
 
-	// Apply the calculated state to the latest game state
-	if err := applyGameStateDelta(latestGS, s, delta); err != nil {
-		if errors.Is(err, errSceneNotFound) {
-			h.logger.Warn("Scene not found during applyGameStateDelta", "error", err, "game_state_id", latestGS.ID.String())
-		} else {
-			h.logger.Error("Failed applyGameStateDelta", "error", err, "game_state_id", latestGS.ID.String())
-			return
+	// Use DeltaWorker to handle all delta application logic
+	worker := state.NewDeltaWorker(latestGS, delta, s)
+
+	// Apply vars first (before evaluating conditionals)
+	worker.ApplyVars()
+
+	// Evaluate conditionals and override delta based on results
+	triggeredConditionals := worker.ApplyConditionalOverrides()
+
+	// Log triggered conditionals
+	if len(triggeredConditionals) > 0 {
+		for _, conditional := range triggeredConditionals {
+			condName := conditional.Name
+			if condName == "" {
+				condName = "(unnamed)"
+			}
+			if conditional.Then.Scene != "" {
+				h.logger.Info("Conditional scene change", "game_state_id", latestGS.ID.String(), "name", condName, "to_scene", conditional.Then.Scene)
+			}
+			if conditional.Then.GameEnded != nil {
+				h.logger.Info("Conditional game ended", "game_state_id", latestGS.ID.String(), "name", condName, "ended", *conditional.Then.GameEnded)
+			}
 		}
+	}
+
+	// Apply the final delta to the game state
+	if err := worker.Apply(); err != nil {
+		h.logger.Error("Failed to apply delta", "error", err, "game_state_id", latestGS.ID.String())
+		return
 	}
 
 	// Save the updated game state

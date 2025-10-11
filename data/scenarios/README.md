@@ -84,11 +84,15 @@ NPCs bring the world to life and drive story interactions:
 
 ## Contingency System
 
-The contingency system provides two types of guidance:
+The contingency system provides two types of guidance that serve **different purposes and different audiences**:
 
-### Contingency Prompts (Narrative Guidance)
+### Contingency Prompts (Narrative Hints for the AI Narrator)
 
-These provide storytelling direction to the AI narrator:
+**Purpose**: Guide how the story is *told* and *presented* to the player  
+**Audience**: The LLM generating narrative responses  
+**Effect**: Influences storytelling style, dialogue, and narrative flow
+
+These are hints and suggestions for the AI narrator about how to present the story:
 
 ```json
 "contingency_prompts": [
@@ -99,28 +103,82 @@ These provide storytelling direction to the AI narrator:
 ]
 ```
 
-- Describe **when** and **how** to present information
-- Include specific NPC dialogue by using quotes: `NPCName says: "exact dialogue"`
-- Guide tone, mood, and storytelling style
-- Provide contextual hints and suggestions
+**Use contingency_prompts for:**
+- Describing **when** and **how** to present information to the player
+- Providing specific NPC dialogue using quotes: `NPCName says: "exact dialogue"`
+- Guiding tone, mood, and storytelling style
+- Offering contextual hints and narrative suggestions
+- Reminding the AI about story details or character behaviors
+- Suggesting what to emphasize or mention in certain situations
 
-### Contingency Rules (Game Logic)
+**Think of these as**: "Hey narrator, here's how to tell this part of the story..."
 
-These define hard mechanical rules that change game state:
+### Contingency Rules (State Change Instructions for the Game Engine)
+
+**Purpose**: Define what mechanically *happens* in the game state  
+**Audience**: The state reducer/game engine processing player actions  
+**Effect**: Actually modifies game state (inventory, scenes, variables, game over)
+
+These are imperative instructions that trigger concrete state changes:
 
 ```json
 "contingency_rules": [
-  "When the shipwright starts repairs, the scene changes to 'british_docks'.",
-  "Reading the ship repair ledger adds it to inventory.",
+  "When the shipwright agrees to start repairs, set the variable \"shipwright_hired\" to \"true\".",
+  "Reading the ship repair ledger adds it to inventory and sets the variable \"ship_repair_ledger_acquired\" to \"true\".",
   "Showing the ship repair ledger to the shipwright removes it from the player's inventory.", 
   "If the Black Pearl leaves Tortuga in disrepair, the ship sinks and the game ends."
 ]
 ```
 
-- Use precise conditional language: "When X happens, Y occurs"
-- Define state changes: inventory modifications, scene transitions, location moves
-- Specify win/lose conditions and game endings
-- Control NPC behavior and availability
+**Use contingency_rules for:**
+- Precise conditional logic: "When X happens, Y occurs"
+- State changes: adding/removing inventory items, setting variables
+- Scene transitions: "the scene changes to 'scene_id'"
+- Game endings: "the game ends"
+- NPC location changes: "NPC moves to location_id"
+- Any mechanical game state modification
+
+**Think of these as**: "Hey game engine, here's what actually changes in the game state..."
+
+### Key Differences
+
+| Aspect | Contingency Prompts | Contingency Rules |
+|--------|-------------------|------------------|
+| **Target** | AI Narrator | Game Engine/Reducer |
+| **Purpose** | Narrative guidance | State modification |
+| **Effect** | Influences storytelling | Changes game state |
+| **Language** | Suggestive ("mention", "should", "can") | Imperative ("adds to", "removes from", "sets", "changes to") |
+| **Examples** | Tone, dialogue, descriptions, hints | Inventory, variables, scene changes, game over |
+
+### Common Mistake to Avoid
+
+❌ **Wrong**: Putting state changes in contingency_prompts  
+```json
+"contingency_prompts": [
+  "When the player reads the ledger, add it to inventory"  // NO! This is a state change
+]
+```
+
+✅ **Correct**: State changes belong in contingency_rules  
+```json
+"contingency_rules": [
+  "Reading the ship repair ledger adds it to inventory."  // YES! Actual state change
+]
+```
+
+❌ **Wrong**: Putting narrative guidance in contingency_rules  
+```json
+"contingency_rules": [
+  "The shipwright should sound gruff but helpful"  // NO! This is narrative guidance
+]
+```
+
+✅ **Correct**: Narrative guidance belongs in contingency_prompts  
+```json
+"contingency_prompts": [
+  "The shipwright speaks in a gruff but helpful manner."  // YES! Storytelling hint
+]
+```
 
 ### Language Patterns for Rules
 
@@ -130,27 +188,172 @@ These define hard mechanical rules that change game state:
 - **Game flow**: "game ends", "scene transitions to"
 - **Availability**: "becomes accessible", "is blocked"
 
-### Scene Change Fallbacks
+### Writing Rules for Reliable LLM Behavior
 
-When writing scene transition rules, always include fallback conditions to handle cases where items were acquired in previous sessions or scenes:
+LLMs can be inconsistent at interpreting abstract conditions. Make your contingency rules **explicit and action-focused** to improve reliability:
 
-**Basic scene change:**
+**❌ Too Abstract:**
+```json
+"When the Black Pearl sails from Tortuga, set the variable \"pearl_departed_tortuga\" to \"true\"."
 ```
-"When the player collects both the ancient grimoire and vampire lore book, the scene changes to 'preparation'."
+*Problem: "Sails from Tortuga" doesn't clearly map to player input patterns*
+
+**✅ Explicit and Action-Focused:**
+```json
+"When the player commands the crew to sail, set sail, weigh anchor, depart, or leave Tortuga (or uses the 'open sea' exit from the Black Pearl), set the variable \"pearl_departed_tortuga\" to \"true\"."
+```
+*Better: Lists concrete player actions and exit names that should trigger the condition*
+
+**Key principles:**
+- **List specific player verbs**: "talk to", "show [item] to", "give [item] to", "pick up", "read"
+- **Include exit names**: Reference actual exit keys from your location definitions
+- **Avoid indirection**: If the player is already at a location, saying "go to that location" is unclear
+- **Multiple triggers**: Use "or" to list alternative actions that should have the same effect
+- **Be concrete about consequences**: Use exact item names, location names, variable names
+
+**More examples:**
+
+**❌ Vague:**
+```json
+"If the player helps the NPC, give them a reward."
 ```
 
-**With fallback condition:**
-```
-"When the player collects both the ancient grimoire and vampire lore book, the scene changes to 'preparation'."
-"If the ancient grimoire and vampire lore book are both in inventory, the scene changes to 'preparation'."
+**✅ Specific:**
+```json
+"When the player gives the 'lost ring' to the merchant OR completes the merchant's delivery quest, add 'bag of gold coins' to inventory and set the variable \"merchant_helped\" to \"true\"."
 ```
 
-This ensures scene progression works even if:
-- Items were collected in a previous scene
-- The player obtained items through alternative methods
-- Game state was restored from a save
+**❌ Abstract:**
+```json
+"When the puzzle is solved, open the door."
+```
 
-Always write scene transition rules with both "when collected" and "if in inventory" conditions.
+**✅ Concrete:**
+```json
+"When the player places the 'ruby key' in the door's lock OR speaks the password 'mellon' at the Ancient Door, remove 'Ancient Door' from the blocked_exits for the Hall and set the variable \"vault_accessible\" to \"true\"."
+```
+
+### Variables (Vars)
+
+Variables track important story state and enable deterministic scene transitions. Use them **only** to scaffold critical story progression points via conditionals. 
+
+**Define variables at the scene level:**
+```json
+"scenes": {
+  "shipwright": {
+    "vars": {
+      "ship_repair_ledger_acquired": "false",
+      "shipwright_hired": "false"
+    }
+  }
+}
+```
+
+**Use clear, descriptive names:**
+- `ship_repair_ledger_acquired` - Better than `got_ledger` or `ledger_flag`
+- `shipwright_hired` - Better than `hired` or `npc_status`
+- Use snake_case format
+- All values are strings: `"true"`, `"false"`, `"ready"`, `"incomplete"`
+
+**Provide narrative guidance for setting variables:**
+```json
+"contingency_prompts": [
+  "When the player reviews the ship repair ledger, set ship_repair_ledger_acquired to true.",
+  "When the shipwright agrees to begin repairs, set shipwright_hired to true."
+]
+```
+
+### Conditionals (Deterministic Scene Changes)
+
+Conditionals enforce reliable scene transitions based on variable state. They override any scene changes suggested by the AI.
+
+**Define conditionals at the scene level:**
+```json
+"scenes": {
+  "shipwright": {
+    "conditionals": [
+      {
+        "name": "transition_to_british_docks",
+        "when": {
+          "shipwright_hired": "true"
+        },
+        "then": {
+          "scene": "british_docks"
+        }
+      }
+    ]
+  }
+}
+```
+
+**Multiple conditions (all must be true):**
+```json
+"conditionals": [
+  {
+    "name": "proceed_to_finale",
+    "when": {
+      "gold_acquired": "true",
+      "shipwright_paid_in_full": "true"
+    },
+    "then": {
+      "scene": "calypsos_map"
+    }
+  }
+]
+```
+
+**Conditionals can also end the game:**
+```json
+"conditionals": [
+  {
+    "name": "game_over_captured",
+    "when": {
+      "caught_by_guards": "true",
+      "disguise_acquired": "false"
+    },
+    "then": {
+      "game_ended": true
+    }
+  }
+]
+```
+
+### Best Practice: Combine Narrative and Deterministic Approaches
+
+For reliable scene progression, use **both** contingency prompts and conditionals:
+
+**1. Guide the AI with contingency prompts:**
+```json
+"contingency_prompts": [
+  "The shipwright is agreeable to most forms of downpayment and ready to start work quickly."
+]
+```
+
+**2. Provide a narrative scene change rule and a separate variable rule:**
+```json
+"contingency_rules": [
+  "When the shipwright starts repairs, the scene changes to 'british_docks'.",
+  "When the shipwright agrees to begin repairs and accepts payment, set shipwright_hired to true."
+]
+```
+
+**3. Enforce it with a conditional:**
+```json
+"conditionals": [
+  {
+    "name": "shipwright_scene_transition",
+    "when": {"shipwright_hired": "true"},
+    "then": {"scene": "british_docks"}
+  }
+]
+```
+
+This layered approach ensures:
+- The story stays on its intended guiderails.
+- The AI understands when and why to set variables
+- The AI attempts scene transitions naturally through contingency rules
+- The conditional guarantees the transition happens regardless of AI compliance
+- Story progression remains reliable and predictable
 
 ## Scene System (Optional)
 
