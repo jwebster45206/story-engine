@@ -20,9 +20,14 @@ type Conditional struct {
 
 // ConditionalWhen defines the conditions that must be met for a conditional to trigger
 type ConditionalWhen struct {
-	Vars     map[string]string `json:"vars,omitempty"`     // Variable conditions (all must match)
-	Counters map[string]int    `json:"counters,omitempty"` // Counter conditions (all must match) - TODO
-	Location string            `json:"location,omitempty"` // Location condition - TODO
+	Vars             map[string]string `json:"vars,omitempty"`               // Variable conditions (all must match)
+	SceneTurnCounter *int              `json:"scene_turn_counter,omitempty"` // Scene turn counter must equal this value
+	TurnCounter      *int              `json:"turn_counter,omitempty"`       // Turn counter must equal this value
+	Location         string            `json:"location,omitempty"`           // Location condition
+	MinSceneTurns    *int              `json:"min_scene_turns,omitempty"`    // Scene turn counter must be >= this value
+	MaxSceneTurns    *int              `json:"max_scene_turns,omitempty"`    // Scene turn counter must be <= this value
+	MinTurns         *int              `json:"min_turns,omitempty"`          // Turn counter must be >= this value
+	MaxTurns         *int              `json:"max_turns,omitempty"`          // Turn counter must be <= this value
 }
 
 // ConditionalThen defines the actions to take when conditions are met

@@ -340,3 +340,15 @@ func (gs *GameState) GetSceneName() string {
 func (gs *GameState) GetVars() map[string]string {
 	return gs.Vars
 }
+
+func (gs *GameState) GetSceneTurnCounter() int {
+	return gs.SceneTurnCounter
+}
+
+func (gs *GameState) GetTurnCounter() int {
+	return gs.TurnCounter
+}
+
+func (gs *GameState) GetUserLocation() string {
+	return gs.Location
+}
