@@ -1,0 +1,38 @@
+{
+  "name": "Space Disaster - Max Scene Turns Test",
+  "scenario": "space-disaster.json",
+  "seed_game_state": {
+    "scenario": "space-disaster.json",
+    "scene_name": "test_max_scene_turns",
+    "user_location": "Test Room",
+    "turn_counter": 8,
+    "scene_turn_counter": 1,
+    "user_inventory": [],
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "Take actions. You can stay in this scene for up to 3 scene turns before transitioning."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Turn 9 Scene Turn 2 - Stay in Scene",
+      "user_prompt": "I wait.",
+      "expect": {
+        "scene_name": "test_max_scene_turns",
+        "turn_counter": 9,
+        "scene_turn_counter": 2
+      }
+    },
+    {
+      "name": "Turn 10 Scene Turn 3 - Should Transition",
+      "user_prompt": "I wait again.",
+      "expect": {
+        "scene_name": "test_min_turns",
+        "turn_counter": 10,
+        "scene_turn_counter": 1
+      }
+    }
+  ]
+}

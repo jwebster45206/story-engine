@@ -1,0 +1,29 @@
+{
+  "name": "Space Disaster - Exact Turn Counter Test",
+  "scenario": "space-disaster.json",
+  "seed_game_state": {
+    "scenario": "space-disaster.json",
+    "scene_name": "test_exact_turn_counter",
+    "user_location": "Test Room",
+    "turn_counter": 4,
+    "scene_turn_counter": 1,
+    "user_inventory": [],
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "Continue taking actions. When the total game turn counter reaches exactly 5, you will transition."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Turn 5 - Should Transition",
+      "user_prompt": "I wait.",
+      "expect": {
+        "scene_name": "test_min_scene_turns",
+        "turn_counter": 5,
+        "scene_turn_counter": 1
+      }
+    }
+  ]
+}

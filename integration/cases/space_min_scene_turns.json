@@ -1,0 +1,29 @@
+{
+  "name": "Space Disaster - Min Scene Turns Test",
+  "scenario": "space-disaster.json",
+  "seed_game_state": {
+    "scenario": "space-disaster.json",
+    "scene_name": "test_min_scene_turns",
+    "user_location": "Test Room",
+    "turn_counter": 6,
+    "scene_turn_counter": 1,
+    "user_inventory": [],
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "Continue taking actions. When you reach at least 2 scene turns, you will transition."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Turn 7 Scene Turn 2 - Should Transition",
+      "user_prompt": "I wait.",
+      "expect": {
+        "scene_name": "test_max_scene_turns",
+        "turn_counter": 7,
+        "scene_turn_counter": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "Space Disaster - Min Turns Test",
+  "scenario": "space-disaster.json",
+  "seed_game_state": {
+    "scenario": "space-disaster.json",
+    "scene_name": "test_min_turns",
+    "user_location": "Test Room",
+    "turn_counter": 10,
+    "scene_turn_counter": 1,
+    "user_inventory": [],
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "Continue taking actions. When the total game turn counter reaches at least 10, you will transition."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Turn 10 Already at Minimum - Should Transition",
+      "user_prompt": "I wait.",
+      "expect": {
+        "scene_name": "test_max_turns",
+        "turn_counter": 11,
+        "scene_turn_counter": 1
+      }
+    }
+  ]
+}
