@@ -41,9 +41,7 @@ func evaluateWhen(when ConditionalWhen, gsView GameStateView) bool {
 		when.TurnCounter != nil ||
 		when.Location != "" ||
 		when.MinSceneTurns != nil ||
-		when.MaxSceneTurns != nil ||
-		when.MinTurns != nil ||
-		when.MaxTurns != nil
+		when.MinTurns != nil
 
 	if !hasCondition {
 		return false
@@ -78,30 +76,16 @@ func evaluateWhen(when ConditionalWhen, gsView GameStateView) bool {
 		}
 	}
 
-	// Check scene turn counter range (min)
+	// Check scene turn counter minimum
 	if when.MinSceneTurns != nil {
 		if gsView.GetSceneTurnCounter() < *when.MinSceneTurns {
 			return false
 		}
 	}
 
-	// Check scene turn counter range (max)
-	if when.MaxSceneTurns != nil {
-		if gsView.GetSceneTurnCounter() > *when.MaxSceneTurns {
-			return false
-		}
-	}
-
-	// Check turn counter range (min)
+	// Check turn counter minimum
 	if when.MinTurns != nil {
 		if gsView.GetTurnCounter() < *when.MinTurns {
-			return false
-		}
-	}
-
-	// Check turn counter range (max)
-	if when.MaxTurns != nil {
-		if gsView.GetTurnCounter() > *when.MaxTurns {
 			return false
 		}
 	}

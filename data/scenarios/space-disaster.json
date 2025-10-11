@@ -1,6 +1,6 @@
 {
   "name": "Space Disaster - Counter Test Scenario",
-  "story": "A simple test scenario for validating all counter-based conditional logic.",
+  "story": "A simple test scenario for validating counter-based conditional logic.",
   "rating": "G",
   "locations": {
     "Test Room": {
@@ -65,7 +65,7 @@
         "Wait at least 2 turns in this scene to trigger the next transition."
       ],
       "contingency_rules": [
-        "After at least 2 turns in this scene, the scene changes to 'test_max_scene_turns'.",
+        "After at least 2 turns in this scene, the scene changes to 'test_min_turns'.",
         "When minimum scene turns reached, set the variable \"min_scene_test_passed\" to \"true\"."
       ],
       "vars": {
@@ -76,31 +76,6 @@
           "name": "min_2_scene_turns",
           "when": {
             "min_scene_turns": 2
-          },
-          "then": {
-            "scene": "test_max_scene_turns"
-          }
-        }
-      ]
-    },
-    "test_max_scene_turns": {
-      "story": "Test max_scene_turns (<=). Should NOT transition until scene turn counter exceeds 3, then game ends.",
-      "contingency_prompts": [
-        "You can stay here for up to 3 scene turns. On turn 4 or later, the game will end."
-      ],
-      "contingency_rules": [
-        "If scene turn counter exceeds 3, the game ends.",
-        "When max turns exceeded, set the variable \"max_scene_test_passed\" to \"true\"."
-      ],
-      "vars": {
-        "max_scene_test_passed": "false",
-        "stayed_within_limit": "false"
-      },
-      "conditionals": [
-        {
-          "name": "within_3_scene_turns",
-          "when": {
-            "max_scene_turns": 3
           },
           "then": {
             "scene": "test_min_turns"
@@ -114,7 +89,7 @@
         "Continue until the total game turn counter reaches at least 10."
       ],
       "contingency_rules": [
-        "When total turn counter reaches at least 10, the scene changes to 'test_max_turns'.",
+        "When total turn counter reaches at least 10, the game ends successfully.",
         "When minimum turns reached, set the variable \"min_turns_test_passed\" to \"true\"."
       ],
       "vars": {
@@ -125,55 +100,6 @@
           "name": "min_10_total_turns",
           "when": {
             "min_turns": 10
-          },
-          "then": {
-            "scene": "test_max_turns"
-          }
-        }
-      ]
-    },
-    "test_max_turns": {
-      "story": "Test max_turns (<=). Should transition while total turn counter is 12 or less.",
-      "contingency_prompts": [
-        "You can act while total turns are 12 or less. Then the scene will change."
-      ],
-      "contingency_rules": [
-        "While total turn counter is 12 or less, the scene changes to 'test_range_combination'.",
-        "When within max turns, set the variable \"max_turns_test_passed\" to \"true\"."
-      ],
-      "vars": {
-        "max_turns_test_passed": "false"
-      },
-      "conditionals": [
-        {
-          "name": "max_12_total_turns",
-          "when": {
-            "max_turns": 12
-          },
-          "then": {
-            "scene": "test_range_combination"
-          }
-        }
-      ]
-    },
-    "test_range_combination": {
-      "story": "Test combining min and max for a range. Must be between 2-4 scene turns to end successfully.",
-      "contingency_prompts": [
-        "Wait between 2-4 scene turns in this scene to end the game successfully."
-      ],
-      "contingency_rules": [
-        "If scene turns are between 2 and 4 (inclusive), the game ends successfully.",
-        "When correct range achieved, set the variable \"range_test_passed\" to \"true\"."
-      ],
-      "vars": {
-        "range_test_passed": "false"
-      },
-      "conditionals": [
-        {
-          "name": "scene_turns_2_to_4",
-          "when": {
-            "min_scene_turns": 2,
-            "max_scene_turns": 4
           },
           "then": {
             "game_ended": true

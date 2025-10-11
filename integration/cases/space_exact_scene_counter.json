@@ -11,13 +11,13 @@
     "chat_history": [
       {
         "role": "assistant",
-        "content": "You are in a test environment to validate counter-based conditionals. Follow the instructions in each scene to test different counter conditions."
+        "content": "The airlock hisses as emergency lights flicker overhead. You're in a simple test chamber aboard the station. The situation is tense but manageable - for now."
       }
     ]
   },
   "steps": [
     {
-      "name": "Turn 2",
+      "name": "Turn 2 Scene Turn 2 - Should Stay",
       "user_prompt": "I wait.",
       "expect": {
         "scene_name": "test_exact_scene_counter",
@@ -26,12 +26,12 @@
       }
     },
     {
-      "name": "Turn 3 - Should Transition",
+      "name": "Turn 3 Scene Turn 3 - Should Transition",
       "user_prompt": "I wait again.",
       "expect": {
         "scene_name": "test_exact_turn_counter",
         "turn_counter": 3,
-        "scene_turn_counter": 1
+        "scene_turn_counter": 0
       }
     }
   ]

@@ -5,24 +5,33 @@
     "scenario": "space-disaster.json",
     "scene_name": "test_min_scene_turns",
     "user_location": "Test Room",
-    "turn_counter": 6,
-    "scene_turn_counter": 1,
+    "turn_counter": 5,
+    "scene_turn_counter": 0,
     "user_inventory": [],
     "chat_history": [
       {
         "role": "assistant",
-        "content": "Continue taking actions. When you reach at least 2 scene turns, you will transition."
+        "content": "Time is passing. The station creaks ominously around you. You need to wait a bit longer before making your next move."
       }
     ]
   },
   "steps": [
     {
-      "name": "Turn 7 Scene Turn 2 - Should Transition",
+      "name": "Turn 6 Scene Turn 1 - Should Stay (below minimum)",
       "user_prompt": "I wait.",
       "expect": {
-        "scene_name": "test_max_scene_turns",
-        "turn_counter": 7,
+        "scene_name": "test_min_scene_turns",
+        "turn_counter": 6,
         "scene_turn_counter": 1
+      }
+    },
+    {
+      "name": "Turn 7 Scene Turn 2 - Should Transition (at minimum)",
+      "user_prompt": "I wait again.",
+      "expect": {
+        "scene_name": "test_min_turns",
+        "turn_counter": 7,
+        "scene_turn_counter": 0
       }
     }
   ]

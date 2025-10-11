@@ -20,6 +20,9 @@ go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_sc
 # Run multiple cases:
 go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_scene1,pirate_scene2
 
+# Run a sequence (automatically expands to run all referenced cases):
+go test -v -tags=integration ./integration/ -run TestSingleSuite -case space_counters_all
+
 # Override scenario for test cases (test same cases against different scenario variants):
 go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_scene1 -scenario pirate.vars.json
 go test -v -tags=integration ./integration/ -run TestSingleSuite -case pirate_scene1 -scenario pirate.both.json
@@ -42,7 +45,9 @@ These tests validate:
   - `types.go` - Data structures for test definitions
   - `runner.go` - Core test execution logic
 
-### Test Case Format
+### Test Case Formats
+
+#### Regular Test Case
 
 ```json
 {
@@ -82,6 +87,31 @@ These tests validate:
   ]
 }
 ```
+
+#### Sequence Test Case
+
+A sequence case references multiple other test cases to run in order. This simplifies running related test suites:
+
+```json
+{
+  "name": "Space Disaster - All Counter Tests",
+  "cases": [
+    "space_exact_scene_counter.json",
+    "space_exact_turn_counter.json",
+    "space_min_scene_turns.json",
+    "space_max_scene_turns.json",
+    "space_min_turns.json",
+    "space_max_turns.json",
+    "space_range_combination.json"
+  ]
+}
+```
+
+**Benefits of sequences:**
+- Run related tests with a single command: `-case space_counters_all`
+- Organize tests into logical groups (e.g., all counter tests, all pirate scenes)
+- Sequences can reference other sequences (recursive expansion)
+- Each referenced case runs independently with its own gamestate
 
 ## Configuration
 

@@ -13,11 +13,18 @@ const (
 )
 
 // TestSuite defines a complete integration test scenario
+// Can either be a regular test with Steps, or a suite that references other Cases
 type TestSuite struct {
 	Name          string          `json:"name"`
-	Scenario      string          `json:"scenario"`
-	SeedGameState state.GameState `json:"seed_game_state"`
-	Steps         []TestStep      `json:"steps"`
+	Scenario      string          `json:"scenario,omitempty"`        // Used for regular tests
+	SeedGameState state.GameState `json:"seed_game_state,omitempty"` // Used for regular tests
+	Steps         []TestStep      `json:"steps,omitempty"`           // Used for regular tests
+	Cases         []string        `json:"cases,omitempty"`           // Used for suite tests (list of case files)
+}
+
+// IsSequence returns true if this is a suite that sequences other cases
+func (ts *TestSuite) IsSequence() bool {
+	return len(ts.Cases) > 0
 }
 
 // TestStep defines a single test interaction and its expected outcomes

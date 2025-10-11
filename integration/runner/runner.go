@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -55,6 +56,41 @@ func LoadTestSuite(filename string) (TestSuite, error) {
 	}
 
 	return suite, nil
+}
+
+// LoadTestSuiteWithExpansion loads a test suite and expands it if it's a sequence
+// Returns a list of actual test suites (expanded from the sequence if needed)
+func LoadTestSuiteWithExpansion(filename string, casesDir string) ([]TestJob, error) {
+	suite, err := LoadTestSuite(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	// If this is not a sequence, return it as-is
+	if !suite.IsSequence() {
+		return []TestJob{{
+			Name:     suite.Name,
+			Suite:    suite,
+			CaseFile: filename,
+		}}, nil
+	}
+
+	// This is a sequence - load all referenced cases
+	var jobs []TestJob
+	for _, caseFile := range suite.Cases {
+		// Resolve path relative to casesDir
+		casePath := filepath.Join(casesDir, caseFile)
+
+		// Recursively load (in case a sequence references another sequence)
+		subJobs, err := LoadTestSuiteWithExpansion(casePath, casesDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load case '%s' referenced by sequence '%s': %w", caseFile, suite.Name, err)
+		}
+
+		jobs = append(jobs, subJobs...)
+	}
+
+	return jobs, nil
 }
 
 // RunSuite executes a complete test suite
