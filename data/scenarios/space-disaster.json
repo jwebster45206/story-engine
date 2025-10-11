@@ -1,93 +1,194 @@
 {
-  "name": "Space Disaster",
-  "story": "The player is the science officer aboard a deep space exploration craft. The crew has discovered an ancient alien artifact. The artifact pulses with mysterious energy and seems to respond to the player's presence. It is interfering with the ship's power reactor. Time is running out as the ship's systems begin to fail.",
-  "rating": "PG-13",
+  "name": "Space Disaster - Counter Test Scenario",
+  "story": "A simple test scenario for validating all counter-based conditional logic.",
+  "rating": "G",
+  "locations": {
+    "Test Room": {
+      "name": "Test Room",
+      "description": "A simple test room.",
+      "exits": {},
+      "items": []
+    }
+  },
   "scenes": {
-    "artifact_chamber": {
-      "story": "The player stands before a glowing alien artifact in the ship's cargo bay. The ship's power is failing, and critical decisions must be made quickly.",
-      "locations": {
-        "Cargo Bay": {
-          "name": "Cargo Bay",
-          "description": "A dimly lit chamber containing the mysterious alien artifact. Warning lights flash red as ship systems fail around you.",
-          "exits": {
-            "north": "Bridge",
-            "south": "Engine Room"
-          },
-          "items": [
-            "alien artifact",
-            "emergency beacon",
-            "power gloves"
-          ]
-        },
-        "Bridge": {
-          "name": "Bridge",
-          "description": "The ship's command center. Multiple screens show critical system failures throughout the vessel.",
-          "exits": {
-            "south": "Cargo Bay"
-          },
-          "items": [
-            "ship's log",
-            "navigation computer"
-          ]
-        },
-        "Engine Room": {
-          "name": "Engine Room",
-          "description": "The heart of the ship's power systems. Sparks fly from damaged conduits as the reactor core grows unstable.",
-          "exits": {
-            "north": "Cargo Bay"
-          },
-          "items": [
-            "reactor stabilizer",
-            "emergency shutdown lever"
-          ]
-        }
-      },
-      "npcs": {
-        "ARIA": {
-          "name": "ARIA",
-          "type": "AI",
-          "disposition": "helpful but urgent",
-          "description": "The ship's artificial intelligence. Her voice crackles with static as ship systems fail.",
-          "important": true,
-          "location": "Bridge",
-          "items": []
-        },
-        "Chief Engineer": {
-          "name": "Chief Engineer",
-          "type": "crew member",
-          "disposition": "panicked",
-          "description": "The ship's chief engineer, frantically trying to keep systems online.",
-          "important": true,
-          "location": "Engine Room",
-          "items": [
-            "engineering toolkit"
-          ]
-        }
-      },
+    "test_exact_scene_counter": {
+      "story": "Test exact scene_turn_counter match. Should transition after exactly 3 scene turns.",
       "contingency_prompts": [
-        "The alien artifact responds to direct contact with living beings.",
-        "The emergency beacon can send a distress signal, but requires power to function.",
-        "The reactor is becoming increasingly unstable and will explode without intervention."
+        "Wait or perform any action. After exactly 3 turns in this scene, you will automatically transition."
+      ],
+      "contingency_rules": [
+        "After exactly 3 turns in this scene, the scene changes to 'test_exact_turn_counter'.",
+        "When 3 scene turns have passed, set the variable \"scene_counter_test_passed\" to \"true\"."
+      ],
+      "vars": {
+        "scene_counter_test_passed": "false"
+      },
+      "conditionals": [
+        {
+          "name": "exact_scene_turn_3",
+          "when": {
+            "scene_turn_counter": 3
+          },
+          "then": {
+            "scene": "test_exact_turn_counter"
+          }
+        }
+      ]
+    },
+    "test_exact_turn_counter": {
+      "story": "Test exact turn_counter match. Should transition when total turn counter reaches 5.",
+      "contingency_prompts": [
+        "Continue taking actions. When the total game turn counter reaches exactly 5, you will transition."
+      ],
+      "contingency_rules": [
+        "When the total turn counter reaches exactly 5, the scene changes to 'test_min_scene_turns'.",
+        "When turn counter is 5, set the variable \"turn_counter_test_passed\" to \"true\"."
+      ],
+      "vars": {
+        "turn_counter_test_passed": "false"
+      },
+      "conditionals": [
+        {
+          "name": "exact_turn_5",
+          "when": {
+            "turn_counter": 5
+          },
+          "then": {
+            "scene": "test_min_scene_turns"
+          }
+        }
+      ]
+    },
+    "test_min_scene_turns": {
+      "story": "Test min_scene_turns (>=). Should transition after 2 or more scene turns.",
+      "contingency_prompts": [
+        "Wait at least 2 turns in this scene to trigger the next transition."
+      ],
+      "contingency_rules": [
+        "After at least 2 turns in this scene, the scene changes to 'test_max_scene_turns'.",
+        "When minimum scene turns reached, set the variable \"min_scene_test_passed\" to \"true\"."
+      ],
+      "vars": {
+        "min_scene_test_passed": "false"
+      },
+      "conditionals": [
+        {
+          "name": "min_2_scene_turns",
+          "when": {
+            "min_scene_turns": 2
+          },
+          "then": {
+            "scene": "test_max_scene_turns"
+          }
+        }
+      ]
+    },
+    "test_max_scene_turns": {
+      "story": "Test max_scene_turns (<=). Should NOT transition until scene turn counter exceeds 3, then game ends.",
+      "contingency_prompts": [
+        "You can stay here for up to 3 scene turns. On turn 4 or later, the game will end."
+      ],
+      "contingency_rules": [
+        "If scene turn counter exceeds 3, the game ends.",
+        "When max turns exceeded, set the variable \"max_scene_test_passed\" to \"true\"."
+      ],
+      "vars": {
+        "max_scene_test_passed": "false",
+        "stayed_within_limit": "false"
+      },
+      "conditionals": [
+        {
+          "name": "within_3_scene_turns",
+          "when": {
+            "max_scene_turns": 3
+          },
+          "then": {
+            "scene": "test_min_turns"
+          }
+        }
+      ]
+    },
+    "test_min_turns": {
+      "story": "Test min_turns (>=). Should transition when total turn counter is 10 or more.",
+      "contingency_prompts": [
+        "Continue until the total game turn counter reaches at least 10."
+      ],
+      "contingency_rules": [
+        "When total turn counter reaches at least 10, the scene changes to 'test_max_turns'.",
+        "When minimum turns reached, set the variable \"min_turns_test_passed\" to \"true\"."
+      ],
+      "vars": {
+        "min_turns_test_passed": "false"
+      },
+      "conditionals": [
+        {
+          "name": "min_10_total_turns",
+          "when": {
+            "min_turns": 10
+          },
+          "then": {
+            "scene": "test_max_turns"
+          }
+        }
+      ]
+    },
+    "test_max_turns": {
+      "story": "Test max_turns (<=). Should transition while total turn counter is 12 or less.",
+      "contingency_prompts": [
+        "You can act while total turns are 12 or less. Then the scene will change."
+      ],
+      "contingency_rules": [
+        "While total turn counter is 12 or less, the scene changes to 'test_range_combination'.",
+        "When within max turns, set the variable \"max_turns_test_passed\" to \"true\"."
+      ],
+      "vars": {
+        "max_turns_test_passed": "false"
+      },
+      "conditionals": [
+        {
+          "name": "max_12_total_turns",
+          "when": {
+            "max_turns": 12
+          },
+          "then": {
+            "scene": "test_range_combination"
+          }
+        }
+      ]
+    },
+    "test_range_combination": {
+      "story": "Test combining min and max for a range. Must be between 2-4 scene turns to end successfully.",
+      "contingency_prompts": [
+        "Wait between 2-4 scene turns in this scene to end the game successfully."
+      ],
+      "contingency_rules": [
+        "If scene turns are between 2 and 4 (inclusive), the game ends successfully.",
+        "When correct range achieved, set the variable \"range_test_passed\" to \"true\"."
+      ],
+      "vars": {
+        "range_test_passed": "false"
+      },
+      "conditionals": [
+        {
+          "name": "scene_turns_2_to_4",
+          "when": {
+            "min_scene_turns": 2,
+            "max_scene_turns": 4
+          },
+          "then": {
+            "game_ended": true
+          }
+        }
       ]
     }
   },
-  "opening_scene": "artifact_chamber",
-  "opening_prompt": "Alarms blare throughout your ship as you stand before the mysterious alien artifact you discovered. The ship's power fluctuates dangerously, and you know you have only moments to act. What do you do?",
-  "opening_location": "Cargo Bay",
-  "opening_inventory": [
-    "scanner",
-    "communicator"
-  ],
+  "opening_scene": "test_exact_scene_counter",
+  "opening_prompt": "You are in a test environment to validate counter-based conditionals. Follow the instructions in each scene to test different counter conditions.",
+  "opening_location": "Test Room",
+  "opening_inventory": [],
   "contingency_prompts": [
-    "Time is of the essence - the ship's condition is deteriorating rapidly."
+    "This is a counter conditional test scenario. Each scene tests a different type of counter condition."
   ],
-  "contingency_rules": [
-    "CRITICAL: At the start of each turn, if scene_turn_counter >= 3 AND the reactor is not stabilized, the game ends and the reactor explodes immediately.",
-    "Touching the artifact causes the player to go unconscious, and THE GAME ENDS.",
-    "Only by wearing the power gloves can the player safely interact with the artifact.",
-    "Touching the artifact with the power gloves transfers the artifact's power to the gloves, making them highly radioactive, and sure to cause harm to the wearer.",
-    "After successfully transferring the power out of the gloves, the player goes unconscious and THE GAME ENDS.",
-    "If the emergency beacon is activated, the game ends with a rescue."
-  ],
-  "game_end_prompt": "If the reactor exploded, it exploded silently in the vacuum of space. Make it peaceful, and quote Gene Roddenberry."
+  "contingency_rules": [],
+  "game_end_prompt": "Counter conditional tests complete."
 }
