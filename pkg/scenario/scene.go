@@ -1,14 +1,38 @@
 package scenario
 
+import "encoding/json"
+
 // Scene represents a single scene within a scenario with its own locations, NPCs, and rules
 type Scene struct {
 	Story              string              `json:"story"`                  // Description of what happens in this scene
 	Locations          map[string]Location `json:"locations"`              // Map of location names to Location objects for this scene
 	NPCs               map[string]NPC      `json:"npcs"`                   // Map of NPC names to their data for this scene
 	Vars               map[string]string   `json:"vars"`                   // Scene-specific variables
-	ContingencyPrompts []string            `json:"contingency_prompts"`    // Conditional prompts for LLM in this scene
+	ContingencyPrompts []ContingencyPrompt `json:"contingency_prompts"`    // Conditional prompts for LLM in this scene
 	ContingencyRules   []string            `json:"contingency_rules"`      // Backend rules for LLM to follow in this scene
 	Conditionals       []Conditional       `json:"conditionals,omitempty"` // Deterministic when/then rules
+}
+
+// ContingencyPrompt can be either a simple string (always shown) or a conditional prompt
+type ContingencyPrompt struct {
+	Prompt string           `json:"prompt"`         // The prompt text
+	When   *ConditionalWhen `json:"when,omitempty"` // Optional conditions - if nil, always show
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling to support both string and object formats
+func (cp *ContingencyPrompt) UnmarshalJSON(data []byte) error {
+	// Try unmarshaling as a plain string first (backwards compatibility)
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		cp.Prompt = str
+		cp.When = nil // No conditions means always show
+		return nil
+	}
+
+	// Try unmarshaling as an object with conditions
+	type Alias ContingencyPrompt
+	aux := &struct{ *Alias }{Alias: (*Alias)(cp)}
+	return json.Unmarshal(data, aux)
 }
 
 // Conditional represents a deterministic rule to execute when conditions are met

@@ -100,3 +100,22 @@ func evaluateWhen(when ConditionalWhen, gsView GameStateView) bool {
 	// All conditions passed
 	return true
 }
+
+// FilterContingencyPrompts returns only the prompts whose conditions are met
+// Prompts without conditions (When == nil) are always included
+func FilterContingencyPrompts(prompts []ContingencyPrompt, gsView GameStateView) []string {
+	var active []string
+	for _, cp := range prompts {
+		// If no conditions, always include
+		if cp.When == nil {
+			active = append(active, cp.Prompt)
+			continue
+		}
+
+		// Check if conditions are met
+		if evaluateWhen(*cp.When, gsView) {
+			active = append(active, cp.Prompt)
+		}
+	}
+	return active
+}
