@@ -20,6 +20,7 @@ import (
 var caseFlag = flag.String("case", "", "Name of test case to run (from integration/cases/)")
 var errFlag = flag.String("err", "continue", "Error handling mode: 'continue' (run all steps) or 'exit' (stop on first failure)")
 var runsFlag = flag.Int("runs", 1, "Number of times to run each test suite (useful for testing non-deterministic behavior)")
+var scenarioFlag = flag.String("scenario", "", "Override scenario for all test cases (e.g., 'pirate.json', 'pirate.vars.json', 'pirate.both.json')")
 
 func TestMain(m *testing.M) {
 	// Check required environment variables
@@ -47,8 +48,13 @@ func TestIntegrationSuites(t *testing.T) {
 	testRunner := runner.NewRunner(apiBaseURL)
 	testRunner.Timeout = time.Duration(timeoutSeconds) * time.Second
 	testRunner.ErrorHandlingMode = "continue" // Use continue mode for bulk tests to see all results
+	testRunner.ScenarioOverride = *scenarioFlag
 	testRunner.Logger = func(format string, args ...interface{}) {
 		fmt.Printf(format+"\n", args...)
+	}
+
+	if testRunner.ScenarioOverride != "" {
+		t.Logf("Scenario override enabled: %s", testRunner.ScenarioOverride)
 	}
 
 	// Discover test case files
@@ -199,6 +205,7 @@ func TestSingleSuite(t *testing.T) {
 	} else {
 		testRunner.ErrorHandlingMode = runner.ErrorHandlingMode(*errFlag)
 	}
+	testRunner.ScenarioOverride = *scenarioFlag
 	testRunner.Logger = func(format string, args ...interface{}) {
 		fmt.Printf(format+"\n", args...)
 	}
@@ -207,7 +214,12 @@ func TestSingleSuite(t *testing.T) {
 	if runs > 1 {
 		errorMode = "continue (forced for multi-run statistics)"
 	}
-	t.Logf("Running %d test suite(s) %d time(s) each with error mode '%s': %s", len(suiteFiles), runs, errorMode, strings.Join(caseNames, ", "))
+
+	scenarioInfo := ""
+	if testRunner.ScenarioOverride != "" {
+		scenarioInfo = fmt.Sprintf(" [scenario override: %s]", testRunner.ScenarioOverride)
+	}
+	t.Logf("Running %d test suite(s) %d time(s) each with error mode '%s'%s: %s", len(suiteFiles), runs, errorMode, scenarioInfo, strings.Join(caseNames, ", "))
 
 	// Track overall statistics
 	totalTests := 0

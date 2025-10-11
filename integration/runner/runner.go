@@ -29,6 +29,7 @@ type Runner struct {
 	Timeout           time.Duration
 	Logger            func(format string, args ...interface{})
 	ErrorHandlingMode ErrorHandlingMode
+	ScenarioOverride  string // If set, overrides the scenario for all test cases
 }
 
 // NewRunner creates a new test runner
@@ -73,7 +74,12 @@ func (r *Runner) RunSuite(ctx context.Context, suite TestSuite) (TestRunResult, 
 
 	// Seed the gamestate (creates a new one)
 	seedData := suite.SeedGameState
-	seedData.Scenario = suite.Scenario // Use suite-level scenario
+	// Use scenario override if provided, otherwise use suite-level scenario
+	if r.ScenarioOverride != "" {
+		seedData.Scenario = r.ScenarioOverride
+	} else {
+		seedData.Scenario = suite.Scenario
+	}
 	actualGameStateID, err := r.seedGameState(ctx, seedData)
 	if err != nil {
 		result.Error = fmt.Errorf("failed to seed gamestate: %w", err)
