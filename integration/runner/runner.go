@@ -324,6 +324,7 @@ func (r *Runner) executeStep(ctx context.Context, gameStateID uuid.UUID, step Te
 		}
 
 		result.Success = true
+		result.IsReset = true
 		result.ResponseText = "[GAMESTATE RESET]"
 		result.Duration = time.Since(start)
 		return result

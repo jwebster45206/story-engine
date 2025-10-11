@@ -64,6 +64,7 @@ type TestResult struct {
 	Error        error
 	Duration     time.Duration
 	ResponseText string
+	IsReset      bool // True if this was a RESET_GAMESTATE step (should not count toward pass/fail metrics)
 }
 
 // TestJob represents a test suite to be executed by a worker

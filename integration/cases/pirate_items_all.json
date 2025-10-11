@@ -1,0 +1,8 @@
+{
+  "name": "Pirate Items - All Item Tests",
+  "cases": [
+    "pirate_items_get_ledger.json",
+    "pirate_items_give_ledger.json",
+    "pirate_items_barter.json"
+  ]
+}

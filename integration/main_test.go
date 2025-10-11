@@ -119,7 +119,10 @@ func TestIntegrationSuites(t *testing.T) {
 
 			// Log step details for passed tests
 			for _, stepResult := range result.Results {
-				if stepResult.Success {
+				if stepResult.IsReset {
+					// Reset steps don't count toward pass/fail metrics
+					t.Logf("   ↻ %s (%v)", stepResult.StepName, stepResult.Duration)
+				} else if stepResult.Success {
 					t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
 				} else {
 					t.Errorf("   ✗ %s: %v", stepResult.StepName, stepResult.Error)
@@ -290,7 +293,10 @@ func TestSingleSuite(t *testing.T) {
 
 				// Log step details
 				for _, stepResult := range result.Results {
-					if stepResult.Success {
+					if stepResult.IsReset {
+						// Reset steps don't count toward pass/fail metrics
+						t.Logf("   ↻ %s (%v)", stepResult.StepName, stepResult.Duration)
+					} else if stepResult.Success {
 						t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
 					} else {
 						t.Errorf("   ✗ %s: %v", stepResult.StepName, stepResult.Error)

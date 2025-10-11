@@ -1,0 +1,87 @@
+{
+  "name": "Pirate Items - Give Ledger to Shipwright (variations)",
+  "scenario": "pirate.json",
+  "seed_game_state": {
+    "scenario": "pirate.json",
+    "scene_name": "shipwright",
+    "user_location": "Sleepy Mermaid",
+    "turn_counter": 3,
+    "scene_turn_counter": 2,
+    "user_inventory": ["ship repair ledger"],
+    "chat_history": [
+      {
+        "role": "user",
+        "content": "I head to the Sleepy Mermaid."
+      },
+      {
+        "role": "assistant",
+        "content": "You enter the rowdy Sleepy Mermaid inn. Pirates laugh and drink at various tables. In a corner, the gruff Shipwright sits alone, sketching ship designs and occasionally scowling at the noise. Calypso the bartender wipes down the bar with a mysterious smile."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Variation 1: Give ledger to shipwright",
+      "user_prompt": "I give the ship repair ledger to the shipwright.",
+      "expect": {
+        "user_inventory": []
+      }
+    },
+    {
+      "name": "Reset",
+      "user_prompt": "RESET_GAMESTATE",
+      "expect": {
+        "user_inventory": ["ship repair ledger"]
+      }
+    },
+    {
+      "name": "Variation 2: Conversational",
+      "user_prompt": "I approach the shipwright at his corner table. \"Found this ledger on the Pearl,\" I say, sliding it across the table to him. \"She's in rough shape and needs yer expertise. When can ye start the repairs?\"",
+      "expect": {
+        "user_inventory": []
+      }
+    },
+    {
+      "name": "Reset",
+      "user_prompt": "RESET_GAMESTATE",
+      "expect": {
+        "user_inventory": ["ship repair ledger"]
+      }
+    },
+    {
+      "name": "Variation 3: Show him the repair ledger",
+      "user_prompt": "I show the ship repair ledger to the shipwright and ask him to begin repairs.",
+      "expect": {
+        "user_inventory": []
+      }
+    },
+    {
+      "name": "Reset",
+      "user_prompt": "RESET_GAMESTATE",
+      "expect": {
+        "user_inventory": ["ship repair ledger"]
+      }
+    },
+    {
+      "name": "Negative case 1: Conversation",
+      "user_prompt": "I approach the shipwright. \"What're ya working on, bub?\"",
+      "expect": {
+        "user_inventory": ["ship repair ledger"]
+      }
+    },
+    {
+      "name": "Reset",
+      "user_prompt": "RESET_GAMESTATE",
+      "expect": {
+        "user_inventory": ["ship repair ledger"]
+      }
+    },
+    {
+      "name": "Negative case 2: Forget to show him the ledger",
+      "user_prompt": "I tell him about the sorry state of my ship. Can you help?",
+      "expect": {
+        "user_inventory": ["ship repair ledger"]
+      }
+    }
+  ]
+}
