@@ -1,0 +1,69 @@
+{
+  "name": "Dracula Grimoire Conditional Prompt Test",
+  "description": "Tests that opening the ancient grimoire triggers the conditional prompt about Dracula appearing",
+  "scenario": "dracula.json",
+  "seed_game_state": {
+    "scene_name": "arrival",
+    "user_location": "Library",
+    "turn_counter": 2,
+    "scene_turn_counter": 2,
+    "user_inventory": [
+      "wooden stakes",
+      "silver cross",
+      "holy water"
+    ],
+    "chat_history": [
+      {
+        "role": "user",
+        "content": "I walk through the gates and enter the castle."
+      },
+      {
+        "role": "assistant",
+        "content": "The heavy iron gates creak open as you push through them, and you step into the Grand Foyer. The oppressive atmosphere immediately envelops you - dusty portraits line the walls, their pale subjects seeming to watch your every move. An enormous chandelier draped in cobwebs hangs overhead, and the smell of decay and old blood fills your nostrils."
+      },
+      {
+        "role": "user",
+        "content": "I go east to the library."
+      },
+      {
+        "role": "assistant",
+        "content": "You make your way to the library, pushing open the heavy wooden door. Towering bookshelves reach up to the vaulted ceiling, filled with ancient tomes in Latin and other dead languages. A reading table sits in the center with several open books, their yellowed pages testament to their age. The ancient grimoire rests prominently on the table, seemingly waiting for you."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Trigger Dracula appearance prompt",
+      "user_prompt": "I carefully open the ancient grimoire and begin reading its forbidden knowledge.",
+      "expect": {
+        "scene_name": "arrival",
+        "user_location": "Library",
+        "vars": {
+          "opened_grimoire": "true"
+        },
+        "narrative_contains": [
+          "Dracula",
+          "materializ",
+          "hunger"
+        ],
+        "turn_counter": 3
+      }
+    },
+    {
+      "name": "Dracula appearance occurs",
+      "user_prompt": "I read eagerly, absorbing the dark secrets within, ignoring all danger.",
+      "expect": {
+        "scene_name": "arrival",
+        "user_location": "Library",
+        "vars": {
+          "opened_grimoire": "true",
+          "dracula_appeared": "true"
+        },
+        "narrative_contains": [
+          "Dracula"
+        ],
+        "turn_counter": 4
+      }
+    }
+  ]
+}

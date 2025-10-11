@@ -7,6 +7,11 @@
   "opening_location": "Castle Gates",
   "opening_inventory": ["wooden stakes", "silver cross", "holy water"],
   
+  "vars": {
+    "opened_grimoire": "false",
+    "dracula_appeared": "false"
+  },
+  
   "locations": {
     "Castle Gates": {
       "name": "Castle Gates",
@@ -144,13 +149,23 @@
       "contingency_prompts": [
         "When the player first enters the castle, emphasize the oppressive atmosphere and sense of being watched.",
         "Renfield says: \"Master sleeps... but not for long. Dawn comes, yes, yes, and then he grows strong again!\"",
-        "The gargoyles seem to be watching, but remain still... for now."
+        "The gargoyles seem to be watching, but remain still... for now.",
+        {
+          "prompt": "Count Dracula suddenly materializes before you, his crimson eyes blazing with hunger! He hisses: \"You DARE disturb the ancient grimoire? You have awakened me from my slumber, and now I am STARVING!\" The temperature drops precipitously as his dark presence fills the room.",
+          "when": {
+            "vars": {
+              "opened_grimoire": "true"
+            }
+          }
+        }
       ],
       "contingency_rules": [
         "Reading the vampire lore book adds it to inventory and provides knowledge about Dracula's weaknesses.",
         "When the player collects both the ancient grimoire and vampire lore book, the scene changes to 'preparation'.",
         "If the ancient grimoire and vampire lore book are both in inventory, the scene changes to 'preparation'.",
-        "Speaking to Renfield reveals the location of the secret passage to the crypt."
+        "Speaking to Renfield reveals the location of the secret passage to the crypt.",
+        "When the player opens or reads the ancient grimoire, set the variable 'opened_grimoire' to 'true'.",
+        "When Dracula materializes, appears, or physically is in the location with the player, set the var 'dracula_appeared' to 'true'."
       ]
     },
     

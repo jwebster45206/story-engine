@@ -208,7 +208,11 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	gs.WorldLocations = s.Locations
 	gs.Inventory = s.OpeningInventory
 	gs.Vars = s.Vars
-	gs.ContingencyPrompts = s.ContingencyPrompts
+	// Extract just the prompt strings from scenario-level contingency prompts
+	gs.ContingencyPrompts = make([]string, 0, len(s.ContingencyPrompts))
+	for _, cp := range s.ContingencyPrompts {
+		gs.ContingencyPrompts = append(gs.ContingencyPrompts, cp.Prompt)
+	}
 	gs.ID = uuid.New()
 	gs.TurnCounter = 0
 	gs.SceneTurnCounter = 0
