@@ -273,8 +273,8 @@
         "The shipwright does not participate in this part of the adventure."
       ],
       "contingency_rules": [
-        "IMPORTANT: The game ends when the player sets sail from Tortuga, with or without the map. Final score is based on whether the player obtained the treasure map.",
-        "when the Black Pearl departs Tortuga, set the variable \"pearl_departed_tortuga\" to \"true\"."
+        "When the player commands the crew to sail, set sail, weigh anchor, depart, or leave Tortuga (or uses the 'open sea' exit from the Black Pearl), set the variable \"pearl_departed_tortuga\" to \"true\".",
+        "When the player commands the crew to sail, set sail, weigh anchor, depart, or leave Tortuga (or uses the 'open sea' exit from the Black Pearl), the game ends."
       ],
       "conditionals": [
         {

@@ -188,6 +188,51 @@ These are imperative instructions that trigger concrete state changes:
 - **Game flow**: "game ends", "scene transitions to"
 - **Availability**: "becomes accessible", "is blocked"
 
+### Writing Rules for Reliable LLM Behavior
+
+LLMs can be inconsistent at interpreting abstract conditions. Make your contingency rules **explicit and action-focused** to improve reliability:
+
+**❌ Too Abstract:**
+```json
+"When the Black Pearl sails from Tortuga, set the variable \"pearl_departed_tortuga\" to \"true\"."
+```
+*Problem: "Sails from Tortuga" doesn't clearly map to player input patterns*
+
+**✅ Explicit and Action-Focused:**
+```json
+"When the player commands the crew to sail, set sail, weigh anchor, depart, or leave Tortuga (or uses the 'open sea' exit from the Black Pearl), set the variable \"pearl_departed_tortuga\" to \"true\"."
+```
+*Better: Lists concrete player actions and exit names that should trigger the condition*
+
+**Key principles:**
+- **List specific player verbs**: "talk to", "show [item] to", "give [item] to", "pick up", "read"
+- **Include exit names**: Reference actual exit keys from your location definitions
+- **Avoid indirection**: If the player is already at a location, saying "go to that location" is unclear
+- **Multiple triggers**: Use "or" to list alternative actions that should have the same effect
+- **Be concrete about consequences**: Use exact item names, location names, variable names
+
+**More examples:**
+
+**❌ Vague:**
+```json
+"If the player helps the NPC, give them a reward."
+```
+
+**✅ Specific:**
+```json
+"When the player gives the 'lost ring' to the merchant OR completes the merchant's delivery quest, add 'bag of gold coins' to inventory and set the variable \"merchant_helped\" to \"true\"."
+```
+
+**❌ Abstract:**
+```json
+"When the puzzle is solved, open the door."
+```
+
+**✅ Concrete:**
+```json
+"When the player places the 'ruby key' in the door's lock OR speaks the password 'mellon' at the Ancient Door, remove 'Ancient Door' from the blocked_exits for the Hall and set the variable \"vault_accessible\" to \"true\"."
+```
+
 ### Variables (Vars)
 
 Variables track important story state and enable deterministic scene transitions. Use them **only** to scaffold critical story progression points via conditionals. 
