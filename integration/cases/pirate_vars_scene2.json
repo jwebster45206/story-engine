@@ -1,6 +1,6 @@
 {
   "name": "Pirate British Docks to Calypsos Map Scene Transition",
-  "scenario": "pirate.json",
+  "scenario": "pirate.vars.json",
   "seed_game_state": {
     "scene_name": "british_docks",
     "user_location": "Black Pearl",
@@ -14,6 +14,10 @@
       "british naval uniform",
       "wanted poster with a handsome scoundrel's face"
     ],
+    "vars": {
+      "ship_repair_ledger_acquired": "true",
+      "shipwright_hired": "true"
+    },
     "chat_history": [
       {
         "role": "assistant",

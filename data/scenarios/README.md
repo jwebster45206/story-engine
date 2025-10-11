@@ -84,11 +84,15 @@ NPCs bring the world to life and drive story interactions:
 
 ## Contingency System
 
-The contingency system provides two types of guidance:
+The contingency system provides two types of guidance that serve **different purposes and different audiences**:
 
-### Contingency Prompts (Narrative Guidance)
+### Contingency Prompts (Narrative Hints for the AI Narrator)
 
-These provide storytelling direction to the AI narrator:
+**Purpose**: Guide how the story is *told* and *presented* to the player  
+**Audience**: The LLM generating narrative responses  
+**Effect**: Influences storytelling style, dialogue, and narrative flow
+
+These are hints and suggestions for the AI narrator about how to present the story:
 
 ```json
 "contingency_prompts": [
@@ -99,28 +103,82 @@ These provide storytelling direction to the AI narrator:
 ]
 ```
 
-- Describe **when** and **how** to present information
-- Include specific NPC dialogue by using quotes: `NPCName says: "exact dialogue"`
-- Guide tone, mood, and storytelling style
-- Provide contextual hints and suggestions
+**Use contingency_prompts for:**
+- Describing **when** and **how** to present information to the player
+- Providing specific NPC dialogue using quotes: `NPCName says: "exact dialogue"`
+- Guiding tone, mood, and storytelling style
+- Offering contextual hints and narrative suggestions
+- Reminding the AI about story details or character behaviors
+- Suggesting what to emphasize or mention in certain situations
 
-### Contingency Rules (Game Logic)
+**Think of these as**: "Hey narrator, here's how to tell this part of the story..."
 
-These define hard mechanical rules that change game state:
+### Contingency Rules (State Change Instructions for the Game Engine)
+
+**Purpose**: Define what mechanically *happens* in the game state  
+**Audience**: The state reducer/game engine processing player actions  
+**Effect**: Actually modifies game state (inventory, scenes, variables, game over)
+
+These are imperative instructions that trigger concrete state changes:
 
 ```json
 "contingency_rules": [
-  "When the shipwright starts repairs, the scene changes to 'british_docks'.",
-  "Reading the ship repair ledger adds it to inventory.",
+  "When the shipwright agrees to start repairs, set the variable \"shipwright_hired\" to \"true\".",
+  "Reading the ship repair ledger adds it to inventory and sets the variable \"ship_repair_ledger_acquired\" to \"true\".",
   "Showing the ship repair ledger to the shipwright removes it from the player's inventory.", 
   "If the Black Pearl leaves Tortuga in disrepair, the ship sinks and the game ends."
 ]
 ```
 
-- Use precise conditional language: "When X happens, Y occurs"
-- Define state changes: inventory modifications, scene transitions, location moves
-- Specify win/lose conditions and game endings
-- Control NPC behavior and availability
+**Use contingency_rules for:**
+- Precise conditional logic: "When X happens, Y occurs"
+- State changes: adding/removing inventory items, setting variables
+- Scene transitions: "the scene changes to 'scene_id'"
+- Game endings: "the game ends"
+- NPC location changes: "NPC moves to location_id"
+- Any mechanical game state modification
+
+**Think of these as**: "Hey game engine, here's what actually changes in the game state..."
+
+### Key Differences
+
+| Aspect | Contingency Prompts | Contingency Rules |
+|--------|-------------------|------------------|
+| **Target** | AI Narrator | Game Engine/Reducer |
+| **Purpose** | Narrative guidance | State modification |
+| **Effect** | Influences storytelling | Changes game state |
+| **Language** | Suggestive ("mention", "should", "can") | Imperative ("adds to", "removes from", "sets", "changes to") |
+| **Examples** | Tone, dialogue, descriptions, hints | Inventory, variables, scene changes, game over |
+
+### Common Mistake to Avoid
+
+❌ **Wrong**: Putting state changes in contingency_prompts  
+```json
+"contingency_prompts": [
+  "When the player reads the ledger, add it to inventory"  // NO! This is a state change
+]
+```
+
+✅ **Correct**: State changes belong in contingency_rules  
+```json
+"contingency_rules": [
+  "Reading the ship repair ledger adds it to inventory."  // YES! Actual state change
+]
+```
+
+❌ **Wrong**: Putting narrative guidance in contingency_rules  
+```json
+"contingency_rules": [
+  "The shipwright should sound gruff but helpful"  // NO! This is narrative guidance
+]
+```
+
+✅ **Correct**: Narrative guidance belongs in contingency_prompts  
+```json
+"contingency_prompts": [
+  "The shipwright speaks in a gruff but helpful manner."  // YES! Storytelling hint
+]
+```
 
 ### Language Patterns for Rules
 
@@ -132,7 +190,7 @@ These define hard mechanical rules that change game state:
 
 ### Variables (Vars)
 
-Variables track important story state and enable deterministic scene transitions. Use them **sparingly** - primarily to scaffold critical story progression points.
+Variables track important story state and enable deterministic scene transitions. Use them **only** to scaffold critical story progression points via conditionals. 
 
 **Define variables at the scene level:**
 ```json
@@ -222,14 +280,15 @@ For reliable scene progression, use **both** contingency prompts and conditional
 **1. Guide the AI with contingency prompts:**
 ```json
 "contingency_prompts": [
-  "When the shipwright agrees to begin repairs and accepts payment, set shipwright_hired to true."
+  "The shipwright is agreeable to most forms of downpayment and ready to start work quickly."
 ]
 ```
 
-**2. Provide a narrative scene change rule:**
+**2. Provide a narrative scene change rule and a separate variable rule:**
 ```json
 "contingency_rules": [
-  "When the shipwright starts repairs, the scene changes to 'british_docks'."
+  "When the shipwright starts repairs, the scene changes to 'british_docks'.",
+  "When the shipwright agrees to begin repairs and accepts payment, set shipwright_hired to true."
 ]
 ```
 
@@ -245,6 +304,7 @@ For reliable scene progression, use **both** contingency prompts and conditional
 ```
 
 This layered approach ensures:
+- The story stays on its intended guiderails.
 - The AI understands when and why to set variables
 - The AI attempts scene transitions naturally through contingency rules
 - The conditional guarantees the transition happens regardless of AI compliance

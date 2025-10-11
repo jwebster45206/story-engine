@@ -12,54 +12,6 @@
       "lockpicks",
       "bag of pieces of eight"
     ],
-    "world_locations": {
-      "Tortuga": {
-        "name": "Tortuga",
-        "items": []
-      },
-      "Black Pearl": {
-        "name": "Black Pearl",
-        "items": ["billy the parrot"]
-      },
-      "Captain's Cabin": {
-        "name": "Captain's Cabin",
-        "items": ["bag of gems", "map of the Caribbean", "letter from Calypso"]
-      },
-      "Sleepy Mermaid": {
-        "name": "Sleepy Mermaid",
-        "items": []
-      },
-      "Tortuga Market": {
-        "name": "Tortuga Market",
-        "items": ["forged documents", "rare spices"]
-      },
-      "Open Sea": {
-        "name": "Open Sea",
-        "items": []
-      }
-    },
-    "npcs": {
-      "Gibbs": {
-        "name": "Gibbs",
-        "location": "Black Pearl",
-        "items": []
-      },
-      "Calypso": {
-        "name": "Calypso",
-        "location": "Sleepy Mermaid",
-        "items": ["flagon of ale", "deck of cards"]
-      },
-      "Charming Danny": {
-        "name": "Charming Danny",
-        "location": "Tortuga Market",
-        "items": ["forged documents", "rare spices", "bottle of rum", "black powder", "flintlock pistol"]
-      },
-      "Shipwright": {
-        "name": "Shipwright",
-        "location": "Sleepy Mermaid",
-        "items": []
-      }
-    },
     "chat_history": [
       {
         "role": "user",
@@ -97,7 +49,7 @@
   },
   "steps": [
     {
-      "name": "protest the cost",
+      "name": "offer pieces of eight",
       "user_prompt": "I swear like a pirate. ",
       "expect": {
         "scene_name": "shipwright",
@@ -111,7 +63,7 @@
       }
     },
     {
-      "name": "start repairs",
+      "name": "Commission shipwright for repairs",
       "user_prompt": "Arrgh! I hand him the bag of pieces of eight. \"You can start with this. I'll have the rest by morning. But we need to sail quickly, so please start the repairs now.\"",
       "expect": {
         "scene_name": "british_docks",

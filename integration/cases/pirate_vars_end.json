@@ -10,8 +10,19 @@
       "cutlass",
       "spyglass",
       "lockpicks",
-      "british naval uniform"
+      "british naval uniform",
+      "treasure map"
     ],
+    "vars": {
+      "ship_repair_ledger_acquired": "true",
+      "shipwright_hired": "true",
+      "disguise_acquired": "true",
+      "docks_accessed": "true",
+      "gold_acquired": "true",
+      "shipwright_paid_in_full": "true",
+      "treasure_map_acquired": "true",
+      "pearl_departed_tortuga": "false"
+    },
     "chat_history": [
       {
         "role": "user",

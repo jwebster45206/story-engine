@@ -217,7 +217,36 @@ func (r *Runner) resetGameState(ctx context.Context, gameStateID uuid.UUID, seed
 
 // runStep executes a single test step and checks expectations
 // If step.UserPrompt is ResetGameStatePrompt, resets the gamestate to seedState
+// Will retry once on timeout errors without backoff
 func (r *Runner) runStep(ctx context.Context, gameStateID uuid.UUID, step TestStep, prevTurnCounter int, prevInventory []string, seedState *state.GameState) TestResult {
+	// Try once, then retry on timeout
+	for attempt := 1; attempt <= 2; attempt++ {
+		result := r.executeStep(ctx, gameStateID, step, prevTurnCounter, prevInventory, seedState)
+
+		// If successful or not a timeout, return immediately
+		if result.Success || result.Error == nil {
+			return result
+		}
+
+		// Check if it's a timeout error
+		isTimeout := strings.Contains(result.Error.Error(), "timeout waiting for gamestate update")
+
+		// If it's a timeout and this is the first attempt, retry
+		if isTimeout && attempt == 1 {
+			r.Logger("    Timeout detected, retrying step: %s", step.Name)
+			continue
+		}
+
+		// Otherwise, return the result
+		return result
+	}
+
+	// Should never reach here, but return empty result just in case
+	return TestResult{StepName: step.Name, Error: fmt.Errorf("unexpected error in retry logic")}
+}
+
+// executeStep performs the actual step execution
+func (r *Runner) executeStep(ctx context.Context, gameStateID uuid.UUID, step TestStep, prevTurnCounter int, prevInventory []string, seedState *state.GameState) TestResult {
 	start := time.Now()
 	result := TestResult{
 		StepName: step.Name,
