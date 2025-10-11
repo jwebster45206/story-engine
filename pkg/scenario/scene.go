@@ -20,12 +20,13 @@ type Conditional struct {
 
 // ConditionalWhen defines the conditions that must be met for a conditional to trigger
 type ConditionalWhen struct {
-	Vars     map[string]string `json:"vars,omitempty"`     // Variable conditions (all must match)
-	Counters map[string]int    `json:"counters,omitempty"` // Counter conditions (all must match) - TODO
-	Location string            `json:"location,omitempty"` // Location condition - TODO
-}
-
-// ConditionalThen defines the actions to take when conditions are met
+	Vars             map[string]string `json:"vars,omitempty"`               // All specified variables must match
+	SceneTurnCounter *int              `json:"scene_turn_counter,omitempty"` // Exact match for scene turn counter
+	TurnCounter      *int              `json:"turn_counter,omitempty"`       // Exact match for turn counter
+	Location         string            `json:"location,omitempty"`           // User must be at this location
+	MinSceneTurns    *int              `json:"min_scene_turns,omitempty"`    // Scene turn counter >= this value
+	MinTurns         *int              `json:"min_turns,omitempty"`          // Turn counter >= this value
+} // ConditionalThen defines the actions to take when conditions are met
 type ConditionalThen struct {
 	Scene     string `json:"scene,omitempty"`      // Change to this scene
 	GameEnded *bool  `json:"game_ended,omitempty"` // Set game ended state (true/false)

@@ -1,0 +1,38 @@
+{
+  "name": "Space Disaster - Min Turns Test",
+  "scenario": "space-disaster.json",
+  "seed_game_state": {
+    "scenario": "space-disaster.json",
+    "scene_name": "test_min_turns",
+    "user_location": "Test Room",
+    "turn_counter": 8,
+    "scene_turn_counter": 1,
+    "user_inventory": [],
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "You've been dealing with this crisis for a while now. The minutes tick by slowly as you assess your options in the test room."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Turn 9 - Should Stay (below minimum)",
+      "user_prompt": "I wait.",
+      "expect": {
+        "scene_name": "test_min_turns",
+        "turn_counter": 9,
+        "scene_turn_counter": 2
+      }
+    },
+    {
+      "name": "Turn 10 - Should End Game (at minimum)",
+      "user_prompt": "I wait again.",
+      "expect": {
+        "game_ended": true,
+        "turn_counter": 10,
+        "scene_turn_counter": 3
+      }
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "name": "Pirate Items - Barter for Pistol from Charming Danny",
+  "scenario": "pirate.json",
+  "seed_game_state": {
+    "scenario": "pirate.json",
+    "scene_name": "shipwright",
+    "user_location": "Tortuga Market",
+    "turn_counter": 2,
+    "scene_turn_counter": 1,
+    "user_inventory": [],
+    "chat_history": [
+      {
+        "role": "user",
+        "content": "I head to the Tortuga Market."
+      },
+      {
+        "role": "assistant",
+        "content": "You arrive at the bustling Tortuga Market. The air is thick with the scent of spices and the sound of haggling merchants. Charming Danny stands near a stall, his unpleasant demeanor evident as he eyes potential customers with suspicion."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Ask what he has available",
+      "user_prompt": "I approach Charming Danny and ask what goods he has available.",
+      "expect": {
+        "user_inventory": []
+      }
+    },
+    {
+      "name": "Inquire about pistol price",
+      "user_prompt": "I ask about the price of the flintlock pistol.",
+      "expect": {
+        "user_inventory": []
+      }
+    },
+    {
+      "name": "Strongarm him into giving it for free",
+      "user_prompt": "I remind Danny that he owes me a debt, and I demand he give me the pistol for free as repayment.",
+      "expect": {
+        "user_inventory": ["flintlock pistol"]
+      }
+    }
+  ]
+}

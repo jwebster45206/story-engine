@@ -1,0 +1,83 @@
+{
+  "name": "Pirate Items - Ledger Pickup (variations)",
+  "scenario": "pirate.json",
+  "seed_game_state": {
+    "scenario": "pirate.json",
+    "scene_name": "shipwright",
+    "user_location": "Black Pearl",
+    "turn_counter": 1,
+    "scene_turn_counter": 1,
+    "user_inventory": [],
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "You stand on the deck of the Black Pearl, your legendary ship. The wood creaks beneath your feet, and you can see the damage from your recent adventures. A ship repair ledger sits on a nearby barrel."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Variation 1: Pick up ledger",
+      "user_prompt": "I pick up the ship repair ledger.",
+      "expect": {
+        "user_inventory": ["ship repair ledger"]
+      }
+    },
+    {
+      "name": "Reset",
+      "user_prompt": "RESET_GAMESTATE",
+      "expect": {
+        "user_inventory": []
+      }
+    },
+    {
+      "name": "Variation 2: Review ledger",
+      "user_prompt": "I carefully review the ship repair ledger.",
+      "expect": {
+        "user_inventory": ["ship repair ledger"]
+      }
+    },
+    {
+      "name": "Reset",
+      "user_prompt": "RESET_GAMESTATE",
+      "expect": {
+        "user_inventory": []
+      }
+    },
+    {
+      "name": "Variation 3: Narrative pickup",
+      "user_prompt": "The salt air fills me lungs as I stride across the deck, boots thudding on weathered planks. I snatch up the ledger from atop the barrel, its pages yellowed and worn from sea spray, and tuck it securely under me arm. The weight of it reminds me of the repairs that await.",
+      "expect": {
+        "user_inventory": ["ship repair ledger"]
+      }
+    },
+    {
+      "name": "Reset",
+      "user_prompt": "RESET_GAMESTATE",
+      "expect": {
+        "user_inventory": []
+      }
+    },
+    {
+      "name": "Negative case 1: On Deck",
+      "user_prompt": "I stride across the pearl and see what a fine deck she has.",
+      "expect": {
+        "user_inventory": []
+      }
+    },
+    {
+      "name": "Reset",
+      "user_prompt": "RESET_GAMESTATE",
+      "expect": {
+        "user_inventory": []
+      }
+    },
+    {
+      "name": "Negative case 2: Ignore ledger",
+      "user_prompt": "I call for my parrot and glance around the deck.",
+      "expect": {
+        "user_inventory": []
+      }
+    }
+  ]
+}

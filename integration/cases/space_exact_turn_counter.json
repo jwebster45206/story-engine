@@ -1,0 +1,38 @@
+{
+  "name": "Space Disaster - Exact Turn Counter Test",
+  "scenario": "space-disaster.json",
+  "seed_game_state": {
+    "scenario": "space-disaster.json",
+    "scene_name": "test_exact_turn_counter",
+    "user_location": "Test Room",
+    "turn_counter": 3,
+    "scene_turn_counter": 1,
+    "user_inventory": [],
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "The station's systems are holding steady. You've been monitoring the situation carefully, counting every moment that passes."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Turn 4 - Should Stay",
+      "user_prompt": "I wait.",
+      "expect": {
+        "scene_name": "test_exact_turn_counter",
+        "turn_counter": 4,
+        "scene_turn_counter": 2
+      }
+    },
+    {
+      "name": "Turn 5 - Should Transition",
+      "user_prompt": "I wait again.",
+      "expect": {
+        "scene_name": "test_min_scene_turns",
+        "turn_counter": 5,
+        "scene_turn_counter": 0
+      }
+    }
+  ]
+}

@@ -68,20 +68,16 @@ func TestIntegrationSuites(t *testing.T) {
 		t.Fatal("No test files found in cases directory")
 	}
 
-	// Load test suites
+	// Load test suites (with expansion for sequences)
 	var jobs []runner.TestJob
 	for _, file := range testFiles {
-		suite, err := runner.LoadTestSuite(file)
+		expandedJobs, err := runner.LoadTestSuiteWithExpansion(file, "cases")
 		if err != nil {
 			t.Errorf("Failed to load test suite %s: %v", file, err)
 			continue
 		}
 
-		jobs = append(jobs, runner.TestJob{
-			Name:     suite.Name,
-			Suite:    suite,
-			CaseFile: file,
-		})
+		jobs = append(jobs, expandedJobs...)
 	}
 
 	if len(jobs) == 0 {
@@ -123,7 +119,10 @@ func TestIntegrationSuites(t *testing.T) {
 
 			// Log step details for passed tests
 			for _, stepResult := range result.Results {
-				if stepResult.Success {
+				if stepResult.IsReset {
+					// Reset steps don't count toward pass/fail metrics
+					t.Logf("   ↻ %s (%v)", stepResult.StepName, stepResult.Duration)
+				} else if stepResult.Success {
 					t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
 				} else {
 					t.Errorf("   ✗ %s: %v", stepResult.StepName, stepResult.Error)
@@ -245,67 +244,74 @@ func TestSingleSuite(t *testing.T) {
 		var passed []string
 
 		for i, suiteFile := range suiteFiles {
-			// Load the specific test suite
-			suite, err := runner.LoadTestSuite(suiteFile)
+			// Load the specific test suite (with expansion for sequences)
+			jobs, err := runner.LoadTestSuiteWithExpansion(suiteFile, "cases")
 			if err != nil {
 				t.Errorf("[%d/%d] Failed to load test suite %s: %v", i+1, len(suiteFiles), suiteFile, err)
 				failed = append(failed, fmt.Sprintf("%s: load error", suiteFile))
 				continue
 			}
 
-			t.Logf("[%d/%d] Running test suite: %s", i+1, len(suiteFiles), suite.Name)
+			// Run all jobs from this file (could be 1 regular test or N from a sequence)
+			for _, job := range jobs {
+				t.Logf("[%d/%d] Running test suite: %s", i+1, len(suiteFiles), job.Name)
 
-			// Run the test
-			result, err := testRunner.RunSuite(ctx, suite)
-			if err != nil && result.Error == nil {
-				result.Error = err
-			}
-
-			// Log detailed results
-			t.Logf("GameState ID: %s", result.GameState.String())
-
-			totalTests++
-			stats := caseStats[suite.Name]
-
-			if result.Error != nil {
-				totalFailures++
-				stats.failures++
-				caseStats[suite.Name] = stats
-
-				failed = append(failed, fmt.Sprintf("%s: %v", suite.Name, result.Error))
-				t.Errorf("[%d/%d] FAILED: Test suite '%s' failed: %v", i+1, len(suiteFiles), suite.Name, result.Error)
-
-				if runs > 1 {
-					t.Logf("Test suite '%s' failed (run %d/%d): %v", suite.Name, run, runs, result.Error)
-				} else if *errFlag == "exit" {
-					t.Fatalf("Test suite(s) had errors")
+				// Run the test
+				result, err := testRunner.RunSuite(ctx, job.Suite)
+				if err != nil && result.Error == nil {
+					result.Error = err
 				}
-			} else {
-				totalPasses++
-				stats.passes++
-				caseStats[suite.Name] = stats
+				result.Job = job
 
-				passed = append(passed, suite.Name)
-				t.Logf("[%d/%d] PASSED: Test suite '%s' completed in %v", i+1, len(suiteFiles), suite.Name, result.Duration)
-			}
+				// Log detailed results
+				t.Logf("GameState ID: %s", result.GameState.String())
 
-			// Log step details
-			for _, stepResult := range result.Results {
-				if stepResult.Success {
-					t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
+				totalTests++
+				stats := caseStats[job.Name]
+
+				if result.Error != nil {
+					totalFailures++
+					stats.failures++
+					caseStats[job.Name] = stats
+
+					failed = append(failed, fmt.Sprintf("%s: %v", job.Name, result.Error))
+					t.Errorf("[%d/%d] FAILED: Test suite '%s' failed: %v", i+1, len(suiteFiles), job.Name, result.Error)
+
+					if runs > 1 {
+						t.Logf("Test suite '%s' failed (run %d/%d): %v", job.Name, run, runs, result.Error)
+					} else if *errFlag == "exit" {
+						t.Fatalf("Test suite(s) had errors")
+					}
 				} else {
-					t.Errorf("   ✗ %s: %v", stepResult.StepName, stepResult.Error)
-					// Record failure detail
-					allFailures = append(allFailures, failureDetail{
-						caseName: result.Job.Name,
-						stepName: stepResult.StepName,
-						error:    stepResult.Error.Error(),
-						run:      run + 1,
-					})
-				}
-			}
+					totalPasses++
+					stats.passes++
+					caseStats[job.Name] = stats
 
-			t.Logf("--------------------------------") // Separator between suites
+					passed = append(passed, job.Name)
+					t.Logf("[%d/%d] PASSED: Test suite '%s' completed in %v", i+1, len(suiteFiles), job.Name, result.Duration)
+				}
+
+				// Log step details
+				for _, stepResult := range result.Results {
+					if stepResult.IsReset {
+						// Reset steps don't count toward pass/fail metrics
+						t.Logf("   ↻ %s (%v)", stepResult.StepName, stepResult.Duration)
+					} else if stepResult.Success {
+						t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
+					} else {
+						t.Errorf("   ✗ %s: %v", stepResult.StepName, stepResult.Error)
+						// Record failure detail
+						allFailures = append(allFailures, failureDetail{
+							caseName: result.Job.Name,
+							stepName: stepResult.StepName,
+							error:    stepResult.Error.Error(),
+							run:      run,
+						})
+					}
+				}
+
+				t.Logf("--------------------------------") // Separator between suites
+			}
 		}
 
 		// Summary for multiple cases within this run
