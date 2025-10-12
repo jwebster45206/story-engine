@@ -225,8 +225,14 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 	h.metaCancelMu.Unlock()
 
 	if !gs.IsEnded {
-		// Start background goroutine to update game meta (PromptState)
-		go h.syncGameState(metaCtx, gs, request.Message, response.Message, storyEventPrompt)
+		// Make a deep copy for the background goroutine to avoid data races
+		gsCopy, err := gs.DeepCopy()
+		if err != nil {
+			h.logger.Error("Failed to copy game state for background sync", "error", err, "game_state_id", gs.ID.String())
+		} else {
+			// Start background goroutine to update game meta (PromptState)
+			go h.syncGameState(metaCtx, gsCopy, request.Message, response.Message, storyEventPrompt)
+		}
 	}
 
 	// Exit early if the prompt is a system message
