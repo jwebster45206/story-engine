@@ -7,4 +7,5 @@ type Location struct {
 	Exits        map[string]string `json:"exits,omitempty"`         // Direction → Location Key
 	BlockedExits map[string]string `json:"blocked_exits,omitempty"` // Direction → Reason for blocking
 	Items        []string          `json:"items,omitempty"`         // Items that can be found in this location
+	IsImportant  bool              `json:"important,omitempty"`     // whether this location is important to always show
 }

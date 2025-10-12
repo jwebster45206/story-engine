@@ -18,9 +18,25 @@ type PromptState struct {
 }
 
 func ToPromptState(gs *GameState) *PromptState {
+	// Filter NPCs: only include those in the same location as user OR marked as important
+	filteredNPCs := make(map[string]scenario.NPC)
+	for name, npc := range gs.NPCs {
+		if npc.Location == gs.Location || npc.IsImportant {
+			filteredNPCs[name] = npc
+		}
+	}
+
+	// Filter locations: only include the user's current location OR marked as important
+	filteredLocations := make(map[string]scenario.Location)
+	for name, loc := range gs.WorldLocations {
+		if name == gs.Location || loc.IsImportant {
+			filteredLocations[name] = loc
+		}
+	}
+
 	return &PromptState{
-		NPCs:           gs.NPCs,
-		WorldLocations: gs.WorldLocations,
+		NPCs:           filteredNPCs,
+		WorldLocations: filteredLocations,
 		Location:       gs.Location,
 		Inventory:      gs.Inventory,
 		// Vars and counters intentionally excluded for user-facing prompts
@@ -28,10 +44,26 @@ func ToPromptState(gs *GameState) *PromptState {
 }
 
 func ToBackgroundPromptState(gs *GameState) *PromptState {
+	// Filter NPCs: only include those in the same location as user OR marked as important
+	filteredNPCs := make(map[string]scenario.NPC)
+	for name, npc := range gs.NPCs {
+		if npc.Location == gs.Location || npc.IsImportant {
+			filteredNPCs[name] = npc
+		}
+	}
+
+	// Filter locations: only include the user's current location OR marked as important
+	filteredLocations := make(map[string]scenario.Location)
+	for name, loc := range gs.WorldLocations {
+		if name == gs.Location || loc.IsImportant {
+			filteredLocations[name] = loc
+		}
+	}
+
 	return &PromptState{
 		SceneName:        gs.SceneName,
-		NPCs:             gs.NPCs,
-		WorldLocations:   gs.WorldLocations,
+		NPCs:             filteredNPCs,
+		WorldLocations:   filteredLocations,
 		Location:         gs.Location,
 		Inventory:        gs.Inventory,
 		Vars:             gs.Vars,

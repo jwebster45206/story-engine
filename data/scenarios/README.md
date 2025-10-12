@@ -761,6 +761,7 @@ Any scene-scoped contingency rules and prompts *augment* the scenario. That is, 
 - Use contingency prompts to reinforce atmosphere and tone
 - Use contingency prompts to provide extra context for important NPCs
 - Balance helpful guidance with player agency
+- Avoid the use of colon or ":" character; it has a special use in the console view
 
 ### Technical Considerations
 - Use scene overrides to show world changes over time
@@ -768,6 +769,7 @@ Any scene-scoped contingency rules and prompts *augment* the scenario. That is, 
 - Place important items and NPCs strategically
 - If an item is important to the story, give it a contingency prompt
 - Design clear fail states and victory conditions
+- Short item names are easier for the LLM to follow: example: "pieces of eight" rather than "captain jimmy's last pieces of eight"
 
 ### Common Patterns
 - **Gated progression**: Use contingency rules to require certain actions before scene changes
