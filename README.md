@@ -32,6 +32,13 @@ The Story Engine supports a comprehensive set of game mechanics for creating ric
 - **Persistent State**: Variables maintained throughout the game session
 - **Conditional Logic**: Story branching based on variable values
 
+### Story Events
+- **Key Narrative Moments**: Deterministic story events that reliably occur at specific points
+- **Conditional Triggers**: Events activate based on player actions, location, time, or game state
+- **Guaranteed Integration**: Unlike hints, story events are injected directly into the narrative stream
+- **One-Time Occurrences**: Events fire once when conditions are met, then clear from the queue
+- **Immediate Impact**: Events appear in the very next turn after triggering, ensuring perfect timing
+
 ### Turn Tracking
 - **Session Counters**: Track total number of interactions across the entire game
 - **Scene Counters**: Track interactions within individual scenes
