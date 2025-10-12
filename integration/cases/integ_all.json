@@ -1,0 +1,9 @@
+{
+  "name": "Core Integration Tests",
+  "cases": [
+    "pirate_locations.json",
+    "pirate_scenes_all.json",
+    "space_counters_all.json",
+    "dracula_conditionals_all.json"
+  ]
+}

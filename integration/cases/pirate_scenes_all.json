@@ -1,0 +1,9 @@
+{
+  "name": "Pirate Scene Transitions - All Tests",
+  "description": "Runs all pirate scenario scene transition tests",
+  "cases": [
+    "pirate_scene1.json",
+    "pirate_scene2.json",
+    "pirate_scene_end.json"
+  ]
+}
