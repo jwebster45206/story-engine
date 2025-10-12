@@ -594,3 +594,423 @@ func validateItemSingletons(t *testing.T, normalizedState *GameState, originalSt
 		}
 	}
 }
+
+func TestGameState_GetStoryEvents(t *testing.T) {
+	tests := []struct {
+		name     string
+		gs       *GameState
+		expected string
+	}{
+		{
+			name: "empty queue",
+			gs: &GameState{
+				StoryEventQueue: []string{},
+			},
+			expected: "",
+		},
+		{
+			name: "single event",
+			gs: &GameState{
+				StoryEventQueue: []string{"Count Dracula materializes from the shadows, his eyes burning with ancient hunger."},
+			},
+			expected: "STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger.",
+		},
+		{
+			name: "multiple events",
+			gs: &GameState{
+				StoryEventQueue: []string{
+					"Count Dracula materializes from the shadows, his eyes burning with ancient hunger.",
+					"A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the stones!",
+				},
+			},
+			expected: "STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger.\n\nSTORY EVENT: A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the stones!",
+		},
+		{
+			name: "three events",
+			gs: &GameState{
+				StoryEventQueue: []string{
+					"Event one.",
+					"Event two.",
+					"Event three.",
+				},
+			},
+			expected: "STORY EVENT: Event one.\n\nSTORY EVENT: Event two.\n\nSTORY EVENT: Event three.",
+		},
+		{
+			name: "nil queue",
+			gs: &GameState{
+				StoryEventQueue: nil,
+			},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.gs.GetStoryEvents()
+			if result != tt.expected {
+				t.Errorf("GetStoryEvents() = %q, expected %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGameState_ClearStoryEventQueue(t *testing.T) {
+	tests := []struct {
+		name         string
+		initialQueue []string
+	}{
+		{
+			name:         "clear empty queue",
+			initialQueue: []string{},
+		},
+		{
+			name:         "clear single event",
+			initialQueue: []string{"Event one"},
+		},
+		{
+			name:         "clear multiple events",
+			initialQueue: []string{"Event one", "Event two", "Event three"},
+		},
+		{
+			name:         "clear nil queue",
+			initialQueue: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gs := &GameState{
+				StoryEventQueue: tt.initialQueue,
+			}
+
+			gs.ClearStoryEventQueue()
+
+			if len(gs.StoryEventQueue) != 0 {
+				t.Errorf("ClearStoryEventQueue() left %d events in queue, expected 0", len(gs.StoryEventQueue))
+			}
+
+			// Verify it's an empty slice, not nil (for consistency)
+			if gs.StoryEventQueue == nil {
+				t.Error("ClearStoryEventQueue() resulted in nil queue, expected empty slice")
+			}
+		})
+	}
+}
+
+func TestGameState_StoryEventQueue_Persistence(t *testing.T) {
+	// Test that story event queue persists through serialization/deserialization
+	gs := NewGameState("test.json", "test-model")
+	gs.StoryEventQueue = []string{
+		"Event one",
+		"Event two",
+	}
+
+	// Serialize
+	data, err := json.Marshal(gs)
+	if err != nil {
+		t.Fatalf("Failed to marshal GameState: %v", err)
+	}
+
+	// Deserialize
+	var restored GameState
+	if err := json.Unmarshal(data, &restored); err != nil {
+		t.Fatalf("Failed to unmarshal GameState: %v", err)
+	}
+
+	// Verify queue persisted
+	if len(restored.StoryEventQueue) != len(gs.StoryEventQueue) {
+		t.Errorf("Expected %d events in queue after deserialization, got %d", len(gs.StoryEventQueue), len(restored.StoryEventQueue))
+	}
+
+	for i, event := range gs.StoryEventQueue {
+		if restored.StoryEventQueue[i] != event {
+			t.Errorf("Event %d: expected %q, got %q", i, event, restored.StoryEventQueue[i])
+		}
+	}
+}
+
+func TestGameState_StoryEventQueue_EnqueueDequeue(t *testing.T) {
+	gs := NewGameState("test.json", "test-model")
+
+	// Initially empty
+	if len(gs.StoryEventQueue) != 0 {
+		t.Errorf("Expected empty queue initially, got %d events", len(gs.StoryEventQueue))
+	}
+
+	// Enqueue first event
+	event1 := "First event"
+	gs.StoryEventQueue = append(gs.StoryEventQueue, event1)
+	if len(gs.StoryEventQueue) != 1 {
+		t.Errorf("Expected 1 event after first enqueue, got %d", len(gs.StoryEventQueue))
+	}
+
+	// Enqueue second event
+	event2 := "Second event"
+	gs.StoryEventQueue = append(gs.StoryEventQueue, event2)
+	if len(gs.StoryEventQueue) != 2 {
+		t.Errorf("Expected 2 events after second enqueue, got %d", len(gs.StoryEventQueue))
+	}
+
+	// Verify order (FIFO)
+	if gs.StoryEventQueue[0] != event1 {
+		t.Errorf("Expected first event to be %q, got %q", event1, gs.StoryEventQueue[0])
+	}
+	if gs.StoryEventQueue[1] != event2 {
+		t.Errorf("Expected second event to be %q, got %q", event2, gs.StoryEventQueue[1])
+	}
+
+	// Dequeue (via GetStoryEvents and Clear)
+	formattedEvents := gs.GetStoryEvents()
+	expectedFormat := "STORY EVENT: First event\n\nSTORY EVENT: Second event"
+	if formattedEvents != expectedFormat {
+		t.Errorf("Expected formatted events %q, got %q", expectedFormat, formattedEvents)
+	}
+
+	gs.ClearStoryEventQueue()
+	if len(gs.StoryEventQueue) != 0 {
+		t.Errorf("Expected empty queue after clear, got %d events", len(gs.StoryEventQueue))
+	}
+}
+
+func TestGameState_GetChatMessages_WithStoryEvents(t *testing.T) {
+	tests := []struct {
+		name             string
+		storyEventPrompt string
+		userMessage      string
+		expectedContains []string
+		expectedOrder    []string
+		description      string
+	}{
+		{
+			name:             "no story events",
+			storyEventPrompt: "",
+			userMessage:      "I look around",
+			expectedContains: []string{"I look around"},
+			description:      "should not inject story event when prompt is empty",
+		},
+		{
+			name:             "single story event",
+			storyEventPrompt: "STORY EVENT: Count Dracula appears from the shadows.",
+			userMessage:      "I look around",
+			expectedContains: []string{
+				"I look around",
+				"STORY EVENT: Count Dracula appears from the shadows.",
+			},
+			expectedOrder: []string{
+				"I look around",
+				"STORY EVENT: Count Dracula appears from the shadows.",
+			},
+			description: "should inject story event after user message",
+		},
+		{
+			name:             "multiple story events",
+			storyEventPrompt: "STORY EVENT: Count Dracula appears.\n\nSTORY EVENT: Lightning strikes!",
+			userMessage:      "I open the door",
+			expectedContains: []string{
+				"I open the door",
+				"STORY EVENT: Count Dracula appears.\n\nSTORY EVENT: Lightning strikes!",
+			},
+			expectedOrder: []string{
+				"I open the door",
+				"STORY EVENT: Count Dracula appears.\n\nSTORY EVENT: Lightning strikes!",
+			},
+			description: "should inject multiple story events after user message",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gs := NewGameState("test.json", "test-model")
+			gs.SceneName = "test_scene"
+			gs.Location = "test_location"
+
+			scenario := &scenario.Scenario{
+				Name:   "Test Scenario",
+				Story:  "A test scenario",
+				Rating: scenario.RatingPG,
+				Scenes: map[string]scenario.Scene{
+					"test_scene": {
+						Story: "Test scene story",
+						Locations: map[string]scenario.Location{
+							"test_location": {
+								Name:        "test_location",
+								Description: "A test location",
+							},
+						},
+					},
+				},
+			}
+
+			err := gs.LoadScene(scenario, "test_scene")
+			if err != nil {
+				t.Fatalf("Failed to load scene: %v", err)
+			}
+
+			messages, err := gs.GetChatMessages(tt.userMessage, chat.ChatRoleUser, scenario, 10, tt.storyEventPrompt)
+			if err != nil {
+				t.Fatalf("GetChatMessages failed: %v", err)
+			}
+
+			// Verify all expected strings are present
+			for _, expected := range tt.expectedContains {
+				found := false
+				for _, msg := range messages {
+					if strings.Contains(msg.Content, expected) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected to find %q in messages, but it was not present", expected)
+				}
+			}
+
+			// Verify order if specified
+			if len(tt.expectedOrder) > 0 {
+				// Find indices of expected strings
+				indices := make(map[string]int)
+				for i, msg := range messages {
+					for _, expected := range tt.expectedOrder {
+						if strings.Contains(msg.Content, expected) {
+							indices[expected] = i
+						}
+					}
+				}
+
+				// Verify order
+				for i := 1; i < len(tt.expectedOrder); i++ {
+					prev := tt.expectedOrder[i-1]
+					curr := tt.expectedOrder[i]
+
+					prevIdx, prevFound := indices[prev]
+					currIdx, currFound := indices[curr]
+
+					if !prevFound {
+						t.Errorf("Expected string %q not found in messages", prev)
+					}
+					if !currFound {
+						t.Errorf("Expected string %q not found in messages", curr)
+					}
+
+					if prevFound && currFound && prevIdx >= currIdx {
+						t.Errorf("Expected %q (index %d) to come before %q (index %d)", prev, prevIdx, curr, currIdx)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestGameState_GetChatMessages_StoryEventPosition(t *testing.T) {
+	// This test specifically validates that story events are injected at the correct position:
+	// After the user's message but before the final system reminders
+	gs := NewGameState("test.json", "test-model")
+	gs.SceneName = "test_scene"
+	gs.Location = "test_location"
+
+	scenario := &scenario.Scenario{
+		Name:   "Test Scenario",
+		Story:  "A test scenario",
+		Rating: scenario.RatingPG,
+		Scenes: map[string]scenario.Scene{
+			"test_scene": {
+				Story: "Test scene story",
+				Locations: map[string]scenario.Location{
+					"test_location": {
+						Name:        "test_location",
+						Description: "A test location",
+					},
+				},
+			},
+		},
+	}
+
+	err := gs.LoadScene(scenario, "test_scene")
+	if err != nil {
+		t.Fatalf("Failed to load scene: %v", err)
+	}
+
+	storyEventPrompt := "STORY EVENT: A dragon appears!"
+	userMessage := "I draw my sword"
+
+	messages, err := gs.GetChatMessages(userMessage, chat.ChatRoleUser, scenario, 10, storyEventPrompt)
+	if err != nil {
+		t.Fatalf("GetChatMessages failed: %v", err)
+	}
+
+	// Find indices
+	var userMsgIdx, storyEventIdx, finalReminderIdx = -1, -1, -1
+
+	for i, msg := range messages {
+		if msg.Role == chat.ChatRoleUser && strings.Contains(msg.Content, userMessage) {
+			userMsgIdx = i
+		}
+		if msg.Role == chat.ChatRoleAgent && strings.Contains(msg.Content, storyEventPrompt) {
+			storyEventIdx = i
+		}
+		// Final reminder is the last system message
+		if msg.Role == chat.ChatRoleSystem && i == len(messages)-1 {
+			finalReminderIdx = i
+		}
+	}
+
+	// Verify indices are valid
+	if userMsgIdx == -1 {
+		t.Error("User message not found in messages")
+	}
+	if storyEventIdx == -1 {
+		t.Error("Story event not found in messages")
+	}
+	if finalReminderIdx == -1 {
+		t.Error("Final reminder not found in messages")
+	}
+
+	// Verify order: user message < story event < final reminder
+	if userMsgIdx >= storyEventIdx {
+		t.Errorf("Story event (index %d) should come after user message (index %d)", storyEventIdx, userMsgIdx)
+	}
+	if storyEventIdx >= finalReminderIdx {
+		t.Errorf("Final reminder (index %d) should come after story event (index %d)", finalReminderIdx, storyEventIdx)
+	}
+}
+
+func TestGameState_GetChatMessages_NoStoryEventWhenEmpty(t *testing.T) {
+	gs := NewGameState("test.json", "test-model")
+	gs.SceneName = "test_scene"
+	gs.Location = "test_location"
+
+	scenario := &scenario.Scenario{
+		Name:   "Test Scenario",
+		Story:  "A test scenario",
+		Rating: scenario.RatingPG,
+		Scenes: map[string]scenario.Scene{
+			"test_scene": {
+				Story: "Test scene story",
+				Locations: map[string]scenario.Location{
+					"test_location": {
+						Name:        "test_location",
+						Description: "A test location",
+					},
+				},
+			},
+		},
+	}
+
+	err := gs.LoadScene(scenario, "test_scene")
+	if err != nil {
+		t.Fatalf("Failed to load scene: %v", err)
+	}
+
+	messages, err := gs.GetChatMessages("I look around", chat.ChatRoleUser, scenario, 10, "")
+	if err != nil {
+		t.Fatalf("GetChatMessages failed: %v", err)
+	}
+
+	// Verify no story event message is present (agent/assistant role message)
+	for _, msg := range messages {
+		if msg.Role == chat.ChatRoleAgent && strings.Contains(msg.Content, "STORY EVENT:") {
+			t.Error("Found STORY EVENT agent message when storyEventPrompt was empty")
+		}
+	}
+}

@@ -85,6 +85,31 @@ func (dw *DeltaWorker) ApplyConditionalOverrides() []scenario.Conditional {
 	return triggeredConditionals
 }
 
+// QueueStoryEvents evaluates story events and queues them for the next turn
+// Returns the list of triggered story events for logging purposes
+func (dw *DeltaWorker) QueueStoryEvents() []scenario.StoryEvent {
+	if dw.scenario == nil {
+		return nil
+	}
+
+	triggeredEvents := dw.scenario.EvaluateStoryEvents(dw.gs)
+	if len(triggeredEvents) == 0 {
+		return nil
+	}
+
+	// Initialize queue if needed
+	if dw.gs.StoryEventQueue == nil {
+		dw.gs.StoryEventQueue = make([]string, 0)
+	}
+
+	// Queue the event prompts
+	for _, event := range triggeredEvents {
+		dw.gs.StoryEventQueue = append(dw.gs.StoryEventQueue, event.Prompt)
+	}
+
+	return triggeredEvents
+}
+
 // Apply applies the delta to the game state (scene changes, items, location, game end)
 func (dw *DeltaWorker) Apply() error {
 	if dw.delta == nil {

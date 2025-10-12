@@ -1,0 +1,76 @@
+{
+  "name": "Story Event Variable Trigger Test",
+  "description": "Tests that story events are queued when variable conditions are met, and injected on the next turn",
+  "scenario": "dracula-story-events.json",
+  "seed_game_state": {
+    "scene_name": "arrival",
+    "user_location": "Library",
+    "turn_counter": 2,
+    "scene_turn_counter": 2,
+    "user_inventory": [
+      "wooden stakes",
+      "silver cross",
+      "holy water"
+    ],
+    "vars": {
+      "opened_grimoire": "false",
+      "dracula_appeared": "false"
+    },
+    "chat_history": [
+      {
+        "role": "user",
+        "content": "I walk through the gates and enter the castle."
+      },
+      {
+        "role": "assistant",
+        "content": "The heavy iron gates creak open as you push through them, and you step into the Grand Foyer. The oppressive atmosphere immediately envelops you - dusty portraits line the walls, their pale subjects seeming to watch your every move. An enormous chandelier draped in cobwebs hangs overhead, and the smell of decay and old blood fills your nostrils."
+      },
+      {
+        "role": "user",
+        "content": "I go east to the library."
+      },
+      {
+        "role": "assistant",
+        "content": "You make your way to the library, pushing open the heavy wooden door. Towering bookshelves reach up to the vaulted ceiling, filled with ancient tomes in Latin and other dead languages. A reading table sits in the center with several open books, their yellowed pages testament to their age. The ancient grimoire rests prominently on the table, seemingly waiting for you."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Open grimoire (queues story event for next turn)",
+      "user_prompt": "I carefully open the ancient grimoire and begin reading its forbidden knowledge.",
+      "expect": {
+        "scene_name": "arrival",
+        "user_location": "Library",
+        "vars": {
+          "opened_grimoire": "true"
+        }
+      }
+    },
+    {
+      "name": "Story event fires (Dracula materializes)",
+      "user_prompt": "I continue reading the grimoire, absorbing its dark secrets.",
+      "expect": {
+        "scene_name": "arrival",
+        "user_location": "Library",
+        "vars": {
+          "opened_grimoire": "true"
+        },
+        "response_contains": [
+          "Dracula"
+        ]
+      }
+    },
+    {
+      "name": "Event does not fire again (one-time use)",
+      "user_prompt": "I close the grimoire and step back cautiously.",
+      "expect": {
+        "scene_name": "arrival",
+        "user_location": "Library",
+        "vars": {
+          "opened_grimoire": "true"
+        }
+      }
+    }
+  ]
+}

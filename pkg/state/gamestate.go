@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,6 +28,7 @@ type GameState struct {
 	Vars               map[string]string            `json:"vars,omitempty"`            // Game variables (e.g. flags, counters)
 	IsEnded            bool                         `json:"is_ended"`                  // true when the game is over
 	ContingencyPrompts []string                     `json:"contingency_prompts,omitempty"`
+	StoryEventQueue    []string                     `json:"story_event_queue,omitempty"` // Queued story events to inject on next turn
 	CreatedAt          time.Time                    `json:"created_at" `
 	UpdatedAt          time.Time                    `json:"updated_at" `
 }
@@ -41,6 +43,7 @@ func NewGameState(scenarioFileName string, modelName string) *GameState {
 		SceneTurnCounter:   0,
 		Vars:               make(map[string]string),
 		ContingencyPrompts: make([]string, 0),
+		StoryEventQueue:    make([]string, 0),
 		NPCs:               make(map[string]scenario.NPC),
 		WorldLocations:     make(map[string]scenario.Location),
 		CreatedAt:          time.Now(),
@@ -116,7 +119,7 @@ func (gs *GameState) GetContingencyPrompts(s *scenario.Scenario) []string {
 
 // GetChatMessages generates a "chat message" slice for LLM.
 // This slice includes all prompts and instructions to run the game.
-func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, s *scenario.Scenario, count int) ([]chat.ChatMessage, error) {
+func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, s *scenario.Scenario, count int, storyEventPrompt string) ([]chat.ChatMessage, error) {
 	if gs == nil {
 		return nil, fmt.Errorf("game state is nil")
 	}
@@ -177,6 +180,14 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 		Role:    requestRole,
 		Content: requestMessage,
 	})
+
+	// Insert story event prompt after user's prompt if present
+	if storyEventPrompt != "" {
+		messages = append(messages, chat.ChatMessage{
+			Role:    chat.ChatRoleAgent,
+			Content: storyEventPrompt,
+		})
+	}
 
 	// Final Reminders about how to respond.
 	// If the llm provider allows it, this will be appended after chat messages.
@@ -358,4 +369,27 @@ func (gs *GameState) GetTurnCounter() int {
 
 func (gs *GameState) GetUserLocation() string {
 	return gs.Location
+}
+
+// GetStoryEvents returns all queued story events formatted as a single prompt
+func (gs *GameState) GetStoryEvents() string {
+	if len(gs.StoryEventQueue) == 0 {
+		return ""
+	}
+
+	var prompt strings.Builder
+	for i, event := range gs.StoryEventQueue {
+		if i > 0 {
+			prompt.WriteString("\n\n")
+		}
+		prompt.WriteString("STORY EVENT: ")
+		prompt.WriteString(event)
+	}
+
+	return prompt.String()
+}
+
+// ClearStoryEventQueue clears all queued story events
+func (gs *GameState) ClearStoryEventQueue() {
+	gs.StoryEventQueue = make([]string, 0)
 }

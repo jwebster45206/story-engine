@@ -94,7 +94,7 @@ The contingency system provides two types of guidance that serve **different pur
 
 **Important Limitations**: Contingency prompts are **hints and suggestions only**. The LLM does not prioritize them and may choose to ignore them entirely. They provide contextual guidance but cannot enforce specific behaviors. For deterministic game mechanics (inventory changes, scene transitions, variable updates), use **contingency rules** instead.
 
-TODO: We don't have a system for injecting priority story events yet. It's coming soon. 
+**For Deterministic Narrative Moments**: If you need the narrator to describe a specific event at a precise moment (like "lightning strikes the tower" on turn 4), use **story events** instead of contingency prompts. Story events are injected directly into the conversation stream and treated as mandatory narrative directives by the AI.
 
 These are hints and suggestions for the AI narrator about how to present the story:
 
@@ -119,14 +119,86 @@ These are hints and suggestions for the AI narrator about how to present the sto
 
 **Remember**: These are suggestions, not commands. The LLM may incorporate them, paraphrase them, or ignore them based on its interpretation of the narrative context.
 
-#### Conditional Contingency Prompts
+## Conditional Logic (When Clauses)
 
-Contingency prompts can include **conditionals** to control **when** they are shown to the AI narrator. This allows you to provide contextual narrative guidance that only appears when specific conditions are met.
+Both **contingency prompts** and **story events** can use conditional logic to control when they activate. The `when` clause supports the following conditions:
 
-**Important Note**: Since contingency prompts are hints rather than commands, conditional prompts provide **contextual suggestions** but do not guarantee specific LLM behavior. The LLM may still choose to ignore or reinterpret conditional prompts based on its understanding of the narrative. Conditional prompts are most effective when:
-- Combined with deterministic contingency rules for critical mechanics
-- Used for atmospheric enhancements rather than plot-critical events
-- Designed as helpful nudges rather than strict requirements
+### Supported Conditional Types
+
+**1. Variable Conditions** - Trigger when specific variables have certain values:
+```json
+"when": {
+  "vars": {
+    "opened_grimoire": "true",
+    "found_key": "true"
+  }
+}
+```
+All variables in the `vars` map must match for the condition to be true.
+
+**2. Location Conditions** - Trigger when player is at a specific location:
+```json
+"when": {
+  "location": "Castle Gates"
+}
+```
+
+**3. Scene Turn Counter (Exact Match)** - Trigger on a specific turn within the current scene:
+```json
+"when": {
+  "scene_turn_counter": 4
+}
+```
+Triggers **only** on turn 4 of the current scene.
+
+**4. Global Turn Counter (Exact Match)** - Trigger on a specific turn of the entire game:
+```json
+"when": {
+  "turn_counter": 10
+}
+```
+Triggers **only** on turn 10 of the game.
+
+**5. Minimum Scene Turns (Threshold)** - Trigger after a certain number of turns in the current scene:
+```json
+"when": {
+  "min_scene_turns": 5
+}
+```
+Triggers on turn 5 **and all subsequent turns** in the current scene.
+
+**6. Minimum Global Turns (Threshold)** - Trigger after a certain number of turns in the game:
+```json
+"when": {
+  "min_turns": 20
+}
+```
+Triggers on turn 20 **and all subsequent turns** of the game.
+
+**7. Combined Conditions** - All conditions must be true:
+```json
+"when": {
+  "location": "Castle Gates",
+  "min_scene_turns": 3,
+  "vars": {
+    "wolves_appeared": "true"
+  }
+}
+```
+
+### Turn Counter Reference
+
+- `turn_counter` / `min_turns`: Counts turns across the **entire game** (never resets)
+- `scene_turn_counter` / `min_scene_turns`: Counts turns in the **current scene only** (resets when scene changes)
+
+### Exact vs Minimum
+
+- `turn_counter` / `scene_turn_counter`: Triggers **only on that specific turn** (exact match)
+- `min_turns` / `min_scene_turns`: Triggers **from that turn onward** (threshold)
+
+### Conditional Contingency Prompts
+
+Contingency prompts can include conditionals to control **when** they are shown to the AI narrator:
 
 **Format:**
 ```json
@@ -134,139 +206,63 @@ Contingency prompts can include **conditionals** to control **when** they are sh
   "Always-active prompt string",
   {
     "prompt": "Conditional prompt text",
-    "when": {
-      /* conditions */
-    }
+    "when": { /* conditions - see above */ }
   }
 ]
 ```
 
-**Supported Conditional Types:**
-
-**1. Variable Conditions** - Show prompt when specific variables have certain values:
-```json
-{
-  "prompt": "Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with an oppressive, supernatural dread.",
-  "when": {
-    "vars": {
-      "opened_grimoire": "true"
-    }
-  }
-}
-```
-All variables in the `vars` map must match for the prompt to be shown.
-
-**2. Location Conditions** - Show prompt only when player is at a specific location:
-```json
-{
-  "prompt": "A pack of dire wolves with glowing yellow eyes emerges from the forest, blocking the path forward.",
-  "when": {
-    "location": "Castle Gates"
-  }
-}
-```
-
-**3. Scene Turn Counter (Exact Match)** - Show prompt on a specific turn within the current scene:
-```json
-{
-  "prompt": "A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet!",
-  "when": {
-    "scene_turn_counter": 4
-  }
-}
-```
-This shows the prompt **only** on turn 4 of the current scene.
-
-**4. Global Turn Counter (Exact Match)** - Show prompt on a specific turn of the entire game:
-```json
-{
-  "prompt": "You sense something significant is about to happen.",
-  "when": {
-    "turn_counter": 10
-  }
-}
-```
-This shows the prompt **only** on turn 10 of the game.
-
-**5. Minimum Scene Turns (Threshold)** - Show prompt after a certain number of turns in the current scene:
-```json
-{
-  "prompt": "You've been here for a while. Perhaps it's time to move on or try something different.",
-  "when": {
-    "min_scene_turns": 5
-  }
-}
-```
-This shows the prompt on turn 5 **and all subsequent turns** in the current scene.
-
-**6. Minimum Global Turns (Threshold)** - Show prompt after a certain number of turns in the game:
-```json
-{
-  "prompt": "Your journey has been long. Victory or defeat must be approaching.",
-  "when": {
-    "min_turns": 20
-  }
-}
-```
-This shows the prompt on turn 20 **and all subsequent turns** of the game.
-
-**7. Combined Conditions** - All conditions must be true for the prompt to show:
-```json
-{
-  "prompt": "The wolves grow more aggressive the longer you linger here.",
-  "when": {
-    "location": "Castle Gates",
-    "min_scene_turns": 3,
-    "vars": {
-      "wolves_appeared": "true"
-    }
-  }
-}
-```
-
-**Turn Counter vs Scene Turn Counter:**
-- `turn_counter` / `min_turns`: Counts turns across the **entire game** (never resets)
-- `scene_turn_counter` / `min_scene_turns`: Counts turns in the **current scene only** (resets when scene changes)
-
-**Exact vs Minimum:**
-- `turn_counter` / `scene_turn_counter`: Shows **only on that specific turn** (exact match)
-- `min_turns` / `min_scene_turns`: Shows **from that turn onward** (threshold)
+**Important Note**: Since contingency prompts are hints rather than commands, conditional prompts provide **contextual suggestions** but do not guarantee specific LLM behavior. Use story events for guaranteed narrative moments.
 
 **Using `min_scene_turns` as a Safeguard:**
 
-One powerful use of `min_scene_turns` is preventing players from getting stuck in a scene. If your scene requires a specific action that the player might miss, you can provide an escape hatch:
+One powerful use of `min_scene_turns` is preventing players from getting stuck in a scene:
 
 ```json
 {
-  "prompt": "If the player seems stuck or has been in this scene for many turns, the NPC should directly suggest: 'Perhaps you should examine the painting more closely' or provide another clear hint about the hidden lever.",
-  "when": {
-    "min_scene_turns": 8
-  }
+  "prompt": "If the player seems stuck, the NPC should suggest: 'Perhaps you should examine the painting more closely.'",
+  "when": {"min_scene_turns": 8}
 }
 ```
 
-Or automatically transition the scene:
+## Story Events (Deterministic Narrative Moments)
 
-```json
-{
-  "prompt": "After spending considerable time here, you notice a previously hidden passage. Describe this clearly and suggest the player can move forward through it.",
-  "when": {
-    "min_scene_turns": 10
-  }
-}
-```
+**Story events** provide guaranteed, priority narrative moments that appear at precisely the right time in your story. Unlike contingency prompts (which are hints), story events are **injected directly into the conversation stream** and treated as mandatory narrative directives by the AI narrator.
 
-This ensures players won't be permanently stuck if they miss a critical clue or action. The story can gracefully guide them forward after a reasonable number of attempts.
+### Story Events vs Contingency Prompts
 
-**Complete Example:**
+| Feature | Story Events | Contingency Prompts |
+|---------|--------------|---------------------|
+| **Reliability** | Guaranteed to appear | May be ignored by LLM |
+| **Timing** | Precise (fires once when triggered) | Continuous suggestion while active |
+| **Delivery** | Injected into chat as priority message | Added to system prompt context |
+| **Use Case** | Critical plot moments, dramatic beats | Atmospheric guidance, storytelling hints |
+| **Persistence** | One-time (clears after firing) | Continuous (remains while condition true) |
+
+**When to Use Story Events:**
+- Critical plot moments that MUST happen: "The villain appears!"
+- Dramatic beats with precise timing: "Lightning strikes on turn 4"
+- One-time reveals or transformations: "The statue comes to life"
+- Surprise interruptions: "An explosion rocks the building"
+
+**When to Use Contingency Prompts:**
+- General storytelling tone and style
+- Ongoing atmospheric suggestions
+- NPC personality hints
+- Location description guidance
+- Flexible narrative nudges
+
+### Defining Story Events
+
+Story events are defined **within individual scenes** using the `story_events` array:
 
 ```json
 "scenes": {
   "castle_arrival": {
-    "contingency_prompts": [
-      "Describe the castle as ancient and foreboding.",
+    "story": "The player approaches Castle Ravenloft...",
+    "story_events": [
       {
-        "prompt": "Count Dracula materializes from the shadows with supernatural presence.",
+        "name": "dracula_materializes",
+        "prompt": "Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with oppressive, supernatural dread.",
         "when": {
           "vars": {
             "opened_grimoire": "true"
@@ -274,22 +270,10 @@ This ensures players won't be permanently stuck if they miss a critical clue or 
         }
       },
       {
-        "prompt": "Dire wolves block your path with glowing yellow eyes.",
-        "when": {
-          "location": "Castle Gates",
-          "min_scene_turns": 3
-        }
-      },
-      {
-        "prompt": "LIGHTNING strikes the castle tower! Thunder shakes the stones!",
+        "name": "lightning_strike",
+        "prompt": "A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet! The air crackles with electricity.",
         "when": {
           "scene_turn_counter": 4
-        }
-      },
-      {
-        "prompt": "If the player seems stuck, have the local guide suggest examining the old grimoire on the altar.",
-        "when": {
-          "min_scene_turns": 8
         }
       }
     ]
@@ -297,16 +281,184 @@ This ensures players won't be permanently stuck if they miss a critical clue or 
 }
 ```
 
-**Best Practices for Conditional Prompts:**
-- Use variable conditions for story branches triggered by player actions
-- Use location conditions for location-specific atmospheric details
-- Use exact turn counters (`scene_turn_counter`, `turn_counter`) for dramatic one-time events
-- Use minimum turn thresholds (`min_scene_turns`, `min_turns`) for:
-  - Progressive hints that intensify over time
-  - Safety nets to prevent players getting stuck
-  - Atmospheric buildup that grows with time spent
-- Combine conditions to create highly specific contextual guidance
-- Keep conditional prompts focused on narrative guidance, not state changes (use contingency_rules for state changes)
+**Each story event has:**
+- `name`: Unique identifier for the event (for debugging/logging)
+- `prompt`: The exact narrative text that will be injected into the story
+- `when`: Conditional logic determining when the event triggers (see **Conditional Logic** section above for all supported conditions)
+
+### How Story Events Work
+
+**1. Evaluation (Turn N):**
+When a player submits an action, the engine evaluates all story events in the current scene against the game state. Any events whose conditions are met are added to a queue.
+
+**2. Injection (Turn N+1):**
+On the **next turn**, queued story events are injected into the conversation history as a special assistant/agent message:
+
+```
+User: I examine the grimoire carefully.
+Assistant: [Story event injected here]
+STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger.
+User: [Current player action]
+```
+
+The LLM sees this as a mandatory narrative directive and incorporates it into the response.
+
+**3. Clearing:**
+After injection, the story event is cleared from the queue. It will **never fire again** (one-time use).
+
+### Writing Effective Story Events
+
+**Be Descriptive and Complete:**
+Story events should contain the full narrative beat you want to occur. The LLM will incorporate this into the response naturally.
+
+**❌ Too Vague:**
+```json
+"prompt": "Dracula appears"
+```
+
+**✅ Descriptive and Atmospheric:**
+```json
+"prompt": "Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with oppressive, supernatural dread. He speaks: 'Welcome to my domain, mortal.'"
+```
+
+**Use Present Tense and Active Voice:**
+Events describe what's happening right now in the story.
+
+**❌ Past or Future Tense:**
+```json
+"prompt": "Lightning will strike the tower" // Future
+"prompt": "Lightning struck the tower" // Past
+```
+
+**✅ Present Tense:**
+```json
+"prompt": "A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet!"
+```
+
+**Include Sensory Details:**
+Good story events engage multiple senses and create atmosphere.
+
+```json
+"prompt": "A swarm of bats erupts from the ceiling, their screeching filling the air! The wind from thousands of wings buffets your face as they circle overhead."
+```
+
+**Use Emphasis for Impact:**
+CAPITALIZE key words or use punctuation to convey drama and urgency.
+
+```json
+"prompt": "The ground EXPLODES beneath your feet! Chunks of stone rain down as a massive creature bursts from below!"
+```
+
+### Multiple Events in One Turn
+
+If multiple story events trigger on the same turn, they are all injected together, separated by double newlines:
+
+```
+STORY EVENT: Count Dracula materializes from the shadows...
+
+STORY EVENT: A swarm of bats erupts from the ceiling...
+```
+
+The LLM will incorporate both events into its response.
+
+### Complete Example
+
+Here's a scene with story events, contingency prompts, rules, and conditionals working together:
+
+```json
+"scenes": {
+  "castle_confrontation": {
+    "story": "The player has entered Castle Ravenloft to confront Count Dracula.",
+    "vars": {
+      "opened_grimoire": "false",
+      "dracula_appeared": "false"
+    },
+    "story_events": [
+      {
+        "name": "dracula_materializes",
+        "prompt": "Count Dracula materializes from the shadows, his eyes burning with ancient hunger. \"So, another fool seeks to challenge me.\"",
+        "when": {"vars": {"opened_grimoire": "true"}}
+      },
+      {
+        "name": "lightning_strike",
+        "prompt": "A MASSIVE lightning bolt strikes the tower! Thunder shakes the castle!",
+        "when": {"scene_turn_counter": 4}
+      }
+    ],
+    "contingency_prompts": [
+      "Describe the castle as ancient, foreboding, and filled with supernatural dread.",
+      "Dracula speaks with formal, aristocratic language from centuries past."
+    ],
+    "contingency_rules": [
+      "When the player opens or reads the ancient grimoire, set opened_grimoire to true.",
+      "If the player defeats or escapes Dracula, the scene changes to 'epilogue'."
+    ],
+    "conditionals": [
+      {
+        "name": "victory_transition",
+        "when": {"dracula_defeated": "true"},
+        "then": {"scene": "epilogue"}
+      }
+    ]
+  }
+}
+```
+
+**In this example:**
+- **Story events** provide dramatic one-time moments with precise timing
+- **Contingency prompts** guide ongoing atmosphere and tone  
+- **Contingency rules** handle state changes (variables, scene transitions)
+- **Conditionals** enforce deterministic scene transitions
+
+### Best Practices for Story Events
+
+✅ **Use for critical plot moments** that absolutely must occur
+✅ **Write complete, vivid descriptions** with sensory details
+✅ **Use present tense and active voice** for immediacy
+✅ **Combine with variables** to track that events have occurred
+✅ **Time events carefully** using appropriate conditionals
+✅ **Keep events scene-specific** - they only evaluate in their defined scene
+
+❌ **Don't use for general atmosphere** (use contingency prompts instead)
+❌ **Don't use for state changes** (use contingency rules instead)
+❌ **Don't make events fire repeatedly** (they auto-clear after injection)
+❌ **Don't write vague events** - be specific and descriptive
+
+### Story Events vs Conditionals vs Contingency Rules
+
+It's important to understand when to use each system:
+
+**Story Events**: "What dramatic narrative moment should occur?"
+```json
+"story_events": [
+  {
+    "name": "betrayal",
+    "prompt": "Captain Morgan suddenly draws his pistol and aims it at you! 'I'm sorry, but the treasure means more to me than friendship.'",
+    "when": {"vars": {"treasure_revealed": "true"}}
+  }
+]
+```
+
+**Contingency Rules**: "What mechanical state changes should happen?"
+```json
+"contingency_rules": [
+  "When Captain Morgan betrays the player, set morgan_hostile to true and morgan moves to Black Pearl.",
+  "If the player reveals the treasure location to Morgan, set treasure_revealed to true."
+]
+```
+
+**Conditionals**: "What scene transition should be enforced?"
+```json
+"conditionals": [
+  {
+    "name": "betrayal_scene",
+    "when": {"morgan_hostile": "true"},
+    "then": {"scene": "betrayal_confrontation"}
+  }
+]
+```
+
+All three work together to create reliable, dramatic storytelling.
 
 ### Contingency Rules (State Change Instructions for the Game Engine)
 
