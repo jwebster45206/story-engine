@@ -11,6 +11,7 @@ type Scene struct {
 	ContingencyPrompts []ContingencyPrompt `json:"contingency_prompts"`    // Conditional prompts for LLM in this scene
 	ContingencyRules   []string            `json:"contingency_rules"`      // Backend rules for LLM to follow in this scene
 	Conditionals       []Conditional       `json:"conditionals,omitempty"` // Deterministic when/then rules
+	StoryEvents        []StoryEvent        `json:"story_events,omitempty"` // Priority narrative events with conditions
 }
 
 // ContingencyPrompt can be either a simple string (always shown) or a conditional prompt
@@ -57,4 +58,11 @@ type ConditionalThen struct {
 	// TODO: Add inventory modifications
 	// AddItems    []string `json:"add_items,omitempty"`
 	// RemoveItems []string `json:"remove_items,omitempty"`
+}
+
+// StoryEvent represents a priority narrative event that gets injected into the story flow
+type StoryEvent struct {
+	Name   string          `json:"name"`   // Unique identifier for this event
+	When   ConditionalWhen `json:"when"`   // Conditions that must be met for event to trigger
+	Prompt string          `json:"prompt"` // The narrative text to inject
 }

@@ -174,7 +174,14 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		return
 	}
 
-	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, scenario, PromptHistoryLimit)
+	// Check for queued story events
+	storyEventPrompt := gs.GetStoryEvents()
+	if storyEventPrompt != "" {
+		gs.ClearStoryEventQueue()
+		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
+	}
+
+	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, scenario, PromptHistoryLimit, storyEventPrompt)
 	if err != nil {
 		h.logger.Error("Error getting chat messages", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -219,7 +226,7 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 
 	if !gs.IsEnded {
 		// Start background goroutine to update game meta (PromptState)
-		go h.syncGameState(metaCtx, gs, request.Message, response.Message)
+		go h.syncGameState(metaCtx, gs, request.Message, response.Message, storyEventPrompt)
 	}
 
 	// Exit early if the prompt is a system message
@@ -335,7 +342,14 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		return
 	}
 
-	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, scenario, PromptHistoryLimit)
+	// Check for queued story events
+	storyEventPrompt := gs.GetStoryEvents()
+	if storyEventPrompt != "" {
+		gs.ClearStoryEventQueue()
+		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
+	}
+
+	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, scenario, PromptHistoryLimit, storyEventPrompt)
 	if err != nil {
 		h.logger.Error("Error getting chat messages", "error", err)
 		w.Header().Set("Content-Type", "application/json")
@@ -411,7 +425,7 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 
 		if chunk.Done {
 			// Start background game state update
-			go h.updateGameStateAfterStreaming(gs, request.Message, fullResponse.String(), cmdResult.Role)
+			go h.updateGameStateAfterStreaming(gs, request.Message, fullResponse.String(), cmdResult.Role, storyEventPrompt)
 			return
 		}
 	}
@@ -437,7 +451,7 @@ func (h *ChatHandler) sendSSEError(w http.ResponseWriter, message string) {
 }
 
 // updateGameStateAfterStreaming updates game state after streaming is complete
-func (h *ChatHandler) updateGameStateAfterStreaming(gs *state.GameState, userMessage, responseMessage, userRole string) {
+func (h *ChatHandler) updateGameStateAfterStreaming(gs *state.GameState, userMessage, responseMessage, userRole, storyEventPrompt string) {
 	ctx := context.Background()
 
 	// Cancel any in-process gamestate delta for this game state
@@ -467,7 +481,7 @@ func (h *ChatHandler) updateGameStateAfterStreaming(gs *state.GameState, userMes
 
 	// Start background gamestate delta update if game is not ended
 	if !gs.IsEnded {
-		go h.syncGameState(metaCtx, gs, userMessage, responseMessage)
+		go h.syncGameState(metaCtx, gs, userMessage, responseMessage, storyEventPrompt)
 	}
 
 	h.logger.Debug("Game state updated after streaming", "game_state_id", gs.ID.String())
@@ -475,7 +489,7 @@ func (h *ChatHandler) updateGameStateAfterStreaming(gs *state.GameState, userMes
 
 // syncGameState runs in the background to extract and update the stateful parts
 // of gamestate.
-func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, userMessage string, responseMessage string) {
+func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, userMessage string, responseMessage string, storyEventPrompt string) {
 	start := time.Now()
 	h.logger.Debug("Starting background game gamestate delta", "game_state_id", gs.ID.String())
 	defer func() {
@@ -515,11 +529,21 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 			Role:    chat.ChatRoleUser,
 			Content: userMessage,
 		},
-		{
-			Role:    chat.ChatRoleAgent,
-			Content: responseMessage,
-		},
 	}
+
+	// Add story event message if it exists
+	if storyEventPrompt != "" {
+		messages = append(messages, chat.ChatMessage{
+			Role:    chat.ChatRoleSystem,
+			Content: storyEventPrompt,
+		})
+	}
+
+	// Add the narrator response
+	messages = append(messages, chat.ChatMessage{
+		Role:    chat.ChatRoleAgent,
+		Content: responseMessage,
+	})
 
 	metaCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -573,6 +597,18 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 			if conditional.Then.GameEnded != nil {
 				h.logger.Info("Conditional game ended", "game_state_id", latestGS.ID.String(), "name", condName, "ended", *conditional.Then.GameEnded)
 			}
+		}
+	}
+
+	// Queue story events for next turn
+	triggeredEvents := worker.QueueStoryEvents()
+	if len(triggeredEvents) > 0 {
+		for _, event := range triggeredEvents {
+			previewLen := 50
+			if len(event.Prompt) < previewLen {
+				previewLen = len(event.Prompt)
+			}
+			h.logger.Info("Story event queued", "game_state_id", latestGS.ID.String(), "name", event.Name, "prompt_preview", event.Prompt[:previewLen]+"...")
 		}
 	}
 

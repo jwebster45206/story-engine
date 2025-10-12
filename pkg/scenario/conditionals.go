@@ -33,6 +33,29 @@ func (s *Scenario) EvaluateConditionals(gsView GameStateView) []Conditional {
 	return triggered
 }
 
+// EvaluateStoryEvents checks all story events for the current scene and returns triggered events
+func (s *Scenario) EvaluateStoryEvents(gsView GameStateView) []StoryEvent {
+	sceneName := gsView.GetSceneName()
+	if sceneName == "" {
+		return nil
+	}
+
+	scene, exists := s.Scenes[sceneName]
+	if !exists || len(scene.StoryEvents) == 0 {
+		return nil
+	}
+
+	var triggered []StoryEvent
+
+	for _, event := range scene.StoryEvents {
+		if evaluateWhen(event.When, gsView) {
+			triggered = append(triggered, event)
+		}
+	}
+
+	return triggered
+}
+
 // evaluateWhen checks if all conditions in a When clause are met
 func evaluateWhen(when ConditionalWhen, gsView GameStateView) bool {
 	// If no conditions specified, return false (conditional should not trigger)
