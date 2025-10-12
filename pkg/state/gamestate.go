@@ -88,19 +88,26 @@ func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, err
 }
 
 // GetContingencyPrompts returns all applicable contingency prompts for the current game state
+// Filters prompts based on their conditional requirements
 func (gs *GameState) GetContingencyPrompts(s *scenario.Scenario) []string {
 	if gs == nil || s == nil {
 		return nil
 	}
 
-	// Start with scenario-level contingency prompts
-	prompts := make([]string, len(gs.ContingencyPrompts))
-	copy(prompts, gs.ContingencyPrompts)
+	var prompts []string
 
-	// Add scene-level contingency prompts if in a scene
+	// Filter scenario-level contingency prompts based on conditions
+	scenarioPrompts := scenario.FilterContingencyPrompts(s.ContingencyPrompts, gs)
+	prompts = append(prompts, scenarioPrompts...)
+
+	// Add custom gamestate-level prompts (already stored as strings, always shown)
+	prompts = append(prompts, gs.ContingencyPrompts...)
+
+	// Filter scene-level contingency prompts if in a scene
 	if gs.SceneName != "" {
 		if scene, ok := s.Scenes[gs.SceneName]; ok {
-			prompts = append(prompts, scene.ContingencyPrompts...)
+			scenePrompts := scenario.FilterContingencyPrompts(scene.ContingencyPrompts, gs)
+			prompts = append(prompts, scenePrompts...)
 		}
 	}
 
@@ -142,7 +149,7 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 	// contingency prompts otherwise
 	contingencyPrompts := gs.GetContingencyPrompts(s)
 	if len(contingencyPrompts) > 0 {
-		systemPrompt += "\n\nApply the following conditional rules if their conditions are met:\n\n"
+		systemPrompt += "\n\nSome important storytelling guidelines:\n\n"
 		for i, prompt := range contingencyPrompts {
 			systemPrompt += fmt.Sprintf("%d. %s\n", i+1, prompt)
 		}

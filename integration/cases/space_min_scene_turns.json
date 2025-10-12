@@ -3,7 +3,7 @@
   "scenario": "space-disaster.json",
   "seed_game_state": {
     "scenario": "space-disaster.json",
-    "scene_name": "test_min_scene_turns",
+    "scene_name": "min_scene_turns",
     "user_location": "Test Room",
     "turn_counter": 5,
     "scene_turn_counter": 0,
@@ -20,7 +20,7 @@
       "name": "Turn 6 Scene Turn 1 - Should Stay (below minimum)",
       "user_prompt": "I wait.",
       "expect": {
-        "scene_name": "test_min_scene_turns",
+        "scene_name": "min_scene_turns",
         "turn_counter": 6,
         "scene_turn_counter": 1
       }
@@ -29,7 +29,7 @@
       "name": "Turn 7 Scene Turn 2 - Should Transition (at minimum)",
       "user_prompt": "I wait again.",
       "expect": {
-        "scene_name": "test_min_turns",
+        "scene_name": "min_turns",
         "turn_counter": 7,
         "scene_turn_counter": 0
       }

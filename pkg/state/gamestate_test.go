@@ -89,8 +89,10 @@ Game State:
 								Location:    "Tortuga",
 							},
 						},
-						Vars:               map[string]string{"repairs_started": "false"},
-						ContingencyPrompts: []string{"Scene-specific prompt"},
+						Vars: map[string]string{"repairs_started": "false"},
+						ContingencyPrompts: []scenario.ContingencyPrompt{
+							{Prompt: "Scene-specific prompt"},
+						},
 					},
 				},
 			},
@@ -190,7 +192,7 @@ func TestGameState_GetStatePrompt_JSONStructure(t *testing.T) {
 						Location: "TestLocation",
 					},
 				},
-				ContingencyPrompts: []string{"Scene contingency"},
+				ContingencyPrompts: []scenario.ContingencyPrompt{{Prompt: "Scene contingency"}},
 			},
 		},
 	}
@@ -270,7 +272,10 @@ func TestGameState_GetContingencyPrompts(t *testing.T) {
 			scenario: &scenario.Scenario{
 				Scenes: map[string]scenario.Scene{
 					"test_scene": {
-						ContingencyPrompts: []string{"Scene prompt 1", "Scene prompt 2"},
+						ContingencyPrompts: []scenario.ContingencyPrompt{
+							{Prompt: "Scene prompt 1"},
+							{Prompt: "Scene prompt 2"},
+						},
 					},
 				},
 			},

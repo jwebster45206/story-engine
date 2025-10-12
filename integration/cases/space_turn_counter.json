@@ -3,33 +3,37 @@
   "scenario": "space-disaster.json",
   "seed_game_state": {
     "scenario": "space-disaster.json",
-    "scene_name": "test_exact_turn_counter",
-    "user_location": "Test Room",
+    "scene_name": "turn_counter",
+    "user_location": "Engineering Bay",
     "turn_counter": 3,
     "scene_turn_counter": 1,
     "user_inventory": [],
     "chat_history": [
       {
+        "role": "user",
+        "content": "I check the life support readouts."
+      },
+      {
         "role": "assistant",
-        "content": "The station's systems are holding steady. You've been monitoring the situation carefully, counting every moment that passes."
+        "content": "The oxygen recyclers are struggling. You can see the warning indicators flashing. Time is critical."
       }
     ]
   },
   "steps": [
     {
       "name": "Turn 4 - Should Stay",
-      "user_prompt": "I wait.",
+      "user_prompt": "I continue monitoring the systems.",
       "expect": {
-        "scene_name": "test_exact_turn_counter",
+        "scene_name": "turn_counter",
         "turn_counter": 4,
         "scene_turn_counter": 2
       }
     },
     {
       "name": "Turn 5 - Should Transition",
-      "user_prompt": "I wait again.",
+      "user_prompt": "I keep working on the repairs.",
       "expect": {
-        "scene_name": "test_min_scene_turns",
+        "scene_name": "min_scene_turns",
         "turn_counter": 5,
         "scene_turn_counter": 0
       }

@@ -92,6 +92,10 @@ The contingency system provides two types of guidance that serve **different pur
 **Audience**: The LLM generating narrative responses  
 **Effect**: Influences storytelling style, dialogue, and narrative flow
 
+**Important Limitations**: Contingency prompts are **hints and suggestions only**. The LLM does not prioritize them and may choose to ignore them entirely. They provide contextual guidance but cannot enforce specific behaviors. For deterministic game mechanics (inventory changes, scene transitions, variable updates), use **contingency rules** instead.
+
+TODO: We don't have a system for injecting priority story events yet. It's coming soon. 
+
 These are hints and suggestions for the AI narrator about how to present the story:
 
 ```json
@@ -112,6 +116,197 @@ These are hints and suggestions for the AI narrator about how to present the sto
 - Suggesting what to emphasize or mention in certain situations
 
 **Think of these as**: "Hey narrator, here's how to tell this part of the story..."
+
+**Remember**: These are suggestions, not commands. The LLM may incorporate them, paraphrase them, or ignore them based on its interpretation of the narrative context.
+
+#### Conditional Contingency Prompts
+
+Contingency prompts can include **conditionals** to control **when** they are shown to the AI narrator. This allows you to provide contextual narrative guidance that only appears when specific conditions are met.
+
+**Important Note**: Since contingency prompts are hints rather than commands, conditional prompts provide **contextual suggestions** but do not guarantee specific LLM behavior. The LLM may still choose to ignore or reinterpret conditional prompts based on its understanding of the narrative. Conditional prompts are most effective when:
+- Combined with deterministic contingency rules for critical mechanics
+- Used for atmospheric enhancements rather than plot-critical events
+- Designed as helpful nudges rather than strict requirements
+
+**Format:**
+```json
+"contingency_prompts": [
+  "Always-active prompt string",
+  {
+    "prompt": "Conditional prompt text",
+    "when": {
+      /* conditions */
+    }
+  }
+]
+```
+
+**Supported Conditional Types:**
+
+**1. Variable Conditions** - Show prompt when specific variables have certain values:
+```json
+{
+  "prompt": "Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with an oppressive, supernatural dread.",
+  "when": {
+    "vars": {
+      "opened_grimoire": "true"
+    }
+  }
+}
+```
+All variables in the `vars` map must match for the prompt to be shown.
+
+**2. Location Conditions** - Show prompt only when player is at a specific location:
+```json
+{
+  "prompt": "A pack of dire wolves with glowing yellow eyes emerges from the forest, blocking the path forward.",
+  "when": {
+    "location": "Castle Gates"
+  }
+}
+```
+
+**3. Scene Turn Counter (Exact Match)** - Show prompt on a specific turn within the current scene:
+```json
+{
+  "prompt": "A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet!",
+  "when": {
+    "scene_turn_counter": 4
+  }
+}
+```
+This shows the prompt **only** on turn 4 of the current scene.
+
+**4. Global Turn Counter (Exact Match)** - Show prompt on a specific turn of the entire game:
+```json
+{
+  "prompt": "You sense something significant is about to happen.",
+  "when": {
+    "turn_counter": 10
+  }
+}
+```
+This shows the prompt **only** on turn 10 of the game.
+
+**5. Minimum Scene Turns (Threshold)** - Show prompt after a certain number of turns in the current scene:
+```json
+{
+  "prompt": "You've been here for a while. Perhaps it's time to move on or try something different.",
+  "when": {
+    "min_scene_turns": 5
+  }
+}
+```
+This shows the prompt on turn 5 **and all subsequent turns** in the current scene.
+
+**6. Minimum Global Turns (Threshold)** - Show prompt after a certain number of turns in the game:
+```json
+{
+  "prompt": "Your journey has been long. Victory or defeat must be approaching.",
+  "when": {
+    "min_turns": 20
+  }
+}
+```
+This shows the prompt on turn 20 **and all subsequent turns** of the game.
+
+**7. Combined Conditions** - All conditions must be true for the prompt to show:
+```json
+{
+  "prompt": "The wolves grow more aggressive the longer you linger here.",
+  "when": {
+    "location": "Castle Gates",
+    "min_scene_turns": 3,
+    "vars": {
+      "wolves_appeared": "true"
+    }
+  }
+}
+```
+
+**Turn Counter vs Scene Turn Counter:**
+- `turn_counter` / `min_turns`: Counts turns across the **entire game** (never resets)
+- `scene_turn_counter` / `min_scene_turns`: Counts turns in the **current scene only** (resets when scene changes)
+
+**Exact vs Minimum:**
+- `turn_counter` / `scene_turn_counter`: Shows **only on that specific turn** (exact match)
+- `min_turns` / `min_scene_turns`: Shows **from that turn onward** (threshold)
+
+**Using `min_scene_turns` as a Safeguard:**
+
+One powerful use of `min_scene_turns` is preventing players from getting stuck in a scene. If your scene requires a specific action that the player might miss, you can provide an escape hatch:
+
+```json
+{
+  "prompt": "If the player seems stuck or has been in this scene for many turns, the NPC should directly suggest: 'Perhaps you should examine the painting more closely' or provide another clear hint about the hidden lever.",
+  "when": {
+    "min_scene_turns": 8
+  }
+}
+```
+
+Or automatically transition the scene:
+
+```json
+{
+  "prompt": "After spending considerable time here, you notice a previously hidden passage. Describe this clearly and suggest the player can move forward through it.",
+  "when": {
+    "min_scene_turns": 10
+  }
+}
+```
+
+This ensures players won't be permanently stuck if they miss a critical clue or action. The story can gracefully guide them forward after a reasonable number of attempts.
+
+**Complete Example:**
+
+```json
+"scenes": {
+  "castle_arrival": {
+    "contingency_prompts": [
+      "Describe the castle as ancient and foreboding.",
+      {
+        "prompt": "Count Dracula materializes from the shadows with supernatural presence.",
+        "when": {
+          "vars": {
+            "opened_grimoire": "true"
+          }
+        }
+      },
+      {
+        "prompt": "Dire wolves block your path with glowing yellow eyes.",
+        "when": {
+          "location": "Castle Gates",
+          "min_scene_turns": 3
+        }
+      },
+      {
+        "prompt": "LIGHTNING strikes the castle tower! Thunder shakes the stones!",
+        "when": {
+          "scene_turn_counter": 4
+        }
+      },
+      {
+        "prompt": "If the player seems stuck, have the local guide suggest examining the old grimoire on the altar.",
+        "when": {
+          "min_scene_turns": 8
+        }
+      }
+    ]
+  }
+}
+```
+
+**Best Practices for Conditional Prompts:**
+- Use variable conditions for story branches triggered by player actions
+- Use location conditions for location-specific atmospheric details
+- Use exact turn counters (`scene_turn_counter`, `turn_counter`) for dramatic one-time events
+- Use minimum turn thresholds (`min_scene_turns`, `min_turns`) for:
+  - Progressive hints that intensify over time
+  - Safety nets to prevent players getting stuck
+  - Atmospheric buildup that grows with time spent
+- Combine conditions to create highly specific contextual guidance
+- Keep conditional prompts focused on narrative guidance, not state changes (use contingency_rules for state changes)
 
 ### Contingency Rules (State Change Instructions for the Game Engine)
 
