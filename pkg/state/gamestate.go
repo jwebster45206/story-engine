@@ -149,7 +149,7 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 	// contingency prompts otherwise
 	contingencyPrompts := gs.GetContingencyPrompts(s)
 	if len(contingencyPrompts) > 0 {
-		systemPrompt += "\n\nApply the following conditional rules if their conditions are met:\n\n"
+		systemPrompt += "\n\nSome important storytelling guidelines:\n\n"
 		for i, prompt := range contingencyPrompts {
 			systemPrompt += fmt.Sprintf("%d. %s\n", i+1, prompt)
 		}

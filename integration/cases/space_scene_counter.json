@@ -1,9 +1,9 @@
 {
-  "name": "Space Disaster - Exact Scene Counter Test",
+  "name": "Space Disaster - Scene Counter",
   "scenario": "space-disaster.json",
   "seed_game_state": {
     "scenario": "space-disaster.json",
-    "scene_name": "test_exact_scene_counter",
+    "scene_name": "scene_counter",
     "user_location": "Test Room",
     "turn_counter": 1,
     "scene_turn_counter": 1,
@@ -20,7 +20,7 @@
       "name": "Turn 2 Scene Turn 2 - Should Stay",
       "user_prompt": "I wait.",
       "expect": {
-        "scene_name": "test_exact_scene_counter",
+        "scene_name": "scene_counter",
         "turn_counter": 2,
         "scene_turn_counter": 2
       }
@@ -29,7 +29,7 @@
       "name": "Turn 3 Scene Turn 3 - Should Transition",
       "user_prompt": "I wait again.",
       "expect": {
-        "scene_name": "test_exact_turn_counter",
+        "scene_name": "turn_counter",
         "turn_counter": 3,
         "scene_turn_counter": 0
       }

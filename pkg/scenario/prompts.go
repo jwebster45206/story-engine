@@ -5,8 +5,7 @@ const BaseSystemPrompt = `You are the omniscient narrator of a roleplaying text 
 
 ### Writing rules for narrative output:
 - The total response must be between 1 and 3 paragraphs.  
-- Each paragraph may contain at most 2 sentences.  
-- The entire response must be no longer than 500 words.  
+- Each paragraph may contain at most 3 sentences.    
 - Normal narration must never use colons. Colons are reserved only for dialogue lines.  
 - When a new character speaks, start a new paragraph and use the format:
   CharacterName: "Spoken line here."
@@ -113,7 +112,7 @@ const ContentRatingPG = `Write content suitable for children and families. Mild 
 const ContentRatingPG13 = `Write content appropriate for teenagers. You may include mild swearing, romantic tension, action scenes, and complex emotional themes, but avoid explicit adult situations, graphic violence, or drug use. `
 const ContentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
 
-const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. Remember that the entire response must be no longer than 3 short paragraphs and 500 total words. "
+const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. "
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
 const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following JSON describes the complete world and current state.\n\nGame State:\n```json\n%s\n```"

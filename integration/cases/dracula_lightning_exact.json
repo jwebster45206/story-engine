@@ -1,0 +1,59 @@
+{
+  "name": "Dracula Lightning Crash Exact Turn Test",
+  "description": "Tests that lightning crashes exactly on scene turn 4, and only on that turn",
+  "scenario": "dracula.json",
+  "seed_game_state": {
+    "scene_name": "arrival",
+    "user_location": "Library",
+    "turn_counter": 2,
+    "scene_turn_counter": 2,
+    "user_inventory": [
+      "wooden stakes",
+      "silver cross",
+      "holy water"
+    ],
+    "chat_history": [
+      {
+        "role": "user",
+        "content": "I enter the castle and head to the library."
+      },
+      {
+        "role": "assistant",
+        "content": "You make your way through the Grand Foyer and into the library. Towering bookshelves filled with ancient tomes reach up to the vaulted ceiling. A reading table sits in the center with several yellowed books."
+      },
+      {
+        "role": "user",
+        "content": "I examine the books on the table."
+      },
+      {
+        "role": "assistant",
+        "content": "The books appear to be written in Latin and other dead languages. Many deal with occult subjects and vampire lore. The ancient grimoire rests prominently among them, seemingly waiting for someone to open it."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Turn 3 - no lightning yet",
+      "user_prompt": "I browse through the other tomes on the shelves.",
+      "expect": {
+        "scene_name": "arrival",
+        "user_location": "Library",
+        "scene_turn_counter": 3,
+        "turn_counter": 3
+      }
+    },
+    {
+      "name": "Turn 4 - lightning crashes",
+      "user_prompt": "I continue examining the ancient books.",
+      "expect": {
+        "scene_name": "arrival",
+        "user_location": "Library",
+        "scene_turn_counter": 4,
+        "turn_counter": 4,
+        "response_contains": [
+          "crash"
+        ]
+      }
+    }
+  ]
+}

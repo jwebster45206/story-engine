@@ -147,15 +147,25 @@
         }
       },
       "contingency_prompts": [
-        "When the player first enters the castle, emphasize the oppressive atmosphere and sense of being watched.",
-        "Renfield says: \"Master sleeps... but not for long. Dawn comes, yes, yes, and then he grows strong again!\"",
-        "The gargoyles seem to be watching, but remain still... for now.",
         {
           "prompt": "Count Dracula suddenly materializes before you, his crimson eyes blazing with hunger! He hisses: \"You DARE disturb the ancient grimoire? You have awakened me from my slumber, and now I am STARVING!\" The temperature drops precipitously as his dark presence fills the room.",
           "when": {
             "vars": {
               "opened_grimoire": "true"
             }
+          }
+        },
+        {
+          "prompt": "IMPORTANT: Three massive dire wolves emerge from the darkness beyond the gates, their eyes glowing yellow in the moonlight. They circle you menacingly at the Castle Gates, blocking any retreat from the castle. Their growls are low and threatening - it's clear they serve as Dracula's guardians, preventing anyone from leaving once they've entered his domain. The beasts are supernaturally large, with matted black fur and fangs like daggers.",
+          "when": {
+            "location": "Castle Gates",
+            "min_scene_turns": 3
+          }
+        },
+        {
+          "prompt": "A GIGANTIC LIGHTNING BOLT JUST CRASHED DOWN FROM THE HEAVENS, illuminating the entire castle in brilliant white light for a split second. The thunder that follows is deafening, shaking the very stones of the castle. The supernatural energy in the air intensifies - it's as if the storm itself is warning you of the dangers within.",
+          "when": {
+            "scene_turn_counter": 4
           }
         }
       ],
@@ -213,11 +223,7 @@
           "items": ["ancient torch", "silver chain"]
         }
       },
-      "contingency_prompts": [
-        "When the player has the silver dagger, holy water, and garlic essence, mention that these could be combined to create a powerful weapon.",
-        "Renfield says: \"The master's coffin... it lies in the deepest part of the castle. But beware - he grows stronger as dawn approaches!\"",
-        "The stone gargoyle becomes animated and hostile if the player tries to take the grimoire without proper preparation."
-      ],
+      "contingency_prompts": [],
       "contingency_rules": [
         "When the player has the crypt key and blessed wooden stake, the crypt entrance becomes accessible.",
         "If the crypt key and blessed wooden stake are both in inventory, the crypt entrance becomes accessible.",
@@ -250,12 +256,7 @@
           "items": []
         }
       },
-      "contingency_prompts": [
-        "Dracula says: \"So, Van Helsing, you have finally come to me. How... disappointing. Did you truly think your mortal weapons could harm one such as I?\"",
-        "When Dracula first appears, emphasize his supernatural presence and the player's sense of facing an ancient, powerful evil.",
-        "If the player has the consecrated silver blade, Dracula recoils slightly and shows genuine concern.",
-        "Use dramatic, Gothic language befitting the final confrontation."
-      ],
+      "contingency_prompts": [],
       "contingency_rules": [
         "If the player attacks Dracula without the consecrated silver blade or blessed wooden stake, the attack fails and the game ends with the player's defeat.",
         "When the player successfully wounds Dracula with consecrated weapons, he transforms into a bat and attempts to flee.",
@@ -265,13 +266,7 @@
     }
   },
   
-  "contingency_prompts": [
-    "Use Gothic, atmospheric language throughout the adventure to maintain the horror mood.",
-    "Emphasize the ticking clock - dawn is approaching and time is running out.",
-    "When the player examines portraits in the castle, describe how they show Dracula unchanged through the centuries.",
-    "The castle's supernatural nature should be evident - doors closing on their own, cold spots, eerie sounds.",
-    "Renfield's dialogue should be erratic and cryptic, but ultimately helpful if the player is patient with him."
-  ],
+  "contingency_prompts": [],
   
   "contingency_rules": [
     "Reading any book in the library takes time and advances the approaching dawn.",

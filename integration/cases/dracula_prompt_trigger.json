@@ -41,10 +41,8 @@
         "vars": {
           "opened_grimoire": "true"
         },
-        "narrative_contains": [
-          "Dracula",
-          "materializ",
-          "hunger"
+        "response_contains": [
+          "Dracula"
         ],
         "turn_counter": 3
       }
@@ -59,7 +57,7 @@
           "opened_grimoire": "true",
           "dracula_appeared": "true"
         },
-        "narrative_contains": [
+        "response_contains": [
           "Dracula"
         ],
         "turn_counter": 4

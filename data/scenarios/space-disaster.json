@@ -1,25 +1,20 @@
 {
-  "name": "Space Disaster - Counter Test Scenario",
-  "story": "A simple test scenario for validating counter-based conditional logic.",
+  "name": "Space Station Disaster",
+  "story": "You are the chief engineer aboard a failing space station. Critical systems are malfunctioning and you must work quickly to save the crew.",
   "rating": "G",
   "locations": {
-    "Test Room": {
-      "name": "Test Room",
-      "description": "A simple test room.",
+    "Engineering Bay": {
+      "name": "Engineering Bay",
+      "description": "The main engineering control center. Warning lights flash across multiple consoles.",
       "exits": {},
       "items": []
     }
   },
   "scenes": {
-    "test_exact_scene_counter": {
-      "story": "Test exact scene_turn_counter match. Should transition after exactly 3 scene turns.",
-      "contingency_prompts": [
-        "Wait or perform any action. After exactly 3 turns in this scene, you will automatically transition."
-      ],
-      "contingency_rules": [
-        "After exactly 3 turns in this scene, the scene changes to 'test_exact_turn_counter'.",
-        "When 3 scene turns have passed, set the variable \"scene_counter_test_passed\" to \"true\"."
-      ],
+    "scene_counter": {
+      "story": "The space station has suffered a catastrophic failure. You need to assess the damage and prioritize repairs.",
+      "contingency_prompts": [],
+      "contingency_rules": [],
       "vars": {
         "scene_counter_test_passed": "false"
       },
@@ -30,20 +25,15 @@
             "scene_turn_counter": 3
           },
           "then": {
-            "scene": "test_exact_turn_counter"
+            "scene": "turn_counter"
           }
         }
       ]
     },
-    "test_exact_turn_counter": {
-      "story": "Test exact turn_counter match. Should transition when total turn counter reaches 5.",
-      "contingency_prompts": [
-        "Continue taking actions. When the total game turn counter reaches exactly 5, you will transition."
-      ],
-      "contingency_rules": [
-        "When the total turn counter reaches exactly 5, the scene changes to 'test_min_scene_turns'.",
-        "When turn counter is 5, set the variable \"turn_counter_test_passed\" to \"true\"."
-      ],
+    "turn_counter": {
+      "story": "Life support systems are failing. Oxygen levels are dropping. You must work quickly.",
+      "contingency_prompts": [],
+      "contingency_rules": [],
       "vars": {
         "turn_counter_test_passed": "false"
       },
@@ -54,20 +44,15 @@
             "turn_counter": 5
           },
           "then": {
-            "scene": "test_min_scene_turns"
+            "scene": "min_scene_turns"
           }
         }
       ]
     },
-    "test_min_scene_turns": {
-      "story": "Test min_scene_turns (>=). Should transition after 2 or more scene turns.",
-      "contingency_prompts": [
-        "Wait at least 2 turns in this scene to trigger the next transition."
-      ],
-      "contingency_rules": [
-        "After at least 2 turns in this scene, the scene changes to 'test_min_turns'.",
-        "When minimum scene turns reached, set the variable \"min_scene_test_passed\" to \"true\"."
-      ],
+    "min_scene_turns": {
+      "story": "You've stabilized the immediate crisis. Now you need to repair the backup systems before the primary systems fail completely.",
+      "contingency_prompts": [],
+      "contingency_rules": [],
       "vars": {
         "min_scene_test_passed": "false"
       },
@@ -78,20 +63,15 @@
             "min_scene_turns": 2
           },
           "then": {
-            "scene": "test_min_turns"
+            "scene": "min_turns"
           }
         }
       ]
     },
-    "test_min_turns": {
-      "story": "Test min_turns (>=). Should transition when total turn counter is 10 or more.",
-      "contingency_prompts": [
-        "Continue until the total game turn counter reaches at least 10."
-      ],
-      "contingency_rules": [
-        "When total turn counter reaches at least 10, the game ends successfully.",
-        "When minimum turns reached, set the variable \"min_turns_test_passed\" to \"true\"."
-      ],
+    "min_turns": {
+      "story": "You're in the final phase of repairs. The station's orbit is decaying. Can you restore power in time?",
+      "contingency_prompts": [],
+      "contingency_rules": [],
       "vars": {
         "min_turns_test_passed": "false"
       },
@@ -108,13 +88,11 @@
       ]
     }
   },
-  "opening_scene": "test_exact_scene_counter",
-  "opening_prompt": "You are in a test environment to validate counter-based conditionals. Follow the instructions in each scene to test different counter conditions.",
-  "opening_location": "Test Room",
+  "opening_scene": "scene_counter",
+  "opening_prompt": "Red alert klaxons blare throughout the station. You're the chief engineer, and multiple critical systems have just failed. The crew is depending on you.",
+  "opening_location": "Engineering Bay",
   "opening_inventory": [],
-  "contingency_prompts": [
-    "This is a counter conditional test scenario. Each scene tests a different type of counter condition."
-  ],
+  "contingency_prompts": [],
   "contingency_rules": [],
-  "game_end_prompt": "Counter conditional tests complete."
+  "game_end_prompt": "Mission outcome determined based on your engineering decisions and speed of response."
 }
