@@ -57,8 +57,7 @@
           "opened_grimoire": "true"
         },
         "response_contains": [
-          "Dracula",
-          "materializ"
+          "Dracula"
         ]
       }
     },

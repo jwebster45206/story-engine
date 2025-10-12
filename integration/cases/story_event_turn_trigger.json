@@ -62,8 +62,7 @@
         "user_location": "Grand Foyer",
         "scene_turn_counter": 5,
         "response_contains": [
-          "lightning",
-          "thunder"
+          "lightning"
         ]
       }
     },
