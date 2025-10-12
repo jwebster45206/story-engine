@@ -775,12 +775,12 @@ func TestGameState_StoryEventQueue_EnqueueDequeue(t *testing.T) {
 
 func TestGameState_GetChatMessages_WithStoryEvents(t *testing.T) {
 	tests := []struct {
-		name              string
-		storyEventPrompt  string
-		userMessage       string
-		expectedContains  []string
-		expectedOrder     []string
-		description       string
+		name             string
+		storyEventPrompt string
+		userMessage      string
+		expectedContains []string
+		expectedOrder    []string
+		description      string
 	}{
 		{
 			name:             "no story events",
@@ -882,17 +882,17 @@ func TestGameState_GetChatMessages_WithStoryEvents(t *testing.T) {
 				for i := 1; i < len(tt.expectedOrder); i++ {
 					prev := tt.expectedOrder[i-1]
 					curr := tt.expectedOrder[i]
-					
+
 					prevIdx, prevFound := indices[prev]
 					currIdx, currFound := indices[curr]
-					
+
 					if !prevFound {
 						t.Errorf("Expected string %q not found in messages", prev)
 					}
 					if !currFound {
 						t.Errorf("Expected string %q not found in messages", curr)
 					}
-					
+
 					if prevFound && currFound && prevIdx >= currIdx {
 						t.Errorf("Expected %q (index %d) to come before %q (index %d)", prev, prevIdx, curr, currIdx)
 					}
@@ -941,7 +941,7 @@ func TestGameState_GetChatMessages_StoryEventPosition(t *testing.T) {
 
 	// Find indices
 	var userMsgIdx, storyEventIdx, finalReminderIdx int = -1, -1, -1
-	
+
 	for i, msg := range messages {
 		if msg.Role == chat.ChatRoleUser && strings.Contains(msg.Content, userMessage) {
 			userMsgIdx = i

@@ -81,12 +81,12 @@ func TestScene_UnmarshalStoryEvents(t *testing.T) {
 					t.Errorf("Expected 3 story events, got %d", len(scene.StoryEvents))
 					return
 				}
-				
+
 				// Validate first event
 				if scene.StoryEvents[0].Name != "event1" {
 					t.Errorf("Expected first event name 'event1', got %q", scene.StoryEvents[0].Name)
 				}
-				
+
 				// Validate second event
 				if scene.StoryEvents[1].Name != "event2" {
 					t.Errorf("Expected second event name 'event2', got %q", scene.StoryEvents[1].Name)
@@ -96,7 +96,7 @@ func TestScene_UnmarshalStoryEvents(t *testing.T) {
 				} else if *scene.StoryEvents[1].When.SceneTurnCounter != 5 {
 					t.Errorf("Expected scene_turn_counter=5, got %d", *scene.StoryEvents[1].When.SceneTurnCounter)
 				}
-				
+
 				// Validate third event
 				if scene.StoryEvents[2].Name != "event3" {
 					t.Errorf("Expected third event name 'event3', got %q", scene.StoryEvents[2].Name)
@@ -130,7 +130,7 @@ func TestScene_UnmarshalStoryEvents(t *testing.T) {
 					t.Errorf("Expected 1 story event, got %d", len(scene.StoryEvents))
 					return
 				}
-				
+
 				event := scene.StoryEvents[0]
 				if len(event.When.Vars) != 2 {
 					t.Errorf("Expected 2 var conditions, got %d", len(event.When.Vars))
