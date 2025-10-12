@@ -163,7 +163,7 @@ func TestScene_UnmarshalStoryEvents(t *testing.T) {
 			}`,
 			expectError: false,
 			validate: func(t *testing.T, scene Scene) {
-				if scene.StoryEvents != nil && len(scene.StoryEvents) != 0 {
+				if len(scene.StoryEvents) != 0 {
 					t.Errorf("Expected nil or empty story events, got %d", len(scene.StoryEvents))
 				}
 			},

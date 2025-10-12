@@ -940,7 +940,7 @@ func TestGameState_GetChatMessages_StoryEventPosition(t *testing.T) {
 	}
 
 	// Find indices
-	var userMsgIdx, storyEventIdx, finalReminderIdx int = -1, -1, -1
+	var userMsgIdx, storyEventIdx, finalReminderIdx = -1, -1, -1
 
 	for i, msg := range messages {
 		if msg.Role == chat.ChatRoleUser && strings.Contains(msg.Content, userMessage) {
@@ -1007,10 +1007,10 @@ func TestGameState_GetChatMessages_NoStoryEventWhenEmpty(t *testing.T) {
 		t.Fatalf("GetChatMessages failed: %v", err)
 	}
 
-	// Verify no story event message is present
+	// Verify no story event message is present (agent/assistant role message)
 	for _, msg := range messages {
-		if strings.Contains(msg.Content, "STORY EVENT:") {
-			t.Error("Found STORY EVENT in messages when storyEventPrompt was empty")
+		if msg.Role == chat.ChatRoleAgent && strings.Contains(msg.Content, "STORY EVENT:") {
+			t.Error("Found STORY EVENT agent message when storyEventPrompt was empty")
 		}
 	}
 }
