@@ -554,14 +554,34 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 	metaCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Send the gamestate delta request to the LLM
-	h.logger.Debug("Sending gamestate delta request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
-	delta, backendModel, err := h.llmService.DeltaUpdate(metaCtx, messages)
-	if err != nil {
-		h.logger.Error("Failed to get meta extraction response from LLM", "error", err, "game_state_id", gs.ID.String())
-		return
+	// Send the gamestate delta request to the LLM (with one retry on error)
+	var delta *state.GameStateDelta
+	var backendModel string
+	var deltaErr error
+
+	maxAttempts := 2
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		if attempt > 1 {
+			h.logger.Info("Retrying gamestate delta extraction", "game_state_id", gs.ID.String(), "attempt", attempt)
+		}
+
+		h.logger.Debug("Sending gamestate delta request to LLM", "game_state_id", gs.ID.String(), "attempt", attempt)
+		delta, backendModel, deltaErr = h.llmService.DeltaUpdate(metaCtx, messages)
+
+		if deltaErr == nil {
+			h.logger.Debug("Received gamestate delta from LLM", "game_state_id", gs.ID.String(), "delta", delta, "backend_model", backendModel)
+			break
+		}
+
+		// Log error and retry if not the last attempt
+		if attempt < maxAttempts {
+			h.logger.Warn("Gamestate delta extraction failed, will retry", "error", deltaErr, "game_state_id", gs.ID.String(), "attempt", attempt)
+		} else {
+			h.logger.Error("Failed to get meta extraction response from LLM after retries", "error", deltaErr, "game_state_id", gs.ID.String(), "attempts", maxAttempts)
+			return
+		}
 	}
-	h.logger.Debug("Received gamestate delta from LLM", "game_state_id", gs.ID.String(), "delta", delta, "backend_model", backendModel)
+
 	if delta == nil {
 		return
 	}
