@@ -343,7 +343,7 @@ func TestSingleSuite(t *testing.T) {
 
 	// Detailed failure report
 	if len(allFailures) > 0 {
-		t.Log(buildFailureReport(allFailures))
+		t.Log(buildFailureReport(allFailures, totalTests, totalPasses, totalFailures))
 	}
 
 	if totalFailures > 0 {
@@ -389,12 +389,20 @@ func buildFinalReport(runs int, numSuites int, totalTests int, totalPasses int, 
 }
 
 // buildFailureReport creates a detailed failure report from collected failure details
-func buildFailureReport(allFailures []failureDetail) string {
+func buildFailureReport(allFailures []failureDetail, totalTests, totalPasses, totalFailures int) string {
 	var sb strings.Builder
 
 	sb.WriteString("\n========================================\n")
 	sb.WriteString("Detailed Failure Report\n")
 	sb.WriteString("========================================\n")
+
+	// Overall pass/fail rate
+	if totalTests > 0 {
+		passRate := float64(totalPasses) / float64(totalTests) * 100
+		failRate := float64(totalFailures) / float64(totalTests) * 100
+		sb.WriteString(fmt.Sprintf("\nOverall: %d/%d passed (%.1f%%), %d failed (%.1f%%)\n",
+			totalPasses, totalTests, passRate, totalFailures, failRate))
+	}
 
 	// Group failures by case name
 	failuresByCase := make(map[string][]failureDetail)

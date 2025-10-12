@@ -92,6 +92,10 @@ The contingency system provides two types of guidance that serve **different pur
 **Audience**: The LLM generating narrative responses  
 **Effect**: Influences storytelling style, dialogue, and narrative flow
 
+**Important Limitations**: Contingency prompts are **hints and suggestions only**. The LLM does not prioritize them and may choose to ignore them entirely. They provide contextual guidance but cannot enforce specific behaviors. For deterministic game mechanics (inventory changes, scene transitions, variable updates), use **contingency rules** instead.
+
+TODO: We don't have a system for injecting priority story events yet. It's coming soon. 
+
 These are hints and suggestions for the AI narrator about how to present the story:
 
 ```json
@@ -113,15 +117,23 @@ These are hints and suggestions for the AI narrator about how to present the sto
 
 **Think of these as**: "Hey narrator, here's how to tell this part of the story..."
 
+**Remember**: These are suggestions, not commands. The LLM may incorporate them, paraphrase them, or ignore them based on its interpretation of the narrative context.
+
 #### Conditional Contingency Prompts
 
 Contingency prompts can include **conditionals** to control **when** they are shown to the AI narrator. This allows you to provide contextual narrative guidance that only appears when specific conditions are met.
 
-**Basic Format:**
+**Important Note**: Since contingency prompts are hints rather than commands, conditional prompts provide **contextual suggestions** but do not guarantee specific LLM behavior. The LLM may still choose to ignore or reinterpret conditional prompts based on its understanding of the narrative. Conditional prompts are most effective when:
+- Combined with deterministic contingency rules for critical mechanics
+- Used for atmospheric enhancements rather than plot-critical events
+- Designed as helpful nudges rather than strict requirements
+
+**Format:**
 ```json
 "contingency_prompts": [
+  "Always-active prompt string",
   {
-    "prompt": "Your narrative guidance here",
+    "prompt": "Conditional prompt text",
     "when": {
       /* conditions */
     }
@@ -129,16 +141,7 @@ Contingency prompts can include **conditionals** to control **when** they are sh
 ]
 ```
 
-**Simple String Format (Always Active):**
-Prompts without conditionals are always shown:
-```json
-"contingency_prompts": [
-  "Use some humor in responses.",
-  "The treasure chest is hidden behind the waterfall."
-]
-```
-
-**Conditional Formats:**
+**Supported Conditional Types:**
 
 **1. Variable Conditions** - Show prompt when specific variables have certain values:
 ```json
