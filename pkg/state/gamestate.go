@@ -3,6 +3,7 @@ package state
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"maps"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ type GameState struct {
 	ModelName          string                       `json:"model_name,omitempty" `     // Name of the large language model driving gameplay
 	Scenario           string                       `json:"scenario,omitempty" `       // Filename of the scenario being played. Ex: "foo_scenario.json"
 	SceneName          string                       `json:"scene_name,omitempty" `     // Current scene name in the scenario, if applicable
+	NarratorID         string                       `json:"narrator_id,omitempty"`     // Override narrator for this game session
 	NPCs               map[string]scenario.NPC      `json:"npcs,omitempty" `           // All NPCs in the game world
 	WorldLocations     map[string]scenario.Location `json:"locations,omitempty" `      // Current locations in the game world
 	Location           string                       `json:"user_location,omitempty" `  // Current location in the game world
@@ -130,21 +132,30 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 		return nil, fmt.Errorf("error generating state prompt: %w", err)
 	}
 
-	// Build consolidated system prompt
-	systemPrompt := scenario.BaseSystemPrompt
+	// Determine which narrator to use (gamestate override or scenario default)
+	narratorID := gs.NarratorID
+	if narratorID == "" {
+		narratorID = s.NarratorID
+	}
+
+	// Load narrator if specified
+	var narrator *scenario.Narrator
+	if narratorID != "" {
+		narrator, err = scenario.LoadNarrator(narratorID)
+		if err != nil {
+			// Log warning but continue without narrator
+			log.Printf("[NARRATOR] Warning: failed to load narrator %s: %v", narratorID, err)
+		} else if narrator != nil {
+			log.Printf("[NARRATOR] Successfully loaded narrator: %s (%s) with %d prompts", narrator.ID, narrator.Name, len(narrator.Prompts))
+		}
+	}
+
+	// Build system prompt with narrator
+	systemPrompt := scenario.BuildSystemPrompt(narrator)
 
 	// Add rating prompt
-	systemPrompt += "\n\nContent Rating: " + s.Rating
-	switch s.Rating {
-	case scenario.RatingG:
-		systemPrompt += "- " + scenario.ContentRatingG
-	case scenario.RatingPG:
-		systemPrompt += "- " + scenario.ContentRatingPG
-	case scenario.RatingPG13:
-		systemPrompt += "- " + scenario.ContentRatingPG13
-	case scenario.RatingR:
-		systemPrompt += "- " + scenario.ContentRatingR
-	}
+	systemPrompt += "\n\nContent Rating: " + s.Rating + " - "
+	systemPrompt += scenario.GetContentRatingPrompt(s.Rating)
 
 	// Add state context
 	systemPrompt += "\n\n" + statePrompt.Content

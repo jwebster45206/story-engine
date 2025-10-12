@@ -17,6 +17,7 @@ type Scenario struct {
 	FileName         string              `json:"file_name,omitempty"`         // Name of the file containing the scenario
 	Story            string              `json:"story,omitempty"`             // Brief description of the scenario
 	Rating           string              `json:"rating,omitempty"`            // Content rating of the scenario
+	NarratorID       string              `json:"narrator_id,omitempty"`       // Default narrator for this scenario
 	Locations        map[string]Location `json:"locations,omitempty"`         // Map of location names to Location objects
 	Inventory        []string            `json:"inventory,omitempty"`         // Potential inventory items throughout the scenario
 	NPCs             map[string]NPC      `json:"npcs,omitempty"`              // Map of NPC names to their data

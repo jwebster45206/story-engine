@@ -1,0 +1,9 @@
+{
+  "id": "classic",
+  "name": "Classic Adventure",
+  "description": "A straightforward omniscient narrator for classic adventures",
+  "prompts": [
+    "Use clear, descriptive language that paints vivid pictures.",
+    "Maintain a sense of wonder and discovery."
+  ]
+}
