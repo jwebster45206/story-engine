@@ -54,7 +54,7 @@ func TestGameState_GetStatePrompt(t *testing.T) {
 The following JSON describes the complete world and current state.
 
 Game State:
-` + "```json\n" + `{"npcs":{"Gibbs":{"name":"Gibbs","type":"pirate","disposition":"loyal","location":"Black Pearl"}},"locations":{"Tortuga":{"name":"Tortuga","description":"A pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass","spyglass"],"is_ended":false}
+` + "```json\n" + `{"locations":{"Tortuga":{"name":"Tortuga","description":"A pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass","spyglass"],"is_ended":false}
 ` + "```",
 			},
 		},
