@@ -946,7 +946,7 @@ func TestGameState_GetChatMessages_StoryEventPosition(t *testing.T) {
 		if msg.Role == chat.ChatRoleUser && strings.Contains(msg.Content, userMessage) {
 			userMsgIdx = i
 		}
-		if msg.Role == chat.ChatRoleSystem && strings.Contains(msg.Content, storyEventPrompt) {
+		if msg.Role == chat.ChatRoleAgent && strings.Contains(msg.Content, storyEventPrompt) {
 			storyEventIdx = i
 		}
 		// Final reminder is the last system message

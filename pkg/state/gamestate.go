@@ -184,7 +184,7 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 	// Insert story event prompt after user's prompt if present
 	if storyEventPrompt != "" {
 		messages = append(messages, chat.ChatMessage{
-			Role:    chat.ChatRoleSystem,
+			Role:    chat.ChatRoleAgent,
 			Content: storyEventPrompt,
 		})
 	}

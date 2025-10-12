@@ -1,0 +1,9 @@
+{
+  "name": "Story Events - All Integration Tests",
+  "description": "Runs all story event integration tests to verify story event system functionality",
+  "cases": [
+    "story_event_var_trigger.json",
+    "story_event_turn_trigger.json",
+    "story_event_multiple.json"
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "name": "Story Event Turn Counter Trigger Test",
+  "description": "Tests that story events fire on exact turn counter match and only on that turn",
+  "scenario": "dracula-story-events.json",
+  "seed_game_state": {
+    "scene_name": "arrival",
+    "user_location": "Grand Foyer",
+    "turn_counter": 2,
+    "scene_turn_counter": 2,
+    "user_inventory": [
+      "wooden stakes",
+      "silver cross",
+      "holy water"
+    ],
+    "vars": {
+      "opened_grimoire": "false",
+      "dracula_appeared": "false"
+    },
+    "chat_history": [
+      {
+        "role": "user",
+        "content": "I walk through the gates and enter the castle."
+      },
+      {
+        "role": "assistant",
+        "content": "The heavy iron gates creak open as you push through them, and you step into the Grand Foyer. The oppressive atmosphere immediately envelops you."
+      },
+      {
+        "role": "user",
+        "content": "I look around the foyer carefully."
+      },
+      {
+        "role": "assistant",
+        "content": "You examine the grand foyer. Dusty portraits line the walls, an enormous chandelier hangs overhead, and doorways lead in multiple directions. The smell of decay fills the air."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Scene turn 3 - No lightning yet",
+      "user_prompt": "I examine the portraits on the walls.",
+      "expect": {
+        "scene_name": "arrival",
+        "user_location": "Grand Foyer",
+        "scene_turn_counter": 3
+      }
+    },
+    {
+      "name": "Scene turn 4 - Story event queued",
+      "user_prompt": "I move toward the staircase.",
+      "expect": {
+        "scene_name": "arrival",
+        "user_location": "Grand Foyer",
+        "scene_turn_counter": 4
+      }
+    },
+    {
+      "name": "Scene turn 5 - Lightning strikes",
+      "user_prompt": "I look up at the chandelier.",
+      "expect": {
+        "scene_name": "arrival",
+        "user_location": "Grand Foyer",
+        "scene_turn_counter": 5,
+        "response_contains": [
+          "lightning",
+          "thunder"
+        ]
+      }
+    },
+    {
+      "name": "Scene turn 6 - Lightning does not strike again",
+      "user_prompt": "I continue examining the foyer.",
+      "expect": {
+        "scene_name": "arrival",
+        "user_location": "Grand Foyer",
+        "scene_turn_counter": 6
+      }
+    }
+  ]
+}
