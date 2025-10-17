@@ -11,6 +11,7 @@ Every scenario must include these top-level fields:
   "name": "Scenario Title",
   "story": "Brief description of the scenario premise",
   "rating": "PG-13",
+  "narrator_id": "vincent_price",
   "opening_scene": "scene_id",
   "opening_prompt": "Narrator text shown directly to the player",
   "opening_location": "location_id", 
@@ -24,12 +25,35 @@ Every scenario must include these top-level fields:
 }
 ```
 
+## Narrator (Optional)
+
+Scenarios can specify a narrator to define the storytelling voice and style. Narrators are reusable personalities stored in separate JSON files in the `data/narrators/` directory.
+
+```json
+{
+  "name": "Haunted Manor",
+  "narrator_id": "vincent_price",
+  ...
+}
+```
+
+**Available narrators:**
+- `classic` - Traditional, straightforward adventure narrator
+- `vincent_price` - Dramatic, theatrical Gothic horror style
+- `noir` - Cynical, hard-boiled detective style
+- `comedic` - Lighthearted, humorous narrator
+
+**If no narrator is specified**, the story uses a standard omniscient narrator voice.
+
+**Creating custom narrators:** See `data/narrators/README.md` for details on creating your own narrator personalities.
+
 ## Writing Voice and Perspective
 
 - **Most content**: Write in third person referring to "the player"
   - Example: "The player's ship badly needs repairs"
 - **Opening prompt**: Write as the narrator speaking directly to the player  
   - Example: "You are the captain of The Black Pearl..."
+- **Narrator personality**: If using a narrator_id, the narrator's voice will automatically influence how the story is told
 
 ## Locations
 
@@ -37,13 +61,13 @@ Locations define the game world geography:
 
 ```json
 "locations": {
-  "Tortuga": {
+  "tortuga": {
     "name": "Tortuga",
     "description": "A bustling pirate port filled with taverns, traders, and trouble.",
     "exits": {
-      "east": "Black Pearl",
-      "south": "Sleepy Mermaid",
-      "sewer grate": "Sewer System"
+      "east": "black_pearl",
+      "south": "sleepy_mermaid",
+      "sewer grate": "sewer_system"
     },
     "blocked_exits": {
       "north": "Lots of British soldiers in northern docks."
@@ -52,6 +76,30 @@ Locations define the game world geography:
   }
 }
 ```
+
+### Location Naming Conventions
+
+Use **lowercase snake_case** for location keys (e.g., `"black_pearl"`, `"captains_cabin"`). These are internal IDs used in exits, NPC locations, and game state. The `"name"` field is for display text and can use any formatting (e.g., `"Black Pearl"`, `"Captain's Cabin"`).
+
+```json
+"locations": {
+  "black_pearl": {
+    "name": "Black Pearl",
+    "exits": {
+      "cabin door": "captains_cabin",
+      "west": "tortuga"
+    }
+  },
+  "captains_cabin": {
+    "name": "Captain's Cabin",
+    "exits": {
+      "cabin door": "black_pearl"
+    }
+  }
+}
+```
+
+### Location Fields
 
 - **exits**: Available movement options (direction: destination)
 - **blocked_exits**: Inaccessible exits with explanation why

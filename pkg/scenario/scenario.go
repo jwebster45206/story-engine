@@ -1,5 +1,7 @@
 package scenario
 
+import "strings"
+
 // NPC represents a non-player character in the game
 type NPC struct {
 	Name        string   `json:"name"`
@@ -17,6 +19,7 @@ type Scenario struct {
 	FileName         string              `json:"file_name,omitempty"`         // Name of the file containing the scenario
 	Story            string              `json:"story,omitempty"`             // Brief description of the scenario
 	Rating           string              `json:"rating,omitempty"`            // Content rating of the scenario
+	NarratorID       string              `json:"narrator_id,omitempty"`       // Default narrator for this scenario
 	Locations        map[string]Location `json:"locations,omitempty"`         // Map of location names to Location objects
 	Inventory        []string            `json:"inventory,omitempty"`         // Potential inventory items throughout the scenario
 	NPCs             map[string]NPC      `json:"npcs,omitempty"`              // Map of NPC names to their data
@@ -46,4 +49,24 @@ func (s *Scenario) HasScene(sceneName string) bool {
 	}
 	_, exists := s.Scenes[sceneName]
 	return exists
+}
+
+// GetLocation searches for a location by either its key (ID) or its display name
+// Returns the location key if found, and a boolean indicating success
+func (s *Scenario) GetLocation(keyOrName string) (string, bool) {
+	keyOrName = strings.ToLower(strings.TrimSpace(keyOrName))
+	if keyOrName == "" {
+		return "", false
+	}
+	// match exact key
+	if _, exists := s.Locations[keyOrName]; exists {
+		return keyOrName, true
+	}
+	// location name match
+	for key, loc := range s.Locations {
+		if strings.ToLower(loc.Name) == keyOrName {
+			return key, true
+		}
+	}
+	return "", false
 }

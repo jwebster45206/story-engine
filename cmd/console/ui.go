@@ -394,7 +394,12 @@ func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollin
 		content.WriteString(gs.SceneName + "\n")
 	}
 	content.WriteString(metaStyle.Render("Location: "))
-	content.WriteString(gs.Location + "\n")
+	// Display location name instead of key
+	if loc, ok := gs.WorldLocations[gs.Location]; ok && loc.Name != "" {
+		content.WriteString(loc.Name + "\n")
+	} else {
+		content.WriteString(gs.Location + "\n")
+	}
 	content.WriteString(metaStyle.Render("Turn: "))
 	content.WriteString(fmt.Sprintf("%d", gs.TurnCounter) + "\n\n")
 
