@@ -81,8 +81,6 @@ Locations define the game world geography:
 
 Use **lowercase snake_case** for location keys (e.g., `"black_pearl"`, `"captains_cabin"`). These are internal IDs used in exits, NPC locations, and game state. The `"name"` field is for display text and can use any formatting (e.g., `"Black Pearl"`, `"Captain's Cabin"`).
 
-The game engine handles both formats when the LLM outputs location changes.
-
 ```json
 "locations": {
   "black_pearl": {

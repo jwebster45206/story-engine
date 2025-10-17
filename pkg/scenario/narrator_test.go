@@ -89,7 +89,9 @@ func TestLoadNarrator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get working directory: %v", err)
 	}
-	defer os.Chdir(origDir)
+	defer func() {
+		_ = os.Chdir(origDir)
+	}()
 
 	// Change to temp directory
 	if err := os.Chdir(tempDir); err != nil {
@@ -175,7 +177,9 @@ func TestListNarrators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get working directory: %v", err)
 	}
-	defer os.Chdir(origDir)
+	defer func() {
+		_ = os.Chdir(origDir)
+	}()
 
 	// Change to temp directory
 	if err := os.Chdir(tempDir); err != nil {
