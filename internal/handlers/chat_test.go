@@ -414,7 +414,7 @@ func TestApplyMetaUpdate(t *testing.T) {
 	}
 
 	// Use DeltaWorker to apply delta
-	worker := state.NewDeltaWorker(gs, meta, s)
+	worker := state.NewDeltaWorker(gs, meta, s, nil)
 	worker.ApplyVars()
 	worker.ApplyConditionalOverrides()
 	err := worker.Apply()

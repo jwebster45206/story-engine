@@ -4,7 +4,7 @@
   "seed_game_state": {
     "scenario": "pirate.json",
     "scene_name": "shipwright",
-    "user_location": "Tortuga",
+    "user_location": "tortuga",
     "turn_counter": 1,
     "scene_turn_counter": 1,
     "user_inventory": [
@@ -24,7 +24,7 @@
       "name": "Move to Black Pearl",
       "user_prompt": "I board The Black Pearl.",
       "expect": {
-        "user_location": "Black Pearl",
+        "user_location": "black_pearl",
         "turn_counter": 2
       }
     },
@@ -32,7 +32,7 @@
       "name": "Go to Captain's Cabin",
       "user_prompt": "I go through the cabin door.",
       "expect": {
-        "user_location": "Captain's Cabin",
+        "user_location": "captains_cabin",
         "turn_counter": 3
       }
     },
@@ -40,7 +40,7 @@
       "name": "Return to deck",
       "user_prompt": "I go back through the cabin door.",
       "expect": {
-        "user_location": "Black Pearl",
+        "user_location": "black_pearl",
         "turn_counter": 4
       }
     }

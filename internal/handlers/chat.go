@@ -602,7 +602,7 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 	}
 
 	// Use DeltaWorker to handle all delta application logic
-	worker := state.NewDeltaWorker(latestGS, delta, s)
+	worker := state.NewDeltaWorker(latestGS, delta, s, h.logger)
 
 	// Apply vars first (before evaluating conditionals)
 	worker.ApplyVars()

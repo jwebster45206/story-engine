@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/jwebster45206/story-engine/pkg/scenario"
@@ -28,14 +29,16 @@ type DeltaWorker struct {
 	gs       *GameState
 	delta    *GameStateDelta
 	scenario *scenario.Scenario
+	logger   *slog.Logger
 }
 
 // NewDeltaWorker creates a new delta worker for applying state changes
-func NewDeltaWorker(gs *GameState, delta *GameStateDelta, scen *scenario.Scenario) *DeltaWorker {
+func NewDeltaWorker(gs *GameState, delta *GameStateDelta, scen *scenario.Scenario, logger *slog.Logger) *DeltaWorker {
 	return &DeltaWorker{
 		gs:       gs,
 		delta:    delta,
 		scenario: scen,
+		logger:   logger,
 	}
 }
 
@@ -127,25 +130,23 @@ func (dw *DeltaWorker) Apply() error {
 	}
 
 	// Handle location change
-	userLocationFound := false
 	if dw.delta.UserLocation != "" {
-		// Look for a location with this name in the game state
-		for _, loc := range dw.gs.WorldLocations {
-			if loc.Name == dw.delta.UserLocation {
-				dw.gs.Location = loc.Name
-				userLocationFound = true
-				break
-			}
-		}
-		// If not found, do a best-effort match for world location
-		// names as substrings of the user location
-		if !userLocationFound {
-			for _, loc := range dw.gs.WorldLocations {
-				if strings.Contains(strings.ToLower(dw.delta.UserLocation), strings.ToLower(loc.Name)) {
-					dw.gs.Location = loc.Name
-					break
+		// Use GetLocation to handle both location keys (IDs) and display names
+		if locationKey, found := dw.scenario.GetLocation(dw.delta.UserLocation); found {
+			// Update to the location key (ID), not the display name
+			if dw.gs.Location != locationKey {
+				if dw.logger != nil {
+					dw.logger.Info("Location changed",
+						"from", dw.gs.Location,
+						"to", locationKey,
+						"input", dw.delta.UserLocation)
 				}
 			}
+			dw.gs.Location = locationKey
+		} else {
+			dw.logger.Warn("Could not find location",
+				"input", dw.delta.UserLocation,
+				"current", dw.gs.Location)
 		}
 	}
 

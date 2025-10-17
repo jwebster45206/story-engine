@@ -4,36 +4,36 @@
   "rating": "PG-13",
   "narrator_id": "vincent_price",
   "locations": {
-    "Tortuga": {
+    "tortuga": {
       "name": "Tortuga",
       "description": "A bustling pirate port filled with taverns, traders, and trouble.",
       "exits": {
-        "east": "Black Pearl",
-        "south": "Sleepy Mermaid",
-        "west": "Tortuga Market"
+        "east": "black_pearl",
+        "south": "sleepy_mermaid",
+        "west": "tortuga_market"
       },
       "blocked_exits": {
         "north": "Lots of British soldiers in northern docks."
       }
     },
-    "Black Pearl": {
+    "black_pearl": {
       "name": "Black Pearl",
       "description": "The player's ship, moored at the docks, ready for the next voyage. ",
       "exits": {
-        "west": "Tortuga",
-        "cabin door": "Captain's Cabin",
-        "open sea": "Open Sea"
+        "west": "tortuga",
+        "cabin door": "captains_cabin",
+        "open sea": "open_sea"
       },
       "items": [
         "ship repair ledger",
         "billy the parrot"
       ]
     },
-    "Captain's Cabin": {
+    "captains_cabin": {
       "name": "Captain's Cabin",
       "description": "The player's personal quarters on the ship, filled with maps and treasures.",
       "exits": {
-        "cabin door": "Black Pearl"
+        "cabin door": "black_pearl"
       },
       "items": [
         "bag of pieces of eight",
@@ -42,27 +42,27 @@
         "letter from Calypso"
       ]
     },
-    "Sleepy Mermaid": {
+    "sleepy_mermaid": {
       "name": "Sleepy Mermaid",
       "description": "A rowdy inn filled with pirates and rumors of treasure. Calypso serves drinks and shares tales of the sea. The shipwright sits at a corner table, sketching designs for ship repairs and scowling. ",
       "exits": {
-        "north": "Tortuga",
-        "back door": "Tortuga Market"
+        "north": "tortuga",
+        "back door": "tortuga_market"
       }
     },
-    "Tortuga Market": {
+    "tortuga_market": {
       "name": "Tortuga Market",
       "description": "A bustling market filled with merchants, pirates, and rare goods. The air is thick with the scent of spices and the sound of haggling.",
       "exits": {
-        "main street": "Tortuga",
-        "Sleepy Mermaid back door": "Sleepy Mermaid"
+        "main street": "tortuga",
+        "Sleepy Mermaid back door": "sleepy_mermaid"
       },
       "items": [
         "forged documents",
         "rare spices"
       ]
     },
-    "Open Sea": {
+    "open_sea": {
       "name": "Open Sea",
       "description": "The vast and treacherous waters of the Caribbean, certain death for an unrepaired ship.",
       "blocked_exits": {
@@ -77,7 +77,7 @@
       "disposition": "loyal",
       "description": "The player's loyal first mate with a keen sense of duty.",
       "important": true,
-      "location": "Black Pearl",
+      "location": "black_pearl",
       "items": []
     },
     "Calypso": {
@@ -86,7 +86,7 @@
       "disposition": "friendly but mysterious",
       "description": "A bartender at the Sleepy Mermaid, known for her enchanting stories and elusive nature. Speaks with a Haitian accent.",
       "important": true,
-      "location": "Sleepy Mermaid",
+      "location": "sleepy_mermaid",
       "items": [
         "flagon of ale",
         "deck of cards"
@@ -98,7 +98,7 @@
       "disposition": "shrewd and cunning",
       "description": "A merchant who deals in common items necessary for life at sea. Unpleasant smell and unpleasant demeanor, but has what the player needs. He owes a debt to the player, but is loath to repay it. With some persuasion, he will eventually give any of his wares to the player.",
       "important": false,
-      "location": "Tortuga Market",
+      "location": "tortuga_market",
       "items": [
         "forged documents",
         "rare spices",
@@ -113,7 +113,7 @@
       "disposition": "gruff but helpful",
       "description": "A burly shipwright who will repair the player's ship. He requires a ship repair ledger to begin the work, and a payment of 500 gold doubloons to complete the repairs.",
       "important": true,
-      "location": "Sleepy Mermaid",
+      "location": "sleepy_mermaid",
       "items": []
     }
   },
@@ -153,21 +153,21 @@
     "british_docks": {
       "story": "The player needs gold to pay the shipwright. The British Docks hold a chest of gold doubloons, but it's heavily guarded territory. The player will need to use cunning and disguise to steal the treasure.",
       "locations": {
-        "Tortuga": {
+        "tortuga": {
           "name": "Tortuga",
           "description": "A bustling pirate port filled with taverns, traders, and trouble.",
           "exits": {
-            "east": "Black Pearl",
-            "south": "Sleepy Mermaid",
-            "north": "British Docks",
-            "west": "Tortuga Market"
+            "east": "black_pearl",
+            "south": "sleepy_mermaid",
+            "north": "british_docks",
+            "west": "tortuga_market"
           }
         },
-        "British Docks": {
+        "british_docks": {
           "name": "British Docks",
           "description": "A heavily guarded area where British ships are docked.",
           "exits": {
-            "south": "Tortuga"
+            "south": "tortuga"
           },
           "items": [
             "wanted poster with a handsome scoundrel's face",
@@ -175,12 +175,12 @@
             "british naval uniform"
           ]
         },
-        "Sleepy Mermaid": {
+        "sleepy_mermaid": {
           "name": "Sleepy Mermaid",
           "description": "A rowdy inn, empty but for a few patrons. Calypso is trying to close up for the night.",
           "exits": {
-            "north": "Tortuga",
-            "back door": "Tortuga Market"
+            "north": "tortuga",
+            "back door": "tortuga_market"
           }
         }
       },
@@ -191,7 +191,7 @@
           "disposition": "friendly",
           "description": "A grizzled old pirate with a wooden leg. Fellow captain and sometimes ally.",
           "important": false,
-          "location": "Tortuga Market",
+          "location": "tortuga_market",
           "items": []
         }
       },
@@ -227,24 +227,24 @@
     "calypsos_map": {
       "story": "With gold in hand, the player can pay the shipwright. But Calypso has something special for the player - a treasure map that will lead to even greater riches. The player must complete their business and claim the map. The hour is late, and the streets are quiet.",
       "locations": {
-        "Tortuga": {
+        "tortuga": {
           "name": "Tortuga",
           "description": "A bustling pirate port, closed down for the night. Shadows flicker in the alleys. ",
           "exits": {
-            "east": "Black Pearl",
-            "south": "Sleepy Mermaid"
+            "east": "black_pearl",
+            "south": "sleepy_mermaid"
           },
           "blocked_exits": {
             "north": "Nothing useful for pirates in the British Docks.",
             "west": "Tortuga Market, closed"
           }
         },
-        "Sleepy Mermaid": {
+        "sleepy_mermaid": {
           "name": "Sleepy Mermaid",
           "description": "A rowdy inn, empty but for a few patrons. Calypso is trying to close up for the night.",
           "exits": {
-            "north": "Tortuga",
-            "back door": "Tortuga Market"
+            "north": "tortuga",
+            "back door": "tortuga_market"
           }
         }
       },
@@ -255,7 +255,7 @@
           "disposition": "teasing and tricky",
           "description": "A bartender at the Sleepy Mermaid, known for her enchanting stories and elusive nature. She has a special treasure map for the player.",
           "important": true,
-          "location": "Sleepy Mermaid",
+          "location": "sleepy_mermaid",
           "items": [
             "treasure map",
             "flagon of ale",
@@ -290,7 +290,7 @@
   },
   "opening_scene": "shipwright",
   "opening_prompt": "You are the captain of The Black Pearl, one of the most feared pirate ships in the Caribbean. \n\nYou stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your ship needs repairs before you can set sail again. What will you do next?",
-  "opening_location": "Tortuga",
+  "opening_location": "tortuga",
   "opening_inventory": [
     "cutlass",
     "spyglass",

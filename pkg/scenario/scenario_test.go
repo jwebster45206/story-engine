@@ -369,3 +369,202 @@ func TestStoryEvent_MarshalUnmarshal(t *testing.T) {
 		t.Errorf("Location: expected %q, got %q", original.When.Location, restored.When.Location)
 	}
 }
+
+func TestGetLocation(t *testing.T) {
+	// Create a test scenario with various locations
+	scenario := &Scenario{
+		Locations: map[string]Location{
+			"black_pearl": {
+				Name:        "Black Pearl",
+				Description: "A legendary pirate ship",
+			},
+			"captains_cabin": {
+				Name:        "Captain's Cabin",
+				Description: "The captain's private quarters",
+			},
+			"sleepy_mermaid": {
+				Name:        "Sleepy Mermaid",
+				Description: "A rowdy pirate tavern",
+			},
+			"tortuga_market": {
+				Name:        "Tortuga Market",
+				Description: "A bustling marketplace",
+			},
+		},
+	}
+
+	tests := []struct {
+		name       string
+		input      string
+		expectKey  string
+		expectFind bool
+	}{
+		// Exact key matches (case-insensitive)
+		{
+			name:       "exact key match - black_pearl",
+			input:      "black_pearl",
+			expectKey:  "black_pearl",
+			expectFind: true,
+		},
+		{
+			name:       "exact key match - sleepy_mermaid",
+			input:      "sleepy_mermaid",
+			expectKey:  "sleepy_mermaid",
+			expectFind: true,
+		},
+
+		// Case variations of keys
+		{
+			name:       "case insensitive key - Black_Pearl",
+			input:      "Black_Pearl",
+			expectKey:  "black_pearl",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive key - SLEEPY_MERMAID",
+			input:      "SLEEPY_MERMAID",
+			expectKey:  "sleepy_mermaid",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive key - Captains_Cabin",
+			input:      "Captains_Cabin",
+			expectKey:  "captains_cabin",
+			expectFind: true,
+		},
+
+		// Name matches (case-insensitive)
+		{
+			name:       "name match - Black Pearl",
+			input:      "Black Pearl",
+			expectKey:  "black_pearl",
+			expectFind: true,
+		},
+		{
+			name:       "name match - Captain's Cabin",
+			input:      "Captain's Cabin",
+			expectKey:  "captains_cabin",
+			expectFind: true,
+		},
+		{
+			name:       "name match - Sleepy Mermaid",
+			input:      "Sleepy Mermaid",
+			expectKey:  "sleepy_mermaid",
+			expectFind: true,
+		},
+
+		// Case variations of names
+		{
+			name:       "case insensitive name - black pearl",
+			input:      "black pearl",
+			expectKey:  "black_pearl",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive name - BLACK PEARL",
+			input:      "BLACK PEARL",
+			expectKey:  "black_pearl",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive name - captain's cabin",
+			input:      "captain's cabin",
+			expectKey:  "captains_cabin",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive name - sleepy mermaid",
+			input:      "sleepy mermaid",
+			expectKey:  "sleepy_mermaid",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive name - TORTUGA MARKET",
+			input:      "TORTUGA MARKET",
+			expectKey:  "tortuga_market",
+			expectFind: true,
+		},
+
+		// Whitespace handling
+		{
+			name:       "trimmed input - spaces around key",
+			input:      "  black_pearl  ",
+			expectKey:  "black_pearl",
+			expectFind: true,
+		},
+		{
+			name:       "trimmed input - spaces around name",
+			input:      "  Black Pearl  ",
+			expectKey:  "black_pearl",
+			expectFind: true,
+		},
+
+		// Not found cases
+		{
+			name:       "not found - non-existent location",
+			input:      "british_docks",
+			expectKey:  "",
+			expectFind: false,
+		},
+		{
+			name:       "not found - partial match shouldn't work",
+			input:      "Pearl",
+			expectKey:  "",
+			expectFind: false,
+		},
+		{
+			name:       "not found - empty string",
+			input:      "",
+			expectKey:  "",
+			expectFind: false,
+		},
+		{
+			name:       "not found - whitespace only",
+			input:      "   ",
+			expectKey:  "",
+			expectFind: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			key, found := scenario.GetLocation(tt.input)
+
+			if found != tt.expectFind {
+				t.Errorf("Expected found=%v, got found=%v", tt.expectFind, found)
+			}
+
+			if key != tt.expectKey {
+				t.Errorf("Expected key=%q, got key=%q", tt.expectKey, key)
+			}
+		})
+	}
+}
+
+func TestGetLocation_EmptyScenario(t *testing.T) {
+	scenario := &Scenario{
+		Locations: map[string]Location{},
+	}
+
+	key, found := scenario.GetLocation("anywhere")
+	if found {
+		t.Errorf("Expected not to find location in empty scenario, but found key=%q", key)
+	}
+	if key != "" {
+		t.Errorf("Expected empty key when not found, got %q", key)
+	}
+}
+
+func TestGetLocation_NilLocations(t *testing.T) {
+	scenario := &Scenario{
+		Locations: nil,
+	}
+
+	key, found := scenario.GetLocation("anywhere")
+	if found {
+		t.Errorf("Expected not to find location with nil map, but found key=%q", key)
+	}
+	if key != "" {
+		t.Errorf("Expected empty key when not found, got %q", key)
+	}
+}
