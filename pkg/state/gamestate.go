@@ -154,8 +154,11 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 	systemPrompt := scenario.BuildSystemPrompt(narrator)
 
 	// Add rating prompt
-	systemPrompt += "\n\nContent Rating: " + s.Rating + " - "
-	systemPrompt += scenario.GetContentRatingPrompt(s.Rating)
+	systemPrompt += "\n\nContent Rating: " + s.Rating
+	ratingPrompt := scenario.GetContentRatingPrompt(s.Rating)
+	if ratingPrompt != "" {
+		systemPrompt += " (" + ratingPrompt + ")"
+	}
 
 	// Add state context
 	systemPrompt += "\n\n" + statePrompt.Content
