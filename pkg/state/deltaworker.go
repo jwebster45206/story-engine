@@ -121,6 +121,9 @@ func (dw *DeltaWorker) Apply() error {
 
 	// Handle scene change
 	if dw.delta.SceneChange != nil && dw.delta.SceneChange.To != "" &&
+		// TODO: Add scene key/name disambiguation similar to locations
+		// Scenes should have snake_case keys (e.g., "shipwright") and display names (e.g., "The Shipwright")
+		// Use GetScene(keyOrName) helper to resolve both formats
 		dw.delta.SceneChange.To != dw.gs.SceneName && dw.scenario.HasScene(dw.delta.SceneChange.To) {
 		err := dw.gs.LoadScene(dw.scenario, dw.delta.SceneChange.To)
 		if err != nil {
@@ -131,7 +134,6 @@ func (dw *DeltaWorker) Apply() error {
 
 	// Handle location change
 	if dw.delta.UserLocation != "" {
-		// Use GetLocation to handle both location keys (IDs) and display names
 		if locationKey, found := dw.scenario.GetLocation(dw.delta.UserLocation); found {
 			// Update to the location key (ID), not the display name
 			if dw.gs.Location != locationKey {
@@ -151,6 +153,10 @@ func (dw *DeltaWorker) Apply() error {
 	}
 
 	// Handle item events
+	// TODO: Add item key/name disambiguation for all item operations
+	// Items should have snake_case keys (e.g., "skeleton_key") and display names (e.g., "Skeleton Key")
+	// Affects: AcquireItem, DropItem, GiveItem, MoveItem, UseItem
+	// Consider adding GetItem(keyOrName) helper to resolve both formats
 	for _, itemEvent := range dw.delta.ItemEvents {
 		switch itemEvent.Action {
 		case "acquire":
@@ -165,6 +171,10 @@ func (dw *DeltaWorker) Apply() error {
 			dw.handleUseItem(itemEvent)
 		}
 	}
+
+	// TODO: Add support for stateful NPCs/actors
+	// NPCs should have snake_case keys (e.g., "captain_blackbeard") and display names (e.g., "Captain Blackbeard")
+	// Consider adding GetNPC(keyOrName) helper for GiveItem target resolution
 
 	// Handle Game End
 	if dw.delta.GameEnded != nil && *dw.delta.GameEnded {
