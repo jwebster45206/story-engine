@@ -58,11 +58,6 @@ func (s *Scenario) EvaluateStoryEvents(gsView conditionals.GameStateView) map[st
 	return triggered
 }
 
-// evaluateWhen is now a wrapper for conditionals.EvaluateWhen for backward compatibility
-func evaluateWhen(when conditionals.ConditionalWhen, gsView conditionals.GameStateView) bool {
-	return conditionals.EvaluateWhen(when, gsView)
-}
-
 // FilterContingencyPrompts returns only the prompts whose conditions are met
 // Prompts without conditions (When == nil) are always included
 func FilterContingencyPrompts(prompts []conditionals.ContingencyPrompt, gsView conditionals.GameStateView) []string {
