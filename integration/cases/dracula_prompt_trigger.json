@@ -4,7 +4,7 @@
   "scenario": "dracula.json",
   "seed_game_state": {
     "scene_name": "arrival",
-    "user_location": "Library",
+    "user_location": "library",
     "turn_counter": 2,
     "scene_turn_counter": 2,
     "user_inventory": [
@@ -37,7 +37,7 @@
       "user_prompt": "I carefully open the ancient grimoire and begin reading its forbidden knowledge.",
       "expect": {
         "scene_name": "arrival",
-        "user_location": "Library",
+        "user_location": "library",
         "vars": {
           "opened_grimoire": "true"
         },
@@ -52,7 +52,7 @@
       "user_prompt": "I read eagerly, absorbing the dark secrets within, ignoring all danger.",
       "expect": {
         "scene_name": "arrival",
-        "user_location": "Library",
+        "user_location": "library",
         "vars": {
           "opened_grimoire": "true",
           "dracula_appeared": "true"

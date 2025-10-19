@@ -4,7 +4,7 @@
   "scenario": "dracula.json",
   "seed_game_state": {
     "scene_name": "arrival",
-    "user_location": "Library",
+    "user_location": "library",
     "turn_counter": 2,
     "scene_turn_counter": 2,
     "user_inventory": [
@@ -37,7 +37,7 @@
       "user_prompt": "I browse through the other tomes on the shelves.",
       "expect": {
         "scene_name": "arrival",
-        "user_location": "Library",
+        "user_location": "library",
         "scene_turn_counter": 3,
         "turn_counter": 3
       }
@@ -47,7 +47,7 @@
       "user_prompt": "I continue examining the ancient books.",
       "expect": {
         "scene_name": "arrival",
-        "user_location": "Library",
+        "user_location": "library",
         "scene_turn_counter": 4,
         "turn_counter": 4,
         "response_contains": [

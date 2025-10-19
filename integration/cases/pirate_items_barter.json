@@ -4,7 +4,7 @@
   "seed_game_state": {
     "scenario": "pirate.json",
     "scene_name": "shipwright",
-    "user_location": "Tortuga Market",
+    "user_location": "tortuga_market",
     "turn_counter": 2,
     "scene_turn_counter": 1,
     "user_inventory": [],

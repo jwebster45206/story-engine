@@ -4,7 +4,7 @@
   "scenario": "dracula.json",
   "seed_game_state": {
     "scene_name": "arrival",
-    "user_location": "Castle Gates",
+    "user_location": "castle_gates",
     "turn_counter": 2,
     "scene_turn_counter": 2,
     "user_inventory": [
@@ -37,7 +37,7 @@
       "user_prompt": "I pause to strike a dramatic pose.",
       "expect": {
         "scene_name": "arrival",
-        "user_location": "Castle Gates",
+        "user_location": "castle_gates",
         "scene_turn_counter": 3,
         "turn_counter": 3,
         "response_contains": [
@@ -50,7 +50,7 @@
       "user_prompt": "I observe the wolves carefully, looking for any weakness.",
       "expect": {
         "scene_name": "arrival",
-        "user_location": "Castle Gates",
+        "user_location": "castle_gates",
         "scene_turn_counter": 4,
         "turn_counter": 4,
         "response_contains": [
@@ -63,7 +63,7 @@
       "user_prompt": "I carefully move north into the Grand Foyer, away from the wolves.",
       "expect": {
         "scene_name": "arrival",
-        "user_location": "Grand Foyer",
+        "user_location": "grand_foyer",
         "scene_turn_counter": 5,
         "turn_counter": 5
       }

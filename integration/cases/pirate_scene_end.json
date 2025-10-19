@@ -3,7 +3,7 @@
   "scenario": "pirate.json",
   "seed_game_state": {
     "scene_name": "calypsos_map",
-    "user_location": "Black Pearl",
+    "user_location": "black_pearl",
     "turn_counter": 22,
     "scene_turn_counter": 4,
     "user_inventory": [

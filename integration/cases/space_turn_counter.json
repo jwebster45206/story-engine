@@ -4,7 +4,7 @@
   "seed_game_state": {
     "scenario": "space-disaster.json",
     "scene_name": "turn_counter",
-    "user_location": "Engineering Bay",
+    "user_location": "engineering_bay",
     "turn_counter": 3,
     "scene_turn_counter": 1,
     "user_inventory": [],

@@ -4,7 +4,7 @@
   "seed_game_state": {
     "scenario": "pirate.json",
     "scene_name": "shipwright",
-    "user_location": "Sleepy Mermaid",
+    "user_location": "sleepy_mermaid",
     "turn_counter": 3,
     "scene_turn_counter": 2,
     "user_inventory": ["ship repair ledger"],

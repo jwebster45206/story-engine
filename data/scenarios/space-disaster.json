@@ -3,7 +3,7 @@
   "story": "You are the chief engineer aboard a failing space station. Critical systems are malfunctioning and you must work quickly to save the crew.",
   "rating": "G",
   "locations": {
-    "Engineering Bay": {
+    "engineering_bay": {
       "name": "Engineering Bay",
       "description": "The main engineering control center. Warning lights flash across multiple consoles.",
       "exits": {},
@@ -90,7 +90,7 @@
   },
   "opening_scene": "scene_counter",
   "opening_prompt": "Red alert klaxons blare throughout the station. You're the chief engineer, and multiple critical systems have just failed. The crew is depending on you.",
-  "opening_location": "Engineering Bay",
+  "opening_location": "engineering_bay",
   "opening_inventory": [],
   "contingency_prompts": [],
   "contingency_rules": [],
