@@ -1,7 +1,7 @@
 {
   "name": "Story Event Multiple Events Test",
   "description": "Tests that multiple story events can be queued and fired together in the same turn",
-  "scenario": "dracula-story-events.json",
+  "scenario": "dracula.json",
   "seed_game_state": {
     "scene_name": "arrival",
     "user_location": "library",

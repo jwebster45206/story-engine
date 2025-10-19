@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"path/filepath"
@@ -277,14 +278,6 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Add the opening prompt to chat history
-	if s.OpeningPrompt != "" {
-		gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
-			Role:    chat.ChatRoleAgent,
-			Content: s.OpeningPrompt,
-		})
-	}
-
 	// Initialize game state with scenario-level values
 	gs.NPCs = s.NPCs
 	gs.Location = s.OpeningLocation
@@ -330,6 +323,22 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	if loadedPC != nil {
 		gs.PC = loadedPC
 		h.logger.Debug("PC loaded successfully", "pc_id", loadedPC.Spec.ID, "name", loadedPC.Spec.Name, "source", map[bool]string{true: "request", false: "scenario"}[req.PCID != ""])
+	}
+
+	// Add the opening prompt to chat history
+	// If the scenario opening prompt contains %s and PC has an opening_prompt, inject it
+	if s.OpeningPrompt != "" {
+		openingPrompt := s.OpeningPrompt
+
+		// Check if scenario prompt has placeholder and PC has opening prompt
+		if strings.Contains(openingPrompt, "%s") && loadedPC != nil && loadedPC.Spec.OpeningPrompt != "" {
+			openingPrompt = fmt.Sprintf(openingPrompt, loadedPC.Spec.OpeningPrompt)
+		}
+
+		gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
+			Role:    chat.ChatRoleAgent,
+			Content: openingPrompt,
+		})
 	}
 
 	// If scenes are used, load the first scene

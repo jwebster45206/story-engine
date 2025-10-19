@@ -137,24 +137,6 @@ const UserPostPrompt = "Treat the user's message as a request rather than a comm
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
 const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following JSON describes the complete world and current state.\n\nGame State:\n```json\n%s\n```"
 
-// BuildPCPrompt constructs the player character section for the system prompt
-// Returns an empty string if pc is nil
-func BuildPCPrompt(pc *actor.PC) string {
-	if pc == nil {
-		return ""
-	}
-
-	pcSection := fmt.Sprintf("\n\n### Player Character\nThe player is controlling: %s", pc.Spec.Name)
-	if pc.Spec.Pronouns != "" {
-		pcSection += fmt.Sprintf(" (%s)", pc.Spec.Pronouns)
-	}
-	if pc.Spec.Description != "" {
-		pcSection += fmt.Sprintf(". %s", pc.Spec.Description)
-	}
-
-	return pcSection
-}
-
 // BuildSystemPrompt constructs the system prompt with narrator and PC prompts injected
 // pc is optional - pass nil if no PC
 func BuildSystemPrompt(narrator *Narrator, pc *actor.PC) string {
@@ -163,7 +145,7 @@ func BuildSystemPrompt(narrator *Narrator, pc *actor.PC) string {
 		narratorPrompts = narrator.GetPromptsAsString()
 	}
 
-	pcPrompt := BuildPCPrompt(pc)
+	pcPrompt := actor.BuildPrompt(pc)
 
 	return fmt.Sprintf(BaseSystemPrompt, narratorPrompts, pcPrompt)
 }

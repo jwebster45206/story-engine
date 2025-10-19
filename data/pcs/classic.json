@@ -5,6 +5,7 @@
   "race": "human",
   "pronouns": "they/them",
   "description": "A curious wanderer.",
+  "opening_prompt": "You are a wandering adventurer, ready to face whatever mysteries and dangers await. Your journey has just begun.",
   "stats": {
     "strength": 10,
     "dexterity": 10,

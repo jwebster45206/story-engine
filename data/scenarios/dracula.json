@@ -1,9 +1,11 @@
 {
-  "name": "The Curse of Castle Dracula - No Story Event Version",
+  "name": "The Curse of Castle Dracula",
   "story": "The player is a vampire hunter who has infiltrated Count Dracula's castle to destroy the ancient vampire lord once and for all. The castle is filled with dark magic, undead servants, and deadly traps. The player must navigate through the castle's chambers, gather the tools needed to defeat Dracula, and confront the vampire in his lair before dawn breaks and he becomes too powerful to defeat.",
   "rating": "PG-13",
+  "narrator": "vincent_price",
+  "default_pc": "van_helsing",
   "opening_scene": "arrival",
-  "opening_prompt": "You are Van Helsing, a renowned vampire hunter who has spent years tracking Count Dracula to his ancestral castle in the mountains of Transylvania. \n\nThe moon hangs full overhead as you stand before the massive iron gates of Castle Dracula. Your horse whinnies nervously behind you, sensing the evil that permeates this place. You carry a leather satchel containing the basic tools of your trade, but you know you'll need more powerful weapons to face the master of this domain. \n\nThe castle looms before you, its Gothic spires piercing the night sky like dark fangs. Time is against you - you must find and destroy Dracula before the sun rises and he retreats to his hidden sanctum.",
+  "opening_prompt": "The moon hangs full overhead as you stand before the massive iron gates of Castle Dracula.\n\n%s\n\nYour horse whinnies nervously behind you, sensing the evil that permeates this place. The castle looms before you, its Gothic spires piercing the night sky like dark fangs. \n\nTime is against you - you must find and destroy Dracula before the sun rises and he retreats to his hidden sanctum.",
   "opening_location": "castle_gates",
   "opening_inventory": ["wooden stakes", "silver cross", "holy water"],
   
@@ -146,29 +148,39 @@
           "items": ["coil of rope", "rusty bucket"]
         }
       },
-      "contingency_prompts": [
-        {
-          "prompt": "Count Dracula suddenly materializes before you, his crimson eyes blazing with hunger! He hisses: \"You DARE disturb the ancient grimoire? You have awakened me from my slumber, and now I am STARVING!\" The temperature drops precipitously as his dark presence fills the room.",
+      "story_events": {
+        "dracula_materializes": {
           "when": {
             "vars": {
               "opened_grimoire": "true"
             }
-          }
+          },
+          "prompt": "Count Dracula suddenly MATERIALIZES from the shadows before you, his crimson eyes blazing with ancient hunger! He hisses menacingly: \"You DARE disturb the ancient grimoire? You have awakened me from my slumber, and now I am STARVING!\" The temperature drops precipitously as his dark presence fills the room. His fangs glisten in the candlelight."
         },
-        {
-          "prompt": "IMPORTANT: Three massive dire wolves emerge from the darkness beyond the gates, their eyes glowing yellow in the moonlight. They circle you menacingly at the Castle Gates, blocking any retreat from the castle. Their growls are low and threatening - it's clear they serve as Dracula's guardians, preventing anyone from leaving once they've entered his domain. The beasts are supernaturally large, with matted black fur and fangs like daggers.",
-          "when": {
-            "location": "castle_gates",
-            "min_scene_turns": 3
-          }
-        },
-        {
-          "prompt": "A GIGANTIC LIGHTNING BOLT JUST CRASHED DOWN FROM THE HEAVENS, illuminating the entire castle in brilliant white light for a split second. The thunder that follows is deafening, shaking the very stones of the castle. The supernatural energy in the air intensifies - it's as if the storm itself is warning you of the dangers within.",
+        "lightning_strike": {
           "when": {
             "scene_turn_counter": 4
-          }
+          },
+          "prompt": "A MASSIVE LIGHTNING BOLT suddenly CRASHES DOWN from the storm-torn heavens! The brilliant white flash illuminates the entire castle for a split second, revealing twisted shadows in every corner. The THUNDER that follows is absolutely DEAFENING, shaking the very foundation stones of the ancient fortress. The supernatural energy in the air intensifies dramatically - the storm itself seems to be WARNING you of the terrible dangers that lurk within these cursed walls."
+        },
+        "wolves_appear": {
+          "when": {
+            "location": "castle_gates",
+            "min_scene_turns": 5
+          },
+          "prompt": "THREE ENORMOUS DIRE WOLVES suddenly emerge from the darkness beyond the castle gates! Their eyes GLOW with an unnatural yellow light in the moonlight, and they circle you with predatory grace. Their GROWLS are low and threatening, resonating deep in your chest. These beasts are clearly Dracula's guardians - supernaturally large with matted black fur and fangs like DAGGERS. They position themselves to block any retreat, trapping you within the castle grounds."
+        },
+        "bats_swarm": {
+          "when": {
+            "vars": {
+              "opened_grimoire": "true"
+            },
+            "min_scene_turns": 2
+          },
+          "prompt": "A MASSIVE SWARM of vampire bats suddenly ERUPTS from the castle's towers! They fill the night sky like a dark, writhing cloud, their screeching calls echoing off the stone walls. The bats swirl around you in a chaotic vortex before dispersing into the darkness. This is clearly a sign - the castle's master knows you are here."
         }
-      ],
+      },
+      "contingency_prompts": [],
       "contingency_rules": [
         "Reading the vampire lore book adds it to inventory and provides knowledge about Dracula's weaknesses.",
         "When the player collects both the ancient grimoire and vampire lore book, the scene changes to 'preparation'.",

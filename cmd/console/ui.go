@@ -102,6 +102,15 @@ type ConsoleUI struct {
 	loadingScenarios  bool
 	contentRating     string
 
+	// PC selection state
+	showPCModal          bool
+	pcs                  []string
+	pcMap                map[string]string
+	selectedPC           int
+	loadingPCs           bool
+	selectedScenarioFile string
+	defaultPCID          string // Default PC ID from scenario
+
 	// Profanity filter for family-friendly content
 	profanityFilter *textfilter.ProfanityFilter
 
@@ -237,6 +246,12 @@ type scenariosLoadedMsg struct {
 	err         error
 }
 
+type pcsLoadedMsg struct {
+	pcs   []string
+	pcMap map[string]string
+	err   error
+}
+
 type gameStateCreatedMsg struct {
 	gameState *state.GameState
 	err       error
@@ -311,6 +326,29 @@ var (
 
 var separatorStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("240")) // dark grey
+
+// findDefaultPCIndex finds the index of the default PC in the PC list
+// Returns the index if found, or the index of "classic" as fallback, or 0 if neither found
+func (m *ConsoleUI) findDefaultPCIndex() int {
+	// First, try to find the scenario's default PC
+	if m.defaultPCID != "" {
+		for i, pcName := range m.pcs {
+			if pcID := m.pcMap[pcName]; pcID == m.defaultPCID {
+				return i
+			}
+		}
+	}
+
+	// Fallback to "classic" PC
+	for i, pcName := range m.pcs {
+		if pcID := m.pcMap[pcName]; pcID == "classic" {
+			return i
+		}
+	}
+
+	// If neither found, return 0 (first PC)
+	return 0
+}
 
 func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 	ta := textarea.New()
@@ -524,12 +562,17 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateScenarioModal(msg)
 	}
 
-	// Handle quit modal second
+	// Handle PC modal second
+	if m.showPCModal {
+		return m.updatePCModal(msg)
+	}
+
+	// Handle quit modal third
 	if m.showQuitModal {
 		return m.updateQuitModal(msg)
 	}
 
-	// Handle new game modal third
+	// Handle new game modal fourth
 	if m.showNewGameModal {
 		return m.updateNewGameModal(msg)
 	}
@@ -1059,9 +1102,16 @@ func (m ConsoleUI) loadScenarios() tea.Cmd {
 	}
 }
 
-func (m ConsoleUI) createGameStateFromScenario(scenarioFile string) tea.Cmd {
+func (m ConsoleUI) loadPCs() tea.Cmd {
 	return func() tea.Msg {
-		gs, err := createGameState(m.client, m.config.APIBaseURL, scenarioFile)
+		orderedNames, pcMap, err := listPCs(m.client, m.config.APIBaseURL)
+		return pcsLoadedMsg{orderedNames, pcMap, err}
+	}
+}
+
+func (m ConsoleUI) createGameStateFromScenario(scenarioFile string, pcID string) tea.Cmd {
+	return func() tea.Msg {
+		gs, err := createGameState(m.client, m.config.APIBaseURL, scenarioFile, pcID)
 		return gameStateCreatedMsg{gs, err}
 	}
 }
@@ -1144,7 +1194,6 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.scenarios) > 0 {
 				scenarioName := m.scenarios[m.selectedScenario]
 				scenarioFile := m.scenarioMap[scenarioName]
-				m.loading = true
 				// First fetch scenario details to get the content rating
 				s, err := getScenario(m.client, m.config.APIBaseURL, scenarioFile)
 				if err != nil {
@@ -1152,7 +1201,110 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				m.contentRating = s.Rating
-				return m, m.createGameStateFromScenario(scenarioFile)
+				m.selectedScenarioFile = scenarioFile
+				// Store the default PC ID from the scenario
+				m.defaultPCID = s.DefaultPC
+				// Transition to PC selection modal
+				m.showScenarioModal = false
+				m.showPCModal = true
+				m.loadingPCs = true
+				return m, m.loadPCs()
+			}
+		}
+	}
+
+	return m, nil
+}
+
+func (m ConsoleUI) updatePCModal(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+	case pcsLoadedMsg:
+		m.loadingPCs = false
+		if msg.err != nil {
+			m.err = msg.err
+		} else {
+			m.pcs = msg.pcs
+			m.pcMap = msg.pcMap
+			// Auto-select the default PC if available
+			m.selectedPC = m.findDefaultPCIndex()
+		}
+
+	case gameStateCreatedMsg:
+		// Regardless of outcome, we're no longer in the create-game loading phase
+		m.loading = false
+		if msg.err != nil {
+			m.err = msg.err
+		} else {
+			m.gameState = msg.gameState
+			m.showPCModal = false
+			// Set up viewport dimensions now that we have a game state
+			if m.width > 0 && m.height > 0 {
+				chatWidth := int(float64(m.width)*0.75) - 4
+				metaWidth := m.width - chatWidth - 6
+				m.chatViewport.Width = chatWidth - 2
+				m.chatViewport.Height = m.height - 7
+				m.metaViewport.Width = metaWidth - 2
+				m.metaViewport.Height = m.height - 4
+				m.textarea.SetWidth(chatWidth - 4)
+			}
+			// Use display name instead of raw file name
+			m.chatViewport.SetContent(writeInitialContent(m.gameState, m.scenarioDisplayName(), m.chatViewport.Width-6))
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
+			m.textarea.Focus() // Ensure textarea gets focus when modal closes
+			m.ready = true
+		}
+		return m, textarea.Blink // Return focus command
+
+	case tea.KeyMsg:
+		if m.loadingPCs {
+			if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyEsc {
+				return m, tea.Quit
+			}
+			return m, nil
+		}
+
+		if m.err != nil {
+			switch msg.Type {
+			case tea.KeyCtrlC:
+				return m, tea.Quit
+			case tea.KeyEsc:
+				m.showQuitModal = true
+				return m, nil
+			}
+			return m, nil
+		}
+
+		switch msg.Type {
+		case tea.KeyCtrlC:
+			return m, tea.Quit
+		case tea.KeyEsc:
+			// Go back to scenario selection
+			m.showPCModal = false
+			m.showScenarioModal = true
+			m.pcs = nil
+			m.pcMap = nil
+			m.selectedPC = 0
+			m.defaultPCID = ""
+			m.err = nil
+			return m, nil
+		case tea.KeyUp:
+			if m.selectedPC > 0 {
+				m.selectedPC--
+			}
+		case tea.KeyDown:
+			if m.selectedPC < len(m.pcs)-1 {
+				m.selectedPC++
+			}
+		case tea.KeyEnter:
+			if len(m.pcs) > 0 {
+				pcName := m.pcs[m.selectedPC]
+				pcID := m.pcMap[pcName]
+				m.loading = true
+				return m, m.createGameStateFromScenario(m.selectedScenarioFile, pcID)
 			}
 		}
 	}
@@ -1236,6 +1388,15 @@ func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
 	m.scenarios = nil
 	m.scenarioMap = nil
 	m.selectedScenario = 0
+	// Reset PC selection state
+	m.showPCModal = false
+	m.pcs = nil
+	m.pcMap = nil
+	m.selectedPC = 0
+	m.loadingPCs = false
+	m.selectedScenarioFile = ""
+	m.defaultPCID = ""
+	// Reset polling state
 	m.pollSeq = 0
 	m.activePollSeq = 0
 	m.pollInFlight = false
@@ -1328,9 +1489,58 @@ func (m ConsoleUI) renderScenarioModal() string {
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modal, lipgloss.WithWhitespaceChars(" "))
 }
 
+func (m ConsoleUI) renderPCModal() string {
+	if m.width == 0 || m.height == 0 {
+		return "Loading..."
+	}
+
+	var content strings.Builder
+
+	if m.loadingPCs {
+		content.WriteString(modalTitleStyle.Render("Loading Characters..."))
+		content.WriteString("\n\n")
+		content.WriteString(loadingStyle.Render("Please wait while we fetch available characters..."))
+	} else if m.err != nil {
+		content.WriteString(modalTitleStyle.Render("Error"))
+		content.WriteString("\n\n")
+		content.WriteString(errorStyle.Render(fmt.Sprintf("Failed to load characters: %v", m.err)))
+		content.WriteString("\n\n")
+		content.WriteString("Press Ctrl+C to force quit, Esc to go back")
+	} else if m.loading {
+		content.WriteString(modalTitleStyle.Render("Creating Game..."))
+		content.WriteString("\n\n")
+		content.WriteString(loadingStyle.Render("Setting up your adventure..."))
+	} else {
+		content.WriteString(modalTitleStyle.Render("Select Your Character"))
+		content.WriteString("\n\n")
+
+		for i, pc := range m.pcs {
+			if i == m.selectedPC {
+				content.WriteString(modalSelectedItemStyle.Render(fmt.Sprintf("▶ %s", pc)))
+			} else {
+				content.WriteString(modalItemStyle.Render(fmt.Sprintf("  %s", pc)))
+			}
+			content.WriteString("\n")
+		}
+
+		content.WriteString("\n")
+		content.WriteString(promptStyle.Render("Use ↑/↓ to navigate, Enter to select, Esc to go back"))
+	}
+
+	// Create the modal
+	modal := modalStyle.Width(60).Render(content.String())
+
+	// Center the modal
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modal, lipgloss.WithWhitespaceChars(" "))
+}
+
 func (m ConsoleUI) View() string {
 	if m.showScenarioModal {
 		return m.renderScenarioModal()
+	}
+
+	if m.showPCModal {
+		return m.renderPCModal()
 	}
 
 	if m.showQuitModal {

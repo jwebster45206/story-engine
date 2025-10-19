@@ -210,7 +210,7 @@ The `expect` object defines what to validate after a step executes. All checks a
 **✅ DO keep tests immersive and story-only:**
 ```json
 {
-  "scenario": "space-disaster.json",
+  "scenario": "space_disaster.json",
   "chat_history": [
     {
       "role": "assistant",

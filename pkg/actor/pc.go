@@ -42,6 +42,7 @@ type PCSpec struct {
 	Pronouns        string         `json:"pronouns,omitempty"`
 	Description     string         `json:"description,omitempty"`
 	Background      string         `json:"background,omitempty"`
+	OpeningPrompt   string         `json:"opening_prompt,omitempty"` // PC-specific opening text
 	Stats           Stats5e        `json:"stats,omitempty"`
 	HP              int            `json:"hp,omitempty"`     // Current HP (for serialization)
 	MaxHP           int            `json:"max_hp,omitempty"` // Maximum HP
@@ -136,6 +137,7 @@ func (pc *PC) MarshalJSON() ([]byte, error) {
 		Pronouns        string         `json:"pronouns,omitempty"`
 		Description     string         `json:"description,omitempty"`
 		Background      string         `json:"background,omitempty"`
+		OpeningPrompt   string         `json:"opening_prompt,omitempty"`
 		Stats           Stats5e        `json:"stats"`
 		HP              int            `json:"hp"`
 		MaxHP           int            `json:"max_hp"`
@@ -147,15 +149,16 @@ func (pc *PC) MarshalJSON() ([]byte, error) {
 
 	// Start with static fields from spec
 	resp := PCResponse{
-		ID:          pc.Spec.ID,
-		Name:        pc.Spec.Name,
-		Class:       pc.Spec.Class,
-		Level:       pc.Spec.Level,
-		Race:        pc.Spec.Race,
-		Pronouns:    pc.Spec.Pronouns,
-		Description: pc.Spec.Description,
-		Background:  pc.Spec.Background,
-		Inventory:   pc.Spec.Inventory,
+		ID:            pc.Spec.ID,
+		Name:          pc.Spec.Name,
+		Class:         pc.Spec.Class,
+		Level:         pc.Spec.Level,
+		Race:          pc.Spec.Race,
+		Pronouns:      pc.Spec.Pronouns,
+		Description:   pc.Spec.Description,
+		Background:    pc.Spec.Background,
+		OpeningPrompt: pc.Spec.OpeningPrompt,
+		Inventory:     pc.Spec.Inventory,
 	}
 
 	// Get current HP state from Actor
@@ -230,4 +233,22 @@ func (pc *PC) UnmarshalJSON(data []byte) error {
 
 	pc.Actor = actor
 	return nil
+}
+
+// BuildPrompt constructs the player character section for the system prompt
+// Returns an empty string if pc is nil
+func BuildPrompt(pc *PC) string {
+	if pc == nil {
+		return ""
+	}
+
+	pcSection := fmt.Sprintf("\n\n### Player Character\nThe player is controlling: %s", pc.Spec.Name)
+	if pc.Spec.Pronouns != "" {
+		pcSection += fmt.Sprintf(" (%s)", pc.Spec.Pronouns)
+	}
+	if pc.Spec.Description != "" {
+		pcSection += fmt.Sprintf(". %s", pc.Spec.Description)
+	}
+
+	return pcSection
 }

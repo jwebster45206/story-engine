@@ -1,8 +1,8 @@
 {
   "name": "Space Disaster - Exact Turn Counter Test",
-  "scenario": "space-disaster.json",
+  "scenario": "space_disaster.json",
   "seed_game_state": {
-    "scenario": "space-disaster.json",
+    "scenario": "space_disaster.json",
     "scene_name": "turn_counter",
     "user_location": "engineering_bay",
     "turn_counter": 3,

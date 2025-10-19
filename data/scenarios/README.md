@@ -904,3 +904,5 @@ Any scene-scoped contingency rules and prompts *augment* the scenario. That is, 
 7. Game end prompt evaluates player performance
 
 Remember: The goal is creating an engaging, entertaining narrative where player choices matter and the world responds dynamically to their actions.
+
+**Filenames** Filenames must be lowercase and snake_case, alphanumeric only, and may not begin with a number.

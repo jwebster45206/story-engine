@@ -7,6 +7,7 @@
   "pronouns": "she/her",
   "description": "A sharp-minded investigator with a keen eye for detail and an insatiable curiosity. Logical, methodical, and relentless in pursuit of the truth.",
   "background": "Alexandra Kane grew up in the bustling streets of Boston, the daughter of a police detective. She learned early that the world is full of secrets, and some of them are worth dying for. After earning her degree in criminology, she worked briefly with the Boston PD before going private. Now she takes on cases that others won't touch—the strange ones, the impossible ones, the cases that make people whisper about things that shouldn't exist. She's seen enough to know that the world is far stranger than most people believe, but she's determined to find rational explanations, even when the evidence suggests otherwise.",
+  "opening_prompt": "You are Dr. Alexandra Kane, a renowned archaeologist and investigator. Your sharp mind and keen observations have solved mysteries that baffled others. You approach every discovery with scientific rigor, yet you've learned that some truths challenge everything you thought you knew about the world.",
   "stats": {
     "strength": 10,
     "dexterity": 13,

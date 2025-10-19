@@ -1,0 +1,37 @@
+{
+  "id": "van_helsing",
+  "name": "Van Helsing",
+  "class": "Undead Hunter",
+  "level": 8,
+  "race": "Human",
+  "pronouns": "he/him",
+  "description": "A renowned vampire hunter and occult scholar who has devoted his life to destroying supernatural evil.",
+  "background": "Professor Abraham Van Helsing spent decades studying ancient texts and folklore, piecing together the truth about vampires and other supernatural threats. His academic pursuits became personal when his own family fell victim to Dracula's curse. Since then, he has traveled across Europe, hunting the undead with a combination of scholarly knowledge and hard-won combat experience. He carries a leather journal filled with notes on vampire weaknesses, blessed rituals, and the locations of various supernatural threats. Van Helsing approaches each hunt with meticulous preparation, knowing that a single mistake against an ancient vampire could mean death. His reputation precedes him - both the desperate who seek his help and the creatures he hunts know his name well.",
+  "opening_prompt": "You are Van Helsing, a renowned vampire hunter who has spent years tracking Count Dracula across Europe. Your expertise in the occult and supernatural is unmatched, and you carry with you the knowledge of ancient rituals and the weaknesses of the undead. Many have fallen to Dracula's curse, but you have vowed to end his reign of terror once and for all. Your silver-tipped stakes and blessed weapons have destroyed countless lesser vampires, and now you face your greatest challenge - the master vampire himself.",
+  "stats": {
+    "strength": 14,
+    "dexterity": 13,
+    "constitution": 15,
+    "intelligence": 17,
+    "wisdom": 16,
+    "charisma": 12
+  },
+  "hp": 52,
+  "max_hp": 52,
+  "ac": 14,
+  "combat_modifiers": {
+    "strength": 2,
+    "proficiency": 3
+  },
+  "attributes": {
+    "religion": 9,
+    "arcana": 9,
+    "history": 6,
+    "medicine": 9,
+    "investigation": 9,
+    "perception": 6,
+    "insight": 6,
+    "survival": 6
+  },
+  "inventory": ["wooden stakes", "silver cross", "holy water"]
+}
