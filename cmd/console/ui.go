@@ -109,6 +109,7 @@ type ConsoleUI struct {
 	selectedPC           int
 	loadingPCs           bool
 	selectedScenarioFile string
+	defaultPCID          string // Default PC ID from scenario
 
 	// Profanity filter for family-friendly content
 	profanityFilter *textfilter.ProfanityFilter
@@ -325,6 +326,29 @@ var (
 
 var separatorStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("240")) // dark grey
+
+// findDefaultPCIndex finds the index of the default PC in the PC list
+// Returns the index if found, or the index of "classic" as fallback, or 0 if neither found
+func (m *ConsoleUI) findDefaultPCIndex() int {
+	// First, try to find the scenario's default PC
+	if m.defaultPCID != "" {
+		for i, pcName := range m.pcs {
+			if pcID := m.pcMap[pcName]; pcID == m.defaultPCID {
+				return i
+			}
+		}
+	}
+
+	// Fallback to "classic" PC
+	for i, pcName := range m.pcs {
+		if pcID := m.pcMap[pcName]; pcID == "classic" {
+			return i
+		}
+	}
+
+	// If neither found, return 0 (first PC)
+	return 0
+}
 
 func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 	ta := textarea.New()
@@ -1178,6 +1202,8 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.contentRating = s.Rating
 				m.selectedScenarioFile = scenarioFile
+				// Store the default PC ID from the scenario
+				m.defaultPCID = s.DefaultPC
 				// Transition to PC selection modal
 				m.showScenarioModal = false
 				m.showPCModal = true
@@ -1203,6 +1229,8 @@ func (m ConsoleUI) updatePCModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.pcs = msg.pcs
 			m.pcMap = msg.pcMap
+			// Auto-select the default PC if available
+			m.selectedPC = m.findDefaultPCIndex()
 		}
 
 	case gameStateCreatedMsg:
@@ -1260,6 +1288,7 @@ func (m ConsoleUI) updatePCModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pcs = nil
 			m.pcMap = nil
 			m.selectedPC = 0
+			m.defaultPCID = ""
 			m.err = nil
 			return m, nil
 		case tea.KeyUp:
@@ -1366,6 +1395,7 @@ func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
 	m.selectedPC = 0
 	m.loadingPCs = false
 	m.selectedScenarioFile = ""
+	m.defaultPCID = ""
 	// Reset polling state
 	m.pollSeq = 0
 	m.activePollSeq = 0
