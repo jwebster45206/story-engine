@@ -104,6 +104,7 @@ Use **lowercase snake_case** for location keys (e.g., `"black_pearl"`, `"captain
 - **exits**: Available movement options (direction: destination)
 - **blocked_exits**: Inaccessible exits with explanation why
 - **items**: Objects available for pickup in this location
+- **important**: Whether the location should always appear in gamestate prompts (generally should be omitted/false)
 
 ## NPCs (Non-Player Characters)
 
@@ -116,7 +117,6 @@ NPCs bring the world to life and drive story interactions:
     "type": "bartender",
     "disposition": "friendly but mysterious", 
     "description": "A bartender known for her enchanting stories and elusive nature. Speaks with a Haitian accent.",
-    "important": true,
     "location": "sleepy_mermaid",
     "items": ["flagon of ale", "deck of cards"]
   }
@@ -152,7 +152,7 @@ Both will work correctly.
 - **type**: Role/profession of the NPC
 - **disposition**: Personality and attitude toward the player
 - **description**: Physical appearance and notable characteristics
-- **important**: Whether this NPC is crucial to the story progression
+- **important**: Whether this NPC should always appear in gamestate prompts (generally should not be true)
 - **location**: Current location of the NPC (use location ID)
 - **items**: Objects this NPC possesses
 
