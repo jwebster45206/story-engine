@@ -49,7 +49,6 @@
       "type": "questgiver",
       "disposition": "stern but hopeful",
       "description": "A stooped official who remembers when Gygar’s banner still flew from the towers. Offers coin and quiet gratitude if Bargle is driven out.",
-      "important": true,
       "location": "gold_dragon_inn",
       "items": []
     }

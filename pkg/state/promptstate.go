@@ -26,21 +26,39 @@ func ToPromptState(gs *GameState) *PromptState {
 		}
 	}
 
-	// Filter locations: only include the user's current location OR marked as important
-	filteredLocations := make(map[string]scenario.Location)
-	for name, loc := range gs.WorldLocations {
-		if name == gs.Location || loc.IsImportant {
-			filteredLocations[name] = loc
-		}
-	}
-
 	return &PromptState{
 		NPCs:           filteredNPCs,
-		WorldLocations: filteredLocations,
+		WorldLocations: filterLocations(gs.WorldLocations, gs.Location),
 		Location:       gs.Location,
 		Inventory:      gs.Inventory,
 		// Vars and counters intentionally excluded for user-facing prompts
 	}
+}
+
+// filterLocations returns locations that should be included in prompts:
+// - The user's current location
+// - Locations marked as important
+// - Locations adjacent to the current location (accessible via exits)
+func filterLocations(worldLocations map[string]scenario.Location, currentLocation string) map[string]scenario.Location {
+	filteredLocations := make(map[string]scenario.Location)
+
+	for name, loc := range worldLocations {
+		// Include current location or important locations
+		if name == currentLocation || loc.IsImportant {
+			filteredLocations[name] = loc
+		}
+	}
+
+	// Also include adjacent locations (accessible via exits from current location)
+	if currentLoc, exists := worldLocations[currentLocation]; exists {
+		for _, exitLocationKey := range currentLoc.Exits {
+			if adjacentLoc, adjacentExists := worldLocations[exitLocationKey]; adjacentExists {
+				filteredLocations[exitLocationKey] = adjacentLoc
+			}
+		}
+	}
+
+	return filteredLocations
 }
 
 func ToBackgroundPromptState(gs *GameState) *PromptState {
@@ -52,18 +70,10 @@ func ToBackgroundPromptState(gs *GameState) *PromptState {
 		}
 	}
 
-	// Filter locations: only include the user's current location OR marked as important
-	filteredLocations := make(map[string]scenario.Location)
-	for name, loc := range gs.WorldLocations {
-		if name == gs.Location || loc.IsImportant {
-			filteredLocations[name] = loc
-		}
-	}
-
 	return &PromptState{
 		SceneName:        gs.SceneName,
 		NPCs:             filteredNPCs,
-		WorldLocations:   filteredLocations,
+		WorldLocations:   filterLocations(gs.WorldLocations, gs.Location),
 		Location:         gs.Location,
 		Inventory:        gs.Inventory,
 		Vars:             gs.Vars,
