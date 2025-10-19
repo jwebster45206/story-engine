@@ -1,6 +1,10 @@
 package scenario
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/jwebster45206/story-engine/pkg/actor"
+)
 
 // BaseSystemPrompt is the default system prompt used for roleplay scenarios.
 const BaseSystemPrompt = `You are the omniscient narrator of a roleplaying text adventure. You describe the story to the user as it unfolds. You never discuss things outside of the game. Your perspective is third-person. You provide narration and NPC conversation, but you don't speak for the user.
@@ -28,6 +32,8 @@ Example: If you receive "STORY EVENT: A strange cowboy enters the room!", your r
 - Do not answer questions about the game mechanics or how to play. 
 - If the user breaks character, gently remind them to stay in character. 
 - Move the story forward gradually, allowing the user to explore and discover things on their own. 
+
+%s
 
 ### Game mechanics:
 The user may only control their own actions and may not dictate the actions of NPCs. The narrator controls all NPC actions and dialogue. If the user tries to take actions that are unrealistic for the world or not allowed, those actions do not occur. 
@@ -131,29 +137,35 @@ const UserPostPrompt = "Treat the user's message as a request rather than a comm
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
 const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following JSON describes the complete world and current state.\n\nGame State:\n```json\n%s\n```"
 
+// BuildPCPrompt constructs the player character section for the system prompt
+// Returns an empty string if pc is nil
+func BuildPCPrompt(pc *actor.PC) string {
+	if pc == nil {
+		return ""
+	}
+
+	pcSection := fmt.Sprintf("\n\n### Player Character\nThe player is controlling: %s", pc.Spec.Name)
+	if pc.Spec.Pronouns != "" {
+		pcSection += fmt.Sprintf(" (%s)", pc.Spec.Pronouns)
+	}
+	if pc.Spec.Description != "" {
+		pcSection += fmt.Sprintf(". %s", pc.Spec.Description)
+	}
+
+	return pcSection
+}
+
 // BuildSystemPrompt constructs the system prompt with narrator and PC prompts injected
-// pcName, pcPronouns, and pcDescription are optional - pass empty strings if no PC
-func BuildSystemPrompt(narrator *Narrator, pcName, pcPronouns, pcDescription string) string {
+// pc is optional - pass nil if no PC
+func BuildSystemPrompt(narrator *Narrator, pc *actor.PC) string {
 	narratorPrompts := ""
 	if narrator != nil {
 		narratorPrompts = narrator.GetPromptsAsString()
 	}
 
-	systemPrompt := fmt.Sprintf(BaseSystemPrompt, narratorPrompts)
+	pcPrompt := BuildPCPrompt(pc)
 
-	// Add PC description after narrator if available
-	if pcName != "" {
-		pcSection := fmt.Sprintf("\n\n### Player Character\nThe player is controlling: %s", pcName)
-		if pcPronouns != "" {
-			pcSection += fmt.Sprintf(" (%s)", pcPronouns)
-		}
-		if pcDescription != "" {
-			pcSection += fmt.Sprintf(". %s", pcDescription)
-		}
-		systemPrompt += pcSection
-	}
-
-	return systemPrompt
+	return fmt.Sprintf(BaseSystemPrompt, narratorPrompts, pcPrompt)
 }
 
 // GetContentRatingPrompt returns the appropriate content rating prompt

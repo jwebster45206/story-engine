@@ -152,16 +152,8 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 		}
 	}
 
-	// Extract PC info for system prompt
-	var pcName, pcPronouns, pcDescription string
-	if gs.PC != nil {
-		pcName = gs.PC.Spec.Name
-		pcPronouns = gs.PC.Spec.Pronouns
-		pcDescription = gs.PC.Spec.Description
-	}
-
 	// Build system prompt with narrator and PC
-	systemPrompt := scenario.BuildSystemPrompt(narrator, pcName, pcPronouns, pcDescription)
+	systemPrompt := scenario.BuildSystemPrompt(narrator, gs.PC)
 
 	// Add rating prompt
 	systemPrompt += "\n\nContent Rating: " + s.Rating
