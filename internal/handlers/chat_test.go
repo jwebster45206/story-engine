@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
@@ -364,7 +365,7 @@ func TestApplyMetaUpdate(t *testing.T) {
 			"Tavern": loc1,
 			"Forest": loc2,
 		},
-		NPCs: map[string]scenario.NPC{
+		NPCs: map[string]actor.NPC{
 			"TestNPC": {Name: "TestNPC", Type: "human", Disposition: "neutral"},
 		},
 	}

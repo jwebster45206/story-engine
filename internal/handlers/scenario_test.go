@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -74,7 +75,7 @@ func TestScenarioHandler_ServeHTTP(t *testing.T) {
 							Description: "The private cabin of the pirate captain.",
 						},
 					},
-					NPCs: map[string]scenario.NPC{
+					NPCs: map[string]actor.NPC{
 						"Captain Blackbeard": {
 							Name:        "Captain Blackbeard",
 							Type:        "captain",

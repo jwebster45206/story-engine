@@ -1,13 +1,16 @@
 package state
 
-import "github.com/jwebster45206/story-engine/pkg/scenario"
+import (
+	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
+)
 
 // PromptState is a reduced game state for LLM prompts.
 // For user-facing prompts, only core world state is included.
 // For background processing, Vars are also populated.
 type PromptState struct {
 	SceneName        string                       `json:"scene_name,omitempty"`         // Current scene name
-	NPCs             map[string]scenario.NPC      `json:"npcs,omitempty"`               // Map of key NPCs
+	NPCs             map[string]actor.NPC         `json:"npcs,omitempty"`               // Map of key NPCs
 	WorldLocations   map[string]scenario.Location `json:"locations,omitempty"`          // Current locations in the game world
 	Location         string                       `json:"user_location,omitempty"`      // User's current location
 	Inventory        []string                     `json:"user_inventory,omitempty"`     // Inventory items
@@ -19,7 +22,7 @@ type PromptState struct {
 
 func ToPromptState(gs *GameState) *PromptState {
 	// Filter NPCs: only include those in the same location as user OR marked as important
-	filteredNPCs := make(map[string]scenario.NPC)
+	filteredNPCs := make(map[string]actor.NPC)
 	for name, npc := range gs.NPCs {
 		if npc.Location == gs.Location || npc.IsImportant {
 			filteredNPCs[name] = npc
@@ -63,7 +66,7 @@ func filterLocations(worldLocations map[string]scenario.Location, currentLocatio
 
 func ToBackgroundPromptState(gs *GameState) *PromptState {
 	// Filter NPCs: only include those in the same location as user OR marked as important
-	filteredNPCs := make(map[string]scenario.NPC)
+	filteredNPCs := make(map[string]actor.NPC)
 	for name, npc := range gs.NPCs {
 		if npc.Location == gs.Location || npc.IsImportant {
 			filteredNPCs[name] = npc

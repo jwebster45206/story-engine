@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -119,7 +120,7 @@ func (m *MockStorage) GetScenario(ctx context.Context, filename string) (*scenar
 				},
 			},
 			Inventory: []string{"test_item1", "test_item2"},
-			NPCs:      map[string]scenario.NPC{"TestNPC": {Name: "TestNPC", Type: "human", Disposition: "neutral"}},
+			NPCs:      map[string]actor.NPC{"TestNPC": {Name: "TestNPC", Type: "human", Disposition: "neutral"}},
 			// Triggers:      []string{"test_trigger"},
 			OpeningPrompt:   "Welcome to the FooScenario!",
 			OpeningLocation: "TestLocation",
