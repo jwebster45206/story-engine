@@ -21,6 +21,13 @@ The Story Engine supports a comprehensive set of game mechanics for creating ric
 - **Item Interactions**: Pick up, use, and give items with proper state tracking
 - **Transaction Control**: Prevents item duplication and ensures realistic acquisition mechanics
 
+### Player Character System
+- **Character Identity**: Players control a defined PC with name, pronouns, background, and personality
+- **Narrative Integration**: PC details automatically influence how the narrator tells the story
+- **Stats & Abilities**: D&D 5e-compatible stat blocks for future combat and skill check integration
+- **Customizable PCs**: JSON-based PC definitions stored in `data/pcs/` directory
+- **Scenario Defaults**: Scenarios can specify which PC to use 
+
 ### NPC System
 - **Character Presence**: NPCs with specific locations, descriptions, and personalities  
 - **Dynamic Behavior**: NPCs can move between locations and change demeanor based on story events
@@ -175,6 +182,71 @@ GET /v1/scenarios/pirate.json
 }
 ```
 
+### Player Character Management
+
+**List All PCs**
+```bash
+GET /v1/pcs
+
+# Response: 200 OK
+{
+  "pcs": [
+    {
+      "id": "classic",
+      "name": "Adventurer",
+      "class": "Adventurer",
+      "level": 1,
+      "race": "Human"
+    },
+    {
+      "id": "pirate_captain",
+      "name": "Captain Jack Sparrow",
+      "class": "Rogue",
+      "level": 5,
+      "race": "Human"
+    }
+  ]
+}
+```
+
+**Get PC by ID**
+```bash
+GET /v1/pcs/pirate_captain
+
+# Response: 200 OK
+{
+  "id": "pirate_captain",
+  "name": "Captain Jack Sparrow",
+  "class": "Rogue",
+  "level": 5,
+  "race": "Human",
+  "pronouns": "he/him",
+  "description": "A notorious pirate captain known for his cunning...",
+  "background": "Born the son of Captain Teague...",
+  "stats": {
+    "strength": 10,
+    "dexterity": 18,
+    "constitution": 14,
+    "intelligence": 14,
+    "wisdom": 12,
+    "charisma": 16
+  },
+  "hp": 35,
+  "max_hp": 35,
+  "ac": 15,
+  "combat_modifiers": {
+    "dexterity": 4,
+    "proficiency": 3
+  },
+  "attributes": {
+    "acrobatics": 7,
+    "deception": 9,
+    "perception": 4
+  },
+  "inventory": ["cutlass", "tricorn hat with feather"]
+}
+```
+
 ### Chat Interaction
 
 **Send Chat Message**
@@ -250,3 +322,10 @@ go run cmd/console/*.go
 # If using custom API URL
 API_BASE_URL=http://localhost:3000 go run cmd/console/*.go
 ```
+
+## Documentation
+
+- **Scenario Creation**: See [data/scenarios/README.md](data/scenarios/README.md) for complete guide on writing scenarios
+- **Player Characters**: See [data/pcs/README.md](data/pcs/README.md) for creating and customizing player characters
+- **Narrators**: See [data/narrators/README.md](data/narrators/README.md) for creating custom narrator personalities
+- **Console Client**: See [cmd/console/README.md](cmd/console/README.md) for gameplay client documentation
