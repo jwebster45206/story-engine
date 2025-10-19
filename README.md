@@ -247,6 +247,52 @@ GET /v1/pcs/pirate_captain
 }
 ```
 
+### Narrator Management
+
+**List All Narrators**
+```bash
+GET /v1/narrators
+
+# Response: 200 OK
+{
+  "narrators": [
+    {
+      "id": "classic",
+      "name": "Classic Narrator",
+      "description": "Traditional, straightforward adventure narrator"
+    },
+    {
+      "id": "vincent_price",
+      "name": "Vincent Price",
+      "description": "Dramatic, theatrical Gothic horror style"
+    },
+    {
+      "id": "noir",
+      "name": "Noir Detective",
+      "description": "Cynical, hard-boiled detective style"
+    }
+  ]
+}
+```
+
+**Get Narrator by ID**
+```bash
+GET /v1/narrators/vincent_price
+
+# Response: 200 OK
+{
+  "id": "vincent_price",
+  "name": "Vincent Price",
+  "description": "Dramatic, theatrical Gothic horror style",
+  "prompts": [
+    "Use dramatic, theatrical language with a touch of dark humor",
+    "Emphasize atmosphere, dread, and the macabre",
+    "Speak as if narrating a classic horror film",
+    "Build suspense with vivid, unsettling descriptions"
+  ]
+}
+```
+
 ### Chat Interaction
 
 **Send Chat Message**
