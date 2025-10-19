@@ -115,12 +115,48 @@ Returns API status and health information.
 POST /v1/gamestate
 Content-Type: application/json
 
+# Basic request (uses scenario defaults)
+{
+  "scenario": "pirate_adventure.json"
+}
+
+# With narrator override
+{
+  "scenario": "pirate_adventure.json",
+  "narrator_id": "comedic"
+}
+
+# With PC override
+{
+  "scenario": "pirate_adventure.json",
+  "pc_id": "jack_sparrow"
+}
+
+# With both overrides
+{
+  "scenario": "pirate_adventure.json",
+  "narrator_id": "epic",
+  "pc_id": "custom_hero"
+}
+
 # Response: 201 Created
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
+  "scenario_name": "Pirate Adventure",
+  "narrator_id": "comedic",
   "chat_history": []
 }
 ```
+
+**Request Fields:**
+- `scenario` (required): Scenario filename (e.g., "pirate_adventure.json")
+- `narrator_id` (optional): Override the scenario's default narrator (takes precedence over scenario's `narrator_id` field)
+- `pc_id` (optional): Override the scenario's default PC (takes precedence over scenario's `default_pc` field)
+
+**Override Priority:**
+1. Request parameters (`narrator_id`, `pc_id`)
+2. Scenario defaults (`narrator_id`, `default_pc` in scenario file)
+3. Fallback defaults (empty narrator, "classic" PC)
 
 **Get Game State**
 ```bash
@@ -244,6 +280,52 @@ GET /v1/pcs/pirate_captain
     "perception": 4
   },
   "inventory": ["cutlass", "tricorn hat with feather"]
+}
+```
+
+### Narrator Management
+
+**List All Narrators**
+```bash
+GET /v1/narrators
+
+# Response: 200 OK
+{
+  "narrators": [
+    {
+      "id": "classic",
+      "name": "Classic Narrator",
+      "description": "Traditional, straightforward adventure narrator"
+    },
+    {
+      "id": "vincent_price",
+      "name": "Vincent Price",
+      "description": "Dramatic, theatrical Gothic horror style"
+    },
+    {
+      "id": "noir",
+      "name": "Noir Detective",
+      "description": "Cynical, hard-boiled detective style"
+    }
+  ]
+}
+```
+
+**Get Narrator by ID**
+```bash
+GET /v1/narrators/vincent_price
+
+# Response: 200 OK
+{
+  "id": "vincent_price",
+  "name": "Vincent Price",
+  "description": "Dramatic, theatrical Gothic horror style",
+  "prompts": [
+    "Use dramatic, theatrical language with a touch of dark humor",
+    "Emphasize atmosphere, dread, and the macabre",
+    "Speak as if narrating a classic horror film",
+    "Build suspense with vivid, unsettling descriptions"
+  ]
 }
 ```
 

@@ -93,6 +93,10 @@ func main() {
 	mux.Handle("/v1/pcs", pcHandler)
 	mux.Handle("/v1/pcs/", pcHandler)
 
+	narratorHandler := handlers.NewNarratorHandler(log, handlers.NarratorDataDir)
+	mux.Handle("/v1/narrators", narratorHandler)
+	mux.Handle("/v1/narrators/", narratorHandler)
+
 	handler := middleware.Logger(mux)
 	server := &http.Server{
 		Addr:        ":" + cfg.Port,

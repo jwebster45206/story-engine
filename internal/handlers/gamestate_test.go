@@ -53,6 +53,233 @@ func TestGameStateHandler_Create(t *testing.T) {
 	}
 }
 
+func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+
+	mockStorage := services.NewMockStorage()
+	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+
+	tests := []struct {
+		name            string
+		requestBody     string
+		expectedStatus  int
+		checkNarratorID string
+		checkPCID       string
+	}{
+		{
+			name:           "with narrator_id override",
+			requestBody:    `{"scenario":"foo_scenario.json","narrator_id":"epic"}`,
+			expectedStatus: http.StatusCreated,
+			// Note: Will use fallback since 'epic' doesn't exist in test env
+		},
+		{
+			name:           "with pc_id override",
+			requestBody:    `{"scenario":"foo_scenario.json","pc_id":"custom_hero"}`,
+			expectedStatus: http.StatusCreated,
+			// Note: Will use fallback since 'custom_hero' doesn't exist in test env
+		},
+		{
+			name:           "with both overrides",
+			requestBody:    `{"scenario":"foo_scenario.json","narrator_id":"epic","pc_id":"custom_hero"}`,
+			expectedStatus: http.StatusCreated,
+		},
+		{
+			name:           "with empty overrides (should use defaults)",
+			requestBody:    `{"scenario":"foo_scenario.json","narrator_id":"","pc_id":""}`,
+			expectedStatus: http.StatusCreated,
+		},
+		{
+			name:           "missing scenario field",
+			requestBody:    `{"narrator_id":"epic"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "invalid JSON",
+			requestBody:    `{invalid json}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/v1/gamestate", strings.NewReader(tt.requestBody))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+
+			handler.ServeHTTP(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d. Response body: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+
+			if tt.expectedStatus == http.StatusCreated {
+				// Parse response
+				var response state.GameState
+				if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+					t.Fatalf("Failed to decode response: %v", err)
+				}
+
+				// Validate response
+				if response.ID == uuid.Nil {
+					t.Error("Expected non-nil game state ID")
+				}
+
+				// Check that override values are present if specified
+				if tt.checkNarratorID != "" && response.NarratorID != tt.checkNarratorID {
+					t.Errorf("Expected narrator_id %s, got %s", tt.checkNarratorID, response.NarratorID)
+				}
+
+				// Verify the gamestate was saved
+				retrievedGS, err := mockStorage.LoadGameState(context.Background(), response.ID)
+				if err != nil {
+					t.Errorf("Failed to retrieve saved game state: %v", err)
+				}
+				if retrievedGS == nil {
+					t.Error("Expected saved game state to exist in storage")
+				}
+			} else {
+				// Should be an error response
+				var response ErrorResponse
+				if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+					t.Fatalf("Failed to decode error response: %v", err)
+				}
+				if response.Error == "" {
+					t.Error("Expected error message in response")
+				}
+			}
+		})
+	}
+}
+
+func TestCreateGameStateRequest_Normalize(t *testing.T) {
+	tests := []struct {
+		name             string
+		input            CreateGameStateRequest
+		expectedScenario string
+		expectedNarrator string
+		expectedPC       string
+	}{
+		{
+			name: "scenario without .json extension",
+			input: CreateGameStateRequest{
+				Scenario:   "pirate_adventure",
+				NarratorID: "epic",
+				PCID:       "jack_sparrow",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic",
+			expectedPC:       "jack_sparrow",
+		},
+		{
+			name: "scenario with .json extension",
+			input: CreateGameStateRequest{
+				Scenario:   "pirate_adventure.json",
+				NarratorID: "comedic",
+				PCID:       "custom_hero",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "comedic",
+			expectedPC:       "custom_hero",
+		},
+		{
+			name: "camelCase and spaces converted to snake_case",
+			input: CreateGameStateRequest{
+				Scenario:   "PirateAdventure",
+				NarratorID: "Epic Narrator",
+				PCID:       "Jack Sparrow",
+			},
+			expectedScenario: "pirateadventure.json",
+			expectedNarrator: "epic_narrator",
+			expectedPC:       "jack_sparrow",
+		},
+		{
+			name: "hyphens converted to underscores",
+			input: CreateGameStateRequest{
+				Scenario:   "pirate-adventure",
+				NarratorID: "epic-narrator",
+				PCID:       "jack-sparrow",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic_narrator",
+			expectedPC:       "jack_sparrow",
+		},
+		{
+			name: "mixed case with special characters",
+			input: CreateGameStateRequest{
+				Scenario:   "Pirate Adventure!",
+				NarratorID: "Epic.Narrator",
+				PCID:       "Jack@Sparrow",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic.narrator",
+			expectedPC:       "jacksparrow",
+		},
+		{
+			name: "already normalized",
+			input: CreateGameStateRequest{
+				Scenario:   "pirate_adventure.json",
+				NarratorID: "epic_narrator",
+				PCID:       "jack_sparrow",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic_narrator",
+			expectedPC:       "jack_sparrow",
+		},
+		{
+			name: "empty optional fields",
+			input: CreateGameStateRequest{
+				Scenario:   "test",
+				NarratorID: "",
+				PCID:       "",
+			},
+			expectedScenario: "test.json",
+			expectedNarrator: "",
+			expectedPC:       "",
+		},
+		{
+			name: "narrator and pc with .json extension should be stripped",
+			input: CreateGameStateRequest{
+				Scenario:   "pirate_adventure",
+				NarratorID: "epic.json",
+				PCID:       "jack_sparrow.json",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic",
+			expectedPC:       "jack_sparrow",
+		},
+		{
+			name: "narrator and pc with .JSON extension (uppercase) should be stripped after normalization",
+			input: CreateGameStateRequest{
+				Scenario:   "pirate_adventure",
+				NarratorID: "Epic.JSON",
+				PCID:       "Jack.JSON",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic",
+			expectedPC:       "jack",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := tt.input
+			req.Normalize()
+
+			if req.Scenario != tt.expectedScenario {
+				t.Errorf("Scenario: expected %q, got %q", tt.expectedScenario, req.Scenario)
+			}
+			if req.NarratorID != tt.expectedNarrator {
+				t.Errorf("NarratorID: expected %q, got %q", tt.expectedNarrator, req.NarratorID)
+			}
+			if req.PCID != tt.expectedPC {
+				t.Errorf("PCID: expected %q, got %q", tt.expectedPC, req.PCID)
+			}
+		})
+	}
+}
+
 func TestGameStateHandler_Read(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelError,
