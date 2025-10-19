@@ -1,10 +1,10 @@
 {
-  "name": "The Curse of Castle Dracula",
+  "name": "The Curse of Castle Dracula - No Story Event Version",
   "story": "The player is a vampire hunter who has infiltrated Count Dracula's castle to destroy the ancient vampire lord once and for all. The castle is filled with dark magic, undead servants, and deadly traps. The player must navigate through the castle's chambers, gather the tools needed to defeat Dracula, and confront the vampire in his lair before dawn breaks and he becomes too powerful to defeat.",
   "rating": "PG-13",
   "opening_scene": "arrival",
   "opening_prompt": "You are Van Helsing, a renowned vampire hunter who has spent years tracking Count Dracula to his ancestral castle in the mountains of Transylvania. \n\nThe moon hangs full overhead as you stand before the massive iron gates of Castle Dracula. Your horse whinnies nervously behind you, sensing the evil that permeates this place. You carry a leather satchel containing the basic tools of your trade, but you know you'll need more powerful weapons to face the master of this domain. \n\nThe castle looms before you, its Gothic spires piercing the night sky like dark fangs. Time is against you - you must find and destroy Dracula before the sun rises and he retreats to his hidden sanctum.",
-  "opening_location": "Castle Gates",
+  "opening_location": "castle_gates",
   "opening_inventory": ["wooden stakes", "silver cross", "holy water"],
   
   "vars": {
@@ -13,72 +13,72 @@
   },
   
   "locations": {
-    "Castle Gates": {
+    "castle_gates": {
       "name": "Castle Gates",
       "description": "Massive wrought iron gates stand before the imposing Gothic castle. The gates are slightly ajar, as if inviting you inside. Stone gargoyles perch atop the gate posts, their eyes seeming to follow your movements. A cobblestone path leads up to the castle's main entrance.",
       "exits": {
-        "north": "Grand Foyer",
-        "south": "Courtyard"
+        "north": "grand_foyer",
+        "south": "courtyard"
       },
       "items": ["iron gate key", "torn map fragment"]
     },
     
-    "Grand Foyer": {
+    "grand_foyer": {
       "name": "Grand Foyer", 
       "description": "A cavernous entrance hall with a grand staircase sweeping upward into darkness. Dusty portraits of pale aristocrats line the walls, their eyes seeming to track your movement. Cobwebs drape from an enormous chandelier that hasn't been lit in decades. The air is thick with the smell of decay and old blood.",
       "exits": {
-        "south": "Castle Gates",
-        "east": "Library",
-        "west": "Dining Hall",
-        "up": "Master Bedroom"
+        "south": "castle_gates",
+        "east": "library",
+        "west": "dining_hall",
+        "up": "master_bedroom"
       },
       "items": ["ornate candelabra", "dust-covered mirror"]
     },
     
-    "Library": {
+    "library": {
       "name": "Library",
       "description": "Towering bookshelves filled with ancient tomes reach up to the vaulted ceiling. Many books appear to be written in Latin and other dead languages. A reading table sits in the center with several open books, their pages yellowed with age. The knowledge here could be invaluable to understanding Dracula's weaknesses.",
       "exits": {
-        "west": "Grand Foyer",
-        "north": "Laboratory"
+        "west": "grand_foyer",
+        "north": "laboratory"
       },
       "items": ["ancient grimoire", "vampire lore book", "blessed silver dagger"]
     },
     
-    "Laboratory": {
+    "laboratory": {
       "name": "Laboratory",
       "description": "A medieval laboratory filled with bubbling alchemical apparatus, preserved specimens in jars, and arcane symbols carved into stone tables. The air reeks of sulfur and decay. This appears to be where Dracula conducts his dark experiments.",
       "exits": {
-        "south": "Library"
+        "south": "library"
       },
       "items": ["vial of garlic essence", "silver powder", "consecrated salt"]
     },
     
-    "Dining Hall": {
+    "dining_hall": {
       "name": "Dining Hall",
       "description": "A long oak table dominates this room, set for a feast that was never eaten. The chairs are pushed back as if the diners fled in haste. Portraits of Dracula through the centuries hang on the walls, showing his unchanging face across hundreds of years. A massive fireplace holds cold ashes.",
       "exits": {
-        "east": "Grand Foyer",
-        "north": "Kitchen"
+        "east": "grand_foyer",
+        "north": "kitchen"
       },
       "items": ["silver chalice", "ancient wine bottle"]
     },
     
-    "Kitchen": {
+    "kitchen": {
       "name": "Kitchen",
       "description": "A medieval kitchen with a large hearth and hanging pots. The pantry shelves are stocked with strange preserved foods and bottles of unidentifiable liquids. A butcher's block bears dark stains that you prefer not to examine too closely.",
       "exits": {
-        "south": "Dining Hall"
+        "south": "dining_hall"
       },
       "items": ["kitchen knife", "garlic bulbs", "iron skillet"]
     },
     
-    "Master Bedroom": {
+    "master_bedroom": {
       "name": "Master Bedroom",
       "description": "An opulent bedroom with a four-poster bed draped in crimson velvet. The room feels unnaturally cold despite the ornate furnishings. A balcony overlooks the courtyard below. This appears to be Dracula's personal chambers, though his coffin is nowhere to be seen.",
       "exits": {
-        "down": "Grand Foyer",
-        "west": "Secret Passage"
+        "down": "grand_foyer",
+        "west": "secret_passage"
       },
       "blocked_exits": {
         "east": "Heavy wooden door is locked with an ornate silver key."
@@ -86,20 +86,20 @@
       "items": ["ornate silver key", "red velvet cloak"]
     },
     
-    "Courtyard": {
+    "courtyard": {
       "name": "Courtyard",
       "description": "An overgrown courtyard surrounded by the castle walls. Dead trees twist toward the sky like gnarled fingers. A stone well sits in the center, its depths lost in darkness. The sound of bats echoes from somewhere above.",
       "exits": {
-        "north": "Castle Gates"
+        "north": "castle_gates"
       },
       "items": ["coil of rope", "rusty bucket"]
     },
     
-    "Crypt Entrance": {
+    "crypt_entrance": {
       "name": "Crypt Entrance", 
       "description": "Stone steps lead down into the castle's crypt. The heavy door is sealed with mystical symbols that seem to writhe in the torchlight. A sense of ancient evil emanates from beyond the door.",
       "exits": {
-        "up": "Courtyard"
+        "up": "courtyard"
       },
       "blocked_exits": {
         "down": "The crypt door is sealed with dark magic. You need the proper key and ritual components."
@@ -109,23 +109,23 @@
   },
   
   "npcs": {
-    "Renfield": {
+    "renfield": {
       "name": "Renfield",
       "type": "servant",
       "disposition": "mad but potentially helpful",
       "description": "Dracula's deranged human servant, dressed in tattered clothing. His eyes dart about wildly and he speaks in cryptic riddles. Despite his madness, he knows the castle's secrets and might aid you if approached correctly.",
       "important": true,
-      "location": "Kitchen",
+      "location": "kitchen",
       "items": ["brass skeleton key", "torn diary pages"]
     },
     
-    "Stone Gargoyle": {
+    "stone_gargoyle": {
       "name": "Stone Gargoyle",
       "type": "guardian",
       "disposition": "hostile magical construct",
       "description": "An ancient stone guardian that comes to life when threatened. Its eyes glow red and its claws are razor sharp. It guards important areas of the castle.",
       "important": false,
-      "location": "Library",
+      "location": "library",
       "items": []
     }
   },
@@ -134,11 +134,11 @@
     "arrival": {
       "story": "The player has just arrived at Castle Dracula and must gain entry and begin exploring. The castle's defenses are at their weakest, but time is running short until dawn.",
       "locations": {
-        "Courtyard": {
+        "courtyard": {
           "name": "Courtyard",
           "description": "An overgrown courtyard surrounded by the castle walls. Dead trees twist toward the sky like gnarled fingers. A stone well sits in the center, its depths lost in darkness. The sound of bats echoes from somewhere above.",
           "exits": {
-            "north": "Castle Gates"
+            "north": "castle_gates"
           },
           "blocked_exits": {
             "down": "You sense something evil below, but cannot find an entrance to the castle's depths."
@@ -158,7 +158,7 @@
         {
           "prompt": "IMPORTANT: Three massive dire wolves emerge from the darkness beyond the gates, their eyes glowing yellow in the moonlight. They circle you menacingly at the Castle Gates, blocking any retreat from the castle. Their growls are low and threatening - it's clear they serve as Dracula's guardians, preventing anyone from leaving once they've entered his domain. The beasts are supernaturally large, with matted black fur and fangs like daggers.",
           "when": {
-            "location": "Castle Gates",
+            "location": "castle_gates",
             "min_scene_turns": 3
           }
         },
@@ -182,43 +182,43 @@
     "preparation": {
       "story": "The player has gained crucial knowledge about vampire weaknesses and must now gather the specific tools needed to face Dracula. The vampire's power grows as dawn approaches.",
       "npcs": {
-        "Renfield": {
+        "renfield": {
           "name": "Renfield",
           "type": "servant", 
           "disposition": "more lucid and helpful",
           "description": "Renfield seems more coherent now, as if your presence has partially broken Dracula's hold over him. He speaks more clearly about the master's weaknesses.",
           "important": true,
-          "location": "Dining Hall",
+          "location": "dining_hall",
           "items": ["crypt key", "blessed wooden stake"]
         }
       },
       "locations": {
-        "Courtyard": {
+        "courtyard": {
           "name": "Courtyard",
           "description": "An overgrown courtyard surrounded by the castle walls. Dead trees twist toward the sky like gnarled fingers. A stone well sits in the center, its depths lost in darkness. The sound of bats echoes from somewhere above. You now know of the entrance to the castle's depths.",
           "exits": {
-            "north": "Castle Gates",
-            "down": "Crypt Entrance"
+            "north": "castle_gates",
+            "down": "crypt_entrance"
           },
           "items": ["coil of rope", "rusty bucket"]
         },
         
-        "Crypt Entrance": {
+        "crypt_entrance": {
           "name": "Crypt Entrance", 
           "description": "Stone steps lead down into the castle's crypt. The heavy door is sealed with mystical symbols that seem to writhe in the torchlight. A sense of ancient evil emanates from beyond the door.",
           "exits": {
-            "up": "Courtyard",
-            "down": "Dracula's Sanctum"
+            "up": "courtyard",
+            "down": "draculas_sanctum"
           },
           "items": []
         },
         
-        "Secret Passage": {
+        "secret_passage": {
           "name": "Secret Passage",
           "description": "A narrow stone passage hidden behind a tapestry in the master bedroom. Ancient symbols are carved into the walls, and the air grows colder as you descend. This passage leads directly to Dracula's sanctum.",
           "exits": {
-            "east": "Master Bedroom",
-            "down": "Dracula's Sanctum"
+            "east": "master_bedroom",
+            "down": "draculas_sanctum"
           },
           "items": ["ancient torch", "silver chain"]
         }
@@ -236,23 +236,23 @@
     "confrontation": {
       "story": "The player has reached Dracula's sanctum and must face the vampire lord in final combat. Dawn is breaking, and Dracula's power is at its peak.",
       "locations": {
-        "Dracula's Sanctum": {
+        "draculas_sanctum": {
           "name": "Dracula's Sanctum",
           "description": "A vast underground chamber carved from living rock. Ancient sarcophagi line the walls, and at the center sits an ornate black coffin lined with Transylvanian soil. The air thrums with dark power, and shadows seem to move independently of their sources. This is the heart of Dracula's power.",
           "exits": {
-            "up": "Secret Passage"
+            "up": "secret_passage"
           },
           "items": ["ancient crown", "Dracula's ring"]
         }
       },
       "npcs": {
-        "Count Dracula": {
+        "count_dracula": {
           "name": "Count Dracula",
           "type": "vampire lord",
           "disposition": "supremely arrogant and deadly",
           "description": "The legendary vampire count appears as a tall, pale aristocrat in formal evening wear. His eyes burn like crimson coals and his smile reveals gleaming fangs. Despite his refined appearance, an aura of ancient evil and immense power surrounds him.",
           "important": true,
-          "location": "Dracula's Sanctum",
+          "location": "draculas_sanctum",
           "items": []
         }
       },

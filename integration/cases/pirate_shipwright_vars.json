@@ -5,7 +5,7 @@
     "model_name": "claude-3-5-sonnet-20241022",
     "scenario": "pirate.vars.json",
     "scene_name": "shipwright",
-    "user_location": "Sleepy Mermaid",
+    "user_location": "sleepy_mermaid",
     "turn_counter": 7,
     "scene_turn_counter": 5,
     "user_inventory": [
@@ -20,50 +20,50 @@
       "shipwright_hired": "false"
     },
     "world_locations": {
-      "Tortuga": {
+      "tortuga": {
         "name": "Tortuga",
         "items": []
       },
-      "Black Pearl": {
+      "black_pearl": {
         "name": "Black Pearl",
         "items": ["billy the parrot"]
       },
-      "Captain's Cabin": {
+      "captains_cabin": {
         "name": "Captain's Cabin",
         "items": ["bag of gems", "map of the Caribbean", "letter from Calypso"]
       },
-      "Sleepy Mermaid": {
+      "sleepy_mermaid": {
         "name": "Sleepy Mermaid",
         "items": []
       },
-      "Tortuga Market": {
+      "tortuga_market": {
         "name": "Tortuga Market",
         "items": ["forged documents", "rare spices"]
       },
-      "Open Sea": {
+      "open_sea": {
         "name": "Open Sea",
         "items": []
       }
     },
     "npcs": {
-      "Gibbs": {
+      "gibbs": {
         "name": "Gibbs",
-        "location": "Black Pearl", 
+        "location": "black_pearl", 
         "items": []
       },
-      "Calypso": {
+      "calypso": {
         "name": "Calypso",
-        "location": "Sleepy Mermaid",
+        "location": "sleepy_mermaid",
         "items": ["flagon of ale", "deck of cards"]
       },
-      "Charming Danny": {
+      "charming_danny": {
         "name": "Charming Danny",
-        "location": "Tortuga Market",
+        "location": "tortuga_market",
         "items": ["forged documents", "rare spices", "bottle of rum", "black powder", "flintlock pistol"]
       },
-      "Shipwright": {
+      "shipwright": {
         "name": "Shipwright",
-        "location": "Sleepy Mermaid",
+        "location": "sleepy_mermaid",
         "items": []
       }
     },

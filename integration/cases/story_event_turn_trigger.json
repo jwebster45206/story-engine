@@ -4,7 +4,7 @@
   "scenario": "dracula-story-events.json",
   "seed_game_state": {
     "scene_name": "arrival",
-    "user_location": "Grand Foyer",
+    "user_location": "grand_foyer",
     "turn_counter": 2,
     "scene_turn_counter": 2,
     "user_inventory": [
@@ -41,7 +41,7 @@
       "user_prompt": "I examine the portraits on the walls.",
       "expect": {
         "scene_name": "arrival",
-        "user_location": "Grand Foyer",
+        "user_location": "grand_foyer",
         "scene_turn_counter": 3
       }
     },
@@ -50,7 +50,7 @@
       "user_prompt": "I move toward the staircase.",
       "expect": {
         "scene_name": "arrival",
-        "user_location": "Grand Foyer",
+        "user_location": "grand_foyer",
         "scene_turn_counter": 4
       }
     },
@@ -59,7 +59,7 @@
       "user_prompt": "I look up at the chandelier.",
       "expect": {
         "scene_name": "arrival",
-        "user_location": "Grand Foyer",
+        "user_location": "grand_foyer",
         "scene_turn_counter": 5,
         "response_contains": [
           "lightning"
@@ -71,7 +71,7 @@
       "user_prompt": "I continue examining the foyer.",
       "expect": {
         "scene_name": "arrival",
-        "user_location": "Grand Foyer",
+        "user_location": "grand_foyer",
         "scene_turn_counter": 6
       }
     }

@@ -111,23 +111,49 @@ NPCs bring the world to life and drive story interactions:
 
 ```json
 "npcs": {
-  "Calypso": {
+  "calypso": {
     "name": "Calypso",
     "type": "bartender",
     "disposition": "friendly but mysterious", 
     "description": "A bartender known for her enchanting stories and elusive nature. Speaks with a Haitian accent.",
     "important": true,
-    "location": "Sleepy Mermaid",
+    "location": "sleepy_mermaid",
     "items": ["flagon of ale", "deck of cards"]
   }
 }
 ```
 
+### NPC Naming Conventions
+
+Use **lowercase snake_case** for NPC keys (e.g., `"calypso"`, `"charming_danny"`). These are internal IDs used in game state and item operations. The `"name"` field is for display text and can use any formatting (e.g., `"Calypso"`, `"Charming Danny"`).
+
+```json
+"npcs": {
+  "charming_danny": {
+    "name": "Charming Danny",
+    "location": "tortuga_market",
+    "items": ["bottle of rum"]
+  },
+  "captain_morgan": {
+    "name": "Captain Morgan",
+    "location": "black_pearl"
+  }
+}
+```
+
+The game engine will accept both the NPC key (ID) and the display name in item operations, so the LLM can use either:
+- `give "rum" to "charming_danny"` (using ID)
+- `give "rum" to "Charming Danny"` (using display name)
+
+Both will work correctly.
+
+### NPC Fields
+
 - **type**: Role/profession of the NPC
 - **disposition**: Personality and attitude toward the player
 - **description**: Physical appearance and notable characteristics
 - **important**: Whether this NPC is crucial to the story progression
-- **location**: Current location of the NPC
+- **location**: Current location of the NPC (use location ID)
 - **items**: Objects this NPC possesses
 
 ## Contingency System
@@ -301,15 +327,14 @@ One powerful use of `min_scene_turns` is preventing players from getting stuck i
 
 ### Defining Story Events
 
-Story events are defined **within individual scenes** using the `story_events` array:
+Story events are defined **within individual scenes** using the `story_events` map:
 
 ```json
 "scenes": {
   "castle_arrival": {
     "story": "The player approaches Castle Ravenloft...",
-    "story_events": [
-      {
-        "name": "dracula_materializes",
+    "story_events": {
+      "dracula_materializes": {
         "prompt": "Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with oppressive, supernatural dread.",
         "when": {
           "vars": {
@@ -317,20 +342,23 @@ Story events are defined **within individual scenes** using the `story_events` a
           }
         }
       },
-      {
-        "name": "lightning_strike",
+      "lightning_strike": {
         "prompt": "A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet! The air crackles with electricity.",
         "when": {
           "scene_turn_counter": 4
         }
       }
-    ]
+    }
   }
 }
 ```
 
+### Story Event Naming Conventions
+
+Use **lowercase snake_case** for story event keys (e.g., `"dracula_materializes"`, `"lightning_strike"`). These are internal IDs used for debugging and logging.
+
 **Each story event has:**
-- `name`: Unique identifier for the event (for debugging/logging)
+- **Key**: The event ID in snake_case (used as the map key)
 - `prompt`: The exact narrative text that will be injected into the story
 - `when`: Conditional logic determining when the event triggers (see **Conditional Logic** section above for all supported conditions)
 

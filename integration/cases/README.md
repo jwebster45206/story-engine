@@ -13,7 +13,7 @@ This directory contains integration test cases for the story engine. Each test c
   "scenario": "scenario-file.json",
   "seed_game_state": {
     "scene_name": "scene_id",
-    "user_location": "Location Name",
+    "user_location": "location_id",
     "turn_counter": 2,
     "scene_turn_counter": 2,
     "user_inventory": ["item1", "item2"],
@@ -37,7 +37,7 @@ This directory contains integration test cases for the story engine. Each test c
       "user_prompt": "What the player says or does",
       "expect": {
         "scene_name": "expected_scene",
-        "user_location": "Expected Location",
+        "user_location": "expected_location_id",
         "turn_counter": 3,
         "vars": {
           "variable_name": "expected_value"
@@ -173,7 +173,7 @@ The `expect` object defines what to validate after a step executes. All checks a
 - `scene_turn_counter`: Expected scene-specific turn count
 - `inventory`: Expected items (order-independent, exact match)
 - `vars`: Expected variables and their values (only checks specified vars)
-- `npc_locations`: Expected NPC positions (e.g., `{"Dracula": "Library"}`)
+- `npc_locations`: Expected NPC positions (e.g., `{"count_dracula": "library"}`)
 - `is_ended`: Whether game has ended (`true` or `false`)
 
 ### Response Content Checks
@@ -297,7 +297,7 @@ The `expect` object defines what to validate after a step executes. All checks a
 {
   "seed_game_state": {
     "scene_name": "arrival",
-    "user_location": "Library",
+    "user_location": "library",
     "turn_counter": 0,
     "scene_turn_counter": 0,
     "chat_history": []
@@ -310,7 +310,7 @@ The `expect` object defines what to validate after a step executes. All checks a
 {
   "seed_game_state": {
     "scene_name": "arrival",
-    "user_location": "Library",
+    "user_location": "library",
     "turn_counter": 2,
     "scene_turn_counter": 2,
     "chat_history": [
@@ -422,17 +422,17 @@ Note: `scene_turn_counter` resets to 0 when scenes change.
     {
       "name": "Try path A",
       "user_prompt": "I go north.",
-      "expect": {"user_location": "North Hall"}
+      "expect": {"user_location": "north_hall"}
     },
     {
       "name": "Reset to beginning",
       "user_prompt": "RESET_GAMESTATE",
-      "expect": {"user_location": "Grand Foyer"}
+      "expect": {"user_location": "grand_foyer"}
     },
     {
       "name": "Try path B",
       "user_prompt": "I go south.",
-      "expect": {"user_location": "Dungeon"}
+      "expect": {"user_location": "dungeon"}
     }
   ]
 }

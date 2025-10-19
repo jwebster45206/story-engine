@@ -71,33 +71,30 @@
     }
   },
   "npcs": {
-    "Gibbs": {
+    "gibbs": {
       "name": "Gibbs",
       "type": "pirate",
       "disposition": "loyal",
       "description": "The player's loyal first mate with a keen sense of duty.",
-      "important": true,
       "location": "black_pearl",
       "items": []
     },
-    "Calypso": {
+    "calypso": {
       "name": "Calypso",
       "type": "bartender",
       "disposition": "friendly but mysterious",
       "description": "A bartender at the Sleepy Mermaid, known for her enchanting stories and elusive nature. Speaks with a Haitian accent.",
-      "important": true,
       "location": "sleepy_mermaid",
       "items": [
         "flagon of ale",
         "deck of cards"
       ]
     },
-    "Charming Danny": {
+    "charming_danny": {
       "name": "Charming Danny",
       "type": "merchant",
       "disposition": "shrewd and cunning",
       "description": "A merchant who deals in common items necessary for life at sea. Unpleasant smell and unpleasant demeanor, but has what the player needs. He owes a debt to the player, but is loath to repay it. With some persuasion, he will eventually give any of his wares to the player.",
-      "important": false,
       "location": "tortuga_market",
       "items": [
         "forged documents",
@@ -107,12 +104,11 @@
         "flintlock pistol"
       ]
     },
-    "Shipwright": {
+    "shipwright": {
       "name": "Shipwright",
       "type": "shipwright",
       "disposition": "gruff but helpful",
       "description": "A burly shipwright who will repair the player's ship. He requires a ship repair ledger to begin the work, and a payment of 500 gold doubloons to complete the repairs.",
-      "important": true,
       "location": "sleepy_mermaid",
       "items": []
     }
@@ -185,7 +181,7 @@
         }
       },
       "npcs": {
-        "Davey": {
+        "davey": {
           "name": "Davey",
           "type": "pirate",
           "disposition": "friendly",
@@ -249,7 +245,7 @@
         }
       },
       "npcs": {
-        "Calypso": {
+        "calypso": {
           "name": "Calypso",
           "type": "bartender",
           "disposition": "teasing and tricky",
