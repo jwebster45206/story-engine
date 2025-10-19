@@ -53,6 +53,106 @@ func TestGameStateHandler_Create(t *testing.T) {
 	}
 }
 
+func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+
+	mockStorage := services.NewMockStorage()
+	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+
+	tests := []struct {
+		name            string
+		requestBody     string
+		expectedStatus  int
+		checkNarratorID string
+		checkPCID       string
+	}{
+		{
+			name:           "with narrator_id override",
+			requestBody:    `{"scenario":"foo_scenario.json","narrator_id":"epic"}`,
+			expectedStatus: http.StatusCreated,
+			// Note: Will use fallback since 'epic' doesn't exist in test env
+		},
+		{
+			name:           "with pc_id override",
+			requestBody:    `{"scenario":"foo_scenario.json","pc_id":"custom_hero"}`,
+			expectedStatus: http.StatusCreated,
+			// Note: Will use fallback since 'custom_hero' doesn't exist in test env
+		},
+		{
+			name:           "with both overrides",
+			requestBody:    `{"scenario":"foo_scenario.json","narrator_id":"epic","pc_id":"custom_hero"}`,
+			expectedStatus: http.StatusCreated,
+		},
+		{
+			name:           "with empty overrides (should use defaults)",
+			requestBody:    `{"scenario":"foo_scenario.json","narrator_id":"","pc_id":""}`,
+			expectedStatus: http.StatusCreated,
+		},
+		{
+			name:           "missing scenario field",
+			requestBody:    `{"narrator_id":"epic"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "invalid JSON",
+			requestBody:    `{invalid json}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/v1/gamestate", strings.NewReader(tt.requestBody))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+
+			handler.ServeHTTP(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d. Response body: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+
+			if tt.expectedStatus == http.StatusCreated {
+				// Parse response
+				var response state.GameState
+				if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+					t.Fatalf("Failed to decode response: %v", err)
+				}
+
+				// Validate response
+				if response.ID == uuid.Nil {
+					t.Error("Expected non-nil game state ID")
+				}
+
+				// Check that override values are present if specified
+				if tt.checkNarratorID != "" && response.NarratorID != tt.checkNarratorID {
+					t.Errorf("Expected narrator_id %s, got %s", tt.checkNarratorID, response.NarratorID)
+				}
+
+				// Verify the gamestate was saved
+				retrievedGS, err := mockStorage.LoadGameState(context.Background(), response.ID)
+				if err != nil {
+					t.Errorf("Failed to retrieve saved game state: %v", err)
+				}
+				if retrievedGS == nil {
+					t.Error("Expected saved game state to exist in storage")
+				}
+			} else {
+				// Should be an error response
+				var response ErrorResponse
+				if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+					t.Fatalf("Failed to decode error response: %v", err)
+				}
+				if response.Error == "" {
+					t.Error("Expected error message in response")
+				}
+			}
+		})
+	}
+}
+
 func TestGameStateHandler_Read(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelError,

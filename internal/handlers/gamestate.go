@@ -136,12 +136,19 @@ func isCensoredModel(modelName string) bool {
 	return false
 }
 
+// CreateGameStateRequest defines the request body for creating a new game state
+type CreateGameStateRequest struct {
+	Scenario   string `json:"scenario"`              // Required: scenario filename
+	NarratorID string `json:"narrator_id,omitempty"` // Optional: override scenario's narrator
+	PCID       string `json:"pc_id,omitempty"`       // Optional: override scenario's default PC
+}
+
 func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Creating new game state")
 
-	// Parse request body into GameState struct
-	var gs state.GameState
-	if err := json.NewDecoder(r.Body).Decode(&gs); err != nil {
+	// Parse request body into CreateGameStateRequest struct
+	var req CreateGameStateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Warn("Invalid JSON in request body", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
 		response := ErrorResponse{
@@ -153,11 +160,12 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if gs.Validate() != nil {
-		h.logger.Warn("Invalid game state data", "error", gs.Validate())
+	// Validate required fields
+	if req.Scenario == "" {
+		h.logger.Warn("Missing required field: scenario")
 		w.WriteHeader(http.StatusBadRequest)
 		response := ErrorResponse{
-			Error: "Invalid game state data: " + gs.Validate().Error(),
+			Error: "scenario field is required",
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Failed to encode error response", "error", err)
@@ -165,8 +173,11 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Create a new GameState
+	gs := state.NewGameState(req.Scenario, h.modelName)
+
 	// Get initial gamestate values from scenario
-	s, err := h.storage.GetScenario(r.Context(), gs.Scenario)
+	s, err := h.storage.GetScenario(r.Context(), req.Scenario)
 	if err != nil {
 		h.logger.Warn("Failed to load scenario", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -215,16 +226,26 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	for _, cp := range s.ContingencyPrompts {
 		gs.ContingencyPrompts = append(gs.ContingencyPrompts, cp.Prompt)
 	}
-	gs.ID = uuid.New()
-	gs.TurnCounter = 0
-	gs.SceneTurnCounter = 0
-	gs.ModelName = h.modelName
 
-	// Load PC from scenario (with fallback to classic)
-	pcID := s.DefaultPC
-	if pcID == "" {
-		pcID = "classic"
+	// Determine which narrator to use
+	narratorID := req.NarratorID // Use request override if provided
+	if narratorID == "" {
+		narratorID = s.NarratorID // Fall back to scenario's narrator
 	}
+	if narratorID != "" {
+		gs.NarratorID = narratorID
+		h.logger.Debug("Using narrator", "narrator_id", narratorID, "source", map[bool]string{true: "request", false: "scenario"}[req.NarratorID != ""])
+	}
+
+	// Determine which PC to use
+	pcID := req.PCID // Use request override if provided
+	if pcID == "" {
+		pcID = s.DefaultPC // Fall back to scenario's default PC
+	}
+	if pcID == "" {
+		pcID = "classic" // Final fallback to classic
+	}
+
 	pcPath := filepath.Join("data/pcs", pcID+".json")
 	loadedPC, pcErr := actor.LoadPC(pcPath)
 	if pcErr != nil {
@@ -238,7 +259,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	}
 	if loadedPC != nil {
 		gs.PC = loadedPC
-		h.logger.Debug("PC loaded successfully", "pc_id", loadedPC.Spec.ID, "name", loadedPC.Spec.Name)
+		h.logger.Debug("PC loaded successfully", "pc_id", loadedPC.Spec.ID, "name", loadedPC.Spec.Name, "source", map[bool]string{true: "request", false: "scenario"}[req.PCID != ""])
 	}
 
 	// If scenes are used, load the first scene
@@ -257,7 +278,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	if err := h.storage.SaveGameState(r.Context(), gs.ID, &gs); err != nil {
+	if err := h.storage.SaveGameState(r.Context(), gs.ID, gs); err != nil {
 		h.logger.Error("Failed to save new game state", "error", err, "id", gs.ID.String())
 		w.WriteHeader(http.StatusInternalServerError)
 		response := ErrorResponse{
