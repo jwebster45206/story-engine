@@ -3,6 +3,8 @@ package scenario
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/jwebster45206/story-engine/pkg/actor"
 )
 
 func TestScene_UnmarshalStoryEvents(t *testing.T) {
@@ -580,7 +582,7 @@ func TestGetLocation_NilLocations(t *testing.T) {
 func TestGetNPC(t *testing.T) {
 	// Create a test scenario with various NPCs
 	scenario := &Scenario{
-		NPCs: map[string]NPC{
+		NPCs: map[string]actor.NPC{
 			"gibbs": {
 				Name:        "Gibbs",
 				Type:        "pirate",
@@ -778,7 +780,7 @@ func TestGetNPC(t *testing.T) {
 
 func TestGetNPC_EmptyScenario(t *testing.T) {
 	scenario := &Scenario{
-		NPCs: map[string]NPC{},
+		NPCs: map[string]actor.NPC{},
 	}
 
 	key, found := scenario.GetNPC("anyone")

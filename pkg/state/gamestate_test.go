@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
@@ -25,7 +26,7 @@ func TestGameState_GetStatePrompt(t *testing.T) {
 				Scenario:  "test.json",
 				Location:  "Tortuga",
 				Inventory: []string{"cutlass", "spyglass"},
-				NPCs: map[string]scenario.NPC{
+				NPCs: map[string]actor.NPC{
 					"Gibbs": {
 						Name:        "Gibbs",
 						Type:        "pirate",
@@ -81,7 +82,7 @@ Game State:
 								Exits:       map[string]string{"east": "Black Pearl"},
 							},
 						},
-						NPCs: map[string]scenario.NPC{
+						NPCs: map[string]actor.NPC{
 							"Shipwright": {
 								Name:        "Shipwright",
 								Type:        "craftsman",
@@ -186,7 +187,7 @@ func TestGameState_GetStatePrompt_JSONStructure(t *testing.T) {
 						Description: "Test location",
 					},
 				},
-				NPCs: map[string]scenario.NPC{
+				NPCs: map[string]actor.NPC{
 					"TestNPC": {
 						Name:     "TestNPC",
 						Location: "TestLocation",
@@ -330,7 +331,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "no duplicates",
 			gameState: &GameState{
 				Inventory: []string{"sword", "shield"},
-				NPCs: map[string]scenario.NPC{
+				NPCs: map[string]actor.NPC{
 					"guard":    {Items: []string{"key", "armor"}},
 					"merchant": {Items: []string{"potion", "gold"}},
 				},
@@ -354,7 +355,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "user inventory takes priority over NPCs",
 			gameState: &GameState{
 				Inventory: []string{"sword", "key"},
-				NPCs: map[string]scenario.NPC{
+				NPCs: map[string]actor.NPC{
 					"guard":    {Items: []string{"key", "armor", "sword"}},
 					"merchant": {Items: []string{"potion", "key"}},
 				},
@@ -376,7 +377,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "user inventory takes priority over locations",
 			gameState: &GameState{
 				Inventory: []string{"sword", "gem"},
-				NPCs: map[string]scenario.NPC{
+				NPCs: map[string]actor.NPC{
 					"guard": {Items: []string{"key", "armor"}},
 				},
 				WorldLocations: map[string]scenario.Location{
@@ -398,7 +399,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "NPC items take priority over locations",
 			gameState: &GameState{
 				Inventory: []string{"sword"},
-				NPCs: map[string]scenario.NPC{
+				NPCs: map[string]actor.NPC{
 					"guard":    {Items: []string{"key", "armor"}},
 					"merchant": {Items: []string{"potion", "gem"}},
 				},
@@ -422,7 +423,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "complex scenario with all priorities",
 			gameState: &GameState{
 				Inventory: []string{"legendary_sword", "master_key"},
-				NPCs: map[string]scenario.NPC{
+				NPCs: map[string]actor.NPC{
 					"guard":    {Items: []string{"iron_key", "chain_mail", "legendary_sword"}},
 					"merchant": {Items: []string{"health_potion", "master_key", "gold_coin"}},
 					"wizard":   {Items: []string{"spell_book", "iron_key"}},
@@ -441,7 +442,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "empty collections",
 			gameState: &GameState{
 				Inventory:      []string{},
-				NPCs:           map[string]scenario.NPC{},
+				NPCs:           map[string]actor.NPC{},
 				WorldLocations: map[string]scenario.Location{},
 			},
 			expectedInventory: []string{},

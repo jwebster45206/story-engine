@@ -14,7 +14,7 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
-// GameState is the current state of a roleplay game session.
+// GameState stores the current state of the game
 type GameState struct {
 	ID                 uuid.UUID                    `json:"id"`                        // Unique ID per session
 	ModelName          string                       `json:"model_name,omitempty" `     // Name of the large language model driving gameplay
@@ -22,7 +22,7 @@ type GameState struct {
 	SceneName          string                       `json:"scene_name,omitempty" `     // Current scene name in the scenario, if applicable
 	NarratorID         string                       `json:"narrator_id,omitempty"`     // Override narrator for this game session
 	PC                 *actor.PC                    `json:"pc,omitempty"`              // Player Character for this game session
-	NPCs               map[string]scenario.NPC      `json:"npcs,omitempty" `           // All NPCs in the game world
+	NPCs               map[string]actor.NPC         `json:"npcs,omitempty" `           // All NPCs in the game world
 	WorldLocations     map[string]scenario.Location `json:"locations,omitempty" `      // Current locations in the game world
 	Location           string                       `json:"user_location,omitempty" `  // Current location in the game world
 	Inventory          []string                     `json:"user_inventory,omitempty" ` // User's inventory items
@@ -48,7 +48,7 @@ func NewGameState(scenarioFileName string, modelName string) *GameState {
 		Vars:               make(map[string]string),
 		ContingencyPrompts: make([]string, 0),
 		StoryEventQueue:    make([]string, 0),
-		NPCs:               make(map[string]scenario.NPC),
+		NPCs:               make(map[string]actor.NPC),
 		WorldLocations:     make(map[string]scenario.Location),
 		CreatedAt:          time.Now(),
 		UpdatedAt:          time.Now(),
@@ -270,7 +270,7 @@ func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 		gs.WorldLocations = make(map[string]scenario.Location)
 	}
 	if gs.NPCs == nil {
-		gs.NPCs = make(map[string]scenario.NPC)
+		gs.NPCs = make(map[string]actor.NPC)
 	}
 
 	// Copy locations from scene
