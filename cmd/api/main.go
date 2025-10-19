@@ -89,6 +89,10 @@ func main() {
 	mux.Handle("/v1/scenarios", scenarioHandler)
 	mux.Handle("/v1/scenarios/", scenarioHandler)
 
+	pcHandler := handlers.NewPCHandler(log, handlers.PCDataDir)
+	mux.Handle("/v1/pcs", pcHandler)
+	mux.Handle("/v1/pcs/", pcHandler)
+
 	handler := middleware.Logger(mux)
 	server := &http.Server{
 		Addr:        ":" + cfg.Port,

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
@@ -20,6 +21,7 @@ type GameState struct {
 	Scenario           string                       `json:"scenario,omitempty" `       // Filename of the scenario being played. Ex: "foo_scenario.json"
 	SceneName          string                       `json:"scene_name,omitempty" `     // Current scene name in the scenario, if applicable
 	NarratorID         string                       `json:"narrator_id,omitempty"`     // Override narrator for this game session
+	PC                 *actor.PC                    `json:"pc,omitempty"`              // Player Character for this game session
 	NPCs               map[string]scenario.NPC      `json:"npcs,omitempty" `           // All NPCs in the game world
 	WorldLocations     map[string]scenario.Location `json:"locations,omitempty" `      // Current locations in the game world
 	Location           string                       `json:"user_location,omitempty" `  // Current location in the game world
@@ -150,8 +152,8 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 		}
 	}
 
-	// Build system prompt with narrator
-	systemPrompt := scenario.BuildSystemPrompt(narrator)
+	// Build system prompt with narrator and PC
+	systemPrompt := scenario.BuildSystemPrompt(narrator, gs.PC)
 
 	// Add rating prompt
 	systemPrompt += "\n\nContent Rating: " + s.Rating

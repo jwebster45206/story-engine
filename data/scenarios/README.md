@@ -12,6 +12,7 @@ Every scenario must include these top-level fields:
   "story": "Brief description of the scenario premise",
   "rating": "PG-13",
   "narrator_id": "vincent_price",
+  "default_pc": "pirate_captain",
   "opening_scene": "scene_id",
   "opening_prompt": "Narrator text shown directly to the player",
   "opening_location": "location_id", 
@@ -22,6 +23,45 @@ Every scenario must include these top-level fields:
   "contingency_prompts": [ /* narrative guidance */ ],
   "contingency_rules": [ /* game logic rules */ ],
   "game_end_prompt": "Final evaluation text"
+}
+```
+
+## Player Character (Optional)
+
+Scenarios can specify a default Player Character (PC) that players control. PCs define the character's identity, stats, abilities, and background, which influence both narrative and gameplay.
+
+```json
+{
+  "name": "Pirate Adventure",
+  "default_pc": "pirate_captain",
+  ...
+}
+```
+
+**Available PCs:**
+See `data/pcs` directory.
+
+**If no PC is specified**, the system defaults to `classic` (a generic adventurer).
+
+**How PCs Affect Gameplay:**
+- The PC's name, pronouns, and description are injected into the narrator's system prompt
+- The narrator will refer to the player by their character name and use appropriate pronouns
+- The PC's stats and abilities are available for combat and skill checks (future feature)
+- The PC's background provides context for the narrator's responses
+
+**Creating custom PCs:** See `data/pcs/README.md` for complete details on creating Player Characters, including stat blocks, skills, and narrative guidelines.
+
+**Example: Pirate scenario with Captain Jack Sparrow:**
+```json
+{
+  "name": "Caribbean Treasure Hunt",
+  "story": "A pirate adventure on the high seas",
+  "rating": "PG-13",
+  "narrator_id": "classic",
+  "default_pc": "pirate_captain",
+  "opening_prompt": "You stand on the docks of Tortuga...",
+  "opening_location": "tortuga",
+  ...
 }
 ```
 

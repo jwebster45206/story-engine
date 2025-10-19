@@ -1,0 +1,41 @@
+{
+  "id": "alexandra_kane",
+  "name": "Alexandra Kane",
+  "class": "investigator",
+  "level": 3,
+  "race": "human",
+  "pronouns": "she/her",
+  "description": "A sharp-minded investigator with a keen eye for detail and an insatiable curiosity. Logical, methodical, and relentless in pursuit of the truth.",
+  "background": "Alexandra Kane grew up in the bustling streets of Boston, the daughter of a police detective. She learned early that the world is full of secrets, and some of them are worth dying for. After earning her degree in criminology, she worked briefly with the Boston PD before going private. Now she takes on cases that others won't touch—the strange ones, the impossible ones, the cases that make people whisper about things that shouldn't exist. She's seen enough to know that the world is far stranger than most people believe, but she's determined to find rational explanations, even when the evidence suggests otherwise.",
+  "stats": {
+    "strength": 10,
+    "dexterity": 13,
+    "constitution": 12,
+    "intelligence": 16,
+    "wisdom": 14,
+    "charisma": 12
+  },
+  "hp": 20,
+  "max_hp": 20,
+  "ac": 13,
+  "combat_modifiers": {
+    "dexterity": 1,
+    "proficiency": 2
+  },
+  "attributes": {
+    "investigation": 8,
+    "perception": 6,
+    "insight": 6,
+    "history": 6,
+    "medicine": 4,
+    "deduction": 7,
+    "forensics": 5
+  },
+  "inventory": [
+    "magnifying glass",
+    "notebook and pencil",
+    ".38 revolver",
+    "flashlight",
+    "cigarettes and lighter"
+  ]
+}

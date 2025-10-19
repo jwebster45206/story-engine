@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
@@ -217,6 +219,27 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	gs.TurnCounter = 0
 	gs.SceneTurnCounter = 0
 	gs.ModelName = h.modelName
+
+	// Load PC from scenario (with fallback to classic)
+	pcID := s.DefaultPC
+	if pcID == "" {
+		pcID = "classic"
+	}
+	pcPath := filepath.Join("data/pcs", pcID+".json")
+	loadedPC, pcErr := actor.LoadPC(pcPath)
+	if pcErr != nil {
+		h.logger.Warn("Failed to load PC, trying fallback to classic", "pc_id", pcID, "error", pcErr)
+		// Try fallback to classic
+		loadedPC, pcErr = actor.LoadPC("data/pcs/classic.json")
+		if pcErr != nil {
+			h.logger.Error("Failed to load fallback PC 'classic'", "error", pcErr)
+			// Continue without PC rather than failing - PC is optional for now
+		}
+	}
+	if loadedPC != nil {
+		gs.PC = loadedPC
+		h.logger.Debug("PC loaded successfully", "pc_id", loadedPC.Spec.ID, "name", loadedPC.Spec.Name)
+	}
 
 	// If scenes are used, load the first scene
 	if s.OpeningScene != "" {

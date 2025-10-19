@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/jwebster45206/story-engine/pkg/actor"
 )
 
 func TestNarratorGetPromptsAsString(t *testing.T) {
@@ -283,7 +285,7 @@ func TestBuildSystemPrompt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := BuildSystemPrompt(tt.narrator)
+			result := BuildSystemPrompt(tt.narrator, nil)
 
 			for _, phrase := range tt.shouldContain {
 				if !strings.Contains(result, phrase) {
@@ -318,6 +320,74 @@ func TestGetContentRatingPrompt(t *testing.T) {
 			result := GetContentRatingPrompt(tt.rating)
 			if !strings.Contains(result, tt.shouldContain) {
 				t.Errorf("expected rating prompt for %q to contain %q, got: %s", tt.rating, tt.shouldContain, result)
+			}
+		})
+	}
+}
+
+func TestBuildPCPrompt(t *testing.T) {
+	tests := []struct {
+		name             string
+		pc               *actor.PC
+		shouldContain    []string
+		shouldNotContain []string
+	}{
+		{
+			name: "PC with full info",
+			pc: &actor.PC{
+				Spec: &actor.PCSpec{
+					Name:        "Aragorn",
+					Pronouns:    "he/him",
+					Description: "A skilled ranger from the north",
+				},
+			},
+			shouldContain: []string{
+				"### Player Character",
+				"The player is controlling: Aragorn",
+				"(he/him)",
+				"A skilled ranger from the north",
+			},
+			shouldNotContain: []string{},
+		},
+		{
+			name: "PC with name only",
+			pc: &actor.PC{
+				Spec: &actor.PCSpec{
+					Name: "Frodo",
+				},
+			},
+			shouldContain: []string{
+				"### Player Character",
+				"The player is controlling: Frodo",
+			},
+			shouldNotContain: []string{
+				"()",
+			},
+		},
+		{
+			name:          "nil PC",
+			pc:            nil,
+			shouldContain: []string{},
+			shouldNotContain: []string{
+				"### Player Character",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := BuildPCPrompt(tt.pc)
+
+			for _, phrase := range tt.shouldContain {
+				if !strings.Contains(result, phrase) {
+					t.Errorf("expected PC prompt to contain %q, got: %s", phrase, result)
+				}
+			}
+
+			for _, phrase := range tt.shouldNotContain {
+				if strings.Contains(result, phrase) {
+					t.Errorf("expected PC prompt NOT to contain %q, got: %s", phrase, result)
+				}
 			}
 		})
 	}
