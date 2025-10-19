@@ -143,6 +143,48 @@ type CreateGameStateRequest struct {
 	PCID       string `json:"pc_id,omitempty"`       // Optional: override scenario's default PC
 }
 
+// normalizeID converts a string to lowercase snake_case for consistent IDs.
+// It handles spaces, hyphens, dots, and camelCase/PascalCase.
+func normalizeID(s string) string {
+	if s == "" {
+		return ""
+	}
+
+	var out strings.Builder
+	prevUnderscore := false
+	for i, r := range s {
+		if r >= 'A' && r <= 'Z' {
+			r = r + ('a' - 'A')
+		}
+		switch {
+		case r == '.':
+			out.WriteRune('.')
+			prevUnderscore = false
+
+		case r == ' ' || r == '-' || r == '_':
+			if !prevUnderscore && i > 0 {
+				out.WriteRune('_')
+				prevUnderscore = true
+			}
+
+		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
+			out.WriteRune(r)
+			prevUnderscore = false
+
+		default:
+			// Ignore other characters
+		}
+	}
+	return out.String()
+}
+
+// Normalize normalizes all ID fields to lowercase snake_case
+func (req *CreateGameStateRequest) Normalize() {
+	req.Scenario = normalizeID(req.Scenario)
+	req.NarratorID = normalizeID(req.NarratorID)
+	req.PCID = normalizeID(req.PCID)
+}
+
 func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Creating new game state")
 
@@ -159,6 +201,9 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
+
+	// Normalize all input fields to snake_case
+	req.Normalize()
 
 	// Validate required fields
 	if req.Scenario == "" {
