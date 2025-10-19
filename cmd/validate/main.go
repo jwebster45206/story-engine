@@ -98,8 +98,10 @@ func (v *ScenarioValidator) validateScene(scene *scenario.Scene, sceneID string)
 		v.validateIDFormat("scene NPC ID", npcID)
 	}
 
-	for _, conditional := range scene.Conditionals {
-		v.validateConditional(&conditional, sceneID)
+	// Validate conditional keys (map keys are the conditional IDs)
+	for conditionalKey, conditional := range scene.Conditionals {
+		v.validateIDFormat("conditional key", conditionalKey)
+		v.validateConditional(&conditional, sceneID, conditionalKey)
 	}
 
 	// Validate story event keys (map keys are the event IDs)
@@ -113,8 +115,8 @@ func (v *ScenarioValidator) validateScene(scene *scenario.Scene, sceneID string)
 	}
 }
 
-func (v *ScenarioValidator) validateConditional(conditional *scenario.Conditional, sceneID string) {
-	v.validateConditionalWhen(&conditional.When, fmt.Sprintf("conditional in scene %s", sceneID), conditional.Name)
+func (v *ScenarioValidator) validateConditional(conditional *scenario.Conditional, sceneID string, conditionalKey string) {
+	v.validateConditionalWhen(&conditional.When, fmt.Sprintf("conditional %s in scene %s", conditionalKey, sceneID), conditionalKey)
 
 	if conditional.Then.Scene != "" {
 		v.validateIDFormat("conditional then scene", conditional.Then.Scene)

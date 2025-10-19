@@ -59,8 +59,8 @@ func (dw *DeltaWorker) ApplyVars() {
 }
 
 // ApplyConditionalOverrides evaluates conditionals and overrides delta fields based on results
-// Returns the list of triggered conditionals for logging purposes
-func (dw *DeltaWorker) ApplyConditionalOverrides() []scenario.Conditional {
+// Returns a map of triggered conditional IDs to their conditionals for logging purposes
+func (dw *DeltaWorker) ApplyConditionalOverrides() map[string]scenario.Conditional {
 	if dw.scenario == nil {
 		return nil
 	}

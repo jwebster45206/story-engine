@@ -136,15 +136,14 @@
         "ship_repair_ledger_acquired": "false",
         "shipwright_hired": "false"
       },
-      "conditionals": [
-        {
-          "name": "hire_shipwright_transition",
+      "conditionals": {
+        "hire_shipwright_transition": {
           "when": {
             "vars": {"shipwright_hired": "true"}
           },
           "then": {"scene": "british_docks"}
         }
-      ]
+      }
     },
     "british_docks": {
       "story": "The player needs gold to pay the shipwright. The British Docks hold a chest of gold doubloons, but it's heavily guarded territory. The player will need to use cunning and disguise to steal the treasure.",
@@ -210,15 +209,14 @@
         "gold_acquired": "false",
         "shipwright_paid_in_full": "false"
       },
-      "conditionals": [
-        {
-          "name": "british_docks_to_calypsos_map",
+      "conditionals": {
+        "british_docks_to_calypsos_map": {
           "when": {
             "vars": {"shipwright_paid_in_full": "true"}
           },
           "then": {"scene": "calypsos_map"}
         }
-      ]
+      }
     },
     "calypsos_map": {
       "story": "With gold in hand, the player can pay the shipwright. But Calypso has something special for the player - a treasure map that will lead to even greater riches. The player must complete their business and claim the map. The hour is late, and the streets are quiet.",
@@ -273,15 +271,14 @@
         "When the player commands the crew to sail, set sail, weigh anchor, depart, or leave Tortuga (or uses the 'open sea' exit from the Black Pearl), set the variable \"pearl_departed_tortuga\" to \"true\".",
         "When the player commands the crew to sail, set sail, weigh anchor, depart, or leave Tortuga (or uses the 'open sea' exit from the Black Pearl), the game ends."
       ],
-      "conditionals": [
-        {
-          "name": "end_game_on_departure",
+      "conditionals": {
+        "end_game_on_departure": {
           "when": {
             "vars": {"pearl_departed_tortuga": "true"}
           },
           "then": {"game_ended": true}
         }
-      ]
+      }
     }
   },
   "opening_scene": "shipwright",

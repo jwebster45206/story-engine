@@ -4,14 +4,14 @@ import "encoding/json"
 
 // Scene represents a single scene within a scenario with its own locations, NPCs, and rules
 type Scene struct {
-	Story              string                `json:"story"`                  // Description of what happens in this scene
-	Locations          map[string]Location   `json:"locations"`              // Map of location names to Location objects for this scene
-	NPCs               map[string]NPC        `json:"npcs"`                   // Map of NPC names to their data for this scene
-	Vars               map[string]string     `json:"vars"`                   // Scene-specific variables
-	ContingencyPrompts []ContingencyPrompt   `json:"contingency_prompts"`    // Conditional prompts for LLM in this scene
-	ContingencyRules   []string              `json:"contingency_rules"`      // Backend rules for LLM to follow in this scene
-	Conditionals       []Conditional         `json:"conditionals,omitempty"` // Deterministic when/then rules
-	StoryEvents        map[string]StoryEvent `json:"story_events,omitempty"` // Priority narrative events with conditions (key = event ID)
+	Story              string                 `json:"story"`                  // Description of what happens in this scene
+	Locations          map[string]Location    `json:"locations"`              // Map of location names to Location objects for this scene
+	NPCs               map[string]NPC         `json:"npcs"`                   // Map of NPC names to their data for this scene
+	Vars               map[string]string      `json:"vars"`                   // Scene-specific variables
+	ContingencyPrompts []ContingencyPrompt    `json:"contingency_prompts"`    // Conditional prompts for LLM in this scene
+	ContingencyRules   []string               `json:"contingency_rules"`      // Backend rules for LLM to follow in this scene
+	Conditionals       map[string]Conditional `json:"conditionals,omitempty"` // Deterministic when/then rules (key = conditional ID)
+	StoryEvents        map[string]StoryEvent  `json:"story_events,omitempty"` // Priority narrative events with conditions (key = event ID)
 }
 
 // ContingencyPrompt can be either a simple string (always shown) or a conditional prompt
@@ -38,9 +38,8 @@ func (cp *ContingencyPrompt) UnmarshalJSON(data []byte) error {
 
 // Conditional represents a deterministic rule to execute when conditions are met
 type Conditional struct {
-	Name string          `json:"name,omitempty"` // Optional name for debugging
-	When ConditionalWhen `json:"when"`           // Conditions that must be met
-	Then ConditionalThen `json:"then"`           // Actions to execute when conditions are met
+	When ConditionalWhen `json:"when"` // Conditions that must be met
+	Then ConditionalThen `json:"then"` // Actions to execute when conditions are met
 }
 
 // ConditionalWhen defines the conditions that must be met for a conditional to trigger

@@ -11,7 +11,8 @@ type GameStateView interface {
 }
 
 // EvaluateConditionals checks all conditionals for the current scene and returns triggered conditionals
-func (s *Scenario) EvaluateConditionals(gsView GameStateView) []Conditional {
+// Returns a map of conditional IDs to their conditionals
+func (s *Scenario) EvaluateConditionals(gsView GameStateView) map[string]Conditional {
 	sceneName := gsView.GetSceneName()
 	if sceneName == "" {
 		return nil
@@ -22,12 +23,16 @@ func (s *Scenario) EvaluateConditionals(gsView GameStateView) []Conditional {
 		return nil
 	}
 
-	var triggered []Conditional
+	triggered := make(map[string]Conditional)
 
-	for _, conditional := range scene.Conditionals {
+	for conditionalID, conditional := range scene.Conditionals {
 		if evaluateWhen(conditional.When, gsView) {
-			triggered = append(triggered, conditional)
+			triggered[conditionalID] = conditional
 		}
+	}
+
+	if len(triggered) == 0 {
+		return nil
 	}
 
 	return triggered
