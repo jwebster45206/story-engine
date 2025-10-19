@@ -114,7 +114,7 @@ func (v *ScenarioValidator) validateScene(scene *scenario.Scene, sceneID string)
 }
 
 func (v *ScenarioValidator) validateConditional(conditional *scenario.Conditional, sceneID string) {
-	v.validateConditionalWhen(&conditional.When, fmt.Sprintf("conditional in scene %s", sceneID))
+	v.validateConditionalWhen(&conditional.When, fmt.Sprintf("conditional in scene %s", sceneID), conditional.Name)
 
 	if conditional.Then.Scene != "" {
 		v.validateIDFormat("conditional then scene", conditional.Then.Scene)
@@ -122,19 +122,19 @@ func (v *ScenarioValidator) validateConditional(conditional *scenario.Conditiona
 }
 
 func (v *ScenarioValidator) validateStoryEvent(event *scenario.StoryEvent, sceneID string, eventKey string) {
-	v.validateConditionalWhen(&event.When, fmt.Sprintf("story event %s in scene %s", eventKey, sceneID))
+	v.validateConditionalWhen(&event.When, fmt.Sprintf("story event %s in scene %s", eventKey, sceneID), eventKey)
 }
 
 func (v *ScenarioValidator) validateContingencyPrompt(cp *scenario.ContingencyPrompt) {
 	if cp.When != nil {
-		v.validateConditionalWhen(cp.When, "contingency prompt")
+		v.validateConditionalWhen(cp.When, "contingency prompt", cp.Prompt)
 	}
 }
 
-func (v *ScenarioValidator) validateConditionalWhen(when *scenario.ConditionalWhen, context string) {
+func (v *ScenarioValidator) validateConditionalWhen(when *scenario.ConditionalWhen, context string, prompt string) {
 	if len(when.Vars) == 0 && when.SceneTurnCounter == nil && when.TurnCounter == nil &&
 		when.Location == "" && when.MinSceneTurns == nil && when.MinTurns == nil {
-		v.addError(fmt.Sprintf("%s has empty 'when' clause - no conditions specified", context))
+		v.addError(fmt.Sprintf("%s has empty 'when' clause - no conditions specified (%s)", context, prompt))
 		return
 	}
 
