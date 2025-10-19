@@ -330,6 +330,178 @@ func TestPC_MarshalJSON(t *testing.T) {
 	}
 }
 
+func TestPC_MarshalJSON_NilActor(t *testing.T) {
+	// Test marshaling a PC with nil Actor (should not panic)
+	spec := &PCSpec{
+		ID:          "test_pc",
+		Name:        "Test Character",
+		Class:       "Fighter",
+		Level:       1,
+		Race:        "Human",
+		Pronouns:    "he/him",
+		Description: "A test character",
+		HP:          10,
+		MaxHP:       10,
+		AC:          16,
+	}
+
+	pc := &PC{
+		Spec:  spec,
+		Actor: nil, // Explicitly nil
+	}
+
+	// This should not panic
+	data, err := json.Marshal(pc)
+	if err != nil {
+		t.Fatalf("MarshalJSON() with nil Actor error = %v", err)
+	}
+
+	// Unmarshal to verify it's valid JSON
+	var result map[string]interface{}
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("Failed to unmarshal result: %v", err)
+	}
+
+	// Verify basic fields are still present
+	if result["id"] != "test_pc" {
+		t.Errorf("Marshaled id = %v, want %q", result["id"], "test_pc")
+	}
+
+	if result["name"] != "Test Character" {
+		t.Errorf("Marshaled name = %v, want %q", result["name"], "Test Character")
+	}
+}
+
+func TestPC_MarshalJSON_NilPC(t *testing.T) {
+	// Test marshaling a nil PC pointer (should not panic)
+	var pc *PC = nil
+
+	// This should not panic
+	data, err := json.Marshal(pc)
+	if err != nil {
+		t.Fatalf("MarshalJSON() with nil PC error = %v", err)
+	}
+
+	// Should return "null"
+	if string(data) != "null" {
+		t.Errorf("MarshalJSON() with nil PC = %q, want %q", string(data), "null")
+	}
+}
+
+func TestPC_MarshalUnmarshalRoundTrip(t *testing.T) {
+	// Create a PC with full data
+	spec := &PCSpec{
+		ID:          "test_pc",
+		Name:        "Test Ranger",
+		Class:       "Ranger",
+		Level:       5,
+		Race:        "Wood Elf",
+		Pronouns:    "they/them",
+		Description: "A skilled tracker",
+		Background:  "Outlander",
+		Stats: Stats5e{
+			Strength:     14,
+			Dexterity:    18,
+			Constitution: 13,
+			Intelligence: 10,
+			Wisdom:       16,
+			Charisma:     12,
+		},
+		HP:    35,
+		MaxHP: 40,
+		AC:    16,
+		CombatModifiers: map[string]int{
+			"dexterity":   4,
+			"proficiency": 3,
+		},
+		Attributes: map[string]int{
+			"survival":   8,
+			"perception": 7,
+			"stealth":    7,
+		},
+		Inventory: []string{"longbow", "arrows", "rope"},
+	}
+
+	// Build Actor
+	allAttrs := spec.Stats.ToAttributes()
+	for k, v := range spec.Attributes {
+		allAttrs[k] = v
+	}
+
+	actor, err := d20.NewActor(spec.Name, spec.MaxHP, spec.AC).
+		WithAttributes(allAttrs).
+		WithCombatModifiers(spec.CombatModifiers).
+		Build()
+	if err != nil {
+		t.Fatalf("Failed to build actor: %v", err)
+	}
+
+	// Set HP to different value
+	if err := actor.SetHP(spec.HP); err != nil {
+		t.Fatalf("Failed to set HP: %v", err)
+	}
+
+	originalPC := &PC{
+		Spec:  spec,
+		Actor: actor,
+	}
+
+	// Marshal to JSON
+	data, err := json.Marshal(originalPC)
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+
+	// Unmarshal back
+	var restoredPC PC
+	if err := json.Unmarshal(data, &restoredPC); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+
+	// Verify Spec fields
+	if restoredPC.Spec.ID != spec.ID {
+		t.Errorf("ID = %q, want %q", restoredPC.Spec.ID, spec.ID)
+	}
+	if restoredPC.Spec.Name != spec.Name {
+		t.Errorf("Name = %q, want %q", restoredPC.Spec.Name, spec.Name)
+	}
+	if restoredPC.Spec.Class != spec.Class {
+		t.Errorf("Class = %q, want %q", restoredPC.Spec.Class, spec.Class)
+	}
+
+	// Verify Actor was rebuilt
+	if restoredPC.Actor == nil {
+		t.Fatal("Actor is nil after unmarshal, should be rebuilt")
+	}
+
+	// Verify Actor properties
+	if restoredPC.Actor.HP() != spec.HP {
+		t.Errorf("Actor.HP() = %d, want %d", restoredPC.Actor.HP(), spec.HP)
+	}
+	if restoredPC.Actor.MaxHP() != spec.MaxHP {
+		t.Errorf("Actor.MaxHP() = %d, want %d", restoredPC.Actor.MaxHP(), spec.MaxHP)
+	}
+	if restoredPC.Actor.AC() != spec.AC {
+		t.Errorf("Actor.AC() = %d, want %d", restoredPC.Actor.AC(), spec.AC)
+	}
+
+	// Verify core stats
+	if dex, ok := restoredPC.Actor.Attribute("dexterity"); !ok || dex != 18 {
+		t.Errorf("Attribute('dexterity') = %d, %v, want 18, true", dex, ok)
+	}
+
+	// Verify additional attributes
+	if survival, ok := restoredPC.Actor.Attribute("survival"); !ok || survival != 8 {
+		t.Errorf("Attribute('survival') = %d, %v, want 8, true", survival, ok)
+	}
+
+	// Verify combat modifiers
+	mods := restoredPC.Actor.GetCombatModifiers()
+	if len(mods) != 2 {
+		t.Errorf("CombatModifiers count = %d, want 2", len(mods))
+	}
+}
+
 func TestLoadPC_RealFiles(t *testing.T) {
 	// This test loads the actual PC files from data/pcs if they exist
 	// Skip if files don't exist

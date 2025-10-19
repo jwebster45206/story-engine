@@ -109,6 +109,15 @@ func LoadPC(path string) (*PC, error) {
 // MarshalJSON converts PC back to PCSpec format for API responses
 // Reads current runtime state from the Actor
 func (pc *PC) MarshalJSON() ([]byte, error) {
+	// Handle nil PC or nil Actor gracefully
+	if pc == nil {
+		return []byte("null"), nil
+	}
+	if pc.Actor == nil {
+		// If Actor is nil, just serialize the Spec directly
+		return json.Marshal(pc.Spec)
+	}
+
 	// Helper to safely get attribute from Actor
 	getAttr := func(key string) int {
 		if val, ok := pc.Actor.Attribute(key); ok {
@@ -185,4 +194,40 @@ func (pc *PC) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(resp)
+}
+
+// UnmarshalJSON reconstructs a PC from JSON and rebuilds its Actor
+func (pc *PC) UnmarshalJSON(data []byte) error {
+	// First unmarshal into a PCSpec
+	var spec PCSpec
+	if err := json.Unmarshal(data, &spec); err != nil {
+		return fmt.Errorf("failed to unmarshal PC spec: %w", err)
+	}
+
+	// Store the spec
+	pc.Spec = &spec
+
+	// Rebuild the Actor from the spec
+	allAttrs := spec.Stats.ToAttributes()
+	for k, v := range spec.Attributes {
+		allAttrs[k] = v
+	}
+
+	actor, err := d20.NewActor(spec.Name, spec.MaxHP, spec.AC).
+		WithAttributes(allAttrs).
+		WithCombatModifiers(spec.CombatModifiers).
+		Build()
+	if err != nil {
+		return fmt.Errorf("failed to rebuild actor: %w", err)
+	}
+
+	// Set current HP if different from max
+	if spec.HP != spec.MaxHP && spec.HP > 0 {
+		if err := actor.SetHP(spec.HP); err != nil {
+			return fmt.Errorf("failed to set HP: %w", err)
+		}
+	}
+
+	pc.Actor = actor
+	return nil
 }
