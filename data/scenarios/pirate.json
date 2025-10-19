@@ -3,6 +3,7 @@
   "story": "The player is the captain of The Black Pearl, a legendary pirate ship. The player's crew has just docked at Tortuga, a notorious pirate haven. Adventure and treasure await as the player explores the Caribbean during the Golden Age of Piracy.",
   "rating": "PG-13",
   "narrator_id": "vincent_price",
+  "default_pc": "pirate_captain",
   "locations": {
     "tortuga": {
       "name": "Tortuga",

@@ -283,7 +283,7 @@ func TestBuildSystemPrompt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := BuildSystemPrompt(tt.narrator)
+			result := BuildSystemPrompt(tt.narrator, "", "", "")
 
 			for _, phrase := range tt.shouldContain {
 				if !strings.Contains(result, phrase) {

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jwebster45206/story-engine/pkg/pc"
+	"github.com/jwebster45206/story-engine/pkg/actor"
 )
 
 // PCDataDir is the default path to the PC data directory
@@ -44,7 +44,7 @@ func (h *PCHandler) ListPCs(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Parse just the PCSpec (no Actor building)
-		var spec pc.PCSpec
+		var spec actor.PCSpec
 		if err := json.Unmarshal(jsonData, &spec); err != nil {
 			h.log.Warn("Failed to parse PC file", "error", err, "file", entry.Name())
 			continue
@@ -122,7 +122,7 @@ func (h *PCHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load the PC
-	loadedPC, err := pc.LoadPC(pcPath)
+	loadedPC, err := actor.LoadPC(pcPath)
 	if err != nil {
 		h.log.Error("Failed to load PC", "error", err, "id", id)
 		http.Error(w, "Failed to load PC", http.StatusInternalServerError)
