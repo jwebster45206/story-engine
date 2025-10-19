@@ -153,6 +153,133 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 	}
 }
 
+func TestCreateGameStateRequest_Normalize(t *testing.T) {
+	tests := []struct {
+		name             string
+		input            CreateGameStateRequest
+		expectedScenario string
+		expectedNarrator string
+		expectedPC       string
+	}{
+		{
+			name: "scenario without .json extension",
+			input: CreateGameStateRequest{
+				Scenario:   "pirate_adventure",
+				NarratorID: "epic",
+				PCID:       "jack_sparrow",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic",
+			expectedPC:       "jack_sparrow",
+		},
+		{
+			name: "scenario with .json extension",
+			input: CreateGameStateRequest{
+				Scenario:   "pirate_adventure.json",
+				NarratorID: "comedic",
+				PCID:       "custom_hero",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "comedic",
+			expectedPC:       "custom_hero",
+		},
+		{
+			name: "camelCase and spaces converted to snake_case",
+			input: CreateGameStateRequest{
+				Scenario:   "PirateAdventure",
+				NarratorID: "Epic Narrator",
+				PCID:       "Jack Sparrow",
+			},
+			expectedScenario: "pirateadventure.json",
+			expectedNarrator: "epic_narrator",
+			expectedPC:       "jack_sparrow",
+		},
+		{
+			name: "hyphens converted to underscores",
+			input: CreateGameStateRequest{
+				Scenario:   "pirate-adventure",
+				NarratorID: "epic-narrator",
+				PCID:       "jack-sparrow",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic_narrator",
+			expectedPC:       "jack_sparrow",
+		},
+		{
+			name: "mixed case with special characters",
+			input: CreateGameStateRequest{
+				Scenario:   "Pirate Adventure!",
+				NarratorID: "Epic.Narrator",
+				PCID:       "Jack@Sparrow",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic.narrator",
+			expectedPC:       "jacksparrow",
+		},
+		{
+			name: "already normalized",
+			input: CreateGameStateRequest{
+				Scenario:   "pirate_adventure.json",
+				NarratorID: "epic_narrator",
+				PCID:       "jack_sparrow",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic_narrator",
+			expectedPC:       "jack_sparrow",
+		},
+		{
+			name: "empty optional fields",
+			input: CreateGameStateRequest{
+				Scenario:   "test",
+				NarratorID: "",
+				PCID:       "",
+			},
+			expectedScenario: "test.json",
+			expectedNarrator: "",
+			expectedPC:       "",
+		},
+		{
+			name: "narrator and pc with .json extension should be stripped",
+			input: CreateGameStateRequest{
+				Scenario:   "pirate_adventure",
+				NarratorID: "epic.json",
+				PCID:       "jack_sparrow.json",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic",
+			expectedPC:       "jack_sparrow",
+		},
+		{
+			name: "narrator and pc with .JSON extension (uppercase) should be stripped after normalization",
+			input: CreateGameStateRequest{
+				Scenario:   "pirate_adventure",
+				NarratorID: "Epic.JSON",
+				PCID:       "Jack.JSON",
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic",
+			expectedPC:       "jack",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := tt.input
+			req.Normalize()
+
+			if req.Scenario != tt.expectedScenario {
+				t.Errorf("Scenario: expected %q, got %q", tt.expectedScenario, req.Scenario)
+			}
+			if req.NarratorID != tt.expectedNarrator {
+				t.Errorf("NarratorID: expected %q, got %q", tt.expectedNarrator, req.NarratorID)
+			}
+			if req.PCID != tt.expectedPC {
+				t.Errorf("PCID: expected %q, got %q", tt.expectedPC, req.PCID)
+			}
+		})
+	}
+}
+
 func TestGameStateHandler_Read(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelError,

@@ -178,11 +178,36 @@ func normalizeID(s string) string {
 	return out.String()
 }
 
-// Normalize normalizes all ID fields to lowercase snake_case
+// ensureJSONExtension adds .json extension if not present
+func ensureJSONExtension(s string) string {
+	if s == "" {
+		return ""
+	}
+	if !strings.HasSuffix(s, ".json") {
+		return s + ".json"
+	}
+	return s
+}
+
+// stripJSONExtension removes .json extension if present
+func stripJSONExtension(s string) string {
+	if s == "" {
+		return ""
+	}
+	return strings.TrimSuffix(s, ".json")
+}
+
+// Normalize normalizes all ID fields to lowercase snake_case,
+// ensures .json extension for scenario, and strips .json from narrator/pc IDs
 func (req *CreateGameStateRequest) Normalize() {
 	req.Scenario = normalizeID(req.Scenario)
+	req.Scenario = ensureJSONExtension(req.Scenario)
+
 	req.NarratorID = normalizeID(req.NarratorID)
+	req.NarratorID = stripJSONExtension(req.NarratorID)
+
 	req.PCID = normalizeID(req.PCID)
+	req.PCID = stripJSONExtension(req.PCID)
 }
 
 func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
