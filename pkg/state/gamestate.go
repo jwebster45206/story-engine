@@ -107,6 +107,12 @@ func (gs *GameState) GetContingencyPrompts(s *scenario.Scenario) []string {
 	scenarioPrompts := scenario.FilterContingencyPrompts(s.ContingencyPrompts, gs)
 	prompts = append(prompts, scenarioPrompts...)
 
+	// Filter PC-level contingency prompts based on conditions
+	if gs.PC != nil && gs.PC.Spec != nil {
+		pcPrompts := scenario.FilterContingencyPrompts(gs.PC.Spec.ContingencyPrompts, gs)
+		prompts = append(prompts, pcPrompts...)
+	}
+
 	// Add custom gamestate-level prompts (already stored as strings, always shown)
 	prompts = append(prompts, gs.ContingencyPrompts...)
 

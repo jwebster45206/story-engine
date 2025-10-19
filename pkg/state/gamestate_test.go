@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
@@ -91,7 +92,7 @@ Game State:
 							},
 						},
 						Vars: map[string]string{"repairs_started": "false"},
-						ContingencyPrompts: []scenario.ContingencyPrompt{
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
 							{Prompt: "Scene-specific prompt"},
 						},
 					},
@@ -193,7 +194,7 @@ func TestGameState_GetStatePrompt_JSONStructure(t *testing.T) {
 						Location: "TestLocation",
 					},
 				},
-				ContingencyPrompts: []scenario.ContingencyPrompt{{Prompt: "Scene contingency"}},
+				ContingencyPrompts: []conditionals.ContingencyPrompt{{Prompt: "Scene contingency"}},
 			},
 		},
 	}
@@ -273,7 +274,7 @@ func TestGameState_GetContingencyPrompts(t *testing.T) {
 			scenario: &scenario.Scenario{
 				Scenes: map[string]scenario.Scene{
 					"test_scene": {
-						ContingencyPrompts: []scenario.ContingencyPrompt{
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
 							{Prompt: "Scene prompt 1"},
 							{Prompt: "Scene prompt 2"},
 						},
@@ -292,6 +293,76 @@ func TestGameState_GetContingencyPrompts(t *testing.T) {
 				Scenes: map[string]scenario.Scene{},
 			},
 			expected: []string{"Scenario prompt"},
+		},
+		{
+			name: "PC-level prompts included",
+			gameState: &GameState{
+				ContingencyPrompts: []string{"Scenario prompt"},
+				PC: &actor.PC{
+					Spec: &actor.PCSpec{
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
+							{Prompt: "PC prompt 1"},
+							{Prompt: "PC prompt 2"},
+						},
+					},
+				},
+			},
+			scenario: &scenario.Scenario{},
+			expected: []string{"PC prompt 1", "PC prompt 2", "Scenario prompt"},
+		},
+		{
+			name: "PC with conditional prompts",
+			gameState: &GameState{
+				Vars:               map[string]string{"has_sword": "true"},
+				TurnCounter:        15,
+				ContingencyPrompts: []string{},
+				PC: &actor.PC{
+					Spec: &actor.PCSpec{
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
+							{Prompt: "PC is always brave"},
+							{
+								Prompt: "PC is confident with sword",
+								When:   &conditionals.ConditionalWhen{Vars: map[string]string{"has_sword": "true"}},
+							},
+							{
+								Prompt: "PC is tired after many turns",
+								When: &conditionals.ConditionalWhen{
+									MinTurns: func() *int { i := 20; return &i }(),
+								},
+							},
+						},
+					},
+				},
+			},
+			scenario: &scenario.Scenario{},
+			expected: []string{"PC is always brave", "PC is confident with sword"},
+		},
+		{
+			name: "All levels combined: scenario, PC, gamestate, scene",
+			gameState: &GameState{
+				SceneName:          "test_scene",
+				ContingencyPrompts: []string{"Gamestate custom prompt"},
+				PC: &actor.PC{
+					Spec: &actor.PCSpec{
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
+							{Prompt: "PC prompt"},
+						},
+					},
+				},
+			},
+			scenario: &scenario.Scenario{
+				ContingencyPrompts: []conditionals.ContingencyPrompt{
+					{Prompt: "Scenario prompt"},
+				},
+				Scenes: map[string]scenario.Scene{
+					"test_scene": {
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
+							{Prompt: "Scene prompt"},
+						},
+					},
+				},
+			},
+			expected: []string{"Scenario prompt", "PC prompt", "Gamestate custom prompt", "Scene prompt"},
 		},
 	}
 

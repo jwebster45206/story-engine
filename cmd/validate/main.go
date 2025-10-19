@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
@@ -139,13 +140,13 @@ func (v *ScenarioValidator) validateStoryEvent(event *scenario.StoryEvent, scene
 	v.validateConditionalWhen(&event.When, fmt.Sprintf("story event %s in scene %s", eventKey, sceneID), eventKey)
 }
 
-func (v *ScenarioValidator) validateContingencyPrompt(cp *scenario.ContingencyPrompt) {
+func (v *ScenarioValidator) validateContingencyPrompt(cp *conditionals.ContingencyPrompt) {
 	if cp.When != nil {
 		v.validateConditionalWhen(cp.When, "contingency prompt", cp.Prompt)
 	}
 }
 
-func (v *ScenarioValidator) validateConditionalWhen(when *scenario.ConditionalWhen, context string, prompt string) {
+func (v *ScenarioValidator) validateConditionalWhen(when *conditionals.ConditionalWhen, context string, prompt string) {
 	if len(when.Vars) == 0 && when.SceneTurnCounter == nil && when.TurnCounter == nil &&
 		when.Location == "" && when.MinSceneTurns == nil && when.MinTurns == nil {
 		v.addError(fmt.Sprintf("%s has empty 'when' clause - no conditions specified (%s)", context, prompt))

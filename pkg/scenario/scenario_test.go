@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
 func TestScene_UnmarshalStoryEvents(t *testing.T) {
@@ -340,7 +341,7 @@ func TestScenario_UnmarshalStoryEvents(t *testing.T) {
 
 func TestStoryEvent_MarshalUnmarshal(t *testing.T) {
 	original := StoryEvent{
-		When: ConditionalWhen{
+		When: conditionals.ConditionalWhen{
 			Vars:             map[string]string{"test": "true", "other": "false"},
 			SceneTurnCounter: intPtr(5),
 			Location:         "dungeon",
