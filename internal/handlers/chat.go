@@ -629,12 +629,12 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 	// Queue story events for next turn
 	triggeredEvents := worker.QueueStoryEvents()
 	if len(triggeredEvents) > 0 {
-		for _, event := range triggeredEvents {
+		for eventKey, event := range triggeredEvents {
 			previewLen := 50
 			if len(event.Prompt) < previewLen {
 				previewLen = len(event.Prompt)
 			}
-			h.logger.Info("Story event queued", "game_state_id", latestGS.ID.String(), "name", event.Name, "prompt_preview", event.Prompt[:previewLen]+"...")
+			h.logger.Info("Story event queued", "game_state_id", latestGS.ID.String(), "event_key", eventKey, "prompt_preview", event.Prompt[:previewLen]+"...")
 		}
 	}
 

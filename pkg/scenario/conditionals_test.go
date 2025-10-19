@@ -214,7 +214,7 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 		name     string
 		scenario *Scenario
 		gsView   GameStateView
-		expected []string // Just the event names for simplicity
+		expected []string // Expected event keys
 	}{
 		{
 			name: "no scene",
@@ -229,7 +229,7 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"test_scene": {
-						StoryEvents: []StoryEvent{},
+						StoryEvents: map[string]StoryEvent{},
 					},
 				},
 			},
@@ -241,9 +241,8 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"castle": {
-						StoryEvents: []StoryEvent{
-							{
-								Name: "dracula_appears",
+						StoryEvents: map[string]StoryEvent{
+							"dracula_appears": {
 								When: ConditionalWhen{
 									Vars: map[string]string{"opened_grimoire": "true"},
 								},
@@ -264,9 +263,8 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"castle": {
-						StoryEvents: []StoryEvent{
-							{
-								Name: "dracula_appears",
+						StoryEvents: map[string]StoryEvent{
+							"dracula_appears": {
 								When: ConditionalWhen{
 									Vars: map[string]string{"opened_grimoire": "true"},
 								},
@@ -287,9 +285,8 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"castle": {
-						StoryEvents: []StoryEvent{
-							{
-								Name: "lightning_strike",
+						StoryEvents: map[string]StoryEvent{
+							"lightning_strike": {
 								When: ConditionalWhen{
 									SceneTurnCounter: intPtr(4),
 								},
@@ -310,9 +307,8 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"castle": {
-						StoryEvents: []StoryEvent{
-							{
-								Name: "lightning_strike",
+						StoryEvents: map[string]StoryEvent{
+							"lightning_strike": {
 								When: ConditionalWhen{
 									SceneTurnCounter: intPtr(4),
 								},
@@ -333,9 +329,8 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"castle": {
-						StoryEvents: []StoryEvent{
-							{
-								Name: "complex_event",
+						StoryEvents: map[string]StoryEvent{
+							"complex_event": {
 								When: ConditionalWhen{
 									Vars:             map[string]string{"has_key": "true", "door_locked": "true"},
 									SceneTurnCounter: intPtr(3),
@@ -358,9 +353,8 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"castle": {
-						StoryEvents: []StoryEvent{
-							{
-								Name: "complex_event",
+						StoryEvents: map[string]StoryEvent{
+							"complex_event": {
 								When: ConditionalWhen{
 									Vars:             map[string]string{"has_key": "true", "door_locked": "true"},
 									SceneTurnCounter: intPtr(3),
@@ -383,23 +377,20 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"castle": {
-						StoryEvents: []StoryEvent{
-							{
-								Name: "event1",
+						StoryEvents: map[string]StoryEvent{
+							"event1": {
 								When: ConditionalWhen{
 									Vars: map[string]string{"trigger1": "true"},
 								},
 								Prompt: "Event 1 happens",
 							},
-							{
-								Name: "event2",
+							"event2": {
 								When: ConditionalWhen{
 									Vars: map[string]string{"trigger2": "true"},
 								},
 								Prompt: "Event 2 happens",
 							},
-							{
-								Name: "event3",
+							"event3": {
 								When: ConditionalWhen{
 									Vars: map[string]string{"trigger3": "true"},
 								},
@@ -424,9 +415,8 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"forest": {
-						StoryEvents: []StoryEvent{
-							{
-								Name: "wolf_attack",
+						StoryEvents: map[string]StoryEvent{
+							"wolf_attack": {
 								When: ConditionalWhen{
 									TurnCounter: intPtr(10),
 								},
@@ -447,9 +437,8 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"dungeon": {
-						StoryEvents: []StoryEvent{
-							{
-								Name: "water_rising",
+						StoryEvents: map[string]StoryEvent{
+							"water_rising": {
 								When: ConditionalWhen{
 									MinSceneTurns: intPtr(5),
 								},
@@ -470,9 +459,8 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"spaceship": {
-						StoryEvents: []StoryEvent{
-							{
-								Name: "oxygen_warning",
+						StoryEvents: map[string]StoryEvent{
+							"oxygen_warning": {
 								When: ConditionalWhen{
 									MinTurns: intPtr(15),
 								},
@@ -493,9 +481,8 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"town": {
-						StoryEvents: []StoryEvent{
-							{
-								Name: "merchant_appears",
+						StoryEvents: map[string]StoryEvent{
+							"merchant_appears": {
 								When: ConditionalWhen{
 									Location: "market_square",
 								},
@@ -520,17 +507,17 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 			if len(result) != len(tt.expected) {
 				t.Errorf("Expected %d triggered events, got %d", len(tt.expected), len(result))
 				t.Errorf("Expected: %v", tt.expected)
-				var gotNames []string
-				for _, e := range result {
-					gotNames = append(gotNames, e.Name)
+				var gotKeys []string
+				for key := range result {
+					gotKeys = append(gotKeys, key)
 				}
-				t.Errorf("Got: %v", gotNames)
+				t.Errorf("Got: %v", gotKeys)
 				return
 			}
 
-			for i, expectedName := range tt.expected {
-				if result[i].Name != expectedName {
-					t.Errorf("Event %d: expected name %q, got %q", i, expectedName, result[i].Name)
+			for _, expectedKey := range tt.expected {
+				if _, exists := result[expectedKey]; !exists {
+					t.Errorf("Expected event key %q not found in results", expectedKey)
 				}
 			}
 		})

@@ -90,8 +90,8 @@ func (dw *DeltaWorker) ApplyConditionalOverrides() []scenario.Conditional {
 }
 
 // QueueStoryEvents evaluates story events and queues them for the next turn
-// Returns the list of triggered story events for logging purposes
-func (dw *DeltaWorker) QueueStoryEvents() []scenario.StoryEvent {
+// Returns the map of triggered story events for logging purposes
+func (dw *DeltaWorker) QueueStoryEvents() map[string]scenario.StoryEvent {
 	if dw.scenario == nil {
 		return nil
 	}

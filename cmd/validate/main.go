@@ -102,9 +102,10 @@ func (v *ScenarioValidator) validateScene(scene *scenario.Scene, sceneID string)
 		v.validateConditional(&conditional, sceneID)
 	}
 
-	// Story events are only supported at scene level
-	for _, event := range scene.StoryEvents {
-		v.validateStoryEvent(&event, sceneID)
+	// Validate story event keys (map keys are the event IDs)
+	for eventKey, event := range scene.StoryEvents {
+		v.validateIDFormat("story event key", eventKey)
+		v.validateStoryEvent(&event, sceneID, eventKey)
 	}
 
 	for _, cp := range scene.ContingencyPrompts {
@@ -120,9 +121,8 @@ func (v *ScenarioValidator) validateConditional(conditional *scenario.Conditiona
 	}
 }
 
-func (v *ScenarioValidator) validateStoryEvent(event *scenario.StoryEvent, sceneID string) {
-	v.validateIDFormat("story event name", event.Name)
-	v.validateConditionalWhen(&event.When, fmt.Sprintf("story event %s in scene %s", event.Name, sceneID))
+func (v *ScenarioValidator) validateStoryEvent(event *scenario.StoryEvent, sceneID string, eventKey string) {
+	v.validateConditionalWhen(&event.When, fmt.Sprintf("story event %s in scene %s", eventKey, sceneID))
 }
 
 func (v *ScenarioValidator) validateContingencyPrompt(cp *scenario.ContingencyPrompt) {

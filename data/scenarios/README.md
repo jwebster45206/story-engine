@@ -327,15 +327,14 @@ One powerful use of `min_scene_turns` is preventing players from getting stuck i
 
 ### Defining Story Events
 
-Story events are defined **within individual scenes** using the `story_events` array:
+Story events are defined **within individual scenes** using the `story_events` map:
 
 ```json
 "scenes": {
   "castle_arrival": {
     "story": "The player approaches Castle Ravenloft...",
-    "story_events": [
-      {
-        "name": "dracula_materializes",
+    "story_events": {
+      "dracula_materializes": {
         "prompt": "Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with oppressive, supernatural dread.",
         "when": {
           "vars": {
@@ -343,20 +342,23 @@ Story events are defined **within individual scenes** using the `story_events` a
           }
         }
       },
-      {
-        "name": "lightning_strike",
+      "lightning_strike": {
         "prompt": "A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet! The air crackles with electricity.",
         "when": {
           "scene_turn_counter": 4
         }
       }
-    ]
+    }
   }
 }
 ```
 
+### Story Event Naming Conventions
+
+Use **lowercase snake_case** for story event keys (e.g., `"dracula_materializes"`, `"lightning_strike"`). These are internal IDs used for debugging and logging.
+
 **Each story event has:**
-- `name`: Unique identifier for the event (for debugging/logging)
+- **Key**: The event ID in snake_case (used as the map key)
 - `prompt`: The exact narrative text that will be injected into the story
 - `when`: Conditional logic determining when the event triggers (see **Conditional Logic** section above for all supported conditions)
 

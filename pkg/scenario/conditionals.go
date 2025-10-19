@@ -34,7 +34,8 @@ func (s *Scenario) EvaluateConditionals(gsView GameStateView) []Conditional {
 }
 
 // EvaluateStoryEvents checks all story events for the current scene and returns triggered events
-func (s *Scenario) EvaluateStoryEvents(gsView GameStateView) []StoryEvent {
+// Returns a map of event IDs to their story events
+func (s *Scenario) EvaluateStoryEvents(gsView GameStateView) map[string]StoryEvent {
 	sceneName := gsView.GetSceneName()
 	if sceneName == "" {
 		return nil
@@ -45,12 +46,16 @@ func (s *Scenario) EvaluateStoryEvents(gsView GameStateView) []StoryEvent {
 		return nil
 	}
 
-	var triggered []StoryEvent
+	triggered := make(map[string]StoryEvent)
 
-	for _, event := range scene.StoryEvents {
+	for eventKey, event := range scene.StoryEvents {
 		if evaluateWhen(event.When, gsView) {
-			triggered = append(triggered, event)
+			triggered[eventKey] = event
 		}
+	}
+
+	if len(triggered) == 0 {
+		return nil
 	}
 
 	return triggered
