@@ -9,7 +9,6 @@ import (
 	"sort"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -212,33 +211,4 @@ func listPCs(client *http.Client, baseURL string) ([]string, map[string]string, 
 
 	sort.Strings(names)
 	return names, pcMap, nil
-}
-
-func getPC(client *http.Client, baseURL string, pcID string) (*actor.PC, error) {
-	resp, err := client.Get(fmt.Sprintf("%s/v1/pcs/%s", baseURL, pcID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer func() {
-		_ = resp.Body.Close() // Ignore error in defer
-	}()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		var errorResp ErrorResponse
-		if err := json.Unmarshal(body, &errorResp); err != nil {
-			return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
-		}
-		return nil, fmt.Errorf("failed to get PC: %s", errorResp.Error)
-	}
-
-	var pc actor.PC
-	if err := json.Unmarshal(body, &pc); err != nil {
-		return nil, fmt.Errorf("failed to parse PC response: %w", err)
-	}
-	return &pc, nil
 }
