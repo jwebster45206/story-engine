@@ -71,9 +71,9 @@ Every PC file must include these fields:
   
   Standard range: 3-18 for mortals, 1-30 for extraordinary beings. Average is 10-11.
 
-- **hp** (integer, required): Current hit points.
-- **max_hp** (integer, required): Maximum hit points.
-- **ac** (integer, required): Armor Class (higher is harder to hit). Typical range: 10-20.
+- **hp** (integer, *required*): Current hit points.
+- **max_hp** (integer, *required*): Maximum hit points.
+- **ac** (integer, *required*): Armor Class (higher is harder to hit). Typical range: 10-20.
 
 ### Advanced Attributes
 

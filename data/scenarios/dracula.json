@@ -2,8 +2,10 @@
   "name": "The Curse of Castle Dracula",
   "story": "The player is a vampire hunter who has infiltrated Count Dracula's castle to destroy the ancient vampire lord once and for all. The castle is filled with dark magic, undead servants, and deadly traps. The player must navigate through the castle's chambers, gather the tools needed to defeat Dracula, and confront the vampire in his lair before dawn breaks and he becomes too powerful to defeat.",
   "rating": "PG-13",
+  "narrator": "vincent_price",
+  "default_pc": "van_helsing",
   "opening_scene": "arrival",
-  "opening_prompt": "You are Van Helsing, a renowned vampire hunter who has spent years tracking Count Dracula to his ancestral castle in the mountains of Transylvania. \n\nThe moon hangs full overhead as you stand before the massive iron gates of Castle Dracula. Your horse whinnies nervously behind you, sensing the evil that permeates this place. You carry a leather satchel containing the basic tools of your trade, but you know you'll need more powerful weapons to face the master of this domain. \n\nThe castle looms before you, its Gothic spires piercing the night sky like dark fangs. Time is against you - you must find and destroy Dracula before the sun rises and he retreats to his hidden sanctum.",
+  "opening_prompt": "The moon hangs full overhead as you stand before the massive iron gates of Castle Dracula.\n\n%s\n\nYour horse whinnies nervously behind you, sensing the evil that permeates this place. The castle looms before you, its Gothic spires piercing the night sky like dark fangs. \n\nTime is against you - you must find and destroy Dracula before the sun rises and he retreats to his hidden sanctum.",
   "opening_location": "castle_gates",
   "opening_inventory": ["wooden stakes", "silver cross", "holy water"],
   
