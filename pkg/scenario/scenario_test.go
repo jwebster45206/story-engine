@@ -568,3 +568,230 @@ func TestGetLocation_NilLocations(t *testing.T) {
 		t.Errorf("Expected empty key when not found, got %q", key)
 	}
 }
+
+func TestGetNPC(t *testing.T) {
+	// Create a test scenario with various NPCs
+	scenario := &Scenario{
+		NPCs: map[string]NPC{
+			"gibbs": {
+				Name:        "Gibbs",
+				Type:        "pirate",
+				Disposition: "loyal",
+			},
+			"calypso": {
+				Name:        "Calypso",
+				Type:        "bartender",
+				Disposition: "friendly but mysterious",
+			},
+			"charming_danny": {
+				Name:        "Charming Danny",
+				Type:        "merchant",
+				Disposition: "shrewd and cunning",
+			},
+			"shipwright": {
+				Name:        "Shipwright",
+				Type:        "shipwright",
+				Disposition: "gruff but helpful",
+			},
+		},
+	}
+
+	tests := []struct {
+		name       string
+		input      string
+		expectKey  string
+		expectFind bool
+	}{
+		// Exact key matches (case-insensitive)
+		{
+			name:       "exact key match - gibbs",
+			input:      "gibbs",
+			expectKey:  "gibbs",
+			expectFind: true,
+		},
+		{
+			name:       "exact key match - calypso",
+			input:      "calypso",
+			expectKey:  "calypso",
+			expectFind: true,
+		},
+		{
+			name:       "exact key match - charming_danny",
+			input:      "charming_danny",
+			expectKey:  "charming_danny",
+			expectFind: true,
+		},
+
+		// Case variations of keys
+		{
+			name:       "case insensitive key - Gibbs",
+			input:      "Gibbs",
+			expectKey:  "gibbs",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive key - CALYPSO",
+			input:      "CALYPSO",
+			expectKey:  "calypso",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive key - Charming_Danny",
+			input:      "Charming_Danny",
+			expectKey:  "charming_danny",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive key - SHIPWRIGHT",
+			input:      "SHIPWRIGHT",
+			expectKey:  "shipwright",
+			expectFind: true,
+		},
+
+		// Name matches (case-insensitive)
+		{
+			name:       "name match - Gibbs",
+			input:      "Gibbs",
+			expectKey:  "gibbs",
+			expectFind: true,
+		},
+		{
+			name:       "name match - Calypso",
+			input:      "Calypso",
+			expectKey:  "calypso",
+			expectFind: true,
+		},
+		{
+			name:       "name match - Charming Danny",
+			input:      "Charming Danny",
+			expectKey:  "charming_danny",
+			expectFind: true,
+		},
+		{
+			name:       "name match - Shipwright",
+			input:      "Shipwright",
+			expectKey:  "shipwright",
+			expectFind: true,
+		},
+
+		// Case variations of names
+		{
+			name:       "case insensitive name - gibbs",
+			input:      "gibbs",
+			expectKey:  "gibbs",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive name - GIBBS",
+			input:      "GIBBS",
+			expectKey:  "gibbs",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive name - calypso",
+			input:      "calypso",
+			expectKey:  "calypso",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive name - charming danny",
+			input:      "charming danny",
+			expectKey:  "charming_danny",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive name - CHARMING DANNY",
+			input:      "CHARMING DANNY",
+			expectKey:  "charming_danny",
+			expectFind: true,
+		},
+		{
+			name:       "case insensitive name - shipwright",
+			input:      "shipwright",
+			expectKey:  "shipwright",
+			expectFind: true,
+		},
+
+		// Whitespace handling
+		{
+			name:       "trimmed input - spaces around key",
+			input:      "  gibbs  ",
+			expectKey:  "gibbs",
+			expectFind: true,
+		},
+		{
+			name:       "trimmed input - spaces around name",
+			input:      "  Charming Danny  ",
+			expectKey:  "charming_danny",
+			expectFind: true,
+		},
+
+		// Not found cases
+		{
+			name:       "not found - non-existent NPC",
+			input:      "captain_morgan",
+			expectKey:  "",
+			expectFind: false,
+		},
+		{
+			name:       "not found - partial match shouldn't work",
+			input:      "Danny",
+			expectKey:  "",
+			expectFind: false,
+		},
+		{
+			name:       "not found - empty string",
+			input:      "",
+			expectKey:  "",
+			expectFind: false,
+		},
+		{
+			name:       "not found - whitespace only",
+			input:      "   ",
+			expectKey:  "",
+			expectFind: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			key, found := scenario.GetNPC(tt.input)
+
+			if found != tt.expectFind {
+				t.Errorf("Expected found=%v, got found=%v", tt.expectFind, found)
+			}
+
+			if key != tt.expectKey {
+				t.Errorf("Expected key=%q, got key=%q", tt.expectKey, key)
+			}
+		})
+	}
+}
+
+func TestGetNPC_EmptyScenario(t *testing.T) {
+	scenario := &Scenario{
+		NPCs: map[string]NPC{},
+	}
+
+	key, found := scenario.GetNPC("anyone")
+	if found {
+		t.Errorf("Expected not to find NPC in empty scenario, but found key=%q", key)
+	}
+	if key != "" {
+		t.Errorf("Expected empty key when not found, got %q", key)
+	}
+}
+
+func TestGetNPC_NilNPCs(t *testing.T) {
+	scenario := &Scenario{
+		NPCs: nil,
+	}
+
+	key, found := scenario.GetNPC("anyone")
+	if found {
+		t.Errorf("Expected not to find NPC with nil map, but found key=%q", key)
+	}
+	if key != "" {
+		t.Errorf("Expected empty key when not found, got %q", key)
+	}
+}
