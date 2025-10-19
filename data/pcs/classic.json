@@ -2,7 +2,7 @@
   "id": "classic",
   "name": "Adventurer",
   "level": 1,
-  "race": "Human",
+  "race": "human",
   "pronouns": "they/them",
   "description": "A curious wanderer.",
   "stats": {

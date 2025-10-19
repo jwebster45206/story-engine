@@ -35,17 +35,17 @@ func (s *Stats5e) ToAttributes() map[string]int {
 // PCSpec is the serializable specification for a Player Character
 type PCSpec struct {
 	ID              string         `json:"id"`
-	Name            string         `json:"name"`
-	Class           string         `json:"class"`
-	Level           int            `json:"level"`
-	Race            string         `json:"race"`
+	Name            string         `json:"name,omitempty"`
+	Class           string         `json:"class,omitempty"`
+	Level           int            `json:"level,omitempty"`
+	Race            string         `json:"race,omitempty"`
 	Pronouns        string         `json:"pronouns,omitempty"`
 	Description     string         `json:"description,omitempty"`
 	Background      string         `json:"background,omitempty"`
-	Stats           Stats5e        `json:"stats"`
-	HP              int            `json:"hp"`     // Current HP (for serialization)
-	MaxHP           int            `json:"max_hp"` // Maximum HP
-	AC              int            `json:"ac"`
+	Stats           Stats5e        `json:"stats,omitempty"`
+	HP              int            `json:"hp,omitempty"`     // Current HP (for serialization)
+	MaxHP           int            `json:"max_hp,omitempty"` // Maximum HP
+	AC              int            `json:"ac,omitempty"`
 	CombatModifiers map[string]int `json:"combat_modifiers,omitempty"`
 	Attributes      map[string]int `json:"attributes,omitempty"` // Skills, proficiencies, etc.
 	Inventory       []string       `json:"inventory,omitempty"`
