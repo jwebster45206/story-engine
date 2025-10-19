@@ -612,16 +612,12 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 
 	// Log triggered conditionals
 	if len(triggeredConditionals) > 0 {
-		for _, conditional := range triggeredConditionals {
-			condName := conditional.Name
-			if condName == "" {
-				condName = "(unnamed)"
-			}
+		for conditionalID, conditional := range triggeredConditionals {
 			if conditional.Then.Scene != "" {
-				h.logger.Info("Conditional scene change", "game_state_id", latestGS.ID.String(), "name", condName, "to_scene", conditional.Then.Scene)
+				h.logger.Info("Conditional scene change", "game_state_id", latestGS.ID.String(), "conditional_id", conditionalID, "to_scene", conditional.Then.Scene)
 			}
 			if conditional.Then.GameEnded != nil {
-				h.logger.Info("Conditional game ended", "game_state_id", latestGS.ID.String(), "name", condName, "ended", *conditional.Then.GameEnded)
+				h.logger.Info("Conditional game ended", "game_state_id", latestGS.ID.String(), "conditional_id", conditionalID, "ended", *conditional.Then.GameEnded)
 			}
 		}
 	}

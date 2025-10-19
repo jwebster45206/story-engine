@@ -18,9 +18,8 @@
       "vars": {
         "scene_counter_test_passed": "false"
       },
-      "conditionals": [
-        {
-          "name": "exact_scene_turn_3",
+      "conditionals": {
+        "exact_scene_turn_3": {
           "when": {
             "scene_turn_counter": 3
           },
@@ -28,7 +27,7 @@
             "scene": "turn_counter"
           }
         }
-      ]
+      }
     },
     "turn_counter": {
       "story": "Life support systems are failing. Oxygen levels are dropping. You must work quickly.",
@@ -37,9 +36,8 @@
       "vars": {
         "turn_counter_test_passed": "false"
       },
-      "conditionals": [
-        {
-          "name": "exact_turn_5",
+      "conditionals": {
+        "exact_turn_5": {
           "when": {
             "turn_counter": 5
           },
@@ -47,7 +45,7 @@
             "scene": "min_scene_turns"
           }
         }
-      ]
+      }
     },
     "min_scene_turns": {
       "story": "You've stabilized the immediate crisis. Now you need to repair the backup systems before the primary systems fail completely.",
@@ -56,9 +54,8 @@
       "vars": {
         "min_scene_test_passed": "false"
       },
-      "conditionals": [
-        {
-          "name": "min_2_scene_turns",
+      "conditionals": {
+        "min_2_scene_turns": {
           "when": {
             "min_scene_turns": 2
           },
@@ -66,7 +63,7 @@
             "scene": "min_turns"
           }
         }
-      ]
+      }
     },
     "min_turns": {
       "story": "You're in the final phase of repairs. The station's orbit is decaying. Can you restore power in time?",
@@ -75,9 +72,8 @@
       "vars": {
         "min_turns_test_passed": "false"
       },
-      "conditionals": [
-        {
-          "name": "min_10_total_turns",
+      "conditionals": {
+        "min_10_total_turns": {
           "when": {
             "min_turns": 10
           },
@@ -85,7 +81,7 @@
             "game_ended": true
           }
         }
-      ]
+      }
     }
   },
   "opening_scene": "scene_counter",

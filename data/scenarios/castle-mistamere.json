@@ -148,9 +148,8 @@
         "Every risky, loud action sets noise to high; every careful action lowers it to low.",
         "Each player action increments turns_total by 1."
       ],
-      "conditionals": [
-        {
-          "name": "enter_first_level_when_ready",
+      "conditionals": {
+        "enter_first_level_when_ready": {
           "when": {
             "vars": {
               "entered_first_level": "true"
@@ -160,7 +159,7 @@
             "scene": "castle_first_level"
           }
         }
-      ]
+      }
     },
     "castle_first_level": {
       "story": "First level exploration—kobold rooms, harpy song, secret seams, and the barred stair downward.",
@@ -297,9 +296,8 @@
         "When the player neutralizes the harpies by any means, set harpies_dealt_with to true.",
         "Each player action increments turns_total by 1."
       ],
-      "conditionals": [
-        {
-          "name": "descend_when_unbarred",
+      "conditionals": {
+        "descend_when_unbarred": {
           "when": {
             "vars": {
               "stair_unbarred": "true"
@@ -309,7 +307,7 @@
             "scene": "castle_second_level"
           }
         }
-      ],
+      },
       "story_events": {
         "harpy_crescendo": {
           "when": {
@@ -423,9 +421,8 @@
         "When the player fits the Gygar sigil or reveals hidden latches with help or tools, set sanctum_path_revealed to true.",
         "Each player action increments turns_total by 1."
       ],
-      "conditionals": [
-        {
-          "name": "sanctum_opens",
+      "conditionals": {
+        "sanctum_opens": {
           "when": {
             "vars": {
               "sanctum_path_revealed": "true"
@@ -435,7 +432,7 @@
             "scene": "bargle_encounter"
           }
         }
-      ],
+      },
       "story_events": {
         "kobold_parley": {
           "when": {
@@ -524,9 +521,8 @@
         "When the player shatters the ward and forces him through the cracked mirror, set bargle_exiled to true.",
         "Each player action increments turns_total by 1."
       ],
-      "conditionals": [
-        {
-          "name": "victory_cornered",
+      "conditionals": {
+        "victory_cornered": {
           "when": {
             "vars": {
               "bargle_cornered": "true"
@@ -536,8 +532,7 @@
             "game_ended": true
           }
         },
-        {
-          "name": "victory_exile",
+        "victory_exile": {
           "when": {
             "vars": {
               "bargle_exiled": "true"
@@ -547,8 +542,7 @@
             "game_ended": true
           }
         },
-        {
-          "name": "bargle_slips_away",
+        "bargle_slips_away": {
           "when": {
             "vars": {
               "bargle_escaped": "true"
@@ -558,7 +552,7 @@
             "game_ended": true
           }
         }
-      ],
+      },
       "story_events": {
         "mirror_misdirection": {
           "when": {
