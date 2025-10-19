@@ -1,9 +1,0 @@
-{
-  "name": "Dracula Conditional Prompts - All Tests",
-  "description": "Runs all Dracula scenario conditional prompt tests",
-  "cases": [
-    "dracula_prompt_trigger.json",
-    "dracula_wolves_location.json",
-    "dracula_lightning_exact.json"
-  ]
-}
