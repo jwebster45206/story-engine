@@ -70,3 +70,23 @@ func (s *Scenario) GetLocation(keyOrName string) (string, bool) {
 	}
 	return "", false
 }
+
+// GetNPC searches for an NPC by either its key (ID) or its display name
+// Returns the NPC key if found, and a boolean indicating success
+func (s *Scenario) GetNPC(keyOrName string) (string, bool) {
+	keyOrName = strings.ToLower(strings.TrimSpace(keyOrName))
+	if keyOrName == "" {
+		return "", false
+	}
+	// match exact key
+	if _, exists := s.NPCs[keyOrName]; exists {
+		return keyOrName, true
+	}
+	// NPC name match
+	for key, npc := range s.NPCs {
+		if strings.ToLower(npc.Name) == keyOrName {
+			return key, true
+		}
+	}
+	return "", false
+}

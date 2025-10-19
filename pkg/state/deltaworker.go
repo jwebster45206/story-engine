@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/jwebster45206/story-engine/pkg/scenario"
@@ -172,10 +173,6 @@ func (dw *DeltaWorker) Apply() error {
 		}
 	}
 
-	// TODO: Add support for stateful NPCs/actors
-	// NPCs should have snake_case keys (e.g., "captain_blackbeard") and display names (e.g., "Captain Blackbeard")
-	// Consider adding GetNPC(keyOrName) helper for GiveItem target resolution
-
 	// Handle Game End
 	if dw.delta.GameEnded != nil && *dw.delta.GameEnded {
 		dw.gs.IsEnded = true
@@ -204,7 +201,7 @@ func (dw *DeltaWorker) handleAcquireItem(itemEvent itemEvent) {
 	}
 	// Remove from source if specified and not consumed
 	if itemEvent.From != nil && (itemEvent.Consumed == nil || !*itemEvent.Consumed) {
-		removeItemFromSource(dw.gs, itemEvent.Item, itemEvent.From)
+		dw.removeItemFromSource(itemEvent.Item, itemEvent.From)
 	}
 }
 
@@ -218,7 +215,7 @@ func (dw *DeltaWorker) handleDropItem(itemEvent itemEvent) {
 	}
 	// Add to destination if specified
 	if itemEvent.To != nil {
-		addItemToDestination(dw.gs, itemEvent.Item, itemEvent.To)
+		dw.addItemToDestination(itemEvent.Item, itemEvent.To)
 	}
 }
 
@@ -226,7 +223,7 @@ func (dw *DeltaWorker) handleDropItem(itemEvent itemEvent) {
 func (dw *DeltaWorker) handleGiveItem(itemEvent itemEvent) {
 	// Remove from source
 	if itemEvent.From != nil {
-		removeItemFromSource(dw.gs, itemEvent.Item, itemEvent.From)
+		dw.removeItemFromSource(itemEvent.Item, itemEvent.From)
 	} else {
 		// Default to removing from player inventory if no source specified
 		for i, invItem := range dw.gs.Inventory {
@@ -238,7 +235,7 @@ func (dw *DeltaWorker) handleGiveItem(itemEvent itemEvent) {
 	}
 	// Add to destination
 	if itemEvent.To != nil {
-		addItemToDestination(dw.gs, itemEvent.Item, itemEvent.To)
+		dw.addItemToDestination(itemEvent.Item, itemEvent.To)
 	}
 }
 
@@ -246,11 +243,11 @@ func (dw *DeltaWorker) handleGiveItem(itemEvent itemEvent) {
 func (dw *DeltaWorker) handleMoveItem(itemEvent itemEvent) {
 	// Remove from source
 	if itemEvent.From != nil {
-		removeItemFromSource(dw.gs, itemEvent.Item, itemEvent.From)
+		dw.removeItemFromSource(itemEvent.Item, itemEvent.From)
 	}
 	// Add to destination
 	if itemEvent.To != nil {
-		addItemToDestination(dw.gs, itemEvent.Item, itemEvent.To)
+		dw.addItemToDestination(itemEvent.Item, itemEvent.To)
 	}
 }
 
@@ -259,7 +256,7 @@ func (dw *DeltaWorker) handleUseItem(itemEvent itemEvent) {
 	// If item is consumed, remove it from source
 	if itemEvent.Consumed != nil && *itemEvent.Consumed {
 		if itemEvent.From != nil {
-			removeItemFromSource(dw.gs, itemEvent.Item, itemEvent.From)
+			dw.removeItemFromSource(itemEvent.Item, itemEvent.From)
 		} else {
 			// Default to removing from player inventory if no source specified
 			for i, invItem := range dw.gs.Inventory {
@@ -273,10 +270,11 @@ func (dw *DeltaWorker) handleUseItem(itemEvent itemEvent) {
 }
 
 // removeItemFromSource removes an item from the specified source
-func removeItemFromSource(gs *GameState, item string, from *struct {
+func (dw *DeltaWorker) removeItemFromSource(item string, from *struct {
 	Type string `json:"type"`
 	Name string `json:"name,omitempty"`
 }) {
+	gs := dw.gs
 	switch from.Type {
 	case "player":
 		// Remove from player inventory
@@ -302,11 +300,15 @@ func removeItemFromSource(gs *GameState, item string, from *struct {
 		}
 	case "npc":
 		// Remove from NPC
-		if npc, ok := gs.NPCs[from.Name]; ok {
+		npcKey, found := dw.scenario.GetNPC(from.Name)
+		if !found {
+			return
+		}
+		if npc, ok := gs.NPCs[npcKey]; ok {
 			for i, invItem := range npc.Items {
 				if invItem == item {
 					npc.Items = append(npc.Items[:i], npc.Items[i+1:]...)
-					gs.NPCs[from.Name] = npc // Write back
+					gs.NPCs[npcKey] = npc // Write back
 					break
 				}
 			}
@@ -315,20 +317,15 @@ func removeItemFromSource(gs *GameState, item string, from *struct {
 }
 
 // addItemToDestination adds an item to the specified destination
-func addItemToDestination(gs *GameState, item string, to *struct {
+func (dw *DeltaWorker) addItemToDestination(item string, to *struct {
 	Type string `json:"type"`
 	Name string `json:"name,omitempty"`
 }) {
+	gs := dw.gs
 	switch to.Type {
 	case "player":
 		// Add to player inventory (check for duplicates)
-		itemExists := false
-		for _, invItem := range gs.Inventory {
-			if invItem == item {
-				itemExists = true
-				break
-			}
-		}
+		itemExists := slices.Contains(gs.Inventory, item)
 		if !itemExists {
 			if gs.Inventory == nil {
 				gs.Inventory = make([]string, 0)
@@ -349,12 +346,16 @@ func addItemToDestination(gs *GameState, item string, to *struct {
 		}
 	case "npc":
 		// Add to NPC
-		if npc, ok := gs.NPCs[to.Name]; ok {
+		npcKey, found := dw.scenario.GetNPC(to.Name)
+		if !found {
+			return
+		}
+		if npc, ok := gs.NPCs[npcKey]; ok {
 			if npc.Items == nil {
 				npc.Items = make([]string, 0)
 			}
 			npc.Items = append(npc.Items, item)
-			gs.NPCs[to.Name] = npc // Write back
+			gs.NPCs[npcKey] = npc // Write back
 		}
 	}
 }

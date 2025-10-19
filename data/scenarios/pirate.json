@@ -71,7 +71,7 @@
     }
   },
   "npcs": {
-    "Gibbs": {
+    "gibbs": {
       "name": "Gibbs",
       "type": "pirate",
       "disposition": "loyal",
@@ -80,7 +80,7 @@
       "location": "black_pearl",
       "items": []
     },
-    "Calypso": {
+    "calypso": {
       "name": "Calypso",
       "type": "bartender",
       "disposition": "friendly but mysterious",
@@ -92,7 +92,7 @@
         "deck of cards"
       ]
     },
-    "Charming Danny": {
+    "charming_danny": {
       "name": "Charming Danny",
       "type": "merchant",
       "disposition": "shrewd and cunning",
@@ -107,7 +107,7 @@
         "flintlock pistol"
       ]
     },
-    "Shipwright": {
+    "shipwright": {
       "name": "Shipwright",
       "type": "shipwright",
       "disposition": "gruff but helpful",
@@ -185,7 +185,7 @@
         }
       },
       "npcs": {
-        "Davey": {
+        "davey": {
           "name": "Davey",
           "type": "pirate",
           "disposition": "friendly",
@@ -249,7 +249,7 @@
         }
       },
       "npcs": {
-        "Calypso": {
+        "calypso": {
           "name": "Calypso",
           "type": "bartender",
           "disposition": "teasing and tricky",
