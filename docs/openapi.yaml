@@ -843,6 +843,49 @@ components:
           additionalProperties:
             type: integer
           description: Skill attributes and modifiers
+        contingency_prompts:
+          type: array
+          description: Narrative hints for the AI narrator about this character (can be strings or conditional objects)
+          items:
+            oneOf:
+              - type: string
+                description: Simple prompt that is always active
+              - type: object
+                required:
+                  - prompt
+                properties:
+                  prompt:
+                    type: string
+                    description: The narrative hint text
+                  when:
+                    type: object
+                    description: Optional conditions for when this prompt should be active
+                    properties:
+                      vars:
+                        type: object
+                        additionalProperties:
+                          type: string
+                        description: Variables that must match exactly
+                      turn_counter:
+                        type: integer
+                        description: Exact turn number when prompt activates
+                      min_turns:
+                        type: integer
+                        description: Minimum turn number for activation
+                      scene_turn_counter:
+                        type: integer
+                        description: Exact scene turn number
+                      min_scene_turns:
+                        type: integer
+                        description: Minimum scene turn number
+                      location:
+                        type: string
+                        description: Location where prompt activates
+        inventory:
+          type: array
+          items:
+            type: string
+          description: Character inventory items
 
     PCSummary:
       type: object

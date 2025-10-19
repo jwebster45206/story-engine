@@ -284,11 +284,10 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	gs.WorldLocations = s.Locations
 	gs.Inventory = s.OpeningInventory
 	gs.Vars = s.Vars
-	// Extract just the prompt strings from scenario-level contingency prompts
-	gs.ContingencyPrompts = make([]string, 0, len(s.ContingencyPrompts))
-	for _, cp := range s.ContingencyPrompts {
-		gs.ContingencyPrompts = append(gs.ContingencyPrompts, cp.Prompt)
-	}
+	// ContingencyPrompts field is for runtime-added custom prompts only
+	// Scenario-level prompts are already filtered and added in GetContingencyPrompts()
+	// so we don't copy them here to avoid duplication
+	gs.ContingencyPrompts = make([]string, 0)
 
 	// Determine which narrator to use
 	narratorID := req.NarratorID // Use request override if provided

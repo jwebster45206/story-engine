@@ -39,6 +39,13 @@ Every PC file must include these fields:
     "athletics": 5,
     "perception": 3
   },
+  "contingency_prompts": [
+    "The character is brave and honorable",
+    {
+      "prompt": "The character becomes more cautious after taking damage",
+      "when": {"vars": {"wounded": "true"}}
+    }
+  ],
   "inventory": [
     "longsword",
     "shield"
@@ -89,6 +96,50 @@ Every PC file must include these fields:
 - **inventory** (array of strings, optional): Starting items the character possesses.
   - Items are simple strings, not quantities
   - Example: `["longsword", "shield", "rope", "torch"]`
+
+- **contingency_prompts** (array, optional): Narrative hints and character-specific storytelling guidance for the AI narrator.
+  - Can be simple strings (always active) or conditional objects (active only when conditions are met)
+  - Use for personality traits, speech patterns, behavioral guidelines, or situational character details
+  - These are suggestions to the narrator, not commands
+  - Prompts are filtered dynamically based on current game state
+  
+  **Simple string format** (always active):
+  ```json
+  "contingency_prompts": [
+    "This character speaks with a Scottish accent",
+    "The character is brave but reckless"
+  ]
+  ```
+  
+  **Conditional format** (activates when conditions are met):
+  ```json
+  "contingency_prompts": [
+    "Always active prompt",
+    {
+      "prompt": "The character becomes more confident when holding their sword",
+      "when": {"vars": {"has_sword": "true"}}
+    },
+    {
+      "prompt": "The character shows signs of fatigue and should mention needing rest",
+      "when": {"min_turns": 15}
+    }
+  ]
+  ```
+  
+  **Available conditional fields** (all optional, combined with AND logic):
+  - `vars`: Object with variable name/value pairs that must match exactly
+  - `turn_counter`: Exact turn number when prompt activates
+  - `min_turns`: Activates when turn counter reaches or exceeds this value
+  - `scene_turn_counter`: Exact turn within current scene
+  - `min_scene_turns`: Activates when scene turn counter reaches or exceeds this value
+  - `location`: Activates when player is at this specific location
+  
+  **Use contingency prompts for:**
+  - Character personality and speech patterns
+  - Behavioral quirks and mannerisms
+  - Emotional states based on game conditions
+  - Relationship dynamics (e.g., "friendlier when player has helped them")
+  - Contextual character development (e.g., "more confident after victory")
 
 ## Character Creation Guidelines
 
@@ -324,6 +375,65 @@ For scenarios that don't require specific character details:
 }
 ```
 
+### Character with Contingency Prompts
+
+This example shows how to use contingency prompts to create a dynamic, responsive character:
+
+```json
+{
+  "id": "veteran_soldier",
+  "name": "Marcus Stone",
+  "class": "Soldier",
+  "level": 6,
+  "race": "Human",
+  "pronouns": "he/him",
+  "description": "A battle-hardened veteran with a commanding presence and protective instincts.",
+  "background": "Marcus served fifteen years in the royal guard before retiring. He's seen too much combat and carries both physical and emotional scars. Despite his gruff exterior, he has a soft spot for civilians in danger.",
+  "stats": {
+    "strength": 16,
+    "dexterity": 12,
+    "constitution": 16,
+    "intelligence": 10,
+    "wisdom": 14,
+    "charisma": 11
+  },
+  "hp": 52,
+  "max_hp": 52,
+  "ac": 17,
+  "combat_modifiers": {
+    "strength": 3,
+    "proficiency": 3
+  },
+  "attributes": {
+    "athletics": 6,
+    "intimidation": 3,
+    "perception": 5,
+    "survival": 5
+  },
+  "inventory": ["longsword", "heavy armor", "military badge"],
+  "contingency_prompts": [
+    "Marcus speaks in short, direct sentences and uses military terminology",
+    "He is protective of non-combatants and will prioritize their safety",
+    {
+      "prompt": "Marcus shows respect and camaraderie when interacting with other soldiers or guards",
+      "when": {"location": "barracks"}
+    },
+    {
+      "prompt": "After prolonged combat, Marcus becomes more taciturn and shows signs of battle fatigue",
+      "when": {"min_turns": 20}
+    },
+    {
+      "prompt": "When civilians are in danger, Marcus becomes more urgent and commanding in his speech",
+      "when": {"vars": {"civilians_threatened": "true"}}
+    },
+    {
+      "prompt": "Marcus opens up about his past and becomes more philosophical during quiet moments",
+      "when": {"min_scene_turns": 5}
+    }
+  ]
+}
+```
+
 ## Best Practices
 
 ### 1. Make Characters Memorable
@@ -348,6 +458,26 @@ For scenarios that don't require specific character details:
 - Start with essential gear only
 - Items should match the character and scenario
 - Keep the list small and prioritized (1-3 items)
+
+### 6. Using Contingency Prompts Effectively
+- **Start simple**: Use basic unconditional prompts for core personality traits
+- **Add depth conditionally**: Use conditional prompts for dynamic character development
+- **Be specific**: Clear, detailed prompts work better than vague suggestions
+- **Avoid overuse**: 3-6 prompts per character is usually sufficient
+- **Test conditions**: Ensure your conditional logic matches actual game variables and states
+- **Remember they're hints**: The AI narrator may interpret or ignore prompts; they're not commands
+- **Character consistency**: Use prompts to reinforce the character's core traits across different situations
+- **Dynamic storytelling**: Conditional prompts can show character growth, fatigue, or emotional changes
+
+**Good contingency prompt examples:**
+- ✅ "The character speaks with an Irish accent and uses colorful idioms"
+- ✅ "When the player is in danger, the character becomes more protective and serious"
+- ✅ "After winning a battle, the character becomes more boastful and confident"
+
+**Less effective examples:**
+- ❌ "Be nice" (too vague)
+- ❌ "The character must always save the player" (too commanding, overly restrictive)
+- ❌ Overly complex conditions that rarely activate
 
 ## Technical Notes
 
