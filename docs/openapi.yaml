@@ -1,0 +1,953 @@
+openapi: 3.0.3
+info:
+  title: Story Engine API
+  description: |
+    A REST API for interactive storytelling and role-playing games powered by Large Language Models.
+    
+    The Story Engine allows you to create and manage interactive story sessions with AI-powered narration,
+    character management, and dynamic game state tracking.
+  version: 1.0.0
+  contact:
+    name: Story Engine
+    url: https://github.com/jwebster45206/story-engine
+  license:
+    name: MIT
+    url: https://github.com/jwebster45206/story-engine/blob/main/LICENSE
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the API and its dependencies
+      operationId: getHealth
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is degraded or unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /v1/chat:
+    post:
+      summary: Send chat message
+      description: |
+        Send a message to the AI narrator and receive a response. Supports both regular and streaming responses.
+        
+        For streaming responses, set `stream: true` and the response will be sent as Server-Sent Events (SSE).
+      operationId: sendChatMessage
+      tags:
+        - Chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Chat response (non-streaming)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+        '200 (streaming)':
+          description: Chat response (streaming)
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/StreamChunk'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/gamestate:
+    post:
+      summary: Create new game state
+      description: Create a new game session with the specified scenario and optional narrator/PC overrides
+      operationId: createGameState
+      tags:
+        - Game State
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGameStateRequest'
+      responses:
+        '201':
+          description: Game state created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+        '400':
+          description: Invalid request or scenario not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/gamestate/{id}:
+    get:
+      summary: Get game state
+      description: Retrieve a game state by its ID
+      operationId: getGameState
+      tags:
+        - Game State
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Game state UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Game state retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+        '400':
+          description: Invalid game state ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game state not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      summary: Update game state
+      description: |
+        Partially update an existing game state. Only provided fields will be updated.
+        This endpoint is primarily used for testing and administrative purposes.
+      operationId: updateGameState
+      tags:
+        - Game State
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Game state UUID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameStatePatch'
+      responses:
+        '200':
+          description: Game state updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+        '400':
+          description: Invalid request or game state ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game state not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete game state
+      description: Delete a game state by its ID
+      operationId: deleteGameState
+      tags:
+        - Game State
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Game state UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Game state deleted successfully
+        '400':
+          description: Invalid game state ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/scenarios:
+    get:
+      summary: List scenarios
+      description: Get a list of all available scenarios
+      operationId: listScenarios
+      tags:
+        - Scenarios
+      responses:
+        '200':
+          description: List of scenarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  description: Scenario filename
+                example: ["pirate.json", "dracula.json", "space-disaster.json"]
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/scenarios/{filename}:
+    get:
+      summary: Get scenario
+      description: Retrieve a specific scenario by filename
+      operationId: getScenario
+      tags:
+        - Scenarios
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          description: Scenario filename (e.g., "pirate.json")
+          schema:
+            type: string
+            example: "pirate.json"
+      responses:
+        '200':
+          description: Scenario retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+        '400':
+          description: Invalid filename
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Scenario not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/pcs:
+    get:
+      summary: List player characters
+      description: Get a list of all available player characters
+      operationId: listPCs
+      tags:
+        - Player Characters
+      responses:
+        '200':
+          description: List of player characters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PCSummary'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/pcs/{id}:
+    get:
+      summary: Get player character
+      description: Retrieve a specific player character by ID
+      operationId: getPC
+      tags:
+        - Player Characters
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Player character ID (e.g., "pirate_captain")
+          schema:
+            type: string
+            example: "pirate_captain"
+      responses:
+        '200':
+          description: Player character retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PC'
+        '400':
+          description: Invalid PC ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Player character not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/narrators:
+    get:
+      summary: List narrators
+      description: Get a list of all available narrators
+      operationId: listNarrators
+      tags:
+        - Narrators
+      responses:
+        '200':
+          description: List of narrators
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NarratorSummary'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/narrators/{id}:
+    get:
+      summary: Get narrator
+      description: Retrieve a specific narrator by ID
+      operationId: getNarrator
+      tags:
+        - Narrators
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Narrator ID (e.g., "vincent_price")
+          schema:
+            type: string
+            example: "vincent_price"
+      responses:
+        '200':
+          description: Narrator retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Narrator'
+        '400':
+          description: Invalid narrator ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Narrator not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+        - service
+        - components
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded]
+          description: Overall health status
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the health check
+        service:
+          type: string
+          example: "story-engine"
+          description: Service name
+        components:
+          type: object
+          additionalProperties: true
+          description: Health status of individual components
+          example:
+            storage: "healthy"
+
+    ChatRequest:
+      type: object
+      required:
+        - gamestate_id
+        - message
+      properties:
+        gamestate_id:
+          type: string
+          format: uuid
+          description: UUID of the game state
+        message:
+          type: string
+          description: User's message to the narrator
+          example: "I look around the tavern"
+        stream:
+          type: boolean
+          default: false
+          description: Whether to stream the response using Server-Sent Events
+
+    ChatResponse:
+      type: object
+      properties:
+        gamestate_id:
+          type: string
+          format: uuid
+          description: UUID of the game state
+        message:
+          type: string
+          description: Narrator's response
+        chat_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+          description: Complete chat history
+
+    ChatMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [user, assistant, system]
+          description: Role of the message sender
+        content:
+          type: string
+          description: Message content
+
+    StreamChunk:
+      type: object
+      properties:
+        content:
+          type: string
+          description: Partial content of the streaming response
+        done:
+          type: boolean
+          description: Whether this is the final chunk
+        error:
+          type: string
+          description: Error message if an error occurred
+
+    CreateGameStateRequest:
+      type: object
+      required:
+        - scenario
+      properties:
+        scenario:
+          type: string
+          description: Scenario filename (e.g., "pirate.json")
+          example: "pirate.json"
+        narrator_id:
+          type: string
+          description: Optional narrator ID to override scenario default
+          example: "vincent_price"
+        pc_id:
+          type: string
+          description: Optional player character ID to override scenario default
+          example: "pirate_captain"
+
+    GameState:
+      type: object
+      required:
+        - id
+        - turn_counter
+        - scene_turn_counter
+        - is_ended
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique game state identifier
+        model_name:
+          type: string
+          description: Name of the LLM model used
+        scenario:
+          type: string
+          description: Scenario filename
+        scene_name:
+          type: string
+          description: Current scene name (if using scenes)
+        narrator_id:
+          type: string
+          description: Narrator ID for this session
+        pc:
+          $ref: '#/components/schemas/PC'
+        npcs:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/NPC'
+          description: NPCs in the game world
+        locations:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Location'
+          description: Locations in the game world
+        user_location:
+          type: string
+          description: Player's current location
+        user_inventory:
+          type: array
+          items:
+            type: string
+          description: Player's inventory items
+        chat_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+          description: Conversation history
+        turn_counter:
+          type: integer
+          description: Total number of turns
+        scene_turn_counter:
+          type: integer
+          description: Number of turns in current scene
+        vars:
+          type: object
+          additionalProperties:
+            type: string
+          description: Game variables and flags
+        is_ended:
+          type: boolean
+          description: Whether the game has ended
+        contingency_prompts:
+          type: array
+          items:
+            type: string
+          description: Active contingency prompts
+        story_event_queue:
+          type: array
+          items:
+            type: string
+          description: Queued story events
+        created_at:
+          type: string
+          format: date-time
+          description: Game creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    GameStatePatch:
+      type: object
+      description: Partial game state update (only provided fields will be updated)
+      properties:
+        scene_name:
+          type: string
+        user_location:
+          type: string
+        turn_counter:
+          type: integer
+        scene_turn_counter:
+          type: integer
+        user_inventory:
+          type: array
+          items:
+            type: string
+        chat_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+        vars:
+          type: object
+          additionalProperties:
+            type: string
+        npcs:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/NPC'
+        locations:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Location'
+        contingency_prompts:
+          type: array
+          items:
+            type: string
+        is_ended:
+          type: boolean
+
+    Scenario:
+      type: object
+      required:
+        - name
+        - story
+        - rating
+      properties:
+        name:
+          type: string
+          description: Scenario name
+        story:
+          type: string
+          description: Background story and setting
+        rating:
+          type: string
+          enum: [G, PG, PG-13, R]
+          description: Content rating
+        narrator_id:
+          type: string
+          description: Default narrator for this scenario
+        default_pc:
+          type: string
+          description: Default player character
+        opening_prompt:
+          type: string
+          description: Opening narrative text
+        opening_location:
+          type: string
+          description: Starting location
+        opening_scene:
+          type: string
+          description: Starting scene (if using scenes)
+        opening_inventory:
+          type: array
+          items:
+            type: string
+          description: Starting inventory items
+        locations:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Location'
+          description: Available locations
+        npcs:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/NPC'
+          description: Non-player characters
+        vars:
+          type: object
+          additionalProperties:
+            type: string
+          description: Initial game variables
+        scenes:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Scene'
+          description: Story scenes (if using scene-based structure)
+
+    Scene:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Scene name
+        story:
+          type: string
+          description: Scene-specific story context
+        contingency_rules:
+          type: array
+          items:
+            type: string
+          description: Scene-specific contingency rules
+
+    Location:
+      type: object
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+          description: Location name
+        description:
+          type: string
+          description: Location description
+        exits:
+          type: object
+          additionalProperties:
+            type: string
+          description: Available exits (direction -> destination)
+        blocked_exits:
+          type: object
+          additionalProperties:
+            type: string
+          description: Blocked exits with reasons
+        items:
+          type: array
+          items:
+            type: string
+          description: Items available at this location
+
+    NPC:
+      type: object
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+          description: NPC name
+        description:
+          type: string
+          description: NPC description
+        location:
+          type: string
+          description: NPC's current location
+        dialogue:
+          type: array
+          items:
+            type: string
+          description: Possible dialogue options
+
+    PC:
+      type: object
+      required:
+        - id
+        - name
+        - class
+        - level
+        - race
+        - pronouns
+      properties:
+        id:
+          type: string
+          description: Player character ID
+        name:
+          type: string
+          description: Character name
+        class:
+          type: string
+          description: Character class
+        level:
+          type: integer
+          description: Character level
+        race:
+          type: string
+          description: Character race
+        pronouns:
+          type: string
+          description: Character pronouns
+        description:
+          type: string
+          description: Character description
+        background:
+          type: string
+          description: Character background story
+        stats:
+          $ref: '#/components/schemas/CharacterStats'
+        hp:
+          type: integer
+          description: Current hit points
+        max_hp:
+          type: integer
+          description: Maximum hit points
+        ac:
+          type: integer
+          description: Armor class
+        combat_modifiers:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Combat-related modifiers
+        attributes:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Skill attributes and modifiers
+
+    PCSummary:
+      type: object
+      required:
+        - id
+        - name
+        - class
+        - level
+        - race
+        - pronouns
+      properties:
+        id:
+          type: string
+          description: Player character ID
+        name:
+          type: string
+          description: Character name
+        class:
+          type: string
+          description: Character class
+        level:
+          type: integer
+          description: Character level
+        race:
+          type: string
+          description: Character race
+        pronouns:
+          type: string
+          description: Character pronouns
+
+    CharacterStats:
+      type: object
+      properties:
+        strength:
+          type: integer
+        dexterity:
+          type: integer
+        constitution:
+          type: integer
+        intelligence:
+          type: integer
+        wisdom:
+          type: integer
+        charisma:
+          type: integer
+
+    Narrator:
+      type: object
+      required:
+        - id
+        - name
+        - description
+      properties:
+        id:
+          type: string
+          description: Narrator ID
+        name:
+          type: string
+          description: Narrator name
+        description:
+          type: string
+          description: Narrator description
+        prompts:
+          type: array
+          items:
+            type: string
+          description: Narrator-specific prompts and instructions
+
+    NarratorSummary:
+      type: object
+      required:
+        - id
+        - name
+        - description
+      properties:
+        id:
+          type: string
+          description: Narrator ID
+        name:
+          type: string
+          description: Narrator name
+        description:
+          type: string
+          description: Narrator description
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid request body"
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Chat
+    description: Chat and conversation endpoints
+  - name: Game State
+    description: Game state management
+  - name: Scenarios
+    description: Story scenarios and settings
+  - name: Player Characters
+    description: Player character management
+  - name: Narrators
+    description: AI narrator configurations
