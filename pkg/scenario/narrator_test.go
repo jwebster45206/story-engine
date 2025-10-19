@@ -376,7 +376,7 @@ func TestBuildPCPrompt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := BuildPCPrompt(tt.pc)
+			result := actor.BuildPrompt(tt.pc)
 
 			for _, phrase := range tt.shouldContain {
 				if !strings.Contains(result, phrase) {

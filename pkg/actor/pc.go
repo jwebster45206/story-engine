@@ -231,3 +231,21 @@ func (pc *PC) UnmarshalJSON(data []byte) error {
 	pc.Actor = actor
 	return nil
 }
+
+// BuildPrompt constructs the player character section for the system prompt
+// Returns an empty string if pc is nil
+func BuildPrompt(pc *PC) string {
+	if pc == nil {
+		return ""
+	}
+
+	pcSection := fmt.Sprintf("\n\n### Player Character\nThe player is controlling: %s", pc.Spec.Name)
+	if pc.Spec.Pronouns != "" {
+		pcSection += fmt.Sprintf(" (%s)", pc.Spec.Pronouns)
+	}
+	if pc.Spec.Description != "" {
+		pcSection += fmt.Sprintf(". %s", pc.Spec.Description)
+	}
+
+	return pcSection
+}
