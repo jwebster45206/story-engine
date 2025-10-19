@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/jwebster45206/d20"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
 // Stats5e represents the six core D&D 5e ability scores
@@ -34,22 +35,23 @@ func (s *Stats5e) ToAttributes() map[string]int {
 
 // PCSpec is the serializable specification for a Player Character
 type PCSpec struct {
-	ID              string         `json:"id"`
-	Name            string         `json:"name,omitempty"`
-	Class           string         `json:"class,omitempty"`
-	Level           int            `json:"level,omitempty"`
-	Race            string         `json:"race,omitempty"`
-	Pronouns        string         `json:"pronouns,omitempty"`
-	Description     string         `json:"description,omitempty"`
-	Background      string         `json:"background,omitempty"`
-	OpeningPrompt   string         `json:"opening_prompt,omitempty"` // PC-specific opening text
-	Stats           Stats5e        `json:"stats,omitempty"`
-	HP              int            `json:"hp,omitempty"`     // Current HP (for serialization)
-	MaxHP           int            `json:"max_hp,omitempty"` // Maximum HP
-	AC              int            `json:"ac,omitempty"`
-	CombatModifiers map[string]int `json:"combat_modifiers,omitempty"`
-	Attributes      map[string]int `json:"attributes,omitempty"` // Skills, proficiencies, etc.
-	Inventory       []string       `json:"inventory,omitempty"`
+	ID                 string                           `json:"id"`
+	Name               string                           `json:"name,omitempty"`
+	Class              string                           `json:"class,omitempty"`
+	Level              int                              `json:"level,omitempty"`
+	Race               string                           `json:"race,omitempty"`
+	Pronouns           string                           `json:"pronouns,omitempty"`
+	Description        string                           `json:"description,omitempty"`
+	Background         string                           `json:"background,omitempty"`
+	OpeningPrompt      string                           `json:"opening_prompt,omitempty"`      // PC-specific opening text
+	ContingencyPrompts []conditionals.ContingencyPrompt `json:"contingency_prompts,omitempty"` // Conditional prompts for this PC
+	Stats              Stats5e                          `json:"stats,omitempty"`
+	HP                 int                              `json:"hp,omitempty"`     // Current HP (for serialization)
+	MaxHP              int                              `json:"max_hp,omitempty"` // Maximum HP
+	AC                 int                              `json:"ac,omitempty"`
+	CombatModifiers    map[string]int                   `json:"combat_modifiers,omitempty"`
+	Attributes         map[string]int                   `json:"attributes,omitempty"` // Skills, proficiencies, etc.
+	Inventory          []string                         `json:"inventory,omitempty"`
 }
 
 // PC is the runtime representation of a Player Character
@@ -129,36 +131,38 @@ func (pc *PC) MarshalJSON() ([]byte, error) {
 
 	// Create a response struct for serialization
 	type PCResponse struct {
-		ID              string         `json:"id"`
-		Name            string         `json:"name"`
-		Class           string         `json:"class"`
-		Level           int            `json:"level"`
-		Race            string         `json:"race"`
-		Pronouns        string         `json:"pronouns,omitempty"`
-		Description     string         `json:"description,omitempty"`
-		Background      string         `json:"background,omitempty"`
-		OpeningPrompt   string         `json:"opening_prompt,omitempty"`
-		Stats           Stats5e        `json:"stats"`
-		HP              int            `json:"hp"`
-		MaxHP           int            `json:"max_hp"`
-		AC              int            `json:"ac"`
-		CombatModifiers map[string]int `json:"combat_modifiers,omitempty"`
-		Attributes      map[string]int `json:"attributes,omitempty"`
-		Inventory       []string       `json:"inventory,omitempty"`
+		ID                 string                           `json:"id"`
+		Name               string                           `json:"name"`
+		Class              string                           `json:"class"`
+		Level              int                              `json:"level"`
+		Race               string                           `json:"race"`
+		Pronouns           string                           `json:"pronouns,omitempty"`
+		Description        string                           `json:"description,omitempty"`
+		Background         string                           `json:"background,omitempty"`
+		OpeningPrompt      string                           `json:"opening_prompt,omitempty"`
+		ContingencyPrompts []conditionals.ContingencyPrompt `json:"contingency_prompts,omitempty"`
+		Stats              Stats5e                          `json:"stats"`
+		HP                 int                              `json:"hp"`
+		MaxHP              int                              `json:"max_hp"`
+		AC                 int                              `json:"ac"`
+		CombatModifiers    map[string]int                   `json:"combat_modifiers,omitempty"`
+		Attributes         map[string]int                   `json:"attributes,omitempty"`
+		Inventory          []string                         `json:"inventory,omitempty"`
 	}
 
 	// Start with static fields from spec
 	resp := PCResponse{
-		ID:            pc.Spec.ID,
-		Name:          pc.Spec.Name,
-		Class:         pc.Spec.Class,
-		Level:         pc.Spec.Level,
-		Race:          pc.Spec.Race,
-		Pronouns:      pc.Spec.Pronouns,
-		Description:   pc.Spec.Description,
-		Background:    pc.Spec.Background,
-		OpeningPrompt: pc.Spec.OpeningPrompt,
-		Inventory:     pc.Spec.Inventory,
+		ID:                 pc.Spec.ID,
+		Name:               pc.Spec.Name,
+		Class:              pc.Spec.Class,
+		Level:              pc.Spec.Level,
+		Race:               pc.Spec.Race,
+		Pronouns:           pc.Spec.Pronouns,
+		Description:        pc.Spec.Description,
+		Background:         pc.Spec.Background,
+		OpeningPrompt:      pc.Spec.OpeningPrompt,
+		ContingencyPrompts: pc.Spec.ContingencyPrompts,
+		Inventory:          pc.Spec.Inventory,
 	}
 
 	// Get current HP state from Actor

@@ -1,18 +1,10 @@
 package scenario
 
-// GameStateView provides the minimal interface needed to evaluate conditionals
-// This avoids an import cycle with the state package
-type GameStateView interface {
-	GetSceneName() string
-	GetVars() map[string]string
-	GetSceneTurnCounter() int
-	GetTurnCounter() int
-	GetUserLocation() string
-}
+import "github.com/jwebster45206/story-engine/pkg/conditionals"
 
 // EvaluateConditionals checks all conditionals for the current scene and returns triggered conditionals
 // Returns a map of conditional IDs to their conditionals
-func (s *Scenario) EvaluateConditionals(gsView GameStateView) map[string]Conditional {
+func (s *Scenario) EvaluateConditionals(gsView conditionals.GameStateView) map[string]Conditional {
 	sceneName := gsView.GetSceneName()
 	if sceneName == "" {
 		return nil
@@ -26,7 +18,7 @@ func (s *Scenario) EvaluateConditionals(gsView GameStateView) map[string]Conditi
 	triggered := make(map[string]Conditional)
 
 	for conditionalID, conditional := range scene.Conditionals {
-		if evaluateWhen(conditional.When, gsView) {
+		if conditionals.EvaluateWhen(conditional.When, gsView) {
 			triggered[conditionalID] = conditional
 		}
 	}
@@ -40,7 +32,7 @@ func (s *Scenario) EvaluateConditionals(gsView GameStateView) map[string]Conditi
 
 // EvaluateStoryEvents checks all story events for the current scene and returns triggered events
 // Returns a map of event IDs to their story events
-func (s *Scenario) EvaluateStoryEvents(gsView GameStateView) map[string]StoryEvent {
+func (s *Scenario) EvaluateStoryEvents(gsView conditionals.GameStateView) map[string]StoryEvent {
 	sceneName := gsView.GetSceneName()
 	if sceneName == "" {
 		return nil
@@ -54,7 +46,7 @@ func (s *Scenario) EvaluateStoryEvents(gsView GameStateView) map[string]StoryEve
 	triggered := make(map[string]StoryEvent)
 
 	for eventKey, event := range scene.StoryEvents {
-		if evaluateWhen(event.When, gsView) {
+		if conditionals.EvaluateWhen(event.When, gsView) {
 			triggered[eventKey] = event
 		}
 	}
@@ -66,89 +58,8 @@ func (s *Scenario) EvaluateStoryEvents(gsView GameStateView) map[string]StoryEve
 	return triggered
 }
 
-// evaluateWhen checks if all conditions in a When clause are met
-func evaluateWhen(when ConditionalWhen, gsView GameStateView) bool {
-	// If no conditions specified, return false (conditional should not trigger)
-	hasCondition := len(when.Vars) > 0 ||
-		when.SceneTurnCounter != nil ||
-		when.TurnCounter != nil ||
-		when.Location != "" ||
-		when.MinSceneTurns != nil ||
-		when.MinTurns != nil
-
-	if !hasCondition {
-		return false
-	}
-
-	// Check variable conditions
-	if len(when.Vars) > 0 {
-		gameVars := gsView.GetVars()
-		if gameVars == nil {
-			return false
-		}
-
-		for varName, expectedValue := range when.Vars {
-			actualValue, exists := gameVars[varName]
-			if !exists || actualValue != expectedValue {
-				return false
-			}
-		}
-	}
-
-	// Check scene turn counter (exact match)
-	if when.SceneTurnCounter != nil {
-		if gsView.GetSceneTurnCounter() != *when.SceneTurnCounter {
-			return false
-		}
-	}
-
-	// Check turn counter (exact match)
-	if when.TurnCounter != nil {
-		if gsView.GetTurnCounter() != *when.TurnCounter {
-			return false
-		}
-	}
-
-	// Check scene turn counter minimum
-	if when.MinSceneTurns != nil {
-		if gsView.GetSceneTurnCounter() < *when.MinSceneTurns {
-			return false
-		}
-	}
-
-	// Check turn counter minimum
-	if when.MinTurns != nil {
-		if gsView.GetTurnCounter() < *when.MinTurns {
-			return false
-		}
-	}
-
-	// Check location condition
-	if when.Location != "" {
-		if gsView.GetUserLocation() != when.Location {
-			return false
-		}
-	}
-
-	// All conditions passed
-	return true
-}
-
 // FilterContingencyPrompts returns only the prompts whose conditions are met
 // Prompts without conditions (When == nil) are always included
-func FilterContingencyPrompts(prompts []ContingencyPrompt, gsView GameStateView) []string {
-	var active []string
-	for _, cp := range prompts {
-		// If no conditions, always include
-		if cp.When == nil {
-			active = append(active, cp.Prompt)
-			continue
-		}
-
-		// Check if conditions are met
-		if evaluateWhen(*cp.When, gsView) {
-			active = append(active, cp.Prompt)
-		}
-	}
-	return active
+func FilterContingencyPrompts(prompts []conditionals.ContingencyPrompt, gsView conditionals.GameStateView) []string {
+	return conditionals.FilterContingencyPrompts(prompts, gsView)
 }

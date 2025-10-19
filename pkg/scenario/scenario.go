@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
 // Scenario is the template for a roleplay game session.
@@ -23,10 +24,10 @@ type Scenario struct {
 	OpeningInventory []string             `json:"opening_inventory,omitempty"` // Initial inventory items for the user
 	OpeningScene     string               `json:"opening_scene"`               // Which scene to start with
 
-	Vars               map[string]string   `json:"vars,omitempty"`                // Custom variables for the scenario
-	ContingencyPrompts []ContingencyPrompt `json:"contingency_prompts,omitempty"` // Conditional prompts for LLM
-	ContingencyRules   []string            `json:"contingency_rules,omitempty"`   // Backend rules for LLM to follow
-	GameEndPrompt      string              `json:"game_end_prompt,omitempty"`     // Optional instructions for writing a game ending
+	Vars               map[string]string                `json:"vars,omitempty"`                // Custom variables for the scenario
+	ContingencyPrompts []conditionals.ContingencyPrompt `json:"contingency_prompts,omitempty"` // Conditional prompts for LLM
+	ContingencyRules   []string                         `json:"contingency_rules,omitempty"`   // Backend rules for LLM to follow
+	GameEndPrompt      string                           `json:"game_end_prompt,omitempty"`     // Optional instructions for writing a game ending
 }
 
 const (

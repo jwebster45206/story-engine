@@ -2,9 +2,11 @@ package scenario
 
 import (
 	"testing"
+
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
-// mockGameStateView implements GameStateView for testing
+// mockGameStateView implements conditionals.GameStateView for testing
 type mockGameStateView struct {
 	sceneName        string
 	vars             map[string]string
@@ -22,19 +24,19 @@ func (m *mockGameStateView) GetUserLocation() string    { return m.userLocation 
 func TestFilterContingencyPrompts(t *testing.T) {
 	tests := []struct {
 		name     string
-		prompts  []ContingencyPrompt
-		gsView   GameStateView
+		prompts  []conditionals.ContingencyPrompt
+		gsView   conditionals.GameStateView
 		expected []string
 	}{
 		{
 			name:     "no prompts",
-			prompts:  []ContingencyPrompt{},
+			prompts:  []conditionals.ContingencyPrompt{},
 			gsView:   &mockGameStateView{},
 			expected: []string{},
 		},
 		{
 			name: "prompt without condition",
-			prompts: []ContingencyPrompt{
+			prompts: []conditionals.ContingencyPrompt{
 				{Prompt: "Always show this"},
 			},
 			gsView:   &mockGameStateView{},
@@ -42,7 +44,7 @@ func TestFilterContingencyPrompts(t *testing.T) {
 		},
 		{
 			name: "multiple prompts without conditions",
-			prompts: []ContingencyPrompt{
+			prompts: []conditionals.ContingencyPrompt{
 				{Prompt: "Prompt 1"},
 				{Prompt: "Prompt 2"},
 				{Prompt: "Prompt 3"},
@@ -52,10 +54,10 @@ func TestFilterContingencyPrompts(t *testing.T) {
 		},
 		{
 			name: "prompt with satisfied var condition",
-			prompts: []ContingencyPrompt{
+			prompts: []conditionals.ContingencyPrompt{
 				{
 					Prompt: "Show when has_key is true",
-					When: &ConditionalWhen{
+					When: &conditionals.ConditionalWhen{
 						Vars: map[string]string{"has_key": "true"},
 					},
 				},
@@ -67,10 +69,10 @@ func TestFilterContingencyPrompts(t *testing.T) {
 		},
 		{
 			name: "prompt with unsatisfied var condition",
-			prompts: []ContingencyPrompt{
+			prompts: []conditionals.ContingencyPrompt{
 				{
 					Prompt: "Show when has_key is true",
-					When: &ConditionalWhen{
+					When: &conditionals.ConditionalWhen{
 						Vars: map[string]string{"has_key": "true"},
 					},
 				},
@@ -82,11 +84,11 @@ func TestFilterContingencyPrompts(t *testing.T) {
 		},
 		{
 			name: "mixed conditional and unconditional prompts",
-			prompts: []ContingencyPrompt{
+			prompts: []conditionals.ContingencyPrompt{
 				{Prompt: "Always show"},
 				{
 					Prompt: "Show when has_item is true",
-					When: &ConditionalWhen{
+					When: &conditionals.ConditionalWhen{
 						Vars: map[string]string{"has_item": "true"},
 					},
 				},
@@ -99,10 +101,10 @@ func TestFilterContingencyPrompts(t *testing.T) {
 		},
 		{
 			name: "turn counter condition satisfied",
-			prompts: []ContingencyPrompt{
+			prompts: []conditionals.ContingencyPrompt{
 				{
 					Prompt: "Show on turn 5",
-					When: &ConditionalWhen{
+					When: &conditionals.ConditionalWhen{
 						TurnCounter: intPtr(5),
 					},
 				},
@@ -114,10 +116,10 @@ func TestFilterContingencyPrompts(t *testing.T) {
 		},
 		{
 			name: "turn counter condition not satisfied",
-			prompts: []ContingencyPrompt{
+			prompts: []conditionals.ContingencyPrompt{
 				{
 					Prompt: "Show on turn 5",
-					When: &ConditionalWhen{
+					When: &conditionals.ConditionalWhen{
 						TurnCounter: intPtr(5),
 					},
 				},
@@ -129,10 +131,10 @@ func TestFilterContingencyPrompts(t *testing.T) {
 		},
 		{
 			name: "scene turn counter with min threshold satisfied",
-			prompts: []ContingencyPrompt{
+			prompts: []conditionals.ContingencyPrompt{
 				{
 					Prompt: "Show after 3 scene turns",
-					When: &ConditionalWhen{
+					When: &conditionals.ConditionalWhen{
 						MinSceneTurns: intPtr(3),
 					},
 				},
@@ -144,10 +146,10 @@ func TestFilterContingencyPrompts(t *testing.T) {
 		},
 		{
 			name: "scene turn counter with min threshold not satisfied",
-			prompts: []ContingencyPrompt{
+			prompts: []conditionals.ContingencyPrompt{
 				{
 					Prompt: "Show after 3 scene turns",
-					When: &ConditionalWhen{
+					When: &conditionals.ConditionalWhen{
 						MinSceneTurns: intPtr(3),
 					},
 				},
@@ -159,16 +161,16 @@ func TestFilterContingencyPrompts(t *testing.T) {
 		},
 		{
 			name: "multiple prompts with different conditions",
-			prompts: []ContingencyPrompt{
+			prompts: []conditionals.ContingencyPrompt{
 				{
 					Prompt: "Show when has_sword",
-					When: &ConditionalWhen{
+					When: &conditionals.ConditionalWhen{
 						Vars: map[string]string{"has_sword": "true"},
 					},
 				},
 				{
 					Prompt: "Show when has_shield",
-					When: &ConditionalWhen{
+					When: &conditionals.ConditionalWhen{
 						Vars: map[string]string{"has_shield": "true"},
 					},
 				},
@@ -213,7 +215,7 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 	tests := []struct {
 		name     string
 		scenario *Scenario
-		gsView   GameStateView
+		gsView   conditionals.GameStateView
 		expected []string // Expected event keys
 	}{
 		{
@@ -243,7 +245,7 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 					"castle": {
 						StoryEvents: map[string]StoryEvent{
 							"dracula_appears": {
-								When: ConditionalWhen{
+								When: conditionals.ConditionalWhen{
 									Vars: map[string]string{"opened_grimoire": "true"},
 								},
 								Prompt: "Count Dracula materializes from the shadows.",
@@ -265,7 +267,7 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 					"castle": {
 						StoryEvents: map[string]StoryEvent{
 							"dracula_appears": {
-								When: ConditionalWhen{
+								When: conditionals.ConditionalWhen{
 									Vars: map[string]string{"opened_grimoire": "true"},
 								},
 								Prompt: "Count Dracula materializes from the shadows.",
@@ -287,7 +289,7 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 					"castle": {
 						StoryEvents: map[string]StoryEvent{
 							"lightning_strike": {
-								When: ConditionalWhen{
+								When: conditionals.ConditionalWhen{
 									SceneTurnCounter: intPtr(4),
 								},
 								Prompt: "A massive LIGHTNING bolt strikes the castle tower!",
@@ -309,7 +311,7 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 					"castle": {
 						StoryEvents: map[string]StoryEvent{
 							"lightning_strike": {
-								When: ConditionalWhen{
+								When: conditionals.ConditionalWhen{
 									SceneTurnCounter: intPtr(4),
 								},
 								Prompt: "A massive LIGHTNING bolt strikes the castle tower!",
@@ -331,7 +333,7 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 					"castle": {
 						StoryEvents: map[string]StoryEvent{
 							"complex_event": {
-								When: ConditionalWhen{
+								When: conditionals.ConditionalWhen{
 									Vars:             map[string]string{"has_key": "true", "door_locked": "true"},
 									SceneTurnCounter: intPtr(3),
 								},
@@ -355,7 +357,7 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 					"castle": {
 						StoryEvents: map[string]StoryEvent{
 							"complex_event": {
-								When: ConditionalWhen{
+								When: conditionals.ConditionalWhen{
 									Vars:             map[string]string{"has_key": "true", "door_locked": "true"},
 									SceneTurnCounter: intPtr(3),
 								},
@@ -379,19 +381,19 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 					"castle": {
 						StoryEvents: map[string]StoryEvent{
 							"event1": {
-								When: ConditionalWhen{
+								When: conditionals.ConditionalWhen{
 									Vars: map[string]string{"trigger1": "true"},
 								},
 								Prompt: "Event 1 happens",
 							},
 							"event2": {
-								When: ConditionalWhen{
+								When: conditionals.ConditionalWhen{
 									Vars: map[string]string{"trigger2": "true"},
 								},
 								Prompt: "Event 2 happens",
 							},
 							"event3": {
-								When: ConditionalWhen{
+								When: conditionals.ConditionalWhen{
 									Vars: map[string]string{"trigger3": "true"},
 								},
 								Prompt: "Event 3 happens",
@@ -417,7 +419,7 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 					"forest": {
 						StoryEvents: map[string]StoryEvent{
 							"wolf_attack": {
-								When: ConditionalWhen{
+								When: conditionals.ConditionalWhen{
 									TurnCounter: intPtr(10),
 								},
 								Prompt: "Wolves emerge from the shadows!",
@@ -439,7 +441,7 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 					"dungeon": {
 						StoryEvents: map[string]StoryEvent{
 							"water_rising": {
-								When: ConditionalWhen{
+								When: conditionals.ConditionalWhen{
 									MinSceneTurns: intPtr(5),
 								},
 								Prompt: "The water level is rising dangerously high!",
@@ -461,7 +463,7 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 					"spaceship": {
 						StoryEvents: map[string]StoryEvent{
 							"oxygen_warning": {
-								When: ConditionalWhen{
+								When: conditionals.ConditionalWhen{
 									MinTurns: intPtr(15),
 								},
 								Prompt: "WARNING: Oxygen levels critical!",
@@ -483,7 +485,7 @@ func TestScenario_EvaluateStoryEvents(t *testing.T) {
 					"town": {
 						StoryEvents: map[string]StoryEvent{
 							"merchant_appears": {
-								When: ConditionalWhen{
+								When: conditionals.ConditionalWhen{
 									Location: "market_square",
 								},
 								Prompt: "A mysterious merchant approaches you.",

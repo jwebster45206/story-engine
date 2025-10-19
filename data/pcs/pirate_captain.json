@@ -33,6 +33,13 @@
     "navigation": 5,
     "sea_lore": 6
   },
+  "contingency_prompts": [
+    "Captain Jack is surprisingly clumsy despite his agility, often stumbling or dropping things at inopportune moments",
+    {
+      "prompt": "When aboard the Black Pearl, Jack is full of confidence and speaks passionately about his love of the sea and his ship, gesturing grandly at the rigging and deck",
+      "when": {"location": "black_pearl"}
+    }
+  ],
   "inventory": [
     "cutlass",
     "tricorn hat with feather"
