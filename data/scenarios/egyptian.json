@@ -286,7 +286,7 @@
     }
   },
   "opening_scene": "telegram_mystery",
-  "opening_prompt": "The year is 1923, and the desert wind carries whispers of ancient secrets as you arrive at your hotel in Cairo, Egypt. \n\nA cryptic telegram burns in your pocket, its mysterious message haunting your thoughts: 'The stars align as they did when the old gods walked among mortals. What was lost shall be found, but beware - some knowledge comes at a price.' \n\nYour adventure into the unknown begins now.",
+  "opening_prompt": "The year is 1923, and the desert wind carries whispers of ancient secrets as you arrive at your hotel in Cairo, Egypt.\n\n%s\n\nA cryptic telegram burns in your pocket, its mysterious message haunting your thoughts: 'The stars align as they did when the old gods walked among mortals. What was lost shall be found, but beware - some knowledge comes at a price.'\n\nYour adventure into the unknown begins now.",
   "opening_location": "cairo_hotel",
   "opening_inventory": [
     "archaeological tools",

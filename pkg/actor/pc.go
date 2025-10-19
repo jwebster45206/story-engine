@@ -42,6 +42,7 @@ type PCSpec struct {
 	Pronouns        string         `json:"pronouns,omitempty"`
 	Description     string         `json:"description,omitempty"`
 	Background      string         `json:"background,omitempty"`
+	OpeningPrompt   string         `json:"opening_prompt,omitempty"` // PC-specific opening text
 	Stats           Stats5e        `json:"stats,omitempty"`
 	HP              int            `json:"hp,omitempty"`     // Current HP (for serialization)
 	MaxHP           int            `json:"max_hp,omitempty"` // Maximum HP
@@ -136,6 +137,7 @@ func (pc *PC) MarshalJSON() ([]byte, error) {
 		Pronouns        string         `json:"pronouns,omitempty"`
 		Description     string         `json:"description,omitempty"`
 		Background      string         `json:"background,omitempty"`
+		OpeningPrompt   string         `json:"opening_prompt,omitempty"`
 		Stats           Stats5e        `json:"stats"`
 		HP              int            `json:"hp"`
 		MaxHP           int            `json:"max_hp"`
@@ -147,15 +149,16 @@ func (pc *PC) MarshalJSON() ([]byte, error) {
 
 	// Start with static fields from spec
 	resp := PCResponse{
-		ID:          pc.Spec.ID,
-		Name:        pc.Spec.Name,
-		Class:       pc.Spec.Class,
-		Level:       pc.Spec.Level,
-		Race:        pc.Spec.Race,
-		Pronouns:    pc.Spec.Pronouns,
-		Description: pc.Spec.Description,
-		Background:  pc.Spec.Background,
-		Inventory:   pc.Spec.Inventory,
+		ID:            pc.Spec.ID,
+		Name:          pc.Spec.Name,
+		Class:         pc.Spec.Class,
+		Level:         pc.Spec.Level,
+		Race:          pc.Spec.Race,
+		Pronouns:      pc.Spec.Pronouns,
+		Description:   pc.Spec.Description,
+		Background:    pc.Spec.Background,
+		OpeningPrompt: pc.Spec.OpeningPrompt,
+		Inventory:     pc.Spec.Inventory,
 	}
 
 	// Get current HP state from Actor

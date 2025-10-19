@@ -283,7 +283,7 @@
     }
   },
   "opening_scene": "shipwright",
-  "opening_prompt": "You are the captain of The Black Pearl, one of the most feared pirate ships in the Caribbean. \n\nYou stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your ship needs repairs before you can set sail again. What will you do next?",
+  "opening_prompt": "%s\n\nYou stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your ship needs repairs before you can set sail again. What will you do next?",
   "opening_location": "tortuga",
   "opening_inventory": [
     "cutlass",

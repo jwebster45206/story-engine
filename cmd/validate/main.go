@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -33,6 +34,17 @@ type ScenarioValidator struct {
 
 func (v *ScenarioValidator) validateFile(filename string) error {
 	fmt.Printf("Validating %s...\n", filename)
+
+	// Validate filename format
+	baseName := filepath.Base(filename)
+	if !strings.HasSuffix(baseName, ".json") {
+		return fmt.Errorf("scenario file must have .json extension: %s", baseName)
+	}
+
+	nameWithoutExt := strings.TrimSuffix(baseName, ".json")
+	if !isValidScenarioFilename(nameWithoutExt) {
+		return fmt.Errorf("scenario filename '%s' must be lowercase snake_case (e.g., my_scenario.json, not my-scenario.json or MyScenario.json)", baseName)
+	}
 
 	data, err := os.ReadFile(filename)
 	if err != nil {
@@ -168,8 +180,9 @@ func (v *ScenarioValidator) addError(msg string) {
 }
 
 var (
-	validIDRegex  = regexp.MustCompile(`^[a-z][a-z0-9_]*[a-z0-9]$|^[a-z]$`)
-	validVarRegex = regexp.MustCompile(`^[a-z][a-z0-9_]*[a-z0-9]$|^[a-z]$`)
+	validIDRegex       = regexp.MustCompile(`^[a-z][a-z0-9_]*[a-z0-9]$|^[a-z]$`)
+	validVarRegex      = regexp.MustCompile(`^[a-z][a-z0-9_]*[a-z0-9]$|^[a-z]$`)
+	validFilenameRegex = regexp.MustCompile(`^[a-z][a-z0-9_]*[a-z0-9]$|^[a-z]$`)
 )
 
 func isValidID(id string) bool {
@@ -178,4 +191,10 @@ func isValidID(id string) bool {
 
 func isValidVariableName(name string) bool {
 	return validVarRegex.MatchString(name)
+}
+
+func isValidScenarioFilename(name string) bool {
+	// Allow 'x.' prefix for experimental scenarios
+	name = strings.TrimPrefix(name, "x.")
+	return validFilenameRegex.MatchString(name)
 }

@@ -1,8 +1,8 @@
 {
   "name": "Space Disaster - Scene Counter",
-  "scenario": "space-disaster.json",
+  "scenario": "space_disaster.json",
   "seed_game_state": {
-    "scenario": "space-disaster.json",
+    "scenario": "space_disaster.json",
     "scene_name": "scene_counter",
     "user_location": "Test Room",
     "turn_counter": 1,

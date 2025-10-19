@@ -1,8 +1,8 @@
 {
   "name": "Space Disaster - Min Scene Turns Test",
-  "scenario": "space-disaster.json",
+  "scenario": "space_disaster.json",
   "seed_game_state": {
-    "scenario": "space-disaster.json",
+    "scenario": "space_disaster.json",
     "scene_name": "min_scene_turns",
     "user_location": "Test Room",
     "turn_counter": 5,

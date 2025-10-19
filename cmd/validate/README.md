@@ -29,7 +29,7 @@ go run cmd/validate/main.go <scenario.json>
 ./validate data/scenarios/pirate.json
 
 # Run directly with go
-go run cmd/validate/main.go data/scenarios/space-disaster.json
+go run cmd/validate/main.go data/scenarios/space_disaster.json
 ```
 
 ## What It Validates

@@ -1,7 +1,7 @@
 {
   "name": "Story Event Turn Counter Trigger Test",
   "description": "Tests that story events fire on exact turn counter match and only on that turn",
-  "scenario": "dracula-story-events.json",
+  "scenario": "dracula_story_events.json",
   "seed_game_state": {
     "scene_name": "arrival",
     "user_location": "grand_foyer",
