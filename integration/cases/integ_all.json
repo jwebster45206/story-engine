@@ -4,6 +4,7 @@
     "pirate_locations.json",
     "pirate_scenes_all.json",
     "space_counters_all.json",
-    "story_events_all.json"
+    "story_events_all.json",
+    "pirate_pc_identity.json"
   ]
 }

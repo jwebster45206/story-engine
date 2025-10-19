@@ -1,0 +1,44 @@
+{
+  "name": "Pirate PC Identity Test - Who Am I?",
+  "scenario": "pirate.json",
+  "seed_game_state": {
+    "scenario": "pirate.json",
+    "scene_name": "shipwright",
+    "user_location": "tortuga",
+    "turn_counter": 1,
+    "scene_turn_counter": 1,
+    "user_inventory": [
+      "cutlass",
+      "spyglass"
+    ],
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "You stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your ship needs repairs before you can set sail again."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Ask who am I",
+      "user_prompt": "Who am I?",
+      "expect": {
+        "turn_counter": 2,
+        "response_contains": [
+          "Jack Sparrow",
+          "captain"
+        ]
+      }
+    },
+    {
+      "name": "Ask about myself",
+      "user_prompt": "What is my profession?",
+      "expect": {
+        "turn_counter": 3,
+        "response_contains": [
+          "pira"
+        ]
+      }
+    }
+  ]
+}
