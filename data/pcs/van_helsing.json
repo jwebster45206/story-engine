@@ -33,5 +33,9 @@
     "insight": 6,
     "survival": 6
   },
+  "contingency_prompts": [
+    "Van Helsing may reference his leather journal, consulting notes on vampire weaknesses and quoting from ancient texts he's translated.",
+    "Van Helsing speaks with a thick Eastern European accent, in a manner consistent with his scholarly background."
+  ],
   "inventory": ["wooden stakes", "silver cross", "holy water"]
 }

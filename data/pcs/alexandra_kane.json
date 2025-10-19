@@ -32,6 +32,10 @@
     "deduction": 7,
     "forensics": 5
   },
+  "contingency_prompts": [
+    "Alexandra possesses a singular dislike of professor Blackwood.",
+    "Alexandra is highly intelligent and analytical, not given to emotion or superstition."
+  ],
   "inventory": [
     "magnifying glass",
     "notebook and pencil",
