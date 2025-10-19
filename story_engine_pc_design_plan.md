@@ -25,6 +25,7 @@ The immediate goal is to support narrative usage, while laying groundwork for st
   "class": "Fighter",
   "level": 1,
   "race": "Human",
+  "pronouns": "he/him",
   "description": "Disciplined and pragmatic, distrustful of magic. Seeks to protect the weak and earn a captain's commission.",
   "background": "Veteran soldier of the northern wars... [lengthy description]",
   "stats": {
@@ -91,6 +92,7 @@ type PCSpec struct {
     Class           string         `json:"class"`
     Level           int            `json:"level"`
     Race            string         `json:"race"`
+    Pronouns        string         `json:"pronouns,omitempty"`
     Description     string         `json:"description,omitempty"`
     Background      string         `json:"background,omitempty"`
     Stats           Stats5e        `json:"stats"`
@@ -175,6 +177,7 @@ func (pc *PC) MarshalJSON() ([]byte, error) {
         Class           string         `json:"class"`
         Level           int            `json:"level"`
         Race            string         `json:"race"`
+        Pronouns        string         `json:"pronouns,omitempty"`
         Description     string         `json:"description,omitempty"`
         Background      string         `json:"background,omitempty"`
         Stats           Stats5e        `json:"stats"`
@@ -192,6 +195,7 @@ func (pc *PC) MarshalJSON() ([]byte, error) {
         Class:           pc.Spec.Class,
         Level:           pc.Spec.Level,
         Race:            pc.Spec.Race,
+        Pronouns:        pc.Spec.Pronouns,
         Description:     pc.Spec.Description,
         Background:      pc.Spec.Background,
         Stats:           pc.Spec.Stats,
@@ -253,6 +257,7 @@ Get a single PC by ID.
   "class": "Fighter",
   "level": 1,
   "race": "Human",
+  "pronouns": "he/him",
   "description": "Disciplined and pragmatic...",
   "background": "Veteran soldier of the northern wars...",
   "stats": {
@@ -315,6 +320,9 @@ Get a single PC by ID.
 - [ ] Implement `LoadPC()` builder function with filename-based ID extraction
 - [ ] Implement `MarshalJSON()` for PC to handle Actor → PCSpec conversion
 - [ ] Unit test PCSpec.
+
+### Part 1.5
+
 - [ ] Add API endpoints: `GET /v1/pcs` and `GET /v1/pcs/{id}`
 - [ ] Unit test endpoints.
 - [ ] Update README in main directory.
@@ -324,7 +332,7 @@ Get a single PC by ID.
 
 - [ ] Wire PC selection into gamestate creation. Fall back to default/classic/generic if all else fails. 
 - [ ] Add support for default PC to scenario spec.
-- [ ] Inject character into narrative prompt. Not reducer.
+- [ ] Inject character into narrative prompt. Not reducer. (TODO: reduce most important elements to a compact prompt)
 - [ ] Add default PC to pirate scenario, and update prompts so that character is separated from story.
 
 ### Part 3
