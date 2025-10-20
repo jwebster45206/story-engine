@@ -2,6 +2,8 @@
   "name": "Ravenloft — Barovia Before the Castle",
   "story": "A gothic horror adventure through the fog-shrouded valley of Barovia. The party arrives in the Village of Barovia, meets desperate souls, gains (or spurns) Vistani guidance, confronts Old Bonegrinder, and struggles along the Svalich Road under the gaze of Strahd. This scenario ends at the threshold of Castle Ravenloft.",
   "rating": "PG-13",
+  "narrator_id": "poe",
+  "default_pc": "elara_wyn",
   "opening_scene": "barovia_hooks",
   "opening_prompt": "Cold mist coils along the Svalich Road as a rusted village gate groans open. Houses crouch like broken teeth, their windows dark and watchful. A distant church bell tolls once—then falters. In the square ahead, someone has nailed a letter in crimson wax to a crooked post. \n\n%s\n\nRavens watch from the eaves, heads tilted, as if weighing your worth.",
   "opening_location": "village_square",
