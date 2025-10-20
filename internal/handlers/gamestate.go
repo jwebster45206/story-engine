@@ -282,7 +282,6 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	gs.NPCs = s.NPCs
 	gs.Location = s.OpeningLocation
 	gs.WorldLocations = s.Locations
-	gs.Inventory = s.OpeningInventory
 	gs.Vars = s.Vars
 	// ContingencyPrompts field is for runtime-added custom prompts only
 	// Scenario-level prompts are already filtered and added in GetContingencyPrompts()
@@ -322,6 +321,34 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	if loadedPC != nil {
 		gs.PC = loadedPC
 		h.logger.Debug("PC loaded successfully", "pc_id", loadedPC.Spec.ID, "name", loadedPC.Spec.Name, "source", map[bool]string{true: "request", false: "scenario"}[req.PCID != ""])
+	}
+
+	// Merge PC starting inventory with scenario starting inventory
+	// GameState.Inventory is the canonical source - PC inventory is just a template
+	inventoryMap := make(map[string]bool)
+
+	// Add scenario inventory first
+	for _, item := range s.OpeningInventory {
+		inventoryMap[item] = true
+	}
+
+	// Add PC starting inventory (if PC loaded)
+	if loadedPC != nil && loadedPC.Spec != nil && loadedPC.Spec.Inventory != nil {
+		for _, item := range loadedPC.Spec.Inventory {
+			inventoryMap[item] = true
+		}
+	}
+
+	// Convert map to slice (deduplicates automatically)
+	gs.Inventory = make([]string, 0, len(inventoryMap))
+	for item := range inventoryMap {
+		gs.Inventory = append(gs.Inventory, item)
+	}
+
+	// Clear PC inventory to avoid confusion - gs.Inventory is now canonical
+	// PC.Spec.Inventory was just a template for starting items
+	if gs.PC != nil && gs.PC.Spec != nil {
+		gs.PC.Spec.Inventory = nil
 	}
 
 	// Add the opening prompt to chat history
