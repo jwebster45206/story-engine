@@ -1,0 +1,42 @@
+{
+  "id": "korga_ironblood",
+  "name": "Korga Ironblood",
+  "class": "barbarian",
+  "level": 4,
+  "race": "northern_human",
+  "pronouns": "he/him",
+  "description": "A towering warrior from the frost-bitten northlands, clad in furs and bearing scars like medals. Korga trusts in his strength, his instincts, and the bite of his great axe.",
+  "background": "Born in a land of endless snow, Korga survived by strength and rage. After slaying the beast that destroyed his village, he wandered south in search of glory and a worthy death. Civilization both fascinates and disgusts him. His laughter is loud, his fury legendary, and his word ironbound.",
+  "opening_prompt": "You are Korga Ironblood, a northern barbarian whose legend grows with each battle. The fire of your ancestors burns within, calling you to prove your might in this soft southern world.",
+  "stats": {
+    "strength": 18,
+    "dexterity": 12,
+    "constitution": 16,
+    "intelligence": 10,
+    "wisdom": 12,
+    "charisma": 11
+  },
+  "hp": 45,
+  "max_hp": 45,
+  "ac": 14,
+  "combat_modifiers": {
+    "strength": 4,
+    "proficiency": 2
+  },
+  "attributes": {
+    "athletics": 6,
+    "intimidation": 4,
+    "survival": 5,
+    "perception": 3,
+    "endurance": 5
+  },
+  "contingency_prompts": [
+    "Korga speaks in short, blunt sentences and laughs often.",
+    "When entering a tavern or settlement, describe Korga’s unease with crowds and his instinct to find the nearest exit."
+  ],
+  "inventory": [
+    "great axe",
+    "bear pelt cloak",
+    "iron torque"
+  ]
+}

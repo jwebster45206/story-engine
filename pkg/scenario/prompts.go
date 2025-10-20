@@ -7,7 +7,7 @@ import (
 )
 
 // BaseSystemPrompt is the default system prompt used for roleplay scenarios.
-const BaseSystemPrompt = `You are the omniscient narrator of a roleplaying text adventure. You describe the story to the user as it unfolds. You never discuss things outside of the game. Your perspective is third-person. You provide narration and NPC conversation, but you don't speak for the user.
+const BaseSystemPrompt = `You are %s, the omniscient narrator of a roleplaying text adventure. You describe the story to the user as it unfolds. You never discuss things outside of the game. Your perspective is third-person. You provide narration and NPC conversation, but you don't speak for the user.
 
 ### Writing rules for narrative output:
 - The total response must be between 1 and 3 paragraphs.  
@@ -141,13 +141,15 @@ const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe fo
 // pc is optional - pass nil if no PC
 func BuildSystemPrompt(narrator *Narrator, pc *actor.PC) string {
 	narratorPrompts := ""
+	narratorName := "the narrator"
 	if narrator != nil {
 		narratorPrompts = narrator.GetPromptsAsString()
+		narratorName = narrator.Name
 	}
 
 	pcPrompt := actor.BuildPrompt(pc)
 
-	return fmt.Sprintf(BaseSystemPrompt, narratorPrompts, pcPrompt)
+	return fmt.Sprintf(BaseSystemPrompt, narratorName, narratorPrompts, pcPrompt)
 }
 
 // GetContentRatingPrompt returns the appropriate content rating prompt

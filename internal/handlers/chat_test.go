@@ -188,14 +188,14 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 				_, generateCalls := mockLLM.GetCalls()
 
 				// Instead of checking for exactly 1 call, only count main chat calls
-				mainPromptPrefix := scenario.BaseSystemPrompt
-				if len(mainPromptPrefix) > 50 {
-					mainPromptPrefix = mainPromptPrefix[:50]
-				}
+				// BaseSystemPrompt now includes narrator name, so check for the formatted version
 				mainCalls := 0
 				for _, call := range generateCalls {
-					if len(call.Messages) > 0 && strings.HasPrefix(call.Messages[0].Content, mainPromptPrefix) {
-						mainCalls++
+					if len(call.Messages) > 0 && call.Messages[0].Role == chat.ChatRoleSystem {
+						// Check if this looks like the main system prompt (contains "omniscient narrator")
+						if strings.Contains(call.Messages[0].Content, "omniscient narrator") {
+							mainCalls++
+						}
 					}
 				}
 				if mainCalls != 1 {
