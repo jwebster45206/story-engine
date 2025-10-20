@@ -8,7 +8,7 @@ Each narrator is a JSON file with the following structure:
 
 ```json
 {
-  "id": "narrator_id",
+  // "id" is generated from the json filename
   "name": "Display Name",
   "description": "Brief description of the narrator's style",
   "prompts": [
@@ -19,14 +19,13 @@ Each narrator is a JSON file with the following structure:
 }
 ```
 
+**Filename:** File names should be unique, lowercase and snake_case. Narrators should be stored in data/narrators directory. 
+
 ### Fields
 
-- **id** (required): Unique identifier matching the filename (e.g., `vincent_price` for `vincent_price.json`)
 - **name** (required): Human-readable display name
-- **description** (optional): Brief description of what this narrator style is like
+- **description** (optional): Brief description of what this narrator style is like; informational, for ui, and not used in system prompts
 - **prompts** (required): Array of instructions that shape the narrator's voice and style
-
-**Best Practice:** Keep prompts concise - aim for 2-5 prompts per narrator. Too many prompts consume tokens and can dilute the narrator's personality. Focus on the most essential characteristics that define the voice.
 
 ## Usage
 
@@ -56,12 +55,9 @@ Players can override the scenario's default narrator when creating a game sessio
 
 ### Tips for Writing Narrator Prompts
 
-- **Keep it concise**: 2-5 prompts is ideal. More prompts = more tokens and potentially diluted personality
-- Be specific about tone, language style, and personality
-- Include examples of how the narrator should behave
+- **Keep it concise**: 2-5 prompts is ideal. More prompts = more tokens and potentially LLM confusion
+- Be specific about tone, writing style, and the narrator's personality
 - Keep each prompt short and actionable
-- Focus on storytelling style rather than game mechanics
-- Consider the narrator's relationship to the story (omniscient, participant, observer, etc.)
 
 ## Examples
 

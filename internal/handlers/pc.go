@@ -49,6 +49,7 @@ func (h *PCHandler) ListPCs(w http.ResponseWriter, r *http.Request) {
 			h.log.Warn("Failed to parse PC file", "error", err, "file", entry.Name())
 			continue
 		}
+		spec.ID = strings.TrimSuffix(entry.Name(), ".json") // Set ID from filename, overriding any in JSON
 
 		// Create a summary object with just the key fields
 		pcSummary := map[string]interface{}{

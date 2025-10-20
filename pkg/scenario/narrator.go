@@ -11,7 +11,7 @@ import (
 type Narrator struct {
 	ID          string   `json:"id"`                    // Unique identifier (e.g., "vincent_price", "classic", "comedic")
 	Name        string   `json:"name"`                  // Display name
-	Description string   `json:"description,omitempty"` // What this narrator style is like
+	Description string   `json:"description,omitempty"` // What this narrator style is like (not used in prompts)
 	Prompts     []string `json:"prompts"`               // The actual narrator instructions
 }
 
@@ -53,11 +53,7 @@ func LoadNarrator(narratorID string) (*Narrator, error) {
 	if err := json.Unmarshal(data, &narrator); err != nil {
 		return nil, fmt.Errorf("failed to parse narrator JSON from %s: %w", narratorPath, err)
 	}
-
-	// Validate narrator ID matches filename
-	if narrator.ID != narratorID {
-		return nil, fmt.Errorf("narrator ID mismatch: file is %s but ID in JSON is %s", narratorID, narrator.ID)
-	}
+	narrator.ID = narratorID // Ensure ID is set from filename
 
 	return &narrator, nil
 }

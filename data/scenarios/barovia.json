@@ -1,0 +1,424 @@
+{
+  "name": "Ravenloft — Barovia Before the Castle",
+  "story": "A gothic horror adventure through the fog-shrouded valley of Barovia. The party arrives in the Village of Barovia, meets desperate souls, gains (or spurns) Vistani guidance, confronts Old Bonegrinder, and struggles along the Svalich Road under the gaze of Strahd. This scenario ends at the threshold of Castle Ravenloft.",
+  "rating": "PG-13",
+  "narrator_id": "poe",
+  "default_pc": "elara_wyn",
+  "opening_scene": "barovia_hooks",
+  "opening_prompt": "Cold mist coils along the Svalich Road as a rusted village gate groans open. Houses crouch like broken teeth, their windows dark and watchful. A distant church bell tolls once—then falters. In the square ahead, someone has nailed a letter in crimson wax to a crooked post. \n\n%s\n\nRavens watch from the eaves, heads tilted, as if weighing your worth.",
+  "opening_location": "village_square",
+  "opening_inventory": [
+    "holy_water_vial",
+    "wolfbane_sprig",
+    "tinderbox"
+  ],
+  "vars": {
+    "fortune_layout": "A",
+    "tome_zone": "burgomaster_house",
+    "holy_symbol_zone": "church_crypt",
+    "sunsword_zone": "castle_chapel",
+    "strahd_interest": "1",
+    "time_of_day": "day",
+    "weather": "fog",
+    "ireena_with_party": "false",
+    "has_invitation_to_castle": "false",
+    "vistani_favor": "0",
+    "doru_redeemed": "false",
+    "morgantha_defeated": "false",
+    "player_has_restored_sanctuary": "false",
+    "game_over": "none",
+    "finale_zone": "castle_gatehouse",
+    "turn_limit": "30"
+  },
+  "locations": {
+    "village_square": {
+      "name": "Village Square",
+      "description": "A crooked square where cobblestones drink the mist. A sagging notice board bears scraps of warnings. Ravens perch on a leaning gallows, feathers slick with dew. To the north, a church steeple juts like a broken rib; to the west, a manor’s roofline sags. Lanterns gutter in the fog.",
+      "exits": {
+        "north": "churchyard",
+        "west": "burgomaster_lane",
+        "east": "old_svalich_road_fork",
+        "south": "blood_on_the_vines"
+      },
+      "items": [
+        "crimson_sealed_letter",
+        "tattered_missing_persons_notices"
+      ]
+    },
+    "burgomaster_lane": {
+      "name": "Burgomaster Lane",
+      "description": "Shuttered homes with nailed doors; claw-marks rake the wood. A stray dog noshes a bone it refuses to share with the fog. The Burgomaster’s house sags behind a rotten fence, curtains drawn against the world.",
+      "exits": {
+        "east": "village_square",
+        "west": "burgomaster_house"
+      }
+    },
+    "burgomaster_house": {
+      "name": "Burgomaster’s House",
+      "description": "A once-proud manor of weary timbers. The entry hall smells of cold ash and fear. Faded portraits of stern nobles study you with painted disapproval. Somewhere, a lock clicks—someone watching.",
+      "exits": {
+        "east": "burgomaster_lane",
+        "north": "drawing_room",
+        "south": "courtyard_gate"
+      },
+      "items": [
+        "rusted_key",
+        "mourning_banner"
+      ]
+    },
+    "drawing_room": {
+      "name": "Drawing Room",
+      "description": "A hearth with dead coals, threadbare settees, and a cracked decanter. A letter opener lies beside a map stained with wine-dark circles.",
+      "exits": {
+        "south": "burgomaster_house"
+      }
+    },
+    "courtyard_gate": {
+      "name": "Courtyard Gate",
+      "description": "A cramped yard full of rain barrels and a crippled handcart. The gate chain rattles when the wind thinks no one is listening.",
+      "exits": {
+        "north": "burgomaster_house",
+        "west": "alleys_west"
+      }
+    },
+    "alleys_west": {
+      "name": "Western Alleys",
+      "description": "Dead-end lanes clogged with ash-gray mud and leaning fences. A raven hops along the top-rail, patient as a priest.",
+      "exits": {
+        "east": "courtyard_gate",
+        "south": "blood_on_the_vines"
+      }
+    },
+    "blood_on_the_vines": {
+      "name": "Blood on the Vines Tavern",
+      "description": "A sagging tavern lit by three stubborn lanterns. Wine stains the boards like old wounds. The Vistani proprietors trade smiles like cards, and the air tastes of sour red and secrets.",
+      "exits": {
+        "north": "village_square",
+        "west": "alleys_west"
+      },
+      "items": [
+        "cheap_wine_bottle",
+        "crumpled_tarokka_handbill"
+      ]
+    },
+    "churchyard": {
+      "name": "Churchyard",
+      "description": "A crooked cemetery clinging to a hill. Iron fences ache with rust; angel statues have wept away their faces. The church doors hang ajar, and somewhere beneath the boards something sobs.",
+      "exits": {
+        "south": "village_square",
+        "north": "church_of_barovia"
+      }
+    },
+    "church_of_barovia": {
+      "name": "Church of Barovia",
+      "description": "Nave reeking of stale incense. Benches tilt like broken ribs. The altar cloth is torn, and dried wax forms pale stalagmites. A trapdoor near the pulpit breathes cold air like a cellar’s last confession.",
+      "exits": {
+        "south": "churchyard",
+        "down": "church_crypt"
+      },
+      "items": [
+        "cracked_holy_symbol",
+        "altar_candles"
+      ]
+    },
+    "church_crypt": {
+      "name": "Church Crypt",
+      "description": "Stacked bones, rosaries tangled like brambles, and a barred niche that smells of earth and hunger. Scratches scar the inside of the wood.",
+      "exits": {
+        "up": "church_of_barovia"
+      }
+    },
+    "old_svalich_road_fork": {
+      "name": "Old Svalich Road — Fork",
+      "description": "An ancient road dives into the forests, east toward a swaying bridge and west toward a wind-sketched hill. Fog clots in the pines, swallowing sound.",
+      "exits": {
+        "west": "old_bonegrinder_path",
+        "east": "tser_pool_road",
+        "west_hills": "windmill_hill",
+        "southwest": "village_square"
+      },
+      "blocked_exits": {
+        "east_castle": "A cliff path toward the looming castle exists but the fog denies the way; fate has not invited you."
+      }
+    },
+    "tser_pool_road": {
+      "name": "Road to Tser Pool",
+      "description": "River-mist curls between birches. Occult sigils scratched on bark claim passage for the Tser tribe.",
+      "exits": {
+        "west": "tser_pool_camp",
+        "west_bridge": "rickety_bridge",
+        "west_return": "old_svalich_road_fork"
+      }
+    },
+    "rickety_bridge": {
+      "name": "Rickety Bridge",
+      "description": "A sway-backed bridge where wet ropes whisper. The water below moves like a sleeping serpent.",
+      "exits": {
+        "east": "tser_pool_road",
+        "west": "tser_pool_camp"
+      }
+    },
+    "tser_pool_camp": {
+      "name": "Tser Pool Encampment",
+      "description": "Canvas wagons circle a fire like planets chained to a red star. Fiddles saw a tune older than cruelty; wine and prophecy pass in the same cup.",
+      "exits": {
+        "east": "tser_pool_road"
+      }
+    },
+    "old_bonegrinder_path": {
+      "name": "Path to Old Bonegrinder",
+      "description": "A clawed path up a wind-gnawed hill. Occasional pastry crumbs lie wet in the ruts.",
+      "exits": {
+        "east": "old_svalich_road_fork",
+        "west": "windmill_hill"
+      }
+    },
+    "windmill_hill": {
+      "name": "Windmill Hill",
+      "description": "A silhouette of rotten vanes gnawing the moon. Windows glow with oven-fire; the wind tastes like sugar and graves.",
+      "exits": {
+        "east": "old_bonegrinder_path",
+        "up": "old_bonegrinder"
+      }
+    },
+    "old_bonegrinder": {
+      "name": "Old Bonegrinder",
+      "description": "Inside the windmill: iron oven, flour like bone-dust, and a sweet-copper smell clinging to stacked pie-tins. Something small sobs in a flour bin.",
+      "exits": {
+        "down": "windmill_hill"
+      },
+      "items": [
+        "dream_pastry",
+        "iron_oven_poker",
+        "locked_cage_key"
+      ]
+    }
+  },
+  "npcs": {
+    "strahd_von_zarovich": {
+      "name": "Strahd von Zarovich",
+      "type": "vampire_lord",
+      "disposition": "patient_predator",
+      "description": "A smile like a knife behind velvet manners. Preferentially engages through charm, dreams, and staged encounters. Interest grows with noise, defiance, and nights spent abroad.",
+      "important": true,
+      "location": "unknown",
+      "items": []
+    },
+    "ismark_kolyana": {
+      "name": "Ismark Kolyana",
+      "type": "human_guard",
+      "disposition": "weary_but_hopeful",
+      "description": "The Burgomaster’s son, sleeves rolled to the elbow, jaw set against despair. Wants Ireena brought to sanctuary.",
+      "important": true,
+      "location": "burgomaster_house",
+      "items": [
+        "short_sword"
+      ]
+    },
+    "ireena_kolyana": {
+      "name": "Ireena Kolyana",
+      "type": "human_noble",
+      "disposition": "resolute_and_courteous",
+      "description": "A young woman marked by the vampire’s gaze; fear is her shadow, courage her answer. Will join if trust is earned and sanctuary is promised.",
+      "important": true,
+      "location": "burgomaster_house",
+      "items": [
+        "family_signet"
+      ]
+    },
+    "father_donavich": {
+      "name": "Father Donavich",
+      "type": "priest_of_morninglord",
+      "disposition": "broken_but_kind",
+      "description": "Eyes rubbed raw by prayer. Hears his son’s hunger through the floorboards and begs the gods for an answer.",
+      "important": true,
+      "location": "church_of_barovia",
+      "items": [
+        "holy_water_vial"
+      ]
+    },
+    "doru": {
+      "name": "Doru",
+      "type": "vampire_spawn",
+      "disposition": "ravenous_and_conflicted",
+      "description": "A young man who tried to storm the castle with zealots; now he weeps in the dark and dreams of warm blood.",
+      "important": false,
+      "location": "church_crypt",
+      "items": []
+    },
+    "madam_eva": {
+      "name": "Madam Eva",
+      "type": "vistani_seer",
+      "disposition": "amused_and_merciless",
+      "description": "Wrinkles like map lines of fate. Her cards don’t predict; they reveal what you’ve already chosen to be.",
+      "important": true,
+      "location": "tser_pool_camp",
+      "items": [
+        "tarokka_deck",
+        "amber_beads"
+      ]
+    },
+    "vistani_scout": {
+      "name": "Vistani Scout",
+      "type": "human_rogue",
+      "disposition": "cheerfully_opportunistic",
+      "description": "A laughing guide with a sharp knife and sharper rates. Will test your mettle before offering help.",
+      "important": false,
+      "location": "blood_on_the_vines",
+      "items": [
+        "camp_token"
+      ]
+    },
+    "morgantha": {
+      "name": "Morgantha",
+      "type": "night_hag",
+      "disposition": "sweetly_predatory",
+      "description": "Peddler of dreams priced in childhoods. Flour dust cannot hide the stink of the Lower Planes.",
+      "important": true,
+      "location": "old_bonegrinder",
+      "items": [
+        "dream_pastry",
+        "rusted_padlock_key"
+      ]
+    }
+  },
+  "scenes": {
+    "barovia_hooks": {
+      "story": "Establish dread, meet Ismark and Ireena, learn of the church’s plight, and earn trust. The letter in the square hints at invitation and doom. This scene anchors the village hub.",
+      "locations": {},
+      "npcs": {},
+      "vars": {},
+      "contingency_prompts": [
+        "Keep humor rare and dry; emphasize gothic atmosphere.",
+        "If players stall, distant organ music and wolves remind them the night is coming.",
+        "Reward kindness toward villagers and ravens with subtle omens (adjust vistani_favor positively)."
+      ],
+      "contingency_rules": [
+        "Reading crimson_sealed_letter sets vars.has_invitation_to_castle=true.",
+        "If the party aids Ismark and speaks with Ireena respectfully, set vars.ireena_with_party=true.",
+        "If the party insults or cheats Vistani in the tavern, decrease vars.vistani_favor by 1.",
+        "If time_of_day=='day' and 6 turns elapse in this scene, set vars.time_of_day='night' and increase vars.strahd_interest by 1.",
+        "If players attempt to travel toward the castle from old_svalich_road_fork and vars.has_invitation_to_castle==false, block route with fog and hint at Tser Pool guidance.",
+        "When vars.ireena_with_party==true OR vars.has_invitation_to_castle==true, allow scene transition to 'svalich_roads'."
+      ]
+    },
+    "vistani_encampment": {
+      "story": "Optional side-quest: seek prophecy at Tser Pool, earn or lose Vistani favor, and lock fortune layout. Madam Eva reveals where fate places relics and hints at a path to the castle.",
+      "locations": {
+        "tser_pool_camp": {
+          "name": "Tser Pool Encampment",
+          "description": "Firelight throws teeth of shadow on wagon canvas; every laugh has an edge. Madam Eva’s tent smells of wine and thunder.",
+          "exits": {
+            "east": "tser_pool_road"
+          }
+        }
+      },
+      "npcs": {
+        "madam_eva": {
+          "name": "Madam Eva",
+          "type": "vistani_seer",
+          "disposition": "amused_and_merciless",
+          "description": "Tarokka cards flash like ravens’ wings. She knows your questions and some answers.",
+          "important": true,
+          "location": "tser_pool_camp",
+          "items": [
+            "tarokka_deck"
+          ]
+        }
+      },
+      "vars": {},
+      "contingency_prompts": [
+        "Fortunes are riddles, not directions; keep them evocative but precise enough for the reducer.",
+        "If vistani_favor >= 1, the camp offers safe rest; otherwise, rest triggers petty theft or rumor tax."
+      ],
+      "contingency_rules": [
+        "Upon first full reading, randomly set vars.fortune_layout to one of ['A','B','C'] and do not change thereafter.",
+        "If vars.fortune_layout=='A', set vars.tome_zone='burgomaster_house' and vars.holy_symbol_zone='church_crypt'.",
+        "If vars.fortune_layout=='B', set vars.tome_zone='tser_pool_camp' and vars.holy_symbol_zone='church_crypt'.",
+        "If vars.fortune_layout=='C', set vars.tome_zone='burgomaster_house' and vars.holy_symbol_zone='abbey_future'.",
+        "If players donate coin or aid a Vistani in trouble, increase vars.vistani_favor by 1.",
+        "If players threaten or steal, decrease vars.vistani_favor by 1 and increase vars.strahd_interest by 1.",
+        "After fortune is set, allow transitions back to 'barovia_hooks' or onward to 'svalich_roads'."
+      ]
+    },
+    "old_bonegrinder": {
+      "story": "Optional side-quest: confront Morgantha at the windmill, free captives, and risk the hag’s wrath. Success grants moral victory and allies; failure increases Strahd’s interest.",
+      "locations": {
+        "old_bonegrinder": {
+          "name": "Old Bonegrinder",
+          "description": "The oven breathes in your bones. Dough rises like sleeping lungs; a cradle creaks where no child sleeps.",
+          "exits": {
+            "down": "windmill_hill"
+          }
+        }
+      },
+      "npcs": {
+        "morgantha": {
+          "name": "Morgantha",
+          "type": "night_hag",
+          "disposition": "sweetly_predatory",
+          "description": "Her smile is all pastry and punishment.",
+          "important": true,
+          "location": "old_bonegrinder",
+          "items": [
+            "dream_pastry"
+          ]
+        }
+      },
+      "vars": {},
+      "contingency_prompts": [
+        "Violence against Morgantha without planning tends to go badly; hint at rescuing captives first.",
+        "If players rescue children, the land itself seems to breathe easier (reduce strahd_interest)."
+      ],
+      "contingency_rules": [
+        "If players free captives using locked_cage_key or clever means, set vars.morgantha_defeated=true (driven off) and decrease vars.strahd_interest by 1.",
+        "If players consume dream_pastry, increase vars.strahd_interest by 1 and impose narrative weakness until next dawn.",
+        "If players attack head-on and lose, set game_over='captured_by_hag' and end the game with a grim epilogue.",
+        "Upon success or retreat, allow transition to 'svalich_roads' or 'barovia_hooks'."
+      ]
+    },
+    "svalich_roads": {
+      "story": "Travel scene connecting Barovia’s outskirts: wolves, fog walls, and omens. Secure sanctuary at the church or earn Vistani guidance to approach the castle. This scene ends at the castle gatehouse but does not enter the castle.",
+      "locations": {
+        "old_svalich_road_fork": {
+          "name": "Old Svalich Road — Fork",
+          "description": "The mist watches like a living jury. Ravens beat warnings into the air with their wings.",
+          "exits": {
+            "west": "old_bonegrinder_path",
+            "east": "tser_pool_road",
+            "southwest": "village_square"
+          }
+        }
+      },
+      "npcs": {},
+      "vars": {},
+      "contingency_prompts": [
+        "At night, increase tension: distant hoofbeats, a carriage silhouette, organ notes on the wind.",
+        "If ravens guide the party (due to kindness shown earlier), provide subtle route advantages."
+      ],
+      "contingency_rules": [
+        "If vars.time_of_day=='night' and outdoors, every 3 turns increase vars.strahd_interest by 1.",
+        "If vars.strahd_interest>=4, trigger a staged encounter: a black carriage offers to bear the party to the castle; accepting sets has_invitation_to_castle=true.",
+        "If party rests on the road without safe shelter (church or camp with vistani_favor>=1), increase vars.strahd_interest by 2 and attract wolves.",
+        "If party helped Father Donavich redeem or release Doru, set player_has_restored_sanctuary=true and provide safe rest at the church.",
+        "If vars.has_invitation_to_castle==true OR player_has_restored_sanctuary==true OR vistani_favor>=1, unlock travel to finale_zone (castle_gatehouse) but do not enter the castle.",
+        "IMPORTANT: The scenario ends when the party reaches 'castle_gatehouse' (arrival only)."
+      ]
+    }
+  },
+  "contingency_prompts": [
+    "Lean into dread; keep descriptions sensory and specific.",
+    "Use ravens as omens and subtle guides when the party has shown compassion.",
+    "When in doubt, push toward choices that test courage vs. caution rather than simple combat."
+  ],
+  "contingency_rules": [
+    "NPC and location IDs must remain lowercase_snake_case for engine compatibility.",
+    "Never teleport the party; movement must follow defined exits.",
+    "If players attempt castle entry before finale, block with living fog unless has_invitation_to_castle==true.",
+    "If players befriend Ireena (ireena_with_party==true), Strahd preferentially targets her in staged scenes.",
+    "If Doru is confronted: mercy (redeem or release) sets doru_redeemed=true and reduces strahd_interest by 1; cruelty increases it by 1.",
+    "If turn count across all scenes exceeds vars.turn_limit, set game_over='lost_in_mists' and end with the mists swallowing their names.",
+    "If game_over!='none', end the scenario immediately with tailored epilogue."
+  ],
+  "game_end_prompt": "Close the curtain with a gothic epilogue. Score compassion, cunning, restraint, and the protection of the innocent. Note whether Ireena travels with the party, whether sanctuary was restored, whether the hags were thwarted, and whether the mists carry them toward the castle with hope—or hunger."
+}

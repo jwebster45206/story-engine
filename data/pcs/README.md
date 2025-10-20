@@ -12,7 +12,7 @@ Every PC file must include these fields:
 
 ```json
 {
-  "id": "fighter_01",
+  // "id" is typically constructed from json filename and should be omitted in json files
   "name": "Aric of Durnholde",
   "class": "Fighter",
   "level": 1,
@@ -57,7 +57,6 @@ Every PC file must include these fields:
 
 ### Core Identity
 
-- **id** (string, overridden by filename): Internal identifier. The filename always takes precedence. Should be lowercase and snake_case. 
 - **name** (string, required): The character's full name as it appears in the story.
 - **class** (string, optional): Character class or profession (e.g., "Fighter", "Rogue", "Merchant"). 
 - **level** (integer, optional): Character level (typically 1-20 for D&D-style characters).
