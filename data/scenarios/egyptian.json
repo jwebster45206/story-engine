@@ -3,6 +3,7 @@
   "story": "The year is 1923. An archaeologist has just received a cryptic telegram about an extraordinary discovery in the Egyptian desert. The sender claims to have found something that will 'rewrite history itself.' Armed with expertise and a thirst for knowledge, the adventurer must navigate the mysteries of ancient secrets and modern dangers.",
   "rating": "PG13",
   "default_pc": "alexandra_kane",
+  "narrator_id": "christie",
   "scenes": {
     "telegram_mystery": {
       "story": "An archaeologist has arrived in Cairo with a cryptic telegram that speaks of an extraordinary discovery. They must decode its message and gather information from the mysterious contacts who await them in the city.",

@@ -1,8 +1,5 @@
 {
-  "name": "Classic Adventure",
+  "name": "Reliable Classic Narrator",
   "description": "A straightforward omniscient narrator for classic adventures",
-  "prompts": [
-    "Use clear, descriptive language that paints vivid pictures.",
-    "Maintain a sense of wonder and discovery."
-  ]
+  "prompts": []
 }

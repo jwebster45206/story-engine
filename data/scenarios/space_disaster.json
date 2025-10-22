@@ -2,6 +2,7 @@
   "name": "Space Station Disaster",
   "story": "You are the chief engineer aboard a failing space station. Critical systems are malfunctioning and you must work quickly to save the crew.",
   "rating": "G",
+  "narrator_id": "tolkien",
   "locations": {
     "engineering_bay": {
       "name": "Engineering Bay",
@@ -85,7 +86,7 @@
     }
   },
   "opening_scene": "scene_counter",
-  "opening_prompt": "Red alert klaxons blare throughout the station. You're the chief engineer, and multiple critical systems have just failed. The crew is depending on you.",
+  "opening_prompt": "Red alert klaxons blare throughout the space station. \n\n%s\n\nYou're also this station's chief engineer, and multiple critical systems have just failed. The crew is depending on you.",
   "opening_location": "engineering_bay",
   "opening_inventory": [],
   "contingency_prompts": [],

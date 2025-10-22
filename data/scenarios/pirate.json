@@ -296,10 +296,5 @@
     "If stuck, the player should consult Calypso.",
     "Calypso does not reciprocate flirtation."
   ],
-  "contingency_rules": [
-    "Never let Gibbs leave the player's side. He is always ready to assist and will follow the player wherever they go.",
-    "If the player becomes reckless or takes too long, rival pirates or the Royal Navy will interfere.",
-    "The game should end within 25 total turns across all scenes to maintain urgency."
-  ],
   "game_end_prompt": "Weigh anchor and evaluate the player's pirate career! Rate their performance using with humor. Consider cunning, speed, treasure acquired, and whether they lived up to the pirate code. Give them a proper pirate sendoff with humor and maritime flair!"
 }
