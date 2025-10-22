@@ -123,7 +123,9 @@ func TestPCSpec_MarshalJSON_WithContingencyPrompts(t *testing.T) {
 
 	// Create actor for marshaling
 	attrs := pc.Spec.Stats.ToAttributes()
-	pc.Actor, _ = d20.NewActor(pc.Spec.Name, pc.Spec.MaxHP, pc.Spec.AC).
+	pc.Actor, _ = d20.NewActor(pc.Spec.Name).
+		WithHP(pc.Spec.MaxHP).
+		WithAC(pc.Spec.AC).
 		WithAttributes(attrs).
 		Build()
 
