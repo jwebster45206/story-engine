@@ -247,7 +247,9 @@ func TestPC_MarshalJSON(t *testing.T) {
 		allAttrs[k] = v
 	}
 
-	actor, err := d20.NewActor(spec.Name, spec.HP, spec.AC).
+	actor, err := d20.NewActor(spec.Name).
+		WithHP(spec.HP).
+		WithAC(spec.AC).
 		WithAttributes(allAttrs).
 		WithCombatModifiers(spec.CombatModifiers).
 		Build()
@@ -428,7 +430,9 @@ func TestPC_MarshalUnmarshalRoundTrip(t *testing.T) {
 		allAttrs[k] = v
 	}
 
-	actor, err := d20.NewActor(spec.Name, spec.MaxHP, spec.AC).
+	actor, err := d20.NewActor(spec.Name).
+		WithHP(spec.MaxHP).
+		WithAC(spec.AC).
 		WithAttributes(allAttrs).
 		WithCombatModifiers(spec.CombatModifiers).
 		Build()

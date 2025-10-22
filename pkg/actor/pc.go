@@ -3,6 +3,7 @@ package actor
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,12 +86,12 @@ func LoadPC(path string) (*PC, error) {
 	allAttrs := spec.Stats.ToAttributes()
 
 	// Add additional attributes (skills, proficiencies, etc.)
-	for k, v := range spec.Attributes {
-		allAttrs[k] = v
-	}
+	maps.Copy(allAttrs, spec.Attributes)
 
 	// Build the actor
-	actor, err := d20.NewActor(spec.Name, spec.MaxHP, spec.AC).
+	actor, err := d20.NewActor(spec.ID).
+		WithHP(spec.MaxHP).
+		WithAC(spec.AC).
 		WithAttributes(allAttrs).
 		WithCombatModifiers(spec.CombatModifiers).
 		Build()
@@ -220,7 +221,9 @@ func (pc *PC) UnmarshalJSON(data []byte) error {
 		allAttrs[k] = v
 	}
 
-	actor, err := d20.NewActor(spec.Name, spec.MaxHP, spec.AC).
+	actor, err := d20.NewActor(spec.ID).
+		WithHP(spec.MaxHP).
+		WithAC(spec.AC).
 		WithAttributes(allAttrs).
 		WithCombatModifiers(spec.CombatModifiers).
 		Build()

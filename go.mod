@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/google/uuid v1.6.0
-	github.com/jwebster45206/d20 v0.0.0-20251019013440-7a82c836e170
+	github.com/jwebster45206/d20 v0.4.0
 	github.com/muesli/reflow v0.3.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/text v0.3.8
