@@ -209,7 +209,6 @@
       "type": "human_guard",
       "disposition": "weary_but_hopeful",
       "description": "The Burgomaster’s son, sleeves rolled to the elbow, jaw set against despair. Wants Ireena brought to sanctuary.",
-      "important": true,
       "location": "burgomaster_house",
       "items": [
         "short_sword"
@@ -220,7 +219,6 @@
       "type": "human_noble",
       "disposition": "resolute_and_courteous",
       "description": "A young woman marked by the vampire’s gaze; fear is her shadow, courage her answer. Will join if trust is earned and sanctuary is promised.",
-      "important": true,
       "location": "burgomaster_house",
       "items": [
         "family_signet"
@@ -231,7 +229,6 @@
       "type": "priest_of_morninglord",
       "disposition": "broken_but_kind",
       "description": "Eyes rubbed raw by prayer. Hears his son’s hunger through the floorboards and begs the gods for an answer.",
-      "important": true,
       "location": "church_of_barovia",
       "items": [
         "holy_water_vial"
@@ -242,7 +239,6 @@
       "type": "vampire_spawn",
       "disposition": "ravenous_and_conflicted",
       "description": "A young man who tried to storm the castle with zealots; now he weeps in the dark and dreams of warm blood.",
-      "important": false,
       "location": "church_crypt",
       "items": []
     },
@@ -251,7 +247,6 @@
       "type": "vistani_seer",
       "disposition": "amused_and_merciless",
       "description": "Wrinkles like map lines of fate. Her cards don’t predict; they reveal what you’ve already chosen to be.",
-      "important": true,
       "location": "tser_pool_camp",
       "items": [
         "tarokka_deck",
@@ -263,7 +258,6 @@
       "type": "human_rogue",
       "disposition": "cheerfully_opportunistic",
       "description": "A laughing guide with a sharp knife and sharper rates. Will test your mettle before offering help.",
-      "important": false,
       "location": "blood_on_the_vines",
       "items": [
         "camp_token"
@@ -274,7 +268,6 @@
       "type": "night_hag",
       "disposition": "sweetly_predatory",
       "description": "Peddler of dreams priced in childhoods. Flour dust cannot hide the stink of the Lower Planes.",
-      "important": true,
       "location": "old_bonegrinder",
       "items": [
         "dream_pastry",
@@ -285,12 +278,8 @@
   "scenes": {
     "barovia_hooks": {
       "story": "Establish dread, meet Ismark and Ireena, learn of the church’s plight, and earn trust. The letter in the square hints at invitation and doom. This scene anchors the village hub.",
-      "locations": {},
-      "npcs": {},
-      "vars": {},
       "contingency_prompts": [
-        "Keep humor rare and dry; emphasize gothic atmosphere.",
-        "If players stall, distant organ music and wolves remind them the night is coming.",
+        "If the player delays, distant organ music and wolves remind them the night is coming.",
         "Reward kindness toward villagers and ravens with subtle omens (adjust vistani_favor positively)."
       ],
       "contingency_rules": [
@@ -300,7 +289,29 @@
         "If time_of_day=='day' and 6 turns elapse in this scene, set vars.time_of_day='night' and increase vars.strahd_interest by 1.",
         "If players attempt to travel toward the castle from old_svalich_road_fork and vars.has_invitation_to_castle==false, block route with fog and hint at Tser Pool guidance.",
         "When vars.ireena_with_party==true OR vars.has_invitation_to_castle==true, allow scene transition to 'svalich_roads'."
-      ]
+      ],
+      "conditionals": {
+        "vistani_camp_1": {
+          "when": { "location": "tser_pool_road" },
+          "then": { "scene": "vistani_encampment" }
+        },
+        "vistani_camp_2": {
+          "when": { "location": "tser_pool_camp" },
+          "then": { "scene": "vistani_encampment" }
+        },
+        "bonegrinder_path": {
+          "when": { "location": "old_bonegrinder_path" },
+          "then": { "scene": "old_bonegrinder" }
+        },
+        "bonegrinder_windmill": {
+          "when": { "location": "windmill_hill" },
+          "then": { "scene": "old_bonegrinder" }
+        },
+        "bonegrinder_inside": {
+          "when": { "location": "old_bonegrinder" },
+          "then": { "scene": "old_bonegrinder" }
+        }
+      }
     },
     "vistani_encampment": {
       "story": "Optional side-quest: seek prophecy at Tser Pool, earn or lose Vistani favor, and lock fortune layout. Madam Eva reveals where fate places relics and hints at a path to the castle.",
@@ -339,7 +350,13 @@
         "If players donate coin or aid a Vistani in trouble, increase vars.vistani_favor by 1.",
         "If players threaten or steal, decrease vars.vistani_favor by 1 and increase vars.strahd_interest by 1.",
         "After fortune is set, allow transitions back to 'barovia_hooks' or onward to 'svalich_roads'."
-      ]
+      ],
+      "conditionals": {
+        "return_to_barovia": {
+          "when": { "location": "village_square" },
+          "then": { "scene": "barovia_hooks" }
+        }
+      }
     },
     "old_bonegrinder": {
       "story": "Optional side-quest: confront Morgantha at the windmill, free captives, and risk the hag’s wrath. Success grants moral victory and allies; failure increases Strahd’s interest.",
@@ -407,9 +424,8 @@
     }
   },
   "contingency_prompts": [
-    "Lean into dread; keep descriptions sensory and specific.",
-    "Use ravens as omens and subtle guides when the party has shown compassion.",
-    "When in doubt, push toward choices that test courage vs. caution rather than simple combat."
+    "Barovia is a land of Gothic dread based on Eastern Europe.",
+    "Use ravens as omens and subtle guides when the party has shown compassion."
   ],
   "contingency_rules": [
     "NPC and location IDs must remain lowercase_snake_case for engine compatibility.",

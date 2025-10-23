@@ -549,3 +549,185 @@ func TestLoadPC_RealFiles(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildPrompt(t *testing.T) {
+	tests := []struct {
+		name string
+		pc   *PC
+		want string
+	}{
+		{
+			name: "nil PC returns empty string",
+			pc:   nil,
+			want: "",
+		},
+		{
+			name: "PC with all fields",
+			pc: &PC{
+				Spec: &PCSpec{
+					Name:        "Sir Galahad",
+					Pronouns:    "he/him",
+					Level:       5,
+					Class:       "Paladin",
+					Description: "A brave knight of the Round Table, clad in shining armor and wielding a mighty sword.",
+				},
+			},
+			want: "REMEMBER: In this game, the user is controlling: Sir Galahad (he/him), Level 5 Paladin. A brave knight of the Round Table, clad in shining armor and wielding a mighty sword.",
+		},
+		{
+			name: "PC without pronouns",
+			pc: &PC{
+				Spec: &PCSpec{
+					Name:        "Aragorn",
+					Level:       10,
+					Class:       "Ranger",
+					Description: "A skilled ranger and heir to the throne of Gondor.",
+				},
+			},
+			want: "REMEMBER: In this game, the user is controlling: Aragorn, Level 10 Ranger. A skilled ranger and heir to the throne of Gondor.",
+		},
+		{
+			name: "PC without level",
+			pc: &PC{
+				Spec: &PCSpec{
+					Name:        "Gandalf",
+					Pronouns:    "he/him",
+					Class:       "Wizard",
+					Description: "A wise wizard of great power.",
+				},
+			},
+			want: "REMEMBER: In this game, the user is controlling: Gandalf (he/him), Wizard. A wise wizard of great power.",
+		},
+		{
+			name: "PC without class",
+			pc: &PC{
+				Spec: &PCSpec{
+					Name:        "Frodo",
+					Pronouns:    "he/him",
+					Level:       3,
+					Description: "A brave hobbit carrying a heavy burden.",
+				},
+			},
+			want: "REMEMBER: In this game, the user is controlling: Frodo (he/him), Level 3. A brave hobbit carrying a heavy burden.",
+		},
+		{
+			name: "PC without level or class",
+			pc: &PC{
+				Spec: &PCSpec{
+					Name:        "Samwise",
+					Pronouns:    "he/him",
+					Description: "A loyal friend and companion.",
+				},
+			},
+			want: "REMEMBER: In this game, the user is controlling: Samwise (he/him). A loyal friend and companion.",
+		},
+		{
+			name: "PC without description",
+			pc: &PC{
+				Spec: &PCSpec{
+					Name:     "Gimli",
+					Pronouns: "he/him",
+					Level:    8,
+					Class:    "Fighter",
+				},
+			},
+			want: "REMEMBER: In this game, the user is controlling: Gimli (he/him), Level 8 Fighter",
+		},
+		{
+			name: "PC with name only",
+			pc: &PC{
+				Spec: &PCSpec{
+					Name: "Legolas",
+				},
+			},
+			want: "REMEMBER: In this game, the user is controlling: Legolas",
+		},
+		{
+			name: "PC with class but no level",
+			pc: &PC{
+				Spec: &PCSpec{
+					Name:  "Boromir",
+					Class: "Fighter",
+				},
+			},
+			want: "REMEMBER: In this game, the user is controlling: Boromir, Fighter",
+		},
+		{
+			name: "PC with level zero but has class",
+			pc: &PC{
+				Spec: &PCSpec{
+					Name:  "Young Apprentice",
+					Level: 0,
+					Class: "Wizard",
+				},
+			},
+			want: "REMEMBER: In this game, the user is controlling: Young Apprentice, Wizard",
+		},
+		{
+			name: "PC with Race",
+			pc: &PC{
+				Spec: &PCSpec{
+					Name:        "Fooman",
+					Pronouns:    "hi/him",
+					Level:       4,
+					Race:        "Human",
+					Class:       "Rogue",
+					Description: "A strange dude with a mysterious past.",
+				},
+			},
+			want: "REMEMBER: In this game, the user is controlling: Fooman (hi/him), Level 4 Human Rogue. A strange dude with a mysterious past.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BuildPrompt(tt.pc)
+			if got != tt.want {
+				t.Errorf("BuildPrompt() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildPrompt_WithActor(t *testing.T) {
+	// Test that BuildPrompt works correctly even when Actor is built
+	spec := &PCSpec{
+		Name:        "Test Paladin",
+		Pronouns:    "he/him",
+		Level:       5,
+		Class:       "Paladin",
+		Description: "A holy warrior.",
+		Stats: Stats5e{
+			Strength:     16,
+			Dexterity:    10,
+			Constitution: 14,
+			Intelligence: 8,
+			Wisdom:       12,
+			Charisma:     16,
+		},
+		HP:    40,
+		MaxHP: 40,
+		AC:    18,
+	}
+
+	actor, err := d20.NewActor(spec.Name).
+		WithHP(spec.MaxHP).
+		WithAC(spec.AC).
+		WithAttributes(spec.Stats.ToAttributes()).
+		Build()
+	if err != nil {
+		t.Fatalf("Failed to build actor: %v", err)
+	}
+
+	pc := &PC{
+		Spec:  spec,
+		Actor: actor,
+	}
+
+	got := BuildPrompt(pc)
+	want := "REMEMBER: In this game, the user is controlling: Test Paladin (he/him), Level 5 Paladin. A holy warrior."
+
+	if got != want {
+		t.Errorf("BuildPrompt() = %q, want %q", got, want)
+	}
+}
