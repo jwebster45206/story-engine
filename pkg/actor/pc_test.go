@@ -572,7 +572,7 @@ func TestBuildPrompt(t *testing.T) {
 					Description: "A brave knight of the Round Table, clad in shining armor and wielding a mighty sword.",
 				},
 			},
-			want: "The user is controlling: Sir Galahad (he/him), Level 5 Paladin. A brave knight of the Round Table, clad in shining armor and wielding a mighty sword.",
+			want: "REMEMBER: In this game, the user is controlling: Sir Galahad (he/him), Level 5 Paladin. A brave knight of the Round Table, clad in shining armor and wielding a mighty sword.",
 		},
 		{
 			name: "PC without pronouns",
@@ -584,7 +584,7 @@ func TestBuildPrompt(t *testing.T) {
 					Description: "A skilled ranger and heir to the throne of Gondor.",
 				},
 			},
-			want: "The user is controlling: Aragorn, Level 10 Ranger. A skilled ranger and heir to the throne of Gondor.",
+			want: "REMEMBER: In this game, the user is controlling: Aragorn, Level 10 Ranger. A skilled ranger and heir to the throne of Gondor.",
 		},
 		{
 			name: "PC without level",
@@ -596,7 +596,7 @@ func TestBuildPrompt(t *testing.T) {
 					Description: "A wise wizard of great power.",
 				},
 			},
-			want: "The user is controlling: Gandalf (he/him), Wizard. A wise wizard of great power.",
+			want: "REMEMBER: In this game, the user is controlling: Gandalf (he/him), Wizard. A wise wizard of great power.",
 		},
 		{
 			name: "PC without class",
@@ -608,7 +608,7 @@ func TestBuildPrompt(t *testing.T) {
 					Description: "A brave hobbit carrying a heavy burden.",
 				},
 			},
-			want: "The user is controlling: Frodo (he/him), Level 3 . A brave hobbit carrying a heavy burden.",
+			want: "REMEMBER: In this game, the user is controlling: Frodo (he/him), Level 3. A brave hobbit carrying a heavy burden.",
 		},
 		{
 			name: "PC without level or class",
@@ -619,7 +619,7 @@ func TestBuildPrompt(t *testing.T) {
 					Description: "A loyal friend and companion.",
 				},
 			},
-			want: "The user is controlling: Samwise (he/him). A loyal friend and companion.",
+			want: "REMEMBER: In this game, the user is controlling: Samwise (he/him). A loyal friend and companion.",
 		},
 		{
 			name: "PC without description",
@@ -631,7 +631,7 @@ func TestBuildPrompt(t *testing.T) {
 					Class:    "Fighter",
 				},
 			},
-			want: "The user is controlling: Gimli (he/him), Level 8 Fighter",
+			want: "REMEMBER: In this game, the user is controlling: Gimli (he/him), Level 8 Fighter",
 		},
 		{
 			name: "PC with name only",
@@ -640,7 +640,7 @@ func TestBuildPrompt(t *testing.T) {
 					Name: "Legolas",
 				},
 			},
-			want: "The user is controlling: Legolas",
+			want: "REMEMBER: In this game, the user is controlling: Legolas",
 		},
 		{
 			name: "PC with class but no level",
@@ -650,7 +650,7 @@ func TestBuildPrompt(t *testing.T) {
 					Class: "Fighter",
 				},
 			},
-			want: "The user is controlling: Boromir, Fighter",
+			want: "REMEMBER: In this game, the user is controlling: Boromir, Fighter",
 		},
 		{
 			name: "PC with level zero but has class",
@@ -661,33 +661,21 @@ func TestBuildPrompt(t *testing.T) {
 					Class: "Wizard",
 				},
 			},
-			want: "The user is controlling: Young Apprentice, Wizard",
+			want: "REMEMBER: In this game, the user is controlling: Young Apprentice, Wizard",
 		},
 		{
-			name: "PC with they/them pronouns",
+			name: "PC with Race",
 			pc: &PC{
 				Spec: &PCSpec{
-					Name:        "Robin",
-					Pronouns:    "they/them",
+					Name:        "Fooman",
+					Pronouns:    "hi/him",
 					Level:       4,
+					Race:        "Human",
 					Class:       "Rogue",
-					Description: "A clever rogue with a mysterious past.",
+					Description: "A strange dude with a mysterious past.",
 				},
 			},
-			want: "The user is controlling: Robin (they/them), Level 4 Rogue. A clever rogue with a mysterious past.",
-		},
-		{
-			name: "PC with she/her pronouns",
-			pc: &PC{
-				Spec: &PCSpec{
-					Name:        "Éowyn",
-					Pronouns:    "she/her",
-					Level:       7,
-					Class:       "Fighter",
-					Description: "A shield-maiden of Rohan, fierce and determined.",
-				},
-			},
-			want: "The user is controlling: Éowyn (she/her), Level 7 Fighter. A shield-maiden of Rohan, fierce and determined.",
+			want: "REMEMBER: In this game, the user is controlling: Fooman (hi/him), Level 4 Human Rogue. A strange dude with a mysterious past.",
 		},
 	}
 

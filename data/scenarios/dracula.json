@@ -152,7 +152,8 @@
         "dracula_materializes": {
           "when": {
             "vars": {
-              "opened_grimoire": "true"
+              "opened_grimoire": "true",
+              "dracula_appeared": "false"
             }
           },
           "prompt": "Count Dracula suddenly MATERIALIZES from the shadows before you, his crimson eyes blazing with ancient hunger! He hisses menacingly: \"You DARE disturb the ancient grimoire? You have awakened me from my slumber, and now I am STARVING!\" The temperature drops precipitously as his dark presence fills the room. His fangs glisten in the candlelight."

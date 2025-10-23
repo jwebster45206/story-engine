@@ -252,19 +252,23 @@ func BuildPrompt(pc *PC) string {
 		return ""
 	}
 	sb := strings.Builder{}
-	sb.WriteString("The user is controlling: ")
+	sb.WriteString("REMEMBER: In this game, the user is controlling: ")
 	sb.WriteString(pc.Spec.Name)
 	if pc.Spec.Pronouns != "" {
 		sb.WriteString(fmt.Sprintf(" (%s)", pc.Spec.Pronouns))
 	}
-	if pc.Spec.Level > 0 || pc.Spec.Class != "" {
-		sb.WriteString(", ")
+	if pc.Spec.Level > 0 || pc.Spec.Class != "" || pc.Spec.Race != "" {
+		summaryParts := []string{}
 		if pc.Spec.Level > 0 {
-			sb.WriteString(fmt.Sprintf("Level %d ", pc.Spec.Level))
+			summaryParts = append(summaryParts, fmt.Sprintf("Level %d", pc.Spec.Level))
+		}
+		if pc.Spec.Race != "" {
+			summaryParts = append(summaryParts, pc.Spec.Race)
 		}
 		if pc.Spec.Class != "" {
-			sb.WriteString(pc.Spec.Class)
+			summaryParts = append(summaryParts, pc.Spec.Class)
 		}
+		sb.WriteString(", " + strings.Join(summaryParts, " "))
 	}
 	if pc.Spec.Description != "" {
 		sb.WriteString(". " + pc.Spec.Description)
