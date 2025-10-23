@@ -333,7 +333,7 @@ func TestBuildPCPrompt(t *testing.T) {
 				},
 			},
 			shouldContain: []string{
-				"The user is controlling: Aragorn",
+				"the user is controlling: Aragorn",
 				"(he/him)",
 				"A skilled ranger from the north",
 			},
@@ -347,7 +347,7 @@ func TestBuildPCPrompt(t *testing.T) {
 				},
 			},
 			shouldContain: []string{
-				"The user is controlling: Frodo",
+				"the user is controlling: Frodo",
 			},
 			shouldNotContain: []string{
 				"()",

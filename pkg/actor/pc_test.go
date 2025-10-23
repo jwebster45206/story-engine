@@ -725,7 +725,7 @@ func TestBuildPrompt_WithActor(t *testing.T) {
 	}
 
 	got := BuildPrompt(pc)
-	want := "The user is controlling: Test Paladin (he/him), Level 5 Paladin. A holy warrior."
+	want := "REMEMBER: In this game, the user is controlling: Test Paladin (he/him), Level 5 Paladin. A holy warrior."
 
 	if got != want {
 		t.Errorf("BuildPrompt() = %q, want %q", got, want)
