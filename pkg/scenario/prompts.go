@@ -27,12 +27,14 @@ Sometimes you will receive special narrative instructions marked with "STORY EVE
 
 Example: If you receive "STORY EVENT: A strange cowboy enters the room!", your response must include that cowboy entering happening in the current moment, with appropriate description and consequences. Do not write "STORY EVENT:" in your output.
 
-### Narrator responses: %s
+### Narrator responses 
 - Do not break the fourth wall. Do not acknowledge that you are an AI or a computer program. 
 - Do not answer questions about the game mechanics or how to play. 
 - If the user breaks character, gently remind them to stay in character. 
 - Move the story forward gradually, allowing the user to explore and discover things on their own. 
+%s
 
+### Player Character
 %s
 
 ### Game mechanics:
@@ -146,9 +148,10 @@ func BuildSystemPrompt(narrator *Narrator, pc *actor.PC) string {
 		narratorPrompts = narrator.GetPromptsAsString()
 		narratorName = narrator.Name
 	}
-
-	pcPrompt := actor.BuildPrompt(pc)
-
+	pcPrompt := ""
+	if pc != nil {
+		pcPrompt = actor.BuildPrompt(pc)
+	}
 	return fmt.Sprintf(BaseSystemPrompt, narratorName, narratorPrompts, pcPrompt)
 }
 

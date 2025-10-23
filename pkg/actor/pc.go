@@ -244,18 +244,30 @@ func (pc *PC) UnmarshalJSON(data []byte) error {
 
 // BuildPrompt constructs the player character section for the system prompt
 // Returns an empty string if pc is nil
+//
+// Example output:
+// The user is controlling: Sir Galahad (he/him), Level 5 Paladin.A brave knight of the Round Table, clad in shining armor and wielding a mighty sword.
 func BuildPrompt(pc *PC) string {
 	if pc == nil {
 		return ""
 	}
-
-	pcSection := fmt.Sprintf("\n\n### Player Character\nThe player is controlling: %s", pc.Spec.Name)
+	sb := strings.Builder{}
+	sb.WriteString("The user is controlling: ")
+	sb.WriteString(pc.Spec.Name)
 	if pc.Spec.Pronouns != "" {
-		pcSection += fmt.Sprintf(" (%s)", pc.Spec.Pronouns)
+		sb.WriteString(fmt.Sprintf(" (%s)", pc.Spec.Pronouns))
+	}
+	if pc.Spec.Level > 0 || pc.Spec.Class != "" {
+		sb.WriteString(", ")
+		if pc.Spec.Level > 0 {
+			sb.WriteString(fmt.Sprintf("Level %d ", pc.Spec.Level))
+		}
+		if pc.Spec.Class != "" {
+			sb.WriteString(pc.Spec.Class)
+		}
 	}
 	if pc.Spec.Description != "" {
-		pcSection += fmt.Sprintf(". %s", pc.Spec.Description)
+		sb.WriteString(". " + pc.Spec.Description)
 	}
-
-	return pcSection
+	return sb.String()
 }

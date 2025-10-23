@@ -254,7 +254,6 @@ func TestBuildSystemPrompt(t *testing.T) {
 			narrator: nil,
 			shouldContain: []string{
 				"omniscient narrator",
-				"### Narrator responses:",
 			},
 			shouldNotContain: []string{
 				"- You are",
@@ -334,8 +333,7 @@ func TestBuildPCPrompt(t *testing.T) {
 				},
 			},
 			shouldContain: []string{
-				"### Player Character",
-				"The player is controlling: Aragorn",
+				"The user is controlling: Aragorn",
 				"(he/him)",
 				"A skilled ranger from the north",
 			},
@@ -349,20 +347,17 @@ func TestBuildPCPrompt(t *testing.T) {
 				},
 			},
 			shouldContain: []string{
-				"### Player Character",
-				"The player is controlling: Frodo",
+				"The user is controlling: Frodo",
 			},
 			shouldNotContain: []string{
 				"()",
 			},
 		},
 		{
-			name:          "nil PC",
-			pc:            nil,
-			shouldContain: []string{},
-			shouldNotContain: []string{
-				"### Player Character",
-			},
+			name:             "nil PC",
+			pc:               nil,
+			shouldContain:    []string{},
+			shouldNotContain: []string{},
 		},
 	}
 
