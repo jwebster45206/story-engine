@@ -270,6 +270,22 @@ func (v *VeniceService) getDeltaUpdateResponseFormat() *VeniceResponseFormat {
 							"required": []string{"item", "action"},
 						},
 					},
+					"npc_movements": map[string]any{
+						"type": "array",
+						"items": map[string]any{
+							"type":                 "object",
+							"additionalProperties": false,
+							"properties": map[string]any{
+								"npc_id": map[string]any{
+									"type": "string",
+								},
+								"to_location": map[string]any{
+									"type": "string",
+								},
+							},
+							"required": []string{"npc_id", "to_location"},
+						},
+					},
 					"set_vars": map[string]any{
 						"type": "object",
 						"additionalProperties": map[string]any{
@@ -280,7 +296,7 @@ func (v *VeniceService) getDeltaUpdateResponseFormat() *VeniceResponseFormat {
 						"type": "boolean",
 					},
 				},
-				"required": []string{"user_location", "scene_change", "item_events", "game_ended"},
+				"required": []string{"user_location", "scene_change", "item_events", "npc_movements", "game_ended"},
 			},
 		},
 	}

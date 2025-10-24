@@ -1086,3 +1086,211 @@ func TestGameState_GetChatMessages_NoStoryEventWhenEmpty(t *testing.T) {
 		}
 	}
 }
+
+func TestGameState_GetContingencyPrompts_WithNPCs(t *testing.T) {
+	tests := []struct {
+		name              string
+		gameState         *GameState
+		scenario          *scenario.Scenario
+		expectedPrompts   []string
+		unexpectedPrompts []string
+	}{
+		{
+			name: "NPC at same location shows prompts",
+			gameState: &GameState{
+				Location: "tavern",
+				NPCs: map[string]actor.NPC{
+					"bartender": {
+						Name:     "Bartender",
+						Location: "tavern",
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
+							{Prompt: "The bartender wipes down glasses"},
+							{Prompt: "The tavern smells of ale"},
+						},
+					},
+				},
+			},
+			scenario: &scenario.Scenario{
+				Name: "Test",
+			},
+			expectedPrompts: []string{
+				"The bartender wipes down glasses",
+				"The tavern smells of ale",
+			},
+		},
+		{
+			name: "NPC at different location does not show prompts",
+			gameState: &GameState{
+				Location: "market",
+				NPCs: map[string]actor.NPC{
+					"bartender": {
+						Name:     "Bartender",
+						Location: "tavern",
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
+							{Prompt: "The bartender wipes down glasses"},
+						},
+					},
+				},
+			},
+			scenario: &scenario.Scenario{
+				Name: "Test",
+			},
+			unexpectedPrompts: []string{
+				"The bartender wipes down glasses",
+			},
+		},
+		{
+			name: "NPC conditional prompts based on vars",
+			gameState: &GameState{
+				Location: "tavern",
+				Vars: map[string]string{
+					"met_bartender": "true",
+					"bar_tab_paid":  "false",
+				},
+				NPCs: map[string]actor.NPC{
+					"bartender": {
+						Name:     "Bartender",
+						Location: "tavern",
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
+							{Prompt: "The bartender is always friendly"},
+							{
+								Prompt: "The bartender greets you warmly",
+								When: &conditionals.ConditionalWhen{
+									Vars: map[string]string{"met_bartender": "true"},
+								},
+							},
+							{
+								Prompt: "The bartender looks at you suspiciously",
+								When: &conditionals.ConditionalWhen{
+									Vars: map[string]string{"met_bartender": "false"},
+								},
+							},
+							{
+								Prompt: "The bartender taps the bar, waiting for payment",
+								When: &conditionals.ConditionalWhen{
+									Vars: map[string]string{
+										"met_bartender": "true",
+										"bar_tab_paid":  "false",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			scenario: &scenario.Scenario{
+				Name: "Test",
+			},
+			expectedPrompts: []string{
+				"The bartender is always friendly",
+				"The bartender greets you warmly",
+				"The bartender taps the bar, waiting for payment",
+			},
+			unexpectedPrompts: []string{
+				"The bartender looks at you suspiciously",
+			},
+		},
+		{
+			name: "Multiple NPCs at same location",
+			gameState: &GameState{
+				Location: "market",
+				NPCs: map[string]actor.NPC{
+					"merchant": {
+						Name:     "Merchant",
+						Location: "market",
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
+							{Prompt: "The merchant displays exotic wares"},
+						},
+					},
+					"guard": {
+						Name:     "Guard",
+						Location: "market",
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
+							{Prompt: "The guard watches carefully"},
+						},
+					},
+					"innkeeper": {
+						Name:     "Innkeeper",
+						Location: "inn",
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
+							{Prompt: "The innkeeper tends the fire"},
+						},
+					},
+				},
+			},
+			scenario: &scenario.Scenario{
+				Name: "Test",
+			},
+			expectedPrompts: []string{
+				"The merchant displays exotic wares",
+				"The guard watches carefully",
+			},
+			unexpectedPrompts: []string{
+				"The innkeeper tends the fire",
+			},
+		},
+		{
+			name: "NPC prompts combined with scenario and scene prompts",
+			gameState: &GameState{
+				Location:  "tavern",
+				SceneName: "opening",
+				NPCs: map[string]actor.NPC{
+					"bartender": {
+						Name:     "Bartender",
+						Location: "tavern",
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
+							{Prompt: "NPC prompt from bartender"},
+						},
+					},
+				},
+			},
+			scenario: &scenario.Scenario{
+				Name: "Test",
+				ContingencyPrompts: []conditionals.ContingencyPrompt{
+					{Prompt: "Scenario-level prompt"},
+				},
+				Scenes: map[string]scenario.Scene{
+					"opening": {
+						ContingencyPrompts: []conditionals.ContingencyPrompt{
+							{Prompt: "Scene-level prompt"},
+						},
+					},
+				},
+			},
+			expectedPrompts: []string{
+				"Scenario-level prompt",
+				"Scene-level prompt",
+				"NPC prompt from bartender",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prompts := tt.gameState.GetContingencyPrompts(tt.scenario)
+
+			// Check expected prompts are present
+			for _, expected := range tt.expectedPrompts {
+				found := false
+				for _, prompt := range prompts {
+					if prompt == expected {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected prompt not found: %q", expected)
+				}
+			}
+
+			// Check unexpected prompts are absent
+			for _, unexpected := range tt.unexpectedPrompts {
+				for _, prompt := range prompts {
+					if prompt == unexpected {
+						t.Errorf("Unexpected prompt found: %q", unexpected)
+					}
+				}
+			}
+		})
+	}
+}

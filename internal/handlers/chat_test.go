@@ -44,7 +44,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			mockSetup: func(m *services.MockLLMAPI) {
 				m.GenerateResponseFunc = func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 					// Return valid JSON for meta extraction, otherwise normal test response
-					promptPrefix := scenario.PromptStateExtractionInstructions
+					promptPrefix := scenario.ReducerPrompt
 					if len(promptPrefix) > 50 {
 						promptPrefix = promptPrefix[:50]
 					}
@@ -217,7 +217,7 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 
 	mockLLM.GenerateResponseFunc = func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 		// Return valid JSON for meta extraction, otherwise normal test response
-		promptPrefix := scenario.PromptStateExtractionInstructions
+		promptPrefix := scenario.ReducerPrompt
 		if len(promptPrefix) > 50 {
 			promptPrefix = promptPrefix[:50]
 		}

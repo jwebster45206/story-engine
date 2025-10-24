@@ -7,13 +7,15 @@
   "opening_scene": "arrival",
   "opening_prompt": "The moon hangs full overhead as you stand before the massive iron gates of Castle Dracula.\n\n%s\n\nYour horse whinnies nervously behind you, sensing the evil that permeates this place. The castle looms before you, its Gothic spires piercing the night sky like dark fangs. \n\nTime is against you - you must find and destroy Dracula before the sun rises and he retreats to his hidden sanctum.",
   "opening_location": "castle_gates",
-  "opening_inventory": ["wooden stakes", "silver cross", "holy water"],
-  
+  "opening_inventory": [
+    "wooden stakes",
+    "silver cross",
+    "holy water"
+  ],
   "vars": {
     "opened_grimoire": "false",
     "dracula_appeared": "false"
   },
-  
   "locations": {
     "castle_gates": {
       "name": "Castle Gates",
@@ -22,11 +24,13 @@
         "north": "grand_foyer",
         "south": "courtyard"
       },
-      "items": ["iron gate key", "torn map fragment"]
+      "items": [
+        "iron gate key",
+        "torn map fragment"
+      ]
     },
-    
     "grand_foyer": {
-      "name": "Grand Foyer", 
+      "name": "Grand Foyer",
       "description": "A cavernous entrance hall with a grand staircase sweeping upward into darkness. Dusty portraits of pale aristocrats line the walls, their eyes seeming to track your movement. Cobwebs drape from an enormous chandelier that hasn't been lit in decades. The air is thick with the smell of decay and old blood.",
       "exits": {
         "south": "castle_gates",
@@ -34,9 +38,11 @@
         "west": "dining_hall",
         "up": "master_bedroom"
       },
-      "items": ["ornate candelabra", "dust-covered mirror"]
+      "items": [
+        "ornate candelabra",
+        "dust-covered mirror"
+      ]
     },
-    
     "library": {
       "name": "Library",
       "description": "Towering bookshelves filled with ancient tomes reach up to the vaulted ceiling. Many books appear to be written in Latin and other dead languages. A reading table sits in the center with several open books, their pages yellowed with age. The knowledge here could be invaluable to understanding Dracula's weaknesses.",
@@ -44,18 +50,24 @@
         "west": "grand_foyer",
         "north": "laboratory"
       },
-      "items": ["ancient grimoire", "vampire lore book", "blessed silver dagger"]
+      "items": [
+        "ancient grimoire",
+        "vampire lore book",
+        "blessed silver dagger"
+      ]
     },
-    
     "laboratory": {
       "name": "Laboratory",
       "description": "A medieval laboratory filled with bubbling alchemical apparatus, preserved specimens in jars, and arcane symbols carved into stone tables. The air reeks of sulfur and decay. This appears to be where Dracula conducts his dark experiments.",
       "exits": {
         "south": "library"
       },
-      "items": ["vial of garlic essence", "silver powder", "consecrated salt"]
+      "items": [
+        "vial of garlic essence",
+        "silver powder",
+        "consecrated salt"
+      ]
     },
-    
     "dining_hall": {
       "name": "Dining Hall",
       "description": "A long oak table dominates this room, set for a feast that was never eaten. The chairs are pushed back as if the diners fled in haste. Portraits of Dracula through the centuries hang on the walls, showing his unchanging face across hundreds of years. A massive fireplace holds cold ashes.",
@@ -63,18 +75,23 @@
         "east": "grand_foyer",
         "north": "kitchen"
       },
-      "items": ["silver chalice", "ancient wine bottle"]
+      "items": [
+        "silver chalice",
+        "ancient wine bottle"
+      ]
     },
-    
     "kitchen": {
       "name": "Kitchen",
       "description": "A medieval kitchen with a large hearth and hanging pots. The pantry shelves are stocked with strange preserved foods and bottles of unidentifiable liquids. A butcher's block bears dark stains that you prefer not to examine too closely.",
       "exits": {
         "south": "dining_hall"
       },
-      "items": ["kitchen knife", "garlic bulbs", "iron skillet"]
+      "items": [
+        "kitchen knife",
+        "garlic bulbs",
+        "iron skillet"
+      ]
     },
-    
     "master_bedroom": {
       "name": "Master Bedroom",
       "description": "An opulent bedroom with a four-poster bed draped in crimson velvet. The room feels unnaturally cold despite the ornate furnishings. A balcony overlooks the courtyard below. This appears to be Dracula's personal chambers, though his coffin is nowhere to be seen.",
@@ -85,20 +102,27 @@
       "blocked_exits": {
         "east": "Heavy wooden door is locked with an ornate silver key."
       },
-      "items": ["ornate silver key", "red velvet cloak"]
+      "items": [
+        "ornate silver key",
+        "red velvet cloak"
+      ]
     },
-    
     "courtyard": {
       "name": "Courtyard",
       "description": "An overgrown courtyard surrounded by the castle walls. Dead trees twist toward the sky like gnarled fingers. A stone well sits in the center, its depths lost in darkness. The sound of bats echoes from somewhere above.",
       "exits": {
         "north": "castle_gates"
       },
-      "items": ["coil of rope", "rusty bucket"]
+      "blocked_exits": {
+        "down": "You sense something evil below, but cannot find an entrance to the castle's depths."
+      },
+      "items": [
+        "coil of rope",
+        "rusty bucket"
+      ]
     },
-    
     "crypt_entrance": {
-      "name": "Crypt Entrance", 
+      "name": "Crypt Entrance",
       "description": "Stone steps lead down into the castle's crypt. The heavy door is sealed with mystical symbols that seem to writhe in the torchlight. A sense of ancient evil emanates from beyond the door.",
       "exits": {
         "up": "courtyard"
@@ -109,45 +133,30 @@
       "items": []
     }
   },
-  
   "npcs": {
     "renfield": {
       "name": "Renfield",
       "type": "servant",
       "disposition": "mad but potentially helpful",
       "description": "Dracula's deranged human servant, dressed in tattered clothing. His eyes dart about wildly and he speaks in cryptic riddles. Despite his madness, he knows the castle's secrets and might aid you if approached correctly.",
-      "important": true,
       "location": "kitchen",
-      "items": ["brass skeleton key", "torn diary pages"]
+      "items": [
+        "brass skeleton key",
+        "torn diary pages"
+      ]
     },
-    
     "stone_gargoyle": {
       "name": "Stone Gargoyle",
       "type": "guardian",
       "disposition": "hostile magical construct",
       "description": "An ancient stone guardian that comes to life when threatened. Its eyes glow red and its claws are razor sharp. It guards important areas of the castle.",
-      "important": false,
       "location": "library",
       "items": []
     }
   },
-  
   "scenes": {
     "arrival": {
       "story": "The player has just arrived at Castle Dracula and must gain entry and begin exploring. The castle's defenses are at their weakest, but time is running short until dawn.",
-      "locations": {
-        "courtyard": {
-          "name": "Courtyard",
-          "description": "An overgrown courtyard surrounded by the castle walls. Dead trees twist toward the sky like gnarled fingers. A stone well sits in the center, its depths lost in darkness. The sound of bats echoes from somewhere above.",
-          "exits": {
-            "north": "castle_gates"
-          },
-          "blocked_exits": {
-            "down": "You sense something evil below, but cannot find an entrance to the castle's depths."
-          },
-          "items": ["coil of rope", "rusty bucket"]
-        }
-      },
       "story_events": {
         "dracula_materializes": {
           "when": {
@@ -191,18 +200,20 @@
         "When Dracula materializes, appears, or physically is in the location with the player, set the var 'dracula_appeared' to 'true'."
       ]
     },
-    
     "preparation": {
       "story": "The player has gained crucial knowledge about vampire weaknesses and must now gather the specific tools needed to face Dracula. The vampire's power grows as dawn approaches.",
       "npcs": {
         "renfield": {
           "name": "Renfield",
-          "type": "servant", 
+          "type": "servant",
           "disposition": "more lucid and helpful",
           "description": "Renfield seems more coherent now, as if your presence has partially broken Dracula's hold over him. He speaks more clearly about the master's weaknesses.",
           "important": true,
           "location": "dining_hall",
-          "items": ["crypt key", "blessed wooden stake"]
+          "items": [
+            "crypt key",
+            "blessed wooden stake"
+          ]
         }
       },
       "locations": {
@@ -213,11 +224,13 @@
             "north": "castle_gates",
             "down": "crypt_entrance"
           },
-          "items": ["coil of rope", "rusty bucket"]
+          "items": [
+            "coil of rope",
+            "rusty bucket"
+          ]
         },
-        
         "crypt_entrance": {
-          "name": "Crypt Entrance", 
+          "name": "Crypt Entrance",
           "description": "Stone steps lead down into the castle's crypt. The heavy door is sealed with mystical symbols that seem to writhe in the torchlight. A sense of ancient evil emanates from beyond the door.",
           "exits": {
             "up": "courtyard",
@@ -225,7 +238,6 @@
           },
           "items": []
         },
-        
         "secret_passage": {
           "name": "Secret Passage",
           "description": "A narrow stone passage hidden behind a tapestry in the master bedroom. Ancient symbols are carved into the walls, and the air grows colder as you descend. This passage leads directly to Dracula's sanctum.",
@@ -233,7 +245,10 @@
             "east": "master_bedroom",
             "down": "draculas_sanctum"
           },
-          "items": ["ancient torch", "silver chain"]
+          "items": [
+            "ancient torch",
+            "silver chain"
+          ]
         }
       },
       "contingency_prompts": [],
@@ -245,7 +260,6 @@
         "If the player has the proper equipment and enters the secret passage or crypt entrance, the scene changes to 'confrontation'."
       ]
     },
-    
     "confrontation": {
       "story": "The player has reached Dracula's sanctum and must face the vampire lord in final combat. Dawn is breaking, and Dracula's power is at its peak.",
       "locations": {
@@ -255,7 +269,10 @@
           "exits": {
             "up": "secret_passage"
           },
-          "items": ["ancient crown", "Dracula's ring"]
+          "items": [
+            "ancient crown",
+            "Dracula's ring"
+          ]
         }
       },
       "npcs": {
@@ -278,9 +295,7 @@
       ]
     }
   },
-  
   "contingency_prompts": [],
-  
   "contingency_rules": [
     "Reading any book in the library takes time and advances the approaching dawn.",
     "If the player tries to leave the castle before confronting Dracula, they encounter wolves that force them back inside.",
@@ -288,6 +303,5 @@
     "If the player's health falls too low during combat, they can retreat to recover but lose precious time.",
     "Breaking mirrors in the castle releases trapped souls who may aid the player with information."
   ],
-  
   "game_end_prompt": "Evaluate the player's success in their vampire hunting mission. Did they gather the proper knowledge and tools? Did they show courage in facing the supernatural threats? Did they successfully destroy Dracula, or did they fall victim to the ancient vampire's power? Consider their strategic thinking, bravery, and preparation in your assessment."
 }

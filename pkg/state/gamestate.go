@@ -124,11 +124,21 @@ func (gs *GameState) GetContingencyPrompts(s *scenario.Scenario) []string {
 		}
 	}
 
+	// NPC-level contingency prompts
+	for _, npc := range gs.NPCs {
+		// Only include prompts for NPCs at the player's current location
+		if npc.Location != gs.Location {
+			continue
+		}
+		prompts = append(prompts, scenario.FilterContingencyPrompts(npc.ContingencyPrompts, gs)...)
+	}
+
 	return prompts
 }
 
 // GetChatMessages generates a "chat message" slice for LLM.
 // This slice includes all prompts and instructions to run the game.
+// TODO: This func needs to be refactored to move logic to the proper layers.
 func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, s *scenario.Scenario, count int, storyEventPrompt string) ([]chat.ChatMessage, error) {
 	if gs == nil {
 		return nil, fmt.Errorf("game state is nil")
@@ -147,6 +157,7 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 	}
 
 	// Load narrator if specified
+	// TODO: save narrator in game state
 	var narrator *scenario.Narrator
 	if narratorID != "" {
 		narrator, err = scenario.LoadNarrator(narratorID)
@@ -203,7 +214,8 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 		Content: requestMessage,
 	})
 
-	// Insert story event prompt after user's prompt if present
+	// Insert a story event prompt after user's prompt if present
+	// TODO: move this to a queue system
 	if storyEventPrompt != "" {
 		messages = append(messages, chat.ChatMessage{
 			Role:    chat.ChatRoleAgent,

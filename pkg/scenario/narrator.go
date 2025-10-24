@@ -29,6 +29,7 @@ func (n *Narrator) GetPromptsAsString() string {
 }
 
 // LoadNarrator loads a narrator from a JSON file by ID from the data/narrators directory
+// TODO: Move to storage layer
 func LoadNarrator(narratorID string) (*Narrator, error) {
 	if narratorID == "" {
 		return nil, nil // No narrator specified, return nil (not an error)

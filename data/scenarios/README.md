@@ -192,7 +192,6 @@ Both will work correctly.
 - **type**: Role/profession of the NPC
 - **disposition**: Personality and attitude toward the player
 - **description**: Physical appearance and notable characteristics
-- **important**: Whether this NPC should always appear in gamestate prompts (generally should not be true)
 - **location**: Current location of the NPC (use location ID)
 - **items**: Objects this NPC possesses
 

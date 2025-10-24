@@ -525,7 +525,7 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: fmt.Sprintf(scenario.PromptStateExtractionInstructions, strings.Join(contingencyRules, "\n- ")),
+			Content: fmt.Sprintf(scenario.ReducerPrompt, strings.Join(contingencyRules, "\n- ")),
 		},
 		{
 			Role:    chat.ChatRoleSystem,

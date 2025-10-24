@@ -173,6 +173,11 @@ func (dw *DeltaWorker) Apply() error {
 		}
 	}
 
+	// Handle NPC movements
+	for _, npcMovement := range dw.delta.NPCMovements {
+		dw.handleNPCMovement(npcMovement)
+	}
+
 	// Handle Game End
 	if dw.delta.GameEnded != nil && *dw.delta.GameEnded {
 		dw.gs.IsEnded = true
@@ -265,6 +270,50 @@ func (dw *DeltaWorker) handleUseItem(itemEvent itemEvent) {
 					break
 				}
 			}
+		}
+	}
+}
+
+// handleNPCMovement updates an NPC's location
+func (dw *DeltaWorker) handleNPCMovement(movement NPCMovement) {
+	// Try to find the NPC by ID or name
+	npcKey, found := dw.scenario.GetNPC(movement.NPCID)
+	if !found {
+		if dw.logger != nil {
+			dw.logger.Warn("NPC not found for movement",
+				"npc_id", movement.NPCID,
+				"to_location", movement.ToLocation)
+		}
+		return
+	}
+
+	// Verify the destination location exists
+	locationKey, found := dw.scenario.GetLocation(movement.ToLocation)
+	if !found {
+		if dw.logger != nil {
+			dw.logger.Warn("Location not found for NPC movement",
+				"npc_id", movement.NPCID,
+				"to_location", movement.ToLocation)
+		}
+		return
+	}
+
+	// Update the NPC's location in game state
+	if npc, exists := dw.gs.NPCs[npcKey]; exists {
+		oldLocation := npc.Location
+		npc.Location = locationKey
+		dw.gs.NPCs[npcKey] = npc
+
+		if dw.logger != nil {
+			dw.logger.Info("NPC moved",
+				"npc", npcKey,
+				"from", oldLocation,
+				"to", locationKey)
+		}
+	} else {
+		if dw.logger != nil {
+			dw.logger.Warn("NPC not found in game state",
+				"npc_key", npcKey)
 		}
 	}
 }

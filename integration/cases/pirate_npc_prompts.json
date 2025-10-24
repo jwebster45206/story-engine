@@ -1,0 +1,40 @@
+{
+  "name": "Pirate NPC Contingency Prompts Test",
+  "scenario": "pirate.json",
+  "seed_game_state": {
+    "scenario": "pirate.json",
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "You stand on the docks of Tortuga. The salty sea air fills your lungs as you take in the bustling port town. Pirates and merchants alike haggle over goods, and the distant sound of a tavern's lively music drifts through the air. Calypso, the enigmatic bartender of the Sleepy Mermaid, catches your eye from across the street."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "inquire about accents",
+      "user_prompt": "I wonder about Calypso's accent.",
+      "expect": {
+        "user_location": "tortuga"
+      },
+      "response_not_contains": [
+        "Haiti"
+      ]
+    },
+    {
+        "name": "go to sleepy mermaid",
+        "user_prompt": "I enter the Sleepy Mermaid."
+    },
+    {
+      "name": "talk to Calypso",
+      "user_prompt": "I greet Calypso, admiring her accent.",
+      "expect": {
+        "user_location": "sleepy_mermaid"
+      },
+      "response_contains": [
+        "Haiti",
+        "Calypso"
+      ]
+    }
+  ]
+}
