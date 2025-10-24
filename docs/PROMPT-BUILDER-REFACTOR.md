@@ -1,5 +1,28 @@
 # Prompt Builder Refactor Plan
 
+## Updates After Storage Refactor (October 2025)
+
+**Key Changes:**
+1. ✅ **Storage refactor completed** - Clean separation between storage layer (`internal/storage`) and domain models (`pkg/*`)
+2. 🎯 **Phase 0 REVISED** - We will embed Narrator and PC in GameState, but load Scenario on each request
+3. 🔄 **Partial optimization** - Narrator/PC loaded once at gamestate creation, scenario loaded per-request
+
+**Impact on this plan:**
+- Phase 0 is now part of the refactor (not deferred)
+- Handlers will load narrator/PC ONCE at gamestate creation
+- Chat handlers will load scenario from storage on each request (TODO: add caching layer)
+- Prompt builder receives scenario as parameter (not from GameState)
+- GameState methods keep scenario parameter: `GetStatePrompt(scenario)`, `GetContingencyPrompts(scenario)`, `LoadScene(scenario, sceneName)`
+
+**Performance & Design Benefits:**
+- **Before**: Every chat = 2-3 file reads (scenario + narrator + gamestate from Redis)
+- **After**: Every chat = 1 file read (scenario) + 1 Redis read (gamestate with narrator/PC)
+- Scenarios can be updated and running games see the changes
+- Narrator voice and PC stats remain stable for running games
+- TODO: Add scenario caching layer to reduce filesystem reads to zero
+
+---
+
 ## Current State Analysis
 
 ### The Problem
@@ -55,87 +78,7 @@ After analyzing the codebase, here's what differs by provider:
 ### Conclusion
 **Only Anthropic requires message transformation.** Venice and Ollama use standard OpenAI-compatible format.
 
-## Architectural Options
-
-### Option 1: Keep in Handler (Simple Cross-Platform)
-**Philosophy**: If prompt building is simple and consistent, handlers orchestrate it.
-
-```go
-// internal/handlers/chat.go
-func (h *ChatHandler) buildChatMessages(gs *GameState, scenario *Scenario, 
-    narrator *Narrator, request string, role string) ([]chat.ChatMessage, error) {
-    
-    // Build system prompt
-    systemPrompt := scenario.BuildSystemPrompt(narrator, gs.PC)
-    systemPrompt += gs.GetStatePrompt(scenario)
-    systemPrompt += gs.GetContingencyPrompts(scenario)
-    
-    // Assemble messages
-    messages := []chat.ChatMessage{
-        {Role: chat.ChatRoleSystem, Content: systemPrompt},
-    }
-    messages = append(messages, gs.GetRecentHistory(PromptHistoryLimit)...)
-    messages = append(messages, chat.ChatMessage{Role: role, Content: request})
-    
-    return messages, nil
-}
-```
-
-**Pros:**
-- Simple and direct
-- Handler already orchestrates other concerns
-- Easy to understand data flow
-- No new abstractions
-
-**Cons:**
-- Handler gets larger
-- Duplicated if multiple handlers build prompts
-- Harder to test prompt logic in isolation
-
----
-
-### Option 2: Move to LLM Layer (Provider-Specific)
-**Philosophy**: LLM providers know how to format their own prompts.
-
-```go
-// internal/services/llm.go
-type LLMService interface {
-    // New method: takes gamestate + scenario, builds messages internally
-    ChatWithGameState(ctx context.Context, gs *state.GameState, 
-        scenario *scenario.Scenario, request string) (*chat.ChatResponse, error)
-    
-    // Existing method still available for flexibility
-    Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error)
-}
-
-// internal/services/anthropic.go
-func (a *AnthropicService) ChatWithGameState(ctx, gs, scenario, request) {
-    // Build messages
-    systemPrompt := a.buildSystemPrompt(gs, scenario)
-    messages := a.buildMessages(gs, request)
-    
-    // Anthropic-specific transformation
-    systemPrompt, conversationMessages := a.splitChatMessages(messages)
-    
-    // Call API
-    return a.chatCompletion(ctx, conversationMessages, systemPrompt)
-}
-```
-
-**Pros:**
-- Each provider can customize message building
-- Encapsulates provider-specific quirks (Anthropic's system message handling)
-- Clean separation: LLM layer owns prompt formatting
-
-**Cons:**
-- ❌ **Tight coupling**: LLM services now depend on domain models (GameState, Scenario)
-- ❌ **Violates dependency inversion**: Services shouldn't know about domain
-- ❌ **Wrong abstraction level**: LLMs should receive messages, not understand game concepts
-- Too much responsibility in LLM layer
-
----
-
-### Option 3: Dedicated Prompt Builder (Recommended)
+## Architectural Approach: Dedicated Prompt Builder
 **Philosophy**: Prompt building is complex enough to be its own concern.
 
 **Location**: `pkg/prompts` - This is domain logic that operates on domain models (GameState, Scenario), not infrastructure, so it belongs in `pkg/` where it can be reused and doesn't depend on internal implementation details.
@@ -316,39 +259,7 @@ func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) {
 - Adds a new package (minor)
 - One more layer to understand (but clearer responsibilities)
 
----
 
-### Option 4: Helper in GameState Package
-**Philosophy**: Prompt building is stateless logic related to GameState.
-
-```go
-// pkg/state/prompts.go (new file in existing package)
-package state
-
-// BuildChatMessages is a helper that constructs LLM messages from gamestate
-func BuildChatMessages(
-    gs *GameState,
-    scenario *scenario.Scenario,
-    narrator *scenario.Narrator,
-    userMessage string,
-    userRole string,
-    historyLimit int,
-) ([]chat.ChatMessage, error) {
-    // ... implementation similar to Option 3 ...
-}
-```
-
-**Pros:**
-- No new package
-- Close to the data it operates on
-- Simple to discover
-
-**Cons:**
-- ❌ Still couples GameState package to prompt formatting concerns
-- ❌ Less clear than a dedicated package
-- ❌ GameState package grows larger
-
----
 
 ## Package Location: `pkg/prompts` vs `internal/prompts`
 
@@ -369,21 +280,26 @@ But since it's pure transformation logic on domain models, `pkg/` is appropriate
 
 ---
 
-## Embedding Scenario and Narrator in GameState
+## Embedding Narrator and PC in GameState
 
 ### Current Problem
 
 Every chat request requires loading:
 ```go
-scenario := storage.GetScenario(gs.Scenario)  // Loads from disk every time!
-narrator := storage.GetNarrator(gs.NarratorID) // Loads from disk every time!
+scenario := storage.GetScenario(gs.Scenario)  // Loads from disk every time
+narrator := storage.GetNarrator(gs.NarratorID) // Loads from disk every time
 ```
 
-This is inefficient and couples chat handlers to storage unnecessarily.
+The scenario loading is actually acceptable (and preferred) since:
+- Scenarios can be updated and games should see those changes
+- Scenarios contain story content that may evolve
+- TODO: We can add a caching layer later to optimize this, using scenario_id+gamestate_uuid as a cache key that also allows updates to scenario
 
-### Solution: Embed Full Objects in GameState
+However, narrator and PC should be stable for a running game.
 
-**Change GameState to store full objects instead of just IDs:**
+### Solution: Embed Narrator and PC in GameState
+
+**Change GameState to store full objects for narrator and PC, but keep scenario as filename:**
 
 ```go
 // pkg/state/gamestate.go
@@ -391,36 +307,32 @@ type GameState struct {
     ID               uuid.UUID                    `json:"id"`
     ModelName        string                       `json:"model_name,omitempty"`
     
-    // BEFORE: Just filenames/IDs
-    // Scenario         string                       `json:"scenario,omitempty"`
-    // NarratorID       string                       `json:"narrator_id,omitempty"`
+    // Scenario: Keep as filename - load on each request (allows updates)
+    Scenario         string                       `json:"scenario,omitempty"`
     
-    // AFTER: Full embedded objects
-    Scenario         *scenario.Scenario           `json:"scenario,omitempty"`
+    // Narrator and PC: Embed full objects - load once at creation
     Narrator         *scenario.Narrator           `json:"narrator,omitempty"`
+    PC               *actor.PC                    `json:"pc,omitempty"`
     
     SceneName        string                       `json:"scene_name,omitempty"`
-    PC               *actor.PC                    `json:"pc,omitempty"`
+    NPCs             map[string]actor.NPC         `json:"npcs,omitempty"`
     // ... rest of fields ...
 }
 ```
 
 **Benefits:**
-1. ✅ **Load once at creation time** - scenario and narrator loaded when gamestate is created
-2. ✅ **No storage lookups during chat** - everything needed is in memory
-3. ✅ **Faster chat responses** - no I/O on hot path
-4. ✅ **Self-contained gamestate** - everything you need is in one object
-5. ✅ **Simpler handlers** - no need to coordinate multiple storage calls
+1. ✅ **Narrator loaded once at creation** - voice/style is stable for running games
+2. ✅ **PC loaded once at creation** - character stats don't change mid-game
+3. ✅ **Scenario loaded per-request** - games can see content updates
+4. ✅ **Balanced approach** - optimize what should be stable, flexibility where needed
+5. ✅ **TODO: Add caching** - Can cache scenarios to reduce I/O to near-zero
 
 **Tradeoffs:**
-- ⚠️ Larger gamestate in Redis (but still small, ~few KB)
-- ⚠️ Scenario updates don't propagate to running games (this is actually desirable - games should be immutable)
+- ⚠️ One filesystem read per chat (scenario) - acceptable, and can be cached later
+- ✅ Scenario updates propagate to running games (this is actually desirable for story content)
+- ✅ Narrator/PC remain stable (correct behavior - don't change mid-game)
 
----
-
-## Recommendation: Option 3 (Dedicated Prompt Builder)
-
-### Why This is Best
+## Why This Approach is Best
 
 1. **Separation of Concerns**
    - GameState: Manages game state (data)
@@ -459,31 +371,60 @@ type GameState struct {
 
 ## Migration Checklist
 
-### Phase 0: Embed Scenario and Narrator
-- [ ] Update `GameState` struct to store `*scenario.Scenario` and `*scenario.Narrator`
-- [ ] Update `NewGameState()` constructor signature
-- [ ] Update `GetStatePrompt()` to use embedded scenario (remove parameter)
-- [ ] Update `GetContingencyPrompts()` to use embedded scenario (remove parameter)
-- [ ] Update `LoadScene()` to use embedded scenario (remove parameter)
-- [ ] Update gamestate creation handler to load and embed scenario/narrator
-- [ ] Update all handler calls that pass scenario as parameter
-- [ ] Remove scenario/narrator storage lookups from chat handlers
-- [ ] Test gamestate serialization/deserialization with embedded objects
+### Phase 0: Embed Narrator and PC in GameState
+**Status**: We will implement this phase to reduce I/O and keep narrator/PC stable.
+
+**Changes to GameState:**
+- [ ] Update `GameState` struct to store `*scenario.Narrator` and keep `PC` as embedded (instead of separate load)
+- [ ] Keep `Scenario` as string (filename) - load on each request
+- [ ] Update `NewGameState()` constructor signature to accept `*scenario.Narrator` (PC already embedded)
+- [ ] Keep scenario parameter in: `GetStatePrompt(scenario)`, `GetContingencyPrompts(scenario)`, `LoadScene(scenario, sceneName)`
+- [ ] Ensure PC is fully embedded in GameState (may already be done)
+
+**Changes to Handlers:**
+- [ ] Update gamestate creation handler to load and embed narrator at creation time
+- [ ] Update gamestate creation to ensure PC is fully embedded
+- [ ] Chat handlers load scenario on each request (add TODO comment for caching)
+- [ ] Remove narrator storage lookups from chat handlers
+- [ ] Keep scenario loading in chat handlers
+
+**Testing:**
+- [ ] Test gamestate serialization/deserialization with embedded narrator
 - [ ] Verify Redis storage size is acceptable
+- [ ] Test that narrator remains stable for running games
+- [ ] Test that scenario updates propagate to running games (desired behavior)
+- [ ] Verify backward compatibility or migration path for existing gamestates
 
 ### Phase 1: Create Prompt Builder
+**Note**: With Phase 0 completed, the builder receives scenario as parameter (loaded by handler), gets narrator from embedded GameState.
+
 - [ ] Create `pkg/prompts` package
-- [ ] Implement `Builder` with `BuildChatMessages()`
+- [ ] Implement `Builder` with `BuildChatMessages()` - receives scenario as parameter, gets narrator from gamestate
 - [ ] Implement `buildSystemPrompt()` helper
 - [ ] Implement `buildFinalPrompt()` helper
 - [ ] Implement `windowHistory()` helper
 - [ ] Add comprehensive unit tests
 
+**Builder Signature:**
+```go
+// WithGameState sets the gamestate (contains embedded narrator and PC)
+func (b *Builder) WithGameState(gs *state.GameState) *Builder
+
+// WithScenario sets the scenario (loaded by handler on each request)
+func (b *Builder) WithScenario(scenario *scenario.Scenario) *Builder
+
+// WithUserMessage sets the user's message and role
+func (b *Builder) WithUserMessage(message, role string) *Builder
+
+// WithHistoryLimit sets the chat history window size
+func (b *Builder) WithHistoryLimit(limit int) *Builder
+```
+
 ### Phase 2: Update Handlers
 - [ ] Update chat handler to use `prompts.Builder`
 - [ ] Remove `GetChatMessages()` from GameState
-- [ ] Remove scenario/narrator parameters from handler methods
-- [ ] Verify all storage lookups removed from chat flow
+- [ ] Keep scenario parameter in GameState methods
+- [ ] Chat handlers load scenario on each request (TODO comment for caching)
 - [ ] Update handler tests
 
 ### Phase 3: Testing & Validation
@@ -492,14 +433,16 @@ type GameState struct {
 - [ ] Test with Anthropic (verify splitChatMessages still works)
 - [ ] Test with Venice
 - [ ] Test with Ollama
-- [ ] Performance testing (no I/O in hot path)
+- [ ] Verify scenario updates propagate to running games
+- [ ] Verify narrator/PC remain stable in running games
 - [ ] Verify gamestate save/load works correctly
+- [ ] Add TODO comments for scenario caching optimization
 
 ---
 
 ## Migration Plan
 
-### Phase 0: Embed Scenario and Narrator in GameState
+### Phase 0: Embed Narrator and PC in GameState
 
 **Step 0.1: Update GameState structure**
 
@@ -509,8 +452,10 @@ type GameState struct {
     ID               uuid.UUID                    `json:"id"`
     ModelName        string                       `json:"model_name,omitempty"`
     
-    // Full objects instead of IDs
-    Scenario         *scenario.Scenario           `json:"scenario,omitempty"`
+    // Scenario: Keep as filename - load per request
+    Scenario         string                       `json:"scenario,omitempty"`
+    
+    // Narrator: Embed full object - load once at creation
     Narrator         *scenario.Narrator           `json:"narrator,omitempty"`
     
     SceneName        string                       `json:"scene_name,omitempty"`
@@ -539,13 +484,13 @@ type GameState struct {
 func (h *GameStateHandler) CreateGameState(w http.ResponseWriter, r *http.Request) {
     // ... parse request ...
     
-    // Load scenario from storage
+    // Load scenario from storage (will be loaded on each chat request too)
     scenario, err := h.storage.GetScenario(r.Context(), req.Scenario)
     if err != nil {
         // handle error
     }
     
-    // Load narrator from storage (if specified)
+    // Load narrator from storage (ONCE at creation - then embedded)
     var narrator *scenario.Narrator
     narratorID := req.NarratorID
     if narratorID == "" {
@@ -559,7 +504,7 @@ func (h *GameStateHandler) CreateGameState(w http.ResponseWriter, r *http.Reques
         }
     }
     
-    // Load PC spec from storage
+    // Load PC spec from storage (ONCE at creation)
     pcID := req.PCID
     if pcID == "" {
         pcID = scenario.DefaultPC
@@ -579,8 +524,8 @@ func (h *GameStateHandler) CreateGameState(w http.ResponseWriter, r *http.Reques
         // handle error
     }
     
-    // Create gamestate with embedded objects
-    gs := state.NewGameState(scenario, narrator, h.modelName)
+    // Create gamestate with embedded narrator (scenario as filename)
+    gs := state.NewGameState(req.Scenario, narrator, h.modelName)
     gs.PC = pc
     gs.NPCs = scenario.NPCs
     gs.Location = scenario.OpeningLocation
@@ -596,12 +541,12 @@ func (h *GameStateHandler) CreateGameState(w http.ResponseWriter, r *http.Reques
 ```go
 // pkg/state/gamestate.go
 
-func NewGameState(scenario *scenario.Scenario, narrator *scenario.Narrator, modelName string) *GameState {
+func NewGameState(scenarioFilename string, narrator *scenario.Narrator, modelName string) *GameState {
     return &GameState{
         ID:                 uuid.New(),
         ModelName:          modelName,
-        Scenario:           scenario,  // Store full object
-        Narrator:           narrator,  // Store full object
+        Scenario:           scenarioFilename,  // Store filename, not object
+        Narrator:           narrator,          // Store full object
         ChatHistory:        make([]chat.ChatMessage, 0),
         TurnCounter:        0,
         SceneTurnCounter:   0,
@@ -616,20 +561,20 @@ func NewGameState(scenario *scenario.Scenario, narrator *scenario.Narrator, mode
 }
 ```
 
-**Step 0.4: Update helper methods**
+**Step 0.4: Keep helper methods with scenario parameter**
 
 ```go
 // pkg/state/gamestate.go
 
-// GetStatePrompt now uses embedded scenario
-func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error) {
-    if gs == nil || gs.Scenario == nil {
+// GetStatePrompt still needs scenario parameter (loaded by handler)
+func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, error) {
+    if gs == nil || s == nil {
         return chat.ChatMessage{}, fmt.Errorf("game state or scenario is nil")
     }
 
     var scene *scenario.Scene
     if gs.SceneName != "" {
-        sc, ok := gs.Scenario.Scenes[gs.SceneName]
+        sc, ok := s.Scenes[gs.SceneName]
         if !ok {
             return chat.ChatMessage{}, fmt.Errorf("scene %s not found", gs.SceneName)
         }
@@ -642,7 +587,7 @@ func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error) {
         return chat.ChatMessage{}, err
     }
 
-    story := gs.Scenario.Story
+    story := s.Story
     if scene != nil && scene.Story != "" {
         story += "\n\n" + scene.Story
     }
@@ -653,16 +598,16 @@ func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error) {
     }, nil
 }
 
-// GetContingencyPrompts now uses embedded scenario
-func (gs *GameState) GetContingencyPrompts() []string {
-    if gs == nil || gs.Scenario == nil {
+// GetContingencyPrompts still needs scenario parameter
+func (gs *GameState) GetContingencyPrompts(s *scenario.Scenario) []string {
+    if gs == nil || s == nil {
         return nil
     }
 
     var prompts []string
 
     // Filter scenario-level contingency prompts
-    scenarioPrompts := scenario.FilterContingencyPrompts(gs.Scenario.ContingencyPrompts, gs)
+    scenarioPrompts := scenario.FilterContingencyPrompts(s.ContingencyPrompts, gs)
     prompts = append(prompts, scenarioPrompts...)
 
     // Filter PC-level contingency prompts
@@ -676,7 +621,7 @@ func (gs *GameState) GetContingencyPrompts() []string {
 
     // Filter scene-level contingency prompts
     if gs.SceneName != "" {
-        if scene, ok := gs.Scenario.Scenes[gs.SceneName]; ok {
+        if scene, ok := s.Scenes[gs.SceneName]; ok {
             scenePrompts := scenario.FilterContingencyPrompts(scene.ContingencyPrompts, gs)
             prompts = append(prompts, scenePrompts...)
         }
@@ -693,13 +638,13 @@ func (gs *GameState) GetContingencyPrompts() []string {
     return prompts
 }
 
-// LoadScene now uses embedded scenario
-func (gs *GameState) LoadScene(sceneName string) error {
-    if gs.Scenario == nil {
+// LoadScene still needs scenario parameter
+func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
+    if s == nil {
         return fmt.Errorf("scenario is nil")
     }
     
-    scene, ok := gs.Scenario.Scenes[sceneName]
+    scene, ok := s.Scenes[sceneName]
     if !ok {
         return fmt.Errorf("scene %s not found", sceneName)
     }
@@ -711,23 +656,23 @@ func (gs *GameState) LoadScene(sceneName string) error {
 }
 ```
 
-**Step 0.5: Update chat handlers**
+**Step 0.5: Update chat handlers to load scenario**
 
 ```go
 // internal/handlers/chat.go
 
 func (h *ChatHandler) handleChat(w http.ResponseWriter, r *http.Request) {
-    // ... load gamestate ...
+    // Load gamestate from Redis (contains embedded narrator and PC)
+    gs, err := h.storage.LoadGameState(r.Context(), sessionID)
     
-    // BEFORE: Load scenario and narrator from storage
-    // scenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
-    // narrator, err := h.storage.GetNarrator(r.Context(), gs.NarratorID)
+    // Load scenario from filesystem on each request
+    // TODO: Add caching layer to reduce filesystem I/O
+    scenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
     
-    // AFTER: Use embedded objects
-    // No storage calls needed! Everything is in gamestate
+    // Narrator comes from embedded gamestate (no lookup needed!)
     
     // Build messages (Phase 1 will introduce prompt builder)
-    messages, err := gs.GetChatMessages(...)
+    messages, err := gs.GetChatMessages(scenario, ...)
 }
 ```
 
@@ -744,7 +689,7 @@ pkg/
 **Step 1.2: Implement Fluent Builder**
 - Use fluent/builder pattern similar to `d20.Actor`
 - Extract logic from `GameState.GetChatMessages()`
-- Use embedded scenario and narrator from GameState
+- **Receive scenario as parameter, get narrator from embedded GameState**
 - Add comprehensive tests
 
 ```go
@@ -754,6 +699,7 @@ package prompts
 // Fluent builder pattern for constructing chat messages
 type Builder struct {
     gs           *state.GameState
+    scenario     *scenario.Scenario
     userMessage  string
     userRole     string
     historyLimit int
@@ -768,9 +714,15 @@ func New() *Builder {
     }
 }
 
-// WithGameState sets the gamestate (contains scenario, narrator, etc.)
+// WithGameState sets the gamestate (contains embedded narrator and PC)
 func (b *Builder) WithGameState(gs *state.GameState) *Builder {
     b.gs = gs
+    return b
+}
+
+// WithScenario sets the scenario (loaded by handler on each request)
+func (b *Builder) WithScenario(scenario *scenario.Scenario) *Builder {
+    b.scenario = scenario
     return b
 }
 
@@ -792,8 +744,8 @@ func (b *Builder) Build() ([]chat.ChatMessage, error) {
     if b.gs == nil {
         return nil, fmt.Errorf("gamestate is required")
     }
-    if b.gs.Scenario == nil {
-        return nil, fmt.Errorf("scenario is nil in gamestate")
+    if b.scenario == nil {
+        return nil, fmt.Errorf("scenario is required")
     }
     
     // 1. System prompt
@@ -815,19 +767,29 @@ func (b *Builder) Build() ([]chat.ChatMessage, error) {
 }
 
 // Private helpers for building each section
-// - addSystemPrompt(): builds from narrator, rating, state, contingency prompts
+// - addSystemPrompt(): builds from gs.Narrator (embedded), scenario (parameter), rating, state, contingency prompts
 // - addHistory(): windows chat history to limit
 // - addUserMessage(): adds the current user message
 // - addStoryEvents(): adds queued story events if present
-// - addFinalPrompt(): adds game-end or standard reminders
+// - addFinalPrompt(): adds game-end or standard reminders from scenario
 ```
 
-**Handler Usage (Fluent Style):**
+**Handler Usage:**
 ```go
 // internal/handlers/chat.go
+
+// Load gamestate (contains embedded narrator and PC)
+gs, err := h.storage.LoadGameState(r.Context(), sessionID)
+
+// Load scenario from filesystem
+// TODO: Add caching layer to optimize this
+scenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
+
+// Build messages - narrator from gamestate, scenario from parameter
 messages, err := prompts.New().
-    WithGameState(gs).
-    WithUserMessage(cmdResult.Message, cmdResult.Role).
+    WithGameState(gs).              // Narrator and PC embedded!
+    WithScenario(scenario).         // Loaded on each request
+    WithUserMessage(msg, role).
     WithHistoryLimit(PromptHistoryLimit).
     Build()
 ```
@@ -837,30 +799,36 @@ messages, err := prompts.New().
 // pkg/prompts/builder.go
 
 // BuildMessages is a convenience function for the common case
-func BuildMessages(gs *state.GameState, message string, role string, historyLimit int) ([]chat.ChatMessage, error) {
+func BuildMessages(
+    gs *state.GameState,
+    scenario *scenario.Scenario,
+    message string, 
+    role string, 
+    historyLimit int,
+) ([]chat.ChatMessage, error) {
     return New().
         WithGameState(gs).
+        WithScenario(scenario).
         WithUserMessage(message, role).
         WithHistoryLimit(historyLimit).
         Build()
 }
 
 // Handler can use either style:
-messages, err := prompts.BuildMessages(gs, msg, role, PromptHistoryLimit)
+messages, err := prompts.BuildMessages(gs, scenario, msg, role, PromptHistoryLimit)
 // OR
-messages, err := prompts.New().WithGameState(gs).WithUserMessage(msg, role).Build()
+messages, err := prompts.New().WithGameState(gs).WithScenario(scenario).WithUserMessage(msg, role).Build()
 ```
 
 
 **Step 1.3: GameState cleanup**
-- Keep these helper methods in GameState:
-  - `GetStatePrompt()` - returns state as prompt (uses embedded scenario)
-  - `GetContingencyPrompts()` - returns filtered prompts (uses embedded scenario)
+- Keep these helper methods in GameState (with scenario parameter):
+  - `GetStatePrompt(scenario)` - returns state as prompt
+  - `GetContingencyPrompts(scenario)` - returns filtered prompts
   - `GetStoryEvents()` - returns queued events string
-  - `LoadScene(sceneName)` - uses embedded scenario
+  - `LoadScene(scenario, sceneName)` - loads scene from scenario
 - Remove:
   - `GetChatMessages()` - deprecated/removed (replaced by prompts.Builder)
-  - Any parameters that were `*scenario.Scenario` (now uses embedded)
   - Any direct I/O operations
 
 ### Phase 2: Update Handlers
@@ -869,69 +837,130 @@ messages, err := prompts.New().WithGameState(gs).WithUserMessage(msg, role).Buil
 ```go
 // internal/handlers/chat.go
 
-// Before:
-messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, scenario, 
-    PromptHistoryLimit, storyEventPrompt)
-
-// After (Fluent Style):
-messages, err := prompts.New().
-    WithGameState(gs).
-    WithUserMessage(cmdResult.Message, cmdResult.Role).
-    WithHistoryLimit(PromptHistoryLimit).
-    Build()
-
-// Or (Simple Function Style):
-messages, err := prompts.BuildMessages(gs, cmdResult.Message, cmdResult.Role, PromptHistoryLimit)
+func (h *ChatHandler) handleChat(w http.ResponseWriter, r *http.Request) {
+    // Load gamestate from storage (contains embedded narrator and PC)
+    gs, err := h.storage.LoadGameState(r.Context(), sessionID)
+    
+    // Load scenario from filesystem on each request
+    // TODO: Add caching layer to reduce filesystem I/O
+    scenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
+    
+    // Build messages with prompt builder
+    messages, err := prompts.New().
+        WithGameState(gs).                      // Narrator and PC embedded
+        WithScenario(scenario).                 // Loaded on each request
+        WithUserMessage(cmdResult.Message, cmdResult.Role).
+        WithHistoryLimit(PromptHistoryLimit).
+        Build()
+    
+    // Call LLM
+    response, err := h.llm.Chat(r.Context(), messages)
+}
 ```
 
-**Step 2.2: Verify no scenario/narrator lookups in chat flow**
+**Step 2.2: Update gamestate creation handler**
 ```go
-// internal/handlers/chat.go
+// internal/handlers/gamestate.go
 
-// REMOVE these lines:
-// scenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
-// narrator, err := h.storage.GetNarrator(r.Context(), gs.NarratorID)
-
-// Everything comes from gamestate now!
+func (h *GameStateHandler) CreateGameState(w http.ResponseWriter, r *http.Request) {
+    // Load scenario from storage (used for initialization, not embedded)
+    scenario, err := h.storage.GetScenario(r.Context(), req.Scenario)
+    
+    // Load narrator from storage (ONCE at creation - then embedded)
+    var narrator *scenario.Narrator
+    narratorID := req.NarratorID
+    if narratorID == "" {
+        narratorID = scenario.NarratorID
+    }
+    if narratorID != "" {
+        narrator, err = h.storage.GetNarrator(r.Context(), narratorID)
+    }
+    
+    // Load PC spec and build PC (ONCE at creation - then embedded)
+    pcSpec, err := h.storage.GetPCSpec(r.Context(), pcID)
+    pc, err := actor.NewPCFromSpec(pcSpec)
+    
+    // Create gamestate with scenario filename and embedded narrator
+    gs := state.NewGameState(req.Scenario, narrator, h.modelName)
+    gs.PC = pc
+    gs.NPCs = scenario.NPCs
+    gs.Location = scenario.OpeningLocation
+    gs.WorldLocations = scenario.Locations
+    gs.Vars = scenario.Vars
+    
+    // Save to storage - narrator and PC are embedded, scenario is filename
+    h.storage.SaveGameState(r.Context(), gs.ID, gs)
+}
 ```
+
+**Step 2.3: Verify storage access patterns**
+- ✅ Chat handlers: 1 Redis read (gamestate) + 1 filesystem read (scenario)
+- ✅ No narrator lookups during chat (embedded in gamestate)
+- ✅ PC is embedded in gamestate (no separate load)
+- 🎯 TODO: Add caching layer for scenario to reduce to 1 Redis read only
 
 ### Phase 3: Testing & Validation
 
 **Step 3.1: Unit tests for prompt builder**
-- Test system prompt construction
+- Test system prompt construction with narrator from gamestate, scenario from parameter
 - Test history windowing
 - Test story event injection
 - Test game-end prompts
 - Test with/without narrator
+- Test that builder correctly uses gs.Narrator (embedded) and scenario (parameter)
 
 **Step 3.2: Integration tests**
+- Verify handlers load gamestate + scenario (narrator embedded, no separate load)
 - Verify Anthropic still works (splitChatMessages)
 - Verify Venice still works
 - Verify Ollama still works
+- Test that narrator remains stable for running games
+- Test that scenario updates propagate to running games
+- Test gamestate serialization with embedded narrator
 
 **Step 3.3: Verify no regressions**
 - Run full test suite
 - Manual testing of chat flows
+- Verify Redis storage size acceptable
+- Add TODO comments for scenario caching optimization
 
 ## Key Architectural Improvements
 
-### 1. Self-Contained GameState
-- ✅ **Everything in one place**: Scenario, Narrator, PC, NPCs, Locations all in GameState
-- ✅ **Load once at creation**: Storage I/O only when creating/loading gamestate
-- ✅ **No hot-path I/O**: Chat requests have zero storage lookups
-- ✅ **Immutable games**: Running games don't see scenario changes (correct behavior)
-- ✅ **Easier testing**: Mock storage only for create/load, not every chat
+### 1. Clean Storage Layer (✅ COMPLETED)
+- ✅ **Unified storage interface**: All storage operations through `internal/storage.Storage`
+- ✅ **Resource-specific files**: scenario.go, narrator.go, pc.go, gamestate.go
+- ✅ **No I/O in domain packages**: `pkg/*` packages are pure domain logic
+- ✅ **Simplified PC construction**: Storage returns `PCSpec`, domain layer builds `PC` with `NewPCFromSpec`
 
-### 2. Clean Package Structure
-- `pkg/state`: Pure state management, embedded dependencies
-- `pkg/prompts`: Pure transformation logic, no I/O
-- `internal/storage`: I/O operations only
-- `internal/handlers`: Orchestration only
+### 2. Partially Self-Contained GameState (🎯 TO BE COMPLETED - Phase 0)
+- 🎯 **Embed narrator and PC**: `Narrator *scenario.Narrator`, `PC *actor.PC` (PC may already be embedded)
+- 🎯 **Keep scenario as filename**: `Scenario string` - load on each request for flexibility
+- 🎯 **Load narrator once at creation**: Storage I/O only when creating gamestate
+- 🎯 **Load scenario per request**: Chat requests load scenario from filesystem (TODO: add caching)
+- 🎯 **Simplified methods**: Keep scenario parameter in `GetStatePrompt(scenario)`, `GetContingencyPrompts(scenario)`, `LoadScene(scenario, sceneName)`
+- 🎯 **Stable narrator/PC**: Running games don't see narrator changes (correct behavior)
+- 🎯 **Flexible scenarios**: Running games see scenario updates (allows story content evolution)
 
-### 3. Performance Benefits
-- **Before**: Every chat = 2 file reads (scenario + narrator)
-- **After**: Every chat = 0 file reads (everything in memory)
-- **Faster response times** especially important for streaming
+### 3. Prompt Builder Benefits (🎯 TO BE COMPLETED - Phase 1)
+- ✅ **Clean separation**: Prompt building logic separated from GameState
+- ✅ **Testability**: Easy to test prompt construction in isolation
+- ✅ **Reusability**: Multiple handlers can use same builder
+- ✅ **Maintainability**: All prompt logic in one place (`pkg/prompts`)
+- ✅ **Reduced I/O**: Narrator embedded in gamestate, only scenario loaded per request
+- 🎯 **Future optimization**: Easy to add scenario caching layer
+
+### 4. Clean Package Structure (After refactor)
+- `pkg/state`: Pure state management, embedded narrator and PC
+- `pkg/prompts`: Pure transformation logic (gamestate + scenario → messages)
+- `internal/storage`: I/O operations only (loads resources from filesystem/Redis)
+- `internal/handlers`: Orchestration (load gamestate + scenario → build prompts → call LLM)
+
+### 5. Performance Benefits (🎯 TO BE ACHIEVED)
+- **Before**: Every chat = 2 file reads (scenario + narrator) + 1 Redis read (gamestate)
+- **After Phase 0**: Every chat = 1 file read (scenario) + 1 Redis read (gamestate with narrator)
+- **After caching (future)**: Every chat = 1 Redis read (gamestate) + cached scenario lookup
+- **Reduced latency** by eliminating narrator filesystem I/O from hot path
+- **TODO**: Add scenario caching layer for further optimization
 
 ---
 
@@ -939,18 +968,19 @@ messages, err := prompts.BuildMessages(gs, cmdResult.Message, cmdResult.Role, Pr
 
 ### GameState (pkg/state/)
 ```go
-// Clean, focused interface with embedded dependencies
+// Clean, focused interface with embedded narrator and PC
 type GameState struct {
-    Scenario  *scenario.Scenario  // Embedded - loaded once at creation
-    Narrator  *scenario.Narrator  // Embedded - loaded once at creation
+    Scenario  string                // Filename - loaded per request
+    Narrator  *scenario.Narrator    // Embedded - loaded once at creation
+    PC        *actor.PC             // Embedded - loaded once at creation
     // ... other fields ...
 }
 
-// Data extraction helpers (no I/O, uses embedded objects)
-func (gs *GameState) GetStatePrompt() (chat.ChatMessage, error)
-func (gs *GameState) GetContingencyPrompts() []string
+// Data extraction helpers (scenario passed as parameter)
+func (gs *GameState) GetStatePrompt(scenario *scenario.Scenario) (chat.ChatMessage, error)
+func (gs *GameState) GetContingencyPrompts(scenario *scenario.Scenario) []string
 func (gs *GameState) GetStoryEvents() string
-func (gs *GameState) LoadScene(sceneName string) error
+func (gs *GameState) LoadScene(scenario *scenario.Scenario, sceneName string) error
 ```
 
 ### Prompt Builder (pkg/prompts/)
@@ -958,6 +988,7 @@ func (gs *GameState) LoadScene(sceneName string) error
 // Fluent builder pattern for LLM messages
 type Builder struct {
     gs           *state.GameState
+    scenario     *scenario.Scenario
     userMessage  string
     userRole     string
     historyLimit int
@@ -965,15 +996,39 @@ type Builder struct {
 
 func New() *Builder
 func (b *Builder) WithGameState(gs *state.GameState) *Builder
+func (b *Builder) WithScenario(scenario *scenario.Scenario) *Builder
 func (b *Builder) WithUserMessage(message, role string) *Builder
 func (b *Builder) WithHistoryLimit(limit int) *Builder
 func (b *Builder) Build() ([]chat.ChatMessage, error)
 
 // Convenience function for simple cases
-func BuildMessages(gs *state.GameState, message, role string, limit int) ([]chat.ChatMessage, error)
+func BuildMessages(gs *state.GameState, scenario *scenario.Scenario, message, role string, limit int) ([]chat.ChatMessage, error)
 ```
 
-### LLM Services (internal/services/)
+### Storage Layer (internal/storage/) - ✅ COMPLETED
+```go
+// Unified interface for all storage operations
+type Storage interface {
+    // Health and lifecycle
+    Ping(ctx context.Context) error
+    Close() error
+
+    // GameState operations (Redis)
+    SaveGameState(ctx context.Context, id uuid.UUID, gs *state.GameState) error
+    LoadGameState(ctx context.Context, id uuid.UUID) (*state.GameState, error)
+    DeleteGameState(ctx context.Context, id uuid.UUID) error
+
+    // Resource operations (Filesystem)
+    ListScenarios(ctx context.Context) (map[string]string, error)
+    GetScenario(ctx context.Context, filename string) (*scenario.Scenario, error)  // Loaded per request
+    GetNarrator(ctx context.Context, narratorID string) (*scenario.Narrator, error)  // Loaded at creation only
+    ListNarrators(ctx context.Context) ([]string, error)
+    GetPCSpec(ctx context.Context, pcID string) (*actor.PCSpec, error)  // Loaded at creation only
+    ListPCs(ctx context.Context) ([]string, error)
+}
+```
+
+### LLM Services (internal/services/) - Unchanged
 ```go
 // Provider-agnostic interface (unchanged)
 type LLMService interface {
@@ -988,62 +1043,90 @@ type LLMService interface {
 
 ### Handlers (internal/handlers/)
 ```go
-// Orchestrates: storage → prompt building → LLM
-// SIMPLER: No scenario/narrator lookups on hot path
+// Chat handler: Minimal storage lookups
 func (h *ChatHandler) handleChat(w, r) {
-    gs := loadGameState()  // Contains embedded scenario and narrator
+    // Load gamestate from Redis (contains embedded narrator and PC)
+    gs := h.storage.LoadGameState(ctx, sessionID)
     
-    // Fluent builder - readable and flexible
+    // Load scenario from filesystem
+    // TODO: Add caching layer to optimize this
+    scenario := h.storage.GetScenario(ctx, gs.Scenario)
+    
+    // Fluent builder - simple and clean
     messages, err := prompts.New().
-        WithGameState(gs).
+        WithGameState(gs).          // Narrator and PC embedded
+        WithScenario(scenario).     // Loaded per request
         WithUserMessage(msg, role).
         WithHistoryLimit(PromptHistoryLimit).
         Build()
     
-    response := llm.Chat(ctx, messages)
+    response := h.llm.Chat(ctx, messages)
 }
 
-// Create gamestate - load dependencies once
+// Create gamestate: Load narrator and PC once, keep scenario as filename
 func (h *GameStateHandler) createGameState(w, r) {
-    scenario := loadScenario()    // Load from storage
-    narrator := loadNarrator()    // Load from storage
-    pc := loadAndBuildPC()        // Load and construct
+    scenario := h.storage.GetScenario(ctx, scenarioFile)    // For initialization
+    narrator := h.storage.GetNarrator(ctx, narratorID)      // Load once - embed
+    pcSpec := h.storage.GetPCSpec(ctx, pcID)                // Load once - build and embed
+    pc := actor.NewPCFromSpec(pcSpec)
     
-    // Create gamestate with everything embedded
-    gs := state.NewGameState(scenario, narrator, modelName)
+    // Create gamestate with filename and embedded narrator
+    gs := state.NewGameState(scenarioFile, narrator, modelName)
     gs.PC = pc
-    // ... initialize other fields ...
+    gs.NPCs = scenario.NPCs
+    gs.Location = scenario.OpeningLocation
+    gs.WorldLocations = scenario.Locations
+    gs.Vars = scenario.Vars
     
-    // Save to storage - scenario and narrator are now part of gamestate
-    storage.SaveGameState(ctx, gs.ID, gs)
+    // Save to storage - narrator and PC embedded, scenario as filename
+    h.storage.SaveGameState(ctx, gs.ID, gs)
 }
 ```
 
-## Decision Matrix
-
-| Criteria | Option 1 (Handler) | Option 2 (LLM Layer) | **Option 3 (Builder)** | Option 4 (Helper) |
-|----------|-------------------|---------------------|----------------------|------------------|
-| Separation of Concerns | ⚠️ Mixed | ❌ Violates | ✅ Clean | ⚠️ Mixed |
-| Testability | ⚠️ Needs mocks | ❌ Complex | ✅ Easy | ⚠️ Needs mocks |
-| Reusability | ❌ Duplicated | ✅ Reusable | ✅ Reusable | ✅ Reusable |
-| Maintainability | ⚠️ Scattered | ❌ Wrong layer | ✅ Focused | ⚠️ Growing pkg |
-| LLM Independence | ✅ Yes | ❌ Coupled | ✅ Yes | ✅ Yes |
-| GameState Purity | ⚠️ Still complex | ⚠️ Still complex | ✅ Clean | ❌ Still complex |
-| Complexity | ✅ Simple | ❌ Complex | ⚠️ New abstraction | ✅ Simple |
-
 ## Success Criteria
 
-- ✅ `GameState` embeds Scenario and Narrator (loaded once at creation)
-- ✅ `GameState` has no I/O operations in helper methods
-- ✅ `GameState` has no formatting logic
-- ✅ Chat handlers have zero storage lookups (everything from gamestate)
-- ✅ Prompt building is in `pkg/prompts` package
-- ✅ Prompt building is tested in isolation
-- ✅ LLM services remain provider-agnostic
-- ✅ All existing tests pass
-- ✅ Anthropic system message handling still works
-- ✅ Code is easier to understand and modify
-- ✅ Performance improved (no I/O on hot path)
+### ✅ Completed (from storage refactor)
+- ✅ Clean storage layer in `internal/storage` package
+- ✅ Domain packages (`pkg/*`) have no file I/O
+- ✅ Storage returns `PCSpec`, domain builds `PC` with constructor
+- ✅ Unified `Storage` interface for all operations
+
+### 🎯 To be completed (this refactor)
+
+**Phase 0 - GameState Embedding:**
+- [ ] GameState embeds `*scenario.Narrator` (full object)
+- [ ] GameState keeps `Scenario` as string (filename)
+- [ ] GameState embeds `*actor.PC` (may already be done)
+- [ ] `NewGameState()` accepts scenario filename and narrator object
+- [ ] `GetStatePrompt(scenario)` keeps scenario parameter
+- [ ] `GetContingencyPrompts(scenario)` keeps scenario parameter
+- [ ] `LoadScene(scenario, sceneName)` keeps scenario parameter
+- [ ] Gamestate creation handler loads and embeds narrator
+- [ ] Chat handlers load scenario on each request (add TODO for caching)
+- [ ] Chat handlers have no narrator lookups (embedded in gamestate)
+
+**Phase 1 - Prompt Builder:**
+- [ ] `GameState.GetChatMessages()` removed (moved to prompt builder)
+- [ ] `GameState` has no formatting logic
+- [ ] Prompt building is in `pkg/prompts` package
+- [ ] Prompt building is tested in isolation
+- [ ] Builder receives scenario as parameter, gets narrator from embedded GameState
+
+**Phase 2 - Handler Updates:**
+- [ ] Chat handlers load gamestate + scenario (no narrator lookup)
+- [ ] Gamestate creation loads narrator once and embeds it
+- [ ] Gamestate creation keeps scenario as filename reference
+- [ ] All handler tests updated
+- [ ] TODO comments added for scenario caching optimization
+
+**Phase 3 - Validation:**
+- [ ] LLM services remain provider-agnostic
+- [ ] All existing tests pass
+- [ ] Anthropic system message handling still works
+- [ ] Narrator remains stable for running games (doesn't change mid-game)
+- [ ] Scenarios can be updated and games see changes (desired behavior)
+- [ ] Redis storage size acceptable
+- [ ] Code is easier to understand and modify
 
 ## Future Enhancements
 

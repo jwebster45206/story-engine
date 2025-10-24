@@ -772,7 +772,7 @@ func TestGameState_ClearStoryEventQueue(t *testing.T) {
 
 func TestGameState_StoryEventQueue_Persistence(t *testing.T) {
 	// Test that story event queue persists through serialization/deserialization
-	gs := NewGameState("test.json", "test-model")
+	gs := NewGameState("test.json", nil, "test-model")
 	gs.StoryEventQueue = []string{
 		"Event one",
 		"Event two",
@@ -803,7 +803,7 @@ func TestGameState_StoryEventQueue_Persistence(t *testing.T) {
 }
 
 func TestGameState_StoryEventQueue_EnqueueDequeue(t *testing.T) {
-	gs := NewGameState("test.json", "test-model")
+	gs := NewGameState("test.json", nil, "test-model")
 
 	// Initially empty
 	if len(gs.StoryEventQueue) != 0 {
@@ -893,7 +893,7 @@ func TestGameState_GetChatMessages_WithStoryEvents(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gs := NewGameState("test.json", "test-model")
+			gs := NewGameState("test.json", nil, "test-model")
 			gs.SceneName = "test_scene"
 			gs.Location = "test_location"
 
@@ -919,7 +919,7 @@ func TestGameState_GetChatMessages_WithStoryEvents(t *testing.T) {
 				t.Fatalf("Failed to load scene: %v", err)
 			}
 
-			messages, err := gs.GetChatMessages(tt.userMessage, chat.ChatRoleUser, scenario, nil, 10, tt.storyEventPrompt)
+			messages, err := gs.GetChatMessages(tt.userMessage, chat.ChatRoleUser, scenario, 10, tt.storyEventPrompt)
 			if err != nil {
 				t.Fatalf("GetChatMessages failed: %v", err)
 			}
@@ -977,7 +977,7 @@ func TestGameState_GetChatMessages_WithStoryEvents(t *testing.T) {
 func TestGameState_GetChatMessages_StoryEventPosition(t *testing.T) {
 	// This test specifically validates that story events are injected at the correct position:
 	// After the user's message but before the final system reminders
-	gs := NewGameState("test.json", "test-model")
+	gs := NewGameState("test.json", nil, "test-model")
 	gs.SceneName = "test_scene"
 	gs.Location = "test_location"
 
@@ -1006,7 +1006,7 @@ func TestGameState_GetChatMessages_StoryEventPosition(t *testing.T) {
 	storyEventPrompt := "STORY EVENT: A dragon appears!"
 	userMessage := "I draw my sword"
 
-	messages, err := gs.GetChatMessages(userMessage, chat.ChatRoleUser, scenario, nil, 10, storyEventPrompt)
+	messages, err := gs.GetChatMessages(userMessage, chat.ChatRoleUser, scenario, 10, storyEventPrompt)
 	if err != nil {
 		t.Fatalf("GetChatMessages failed: %v", err)
 	}
@@ -1048,7 +1048,7 @@ func TestGameState_GetChatMessages_StoryEventPosition(t *testing.T) {
 }
 
 func TestGameState_GetChatMessages_NoStoryEventWhenEmpty(t *testing.T) {
-	gs := NewGameState("test.json", "test-model")
+	gs := NewGameState("test.json", nil, "test-model")
 	gs.SceneName = "test_scene"
 	gs.Location = "test_location"
 
@@ -1074,7 +1074,7 @@ func TestGameState_GetChatMessages_NoStoryEventWhenEmpty(t *testing.T) {
 		t.Fatalf("Failed to load scene: %v", err)
 	}
 
-	messages, err := gs.GetChatMessages("I look around", chat.ChatRoleUser, scenario, nil, 10, "")
+	messages, err := gs.GetChatMessages("I look around", chat.ChatRoleUser, scenario, 10, "")
 	if err != nil {
 		t.Fatalf("GetChatMessages failed: %v", err)
 	}

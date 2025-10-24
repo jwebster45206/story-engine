@@ -19,7 +19,7 @@ type GameState struct {
 	ModelName          string                       `json:"model_name,omitempty" `     // Name of the large language model driving gameplay
 	Scenario           string                       `json:"scenario,omitempty" `       // Filename of the scenario being played. Ex: "foo_scenario.json"
 	SceneName          string                       `json:"scene_name,omitempty" `     // Current scene name in the scenario, if applicable
-	NarratorID         string                       `json:"narrator_id,omitempty"`     // Override narrator for this game session
+	Narrator           *scenario.Narrator           `json:"narrator,omitempty"`        // Embedded narrator for this game session (loaded once at creation)
 	PC                 *actor.PC                    `json:"pc,omitempty"`              // Player Character for this game session
 	NPCs               map[string]actor.NPC         `json:"npcs,omitempty" `           // All NPCs in the game world
 	WorldLocations     map[string]scenario.Location `json:"locations,omitempty" `      // Current locations in the game world
@@ -36,11 +36,12 @@ type GameState struct {
 	UpdatedAt          time.Time                    `json:"updated_at" `
 }
 
-func NewGameState(scenarioFileName string, modelName string) *GameState {
+func NewGameState(scenarioFileName string, narrator *scenario.Narrator, modelName string) *GameState {
 	return &GameState{
 		ID:                 uuid.New(),
 		ModelName:          modelName,
 		Scenario:           scenarioFileName,
+		Narrator:           narrator, // Embed full narrator object
 		ChatHistory:        make([]chat.ChatMessage, 0),
 		TurnCounter:        0,
 		SceneTurnCounter:   0,
@@ -137,8 +138,8 @@ func (gs *GameState) GetContingencyPrompts(s *scenario.Scenario) []string {
 
 // GetChatMessages generates a "chat message" slice for LLM.
 // This slice includes all prompts and instructions to run the game.
-// narrator parameter is optional - pass nil if no narrator is desired
-func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, s *scenario.Scenario, narrator *scenario.Narrator, count int, storyEventPrompt string) ([]chat.ChatMessage, error) {
+// Uses the embedded narrator from GameState (loaded once at creation)
+func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, s *scenario.Scenario, count int, storyEventPrompt string) ([]chat.ChatMessage, error) {
 	if gs == nil {
 		return nil, fmt.Errorf("game state is nil")
 	}
@@ -149,8 +150,8 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 		return nil, fmt.Errorf("error generating state prompt: %w", err)
 	}
 
-	// Build system prompt with narrator and PC
-	systemPrompt := scenario.BuildSystemPrompt(narrator, gs.PC)
+	// Build system prompt with embedded narrator and PC
+	systemPrompt := scenario.BuildSystemPrompt(gs.Narrator, gs.PC)
 
 	// Add rating prompt
 	systemPrompt += "\n\nContent Rating: " + s.Rating

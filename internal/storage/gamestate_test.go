@@ -14,7 +14,7 @@ func TestMockStorage_SaveAndLoadGameState(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a test gamestate
-	gs := state.NewGameState("test_scenario.json", "test_model")
+	gs := state.NewGameState("test_scenario.json", nil, "test_model")
 	gs.Location = "tavern"
 	gs.Inventory = []string{"sword", "shield"}
 
@@ -68,7 +68,7 @@ func TestMockStorage_DeleteGameState(t *testing.T) {
 	ctx := context.Background()
 
 	// Create and save a gamestate
-	gs := state.NewGameState("test_scenario.json", "test_model")
+	gs := state.NewGameState("test_scenario.json", nil, "test_model")
 	err := mockStorage.SaveGameState(ctx, gs.ID, gs)
 	if err != nil {
 		t.Fatalf("Failed to save gamestate: %v", err)
@@ -101,7 +101,7 @@ func TestMockStorage_UpdateGameState(t *testing.T) {
 	ctx := context.Background()
 
 	// Create and save initial gamestate
-	gs := state.NewGameState("test_scenario.json", "test_model")
+	gs := state.NewGameState("test_scenario.json", nil, "test_model")
 	gs.Location = "start"
 	err := mockStorage.SaveGameState(ctx, gs.ID, gs)
 	if err != nil {

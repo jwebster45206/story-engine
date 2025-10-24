@@ -244,9 +244,6 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Create a new GameState
-	gs := state.NewGameState(req.Scenario, h.modelName)
-
 	// Get initial gamestate values from scenario
 	s, err := h.storage.GetScenario(r.Context(), req.Scenario)
 	if err != nil {
@@ -278,6 +275,24 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Determine which narrator to use and load it ONCE (will be embedded in gamestate)
+	narratorID := req.NarratorID // Use request override if provided
+	if narratorID == "" {
+		narratorID = s.NarratorID // Fall back to scenario's narrator
+	}
+	var narrator *scenario.Narrator
+	if narratorID != "" {
+		narrator, err = h.storage.GetNarrator(r.Context(), narratorID)
+		if err != nil {
+			h.logger.Warn("Failed to load narrator, continuing without narrator", "narrator_id", narratorID, "error", err)
+		} else {
+			h.logger.Debug("Loaded narrator for embedding", "narrator_id", narratorID, "name", narrator.Name, "source", map[bool]string{true: "request", false: "scenario"}[req.NarratorID != ""])
+		}
+	}
+
+	// Create a new GameState with embedded narrator
+	gs := state.NewGameState(req.Scenario, narrator, h.modelName)
+
 	// Initialize game state with scenario-level values
 	gs.NPCs = s.NPCs
 	gs.Location = s.OpeningLocation
@@ -287,16 +302,6 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	// Scenario-level prompts are already filtered and added in GetContingencyPrompts()
 	// so we don't copy them here to avoid duplication
 	gs.ContingencyPrompts = make([]string, 0)
-
-	// Determine which narrator to use
-	narratorID := req.NarratorID // Use request override if provided
-	if narratorID == "" {
-		narratorID = s.NarratorID // Fall back to scenario's narrator
-	}
-	if narratorID != "" {
-		gs.NarratorID = narratorID
-		h.logger.Debug("Using narrator", "narrator_id", narratorID, "source", map[bool]string{true: "request", false: "scenario"}[req.NarratorID != ""])
-	}
 
 	// Determine which PC to use
 	pcID := req.PCID // Use request override if provided

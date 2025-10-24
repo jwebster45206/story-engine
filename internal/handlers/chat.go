@@ -137,6 +137,8 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 	}
 
 	// Get Scenario for the chat
+	// Load scenario from filesystem
+	// TODO: Add caching layer to reduce filesystem I/O
 	loadedScenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
 	if err != nil {
 		h.logger.Error("Error loading scenario for chat", "error", err, "scenario_filename", gs.Scenario)
@@ -150,21 +152,8 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		return
 	}
 
-	// Load narrator if specified (gamestate override or scenario default)
-	narratorID := gs.NarratorID
-	if narratorID == "" {
-		narratorID = loadedScenario.NarratorID
-	}
-	var narrator *scenario.Narrator
-	if narratorID != "" {
-		narrator, err = h.storage.GetNarrator(r.Context(), narratorID)
-		if err != nil {
-			// Log warning but continue without narrator
-			h.logger.Warn("Failed to load narrator", "narrator_id", narratorID, "error", err)
-		} else if narrator != nil {
-			h.logger.Debug("Successfully loaded narrator", "id", narrator.ID, "name", narrator.Name, "prompts", len(narrator.Prompts))
-		}
-	}
+	// Narrator is embedded in gamestate (loaded once at creation)
+	// No need to load narrator separately - it's already in gs.Narrator
 
 	cmdResult, err := gs.TryHandleCommand(request.Message)
 	if err != nil {
@@ -198,7 +187,7 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
 	}
 
-	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, loadedScenario, narrator, PromptHistoryLimit, storyEventPrompt)
+	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, loadedScenario, PromptHistoryLimit, storyEventPrompt)
 	if err != nil {
 		h.logger.Error("Error getting chat messages", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -326,6 +315,8 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 	}
 
 	// Get Scenario for the chat
+	// Load scenario from filesystem
+	// TODO: Add caching layer to reduce filesystem I/O
 	loadedScenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
 	if err != nil {
 		h.logger.Error("Error loading scenario for chat", "error", err, "scenario_filename", gs.Scenario)
@@ -340,21 +331,8 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		return
 	}
 
-	// Load narrator if specified (gamestate override or scenario default)
-	narratorID := gs.NarratorID
-	if narratorID == "" {
-		narratorID = loadedScenario.NarratorID
-	}
-	var narrator *scenario.Narrator
-	if narratorID != "" {
-		narrator, err = h.storage.GetNarrator(r.Context(), narratorID)
-		if err != nil {
-			// Log warning but continue without narrator
-			h.logger.Warn("Failed to load narrator", "narrator_id", narratorID, "error", err)
-		} else if narrator != nil {
-			h.logger.Debug("Successfully loaded narrator", "id", narrator.ID, "name", narrator.Name, "prompts", len(narrator.Prompts))
-		}
-	}
+	// Narrator is embedded in gamestate (loaded once at creation)
+	// No need to load narrator separately - it's already in gs.Narrator
 
 	cmdResult, err := gs.TryHandleCommand(request.Message)
 	if err != nil {
@@ -388,7 +366,7 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
 	}
 
-	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, loadedScenario, narrator, PromptHistoryLimit, storyEventPrompt)
+	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, loadedScenario, PromptHistoryLimit, storyEventPrompt)
 	if err != nil {
 		h.logger.Error("Error getting chat messages", "error", err)
 		w.Header().Set("Content-Type", "application/json")
