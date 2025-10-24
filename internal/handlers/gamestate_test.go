@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
@@ -20,7 +20,7 @@ func TestGameStateHandler_Create(t *testing.T) {
 		Level: slog.LevelError, // Reduce noise in tests
 	}))
 
-	mockStorage := services.NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
 	// Test creating a new game state
@@ -58,7 +58,7 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 		Level: slog.LevelError,
 	}))
 
-	mockStorage := services.NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
 	tests := []struct {
@@ -285,7 +285,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 		Level: slog.LevelError,
 	}))
 
-	mockStorage := services.NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
 	// Create a test game state
@@ -359,7 +359,7 @@ func TestGameStateHandler_Delete(t *testing.T) {
 		Level: slog.LevelError,
 	}))
 
-	mockStorage := services.NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
 	// Create a test game state
@@ -429,7 +429,7 @@ func TestGameStateHandler_MethodNotAllowed(t *testing.T) {
 		Level: slog.LevelError,
 	}))
 
-	mockStorage := services.NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
 	// Test unsupported methods
@@ -463,7 +463,7 @@ func TestGameStateHandler_MissingID(t *testing.T) {
 		Level: slog.LevelError,
 	}))
 
-	mockStorage := services.NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
 	tests := []struct {

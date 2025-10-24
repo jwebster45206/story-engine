@@ -7,6 +7,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/jwebster45206/story-engine/internal/storage"
+	"github.com/jwebster45206/story-engine/pkg/actor"
 )
 
 // testPCDataDir is the relative path from the test location to the PC data
@@ -14,7 +17,59 @@ const testPCDataDir = "../../data/pcs"
 
 func TestPCHandler_ListPCs(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	handler := NewPCHandler(log, testPCDataDir)
+	mockStorage := storage.NewMockStorage()
+
+	// Add test PC specs with just IDs - MockStorage will handle path matching
+	mockStorage.AddPCSpec("pirate_captain", &actor.PCSpec{
+		ID:       "pirate_captain",
+		Name:     "Captain Jack Sparrow",
+		Class:    "rogue",
+		Level:    5,
+		Race:     "human",
+		Pronouns: "he/him",
+		Stats: actor.Stats5e{
+			Strength:     10,
+			Dexterity:    18,
+			Constitution: 12,
+			Intelligence: 13,
+			Wisdom:       11,
+			Charisma:     16,
+		},
+	})
+	mockStorage.AddPCSpec("classic", &actor.PCSpec{
+		ID:       "classic",
+		Name:     "Adventurer",
+		Class:    "fighter",
+		Level:    1,
+		Race:     "human",
+		Pronouns: "they/them",
+		Stats: actor.Stats5e{
+			Strength:     15,
+			Dexterity:    14,
+			Constitution: 13,
+			Intelligence: 12,
+			Wisdom:       10,
+			Charisma:     8,
+		},
+	})
+	mockStorage.AddPCSpec("alexandra_kane", &actor.PCSpec{
+		ID:       "alexandra_kane",
+		Name:     "Alexandra Kane",
+		Class:    "wizard",
+		Level:    3,
+		Race:     "elf",
+		Pronouns: "she/her",
+		Stats: actor.Stats5e{
+			Strength:     8,
+			Dexterity:    14,
+			Constitution: 10,
+			Intelligence: 18,
+			Wisdom:       12,
+			Charisma:     13,
+		},
+	})
+
+	handler := NewPCHandler(log, mockStorage, testPCDataDir)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/pcs", nil)
 	w := httptest.NewRecorder()
@@ -60,7 +115,20 @@ func TestPCHandler_ListPCs(t *testing.T) {
 
 func TestPCHandler_GetPC(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	handler := NewPCHandler(log, testPCDataDir)
+	mockStorage := storage.NewMockStorage()
+	mockStorage.AddPCSpec("pirate_captain", &actor.PCSpec{
+		ID:    "pirate_captain",
+		Name:  "Captain Jack Sparrow",
+		Class: "rogue",
+		Level: 5,
+		HP:    35,
+		MaxHP: 35,
+		Stats: actor.Stats5e{
+			Strength:  10,
+			Dexterity: 18,
+		},
+	})
+	handler := NewPCHandler(log, mockStorage, testPCDataDir)
 
 	// Test with pirate_captain which we know exists
 	req := httptest.NewRequest(http.MethodGet, "/v1/pcs/pirate_captain", nil)
@@ -96,7 +164,16 @@ func TestPCHandler_GetPC(t *testing.T) {
 
 func TestPCHandler_GetPC_Classic(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	handler := NewPCHandler(log, testPCDataDir)
+	mockStorage := storage.NewMockStorage()
+	mockStorage.AddPCSpec("classic", &actor.PCSpec{
+		ID:    "classic",
+		Name:  "Adventurer",
+		Class: "fighter",
+		Level: 1,
+		HP:    10,
+		MaxHP: 10,
+	})
+	handler := NewPCHandler(log, mockStorage, testPCDataDir)
 
 	// Test with classic which we know exists
 	req := httptest.NewRequest(http.MethodGet, "/v1/pcs/classic", nil)
@@ -124,7 +201,8 @@ func TestPCHandler_GetPC_Classic(t *testing.T) {
 
 func TestPCHandler_GetPC_NotFound(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	handler := NewPCHandler(log, testPCDataDir)
+	mockStorage := storage.NewMockStorage()
+	handler := NewPCHandler(log, mockStorage, testPCDataDir)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/pcs/nonexistent", nil)
 	w := httptest.NewRecorder()
@@ -138,7 +216,8 @@ func TestPCHandler_GetPC_NotFound(t *testing.T) {
 
 func TestPCHandler_GetPC_InvalidID(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	handler := NewPCHandler(log, testPCDataDir)
+	mockStorage := storage.NewMockStorage()
+	handler := NewPCHandler(log, mockStorage, testPCDataDir)
 
 	testCases := []struct {
 		name string
@@ -164,7 +243,8 @@ func TestPCHandler_GetPC_InvalidID(t *testing.T) {
 
 func TestPCHandler_MethodNotAllowed(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	handler := NewPCHandler(log, testPCDataDir)
+	mockStorage := storage.NewMockStorage()
+	handler := NewPCHandler(log, mockStorage, testPCDataDir)
 
 	methods := []string{http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch}
 	for _, method := range methods {
@@ -183,7 +263,12 @@ func TestPCHandler_MethodNotAllowed(t *testing.T) {
 
 func TestPCHandler_ListPCs_WithTrailingSlash(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	handler := NewPCHandler(log, testPCDataDir)
+	mockStorage := storage.NewMockStorage()
+	mockStorage.AddPCSpec("test_pc", &actor.PCSpec{
+		ID:   "test_pc",
+		Name: "Test PC",
+	})
+	handler := NewPCHandler(log, mockStorage, testPCDataDir)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/pcs/", nil)
 	w := httptest.NewRecorder()

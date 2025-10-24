@@ -4,11 +4,9 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/internal/storage"
 )
 
 // NarratorDataDir is the default path to the narrator data directory
@@ -16,37 +14,25 @@ const NarratorDataDir = "data/narrators"
 
 type NarratorHandler struct {
 	log     *slog.Logger
-	dataDir string
+	storage storage.Storage
 }
 
 // ListNarrators lists all available narrator files
 func (h *NarratorHandler) ListNarrators(w http.ResponseWriter, r *http.Request) {
-	entries, err := os.ReadDir(h.dataDir)
+	narratorIDs, err := h.storage.ListNarrators(r.Context())
 	if err != nil {
-		h.log.Error("Failed to read narrators directory", "error", err, "dir", h.dataDir)
+		h.log.Error("Failed to list narrators", "error", err)
 		http.Error(w, "Failed to list narrators", http.StatusInternalServerError)
 		return
 	}
 
 	// Initialize as empty slice instead of nil
 	narratorList := make([]map[string]interface{}, 0)
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-
-		// Read JSON directly
-		narratorPath := filepath.Join(h.dataDir, entry.Name())
-		jsonData, err := os.ReadFile(narratorPath)
+	for _, narratorID := range narratorIDs {
+		// Load each narrator to get details
+		narrator, err := h.storage.GetNarrator(r.Context(), narratorID)
 		if err != nil {
-			h.log.Warn("Failed to read narrator file", "error", err, "file", entry.Name())
-			continue
-		}
-
-		// Parse the narrator
-		var narrator scenario.Narrator
-		if err := json.Unmarshal(jsonData, &narrator); err != nil {
-			h.log.Warn("Failed to parse narrator file", "error", err, "file", entry.Name())
+			h.log.Warn("Failed to load narrator", "error", err, "id", narratorID)
 			continue
 		}
 
@@ -73,10 +59,10 @@ func (h *NarratorHandler) ListNarrators(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func NewNarratorHandler(log *slog.Logger, dataDir string) *NarratorHandler {
+func NewNarratorHandler(log *slog.Logger, storage storage.Storage) *NarratorHandler {
 	return &NarratorHandler{
 		log:     log,
-		dataDir: dataDir,
+		storage: storage,
 	}
 }
 
@@ -108,35 +94,16 @@ func (h *NarratorHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Construct the file path
-	filename := id + ".json"
-	narratorPath := filepath.Join(h.dataDir, filename)
-
-	// Check if file exists
-	if _, err := os.Stat(narratorPath); os.IsNotExist(err) {
-		http.Error(w, "Narrator not found", http.StatusNotFound)
-		return
-	}
-
-	// Read and parse the narrator file directly
-	jsonData, err := os.ReadFile(narratorPath)
+	// Load the narrator
+	narrator, err := h.storage.GetNarrator(r.Context(), id)
 	if err != nil {
-		h.log.Error("Failed to read narrator file", "error", err, "id", id)
+		h.log.Error("Failed to load narrator", "error", err, "id", id)
 		http.Error(w, "Failed to load narrator", http.StatusInternalServerError)
 		return
 	}
 
-	var narrator scenario.Narrator
-	if err := json.Unmarshal(jsonData, &narrator); err != nil {
-		h.log.Error("Failed to parse narrator file", "error", err, "id", id)
-		http.Error(w, "Failed to parse narrator", http.StatusInternalServerError)
-		return
-	}
-
-	// Validate narrator ID matches filename
-	if narrator.ID != id {
-		h.log.Error("Narrator ID mismatch", "file_id", id, "json_id", narrator.ID)
-		http.Error(w, "Narrator ID mismatch", http.StatusInternalServerError)
+	if narrator == nil {
+		http.Error(w, "Narrator not found", http.StatusNotFound)
 		return
 	}
 

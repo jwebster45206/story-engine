@@ -61,24 +61,15 @@ type PC struct {
 	Actor *d20.Actor // Built at runtime from PCSpec
 }
 
-// LoadPC loads a PC from a JSON file and builds its d20.Actor
-// The filename (without .json extension) overrides any ID in the JSON
-func LoadPC(path string) (*PC, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read PC file: %w", err)
+// NewPCFromSpec creates a PC from a PCSpec
+// This is the preferred way to construct PCs after loading from storage
+func NewPCFromSpec(spec *PCSpec) (*PC, error) {
+	if spec == nil {
+		return nil, fmt.Errorf("spec cannot be nil")
 	}
-
-	var spec PCSpec
-	if err := json.Unmarshal(data, &spec); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal PC spec: %w", err)
-	}
-
-	// Filename overrides any ID in the JSON
-	spec.ID = strings.TrimSuffix(filepath.Base(path), ".json")
 
 	pc := &PC{
-		Spec: &spec,
+		Spec: spec,
 	}
 
 	// Build d20.Actor from PCSpec
@@ -108,6 +99,26 @@ func LoadPC(path string) (*PC, error) {
 
 	pc.Actor = actor
 	return pc, nil
+}
+
+// LoadPC loads a PC from a JSON file and builds its d20.Actor
+// DEPRECATED: Use storage.GetPCSpec + NewPCFromSpec instead
+// The filename (without .json extension) overrides any ID in the JSON
+func LoadPC(path string) (*PC, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read PC file: %w", err)
+	}
+
+	var spec PCSpec
+	if err := json.Unmarshal(data, &spec); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal PC spec: %w", err)
+	}
+
+	// Filename overrides any ID in the JSON
+	spec.ID = strings.TrimSuffix(filepath.Base(path), ".json")
+
+	return NewPCFromSpec(&spec)
 }
 
 // MarshalJSON converts PC back to PCSpec format for API responses

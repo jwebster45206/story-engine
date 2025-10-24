@@ -919,7 +919,7 @@ func TestGameState_GetChatMessages_WithStoryEvents(t *testing.T) {
 				t.Fatalf("Failed to load scene: %v", err)
 			}
 
-			messages, err := gs.GetChatMessages(tt.userMessage, chat.ChatRoleUser, scenario, 10, tt.storyEventPrompt)
+			messages, err := gs.GetChatMessages(tt.userMessage, chat.ChatRoleUser, scenario, nil, 10, tt.storyEventPrompt)
 			if err != nil {
 				t.Fatalf("GetChatMessages failed: %v", err)
 			}
@@ -1006,7 +1006,7 @@ func TestGameState_GetChatMessages_StoryEventPosition(t *testing.T) {
 	storyEventPrompt := "STORY EVENT: A dragon appears!"
 	userMessage := "I draw my sword"
 
-	messages, err := gs.GetChatMessages(userMessage, chat.ChatRoleUser, scenario, 10, storyEventPrompt)
+	messages, err := gs.GetChatMessages(userMessage, chat.ChatRoleUser, scenario, nil, 10, storyEventPrompt)
 	if err != nil {
 		t.Fatalf("GetChatMessages failed: %v", err)
 	}
@@ -1074,7 +1074,7 @@ func TestGameState_GetChatMessages_NoStoryEventWhenEmpty(t *testing.T) {
 		t.Fatalf("Failed to load scene: %v", err)
 	}
 
-	messages, err := gs.GetChatMessages("I look around", chat.ChatRoleUser, scenario, 10, "")
+	messages, err := gs.GetChatMessages("I look around", chat.ChatRoleUser, scenario, nil, 10, "")
 	if err != nil {
 		t.Fatalf("GetChatMessages failed: %v", err)
 	}

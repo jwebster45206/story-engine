@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
@@ -22,7 +23,7 @@ import (
 type ChatHandler struct {
 	llmService services.LLMService
 	logger     *slog.Logger
-	storage    services.Storage
+	storage    storage.Storage
 
 	// For background gamestate delta cancellation
 	metaCancelMu sync.Mutex
@@ -30,7 +31,7 @@ type ChatHandler struct {
 }
 
 // NewChatHandler creates a new chat handler
-func NewChatHandler(llmService services.LLMService, logger *slog.Logger, storage services.Storage) *ChatHandler {
+func NewChatHandler(llmService services.LLMService, logger *slog.Logger, storage storage.Storage) *ChatHandler {
 	return &ChatHandler{
 		llmService: llmService,
 		logger:     logger,
@@ -136,7 +137,7 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 	}
 
 	// Get Scenario for the chat
-	scenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
+	loadedScenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
 	if err != nil {
 		h.logger.Error("Error loading scenario for chat", "error", err, "scenario_filename", gs.Scenario)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -147,6 +148,22 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 			h.logger.Error("Error encoding error response", "error", err)
 		}
 		return
+	}
+
+	// Load narrator if specified (gamestate override or scenario default)
+	narratorID := gs.NarratorID
+	if narratorID == "" {
+		narratorID = loadedScenario.NarratorID
+	}
+	var narrator *scenario.Narrator
+	if narratorID != "" {
+		narrator, err = h.storage.GetNarrator(r.Context(), narratorID)
+		if err != nil {
+			// Log warning but continue without narrator
+			h.logger.Warn("Failed to load narrator", "narrator_id", narratorID, "error", err)
+		} else if narrator != nil {
+			h.logger.Debug("Successfully loaded narrator", "id", narrator.ID, "name", narrator.Name, "prompts", len(narrator.Prompts))
+		}
 	}
 
 	cmdResult, err := gs.TryHandleCommand(request.Message)
@@ -181,7 +198,7 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
 	}
 
-	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, scenario, PromptHistoryLimit, storyEventPrompt)
+	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, loadedScenario, narrator, PromptHistoryLimit, storyEventPrompt)
 	if err != nil {
 		h.logger.Error("Error getting chat messages", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -309,7 +326,7 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 	}
 
 	// Get Scenario for the chat
-	scenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
+	loadedScenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
 	if err != nil {
 		h.logger.Error("Error loading scenario for chat", "error", err, "scenario_filename", gs.Scenario)
 		w.Header().Set("Content-Type", "application/json")
@@ -321,6 +338,22 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 			h.logger.Error("Error encoding error response", "error", err)
 		}
 		return
+	}
+
+	// Load narrator if specified (gamestate override or scenario default)
+	narratorID := gs.NarratorID
+	if narratorID == "" {
+		narratorID = loadedScenario.NarratorID
+	}
+	var narrator *scenario.Narrator
+	if narratorID != "" {
+		narrator, err = h.storage.GetNarrator(r.Context(), narratorID)
+		if err != nil {
+			// Log warning but continue without narrator
+			h.logger.Warn("Failed to load narrator", "narrator_id", narratorID, "error", err)
+		} else if narrator != nil {
+			h.logger.Debug("Successfully loaded narrator", "id", narrator.ID, "name", narrator.Name, "prompts", len(narrator.Prompts))
+		}
 	}
 
 	cmdResult, err := gs.TryHandleCommand(request.Message)
@@ -355,7 +388,7 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
 	}
 
-	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, scenario, PromptHistoryLimit, storyEventPrompt)
+	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, loadedScenario, narrator, PromptHistoryLimit, storyEventPrompt)
 	if err != nil {
 		h.logger.Error("Error getting chat messages", "error", err)
 		w.Header().Set("Content-Type", "application/json")

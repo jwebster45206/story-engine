@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
@@ -21,12 +21,12 @@ type ErrorResponse struct {
 }
 
 type GameStateHandler struct {
-	storage   services.Storage
+	storage   storage.Storage
 	logger    *slog.Logger
 	modelName string
 }
 
-func NewGameStateHandler(modelName string, storage services.Storage, logger *slog.Logger) *GameStateHandler {
+func NewGameStateHandler(modelName string, storage storage.Storage, logger *slog.Logger) *GameStateHandler {
 	return &GameStateHandler{
 		storage:   storage,
 		logger:    logger,
@@ -307,20 +307,27 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		pcID = "classic" // Final fallback to classic
 	}
 
+	var loadedPC *actor.PC
 	pcPath := filepath.Join("data/pcs", pcID+".json")
-	loadedPC, pcErr := actor.LoadPC(pcPath)
+	pcSpec, pcErr := h.storage.GetPCSpec(r.Context(), pcPath)
 	if pcErr != nil {
-		h.logger.Warn("Failed to load PC, trying fallback to classic", "pc_id", pcID, "error", pcErr)
+		h.logger.Warn("Failed to load PC spec, trying fallback to classic", "pc_id", pcID, "error", pcErr)
 		// Try fallback to classic
-		loadedPC, pcErr = actor.LoadPC("data/pcs/classic.json")
+		pcSpec, pcErr = h.storage.GetPCSpec(r.Context(), "data/pcs/classic.json")
 		if pcErr != nil {
 			h.logger.Error("Failed to load fallback PC 'classic'", "error", pcErr)
 			// Continue without PC rather than failing - PC is optional for now
 		}
 	}
-	if loadedPC != nil {
-		gs.PC = loadedPC
-		h.logger.Debug("PC loaded successfully", "pc_id", loadedPC.Spec.ID, "name", loadedPC.Spec.Name, "source", map[bool]string{true: "request", false: "scenario"}[req.PCID != ""])
+	if pcSpec != nil {
+		var err error
+		loadedPC, err = actor.NewPCFromSpec(pcSpec)
+		if err != nil {
+			h.logger.Error("Failed to construct PC from spec", "pc_id", pcSpec.ID, "error", err)
+		} else {
+			gs.PC = loadedPC
+			h.logger.Debug("PC loaded successfully", "pc_id", loadedPC.Spec.ID, "name", loadedPC.Spec.Name, "source", map[bool]string{true: "request", false: "scenario"}[req.PCID != ""])
+		}
 	}
 
 	// Merge PC starting inventory with scenario starting inventory
