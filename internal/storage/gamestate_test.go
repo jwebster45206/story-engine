@@ -9,30 +9,6 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
-func TestRedisStorage_GameState(t *testing.T) {
-	// Note: These tests require a running Redis instance
-	// They are integration tests and should be run with appropriate setup
-	t.Skip("Integration test - requires Redis instance")
-
-	// Example test structure:
-	// mockStorage := NewMockStorage()
-	// ctx := context.Background()
-
-	// gs := state.NewGameState("test_scenario.json", "test_model")
-	// err := mockStorage.SaveGameState(ctx, gs.ID, gs)
-	// if err != nil {
-	// 	t.Fatalf("Failed to save gamestate: %v", err)
-	// }
-
-	// loaded, err := mockStorage.LoadGameState(ctx, gs.ID)
-	// if err != nil {
-	// 	t.Fatalf("Failed to load gamestate: %v", err)
-	// }
-	// if loaded == nil {
-	// 	t.Fatal("Expected non-nil gamestate")
-	// }
-}
-
 func TestMockStorage_SaveAndLoadGameState(t *testing.T) {
 	mockStorage := NewMockStorage()
 	ctx := context.Background()
