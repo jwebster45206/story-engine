@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/jwebster45206/d20"
@@ -99,26 +97,6 @@ func NewPCFromSpec(spec *PCSpec) (*PC, error) {
 
 	pc.Actor = actor
 	return pc, nil
-}
-
-// LoadPC loads a PC from a JSON file and builds its d20.Actor
-// DEPRECATED: Use storage.GetPCSpec + NewPCFromSpec instead
-// The filename (without .json extension) overrides any ID in the JSON
-func LoadPC(path string) (*PC, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read PC file: %w", err)
-	}
-
-	var spec PCSpec
-	if err := json.Unmarshal(data, &spec); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal PC spec: %w", err)
-	}
-
-	// Filename overrides any ID in the JSON
-	spec.ID = strings.TrimSuffix(filepath.Base(path), ".json")
-
-	return NewPCFromSpec(&spec)
 }
 
 // MarshalJSON converts PC back to PCSpec format for API responses
