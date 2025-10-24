@@ -31,11 +31,11 @@ type ChatHandler struct {
 }
 
 // NewChatHandler creates a new chat handler
-func NewChatHandler(llmService services.LLMService, logger *slog.Logger, storage storage.Storage) *ChatHandler {
+func NewChatHandler(logger *slog.Logger, storage storage.Storage, llmService services.LLMService) *ChatHandler {
 	return &ChatHandler{
-		llmService: llmService,
 		logger:     logger,
 		storage:    storage,
+		llmService: llmService,
 		metaCancel: make(map[uuid.UUID]context.CancelFunc),
 	}
 }

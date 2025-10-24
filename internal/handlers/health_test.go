@@ -55,7 +55,7 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 			storage := tt.setupStorage()
 			// Create a mock LLM service for the handler (even though we don't use it in health check)
 			mockLLM := services.NewMockLLMAPI()
-			handler := NewHealthHandler(storage, mockLLM, logger)
+			handler := NewHealthHandler(logger, storage, mockLLM)
 
 			req := httptest.NewRequest(http.MethodGet, "/health", nil)
 			rr := httptest.NewRecorder()
@@ -116,7 +116,7 @@ func TestHealthHandler_ResponseFormat(t *testing.T) {
 
 	mockLLM := services.NewMockLLMAPI()
 
-	handler := NewHealthHandler(mockStorage, mockLLM, logger)
+	handler := NewHealthHandler(logger, mockStorage, mockLLM)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()

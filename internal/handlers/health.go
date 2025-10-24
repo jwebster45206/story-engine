@@ -24,11 +24,11 @@ type HealthHandler struct {
 	logger     *slog.Logger
 }
 
-func NewHealthHandler(storage storage.Storage, llmService services.LLMService, logger *slog.Logger) *HealthHandler {
+func NewHealthHandler(logger *slog.Logger, storage storage.Storage, llmService services.LLMService) *HealthHandler {
 	return &HealthHandler{
+		logger:     logger,
 		storage:    storage,
 		llmService: llmService,
-		logger:     logger,
 	}
 }
 

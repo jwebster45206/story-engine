@@ -26,11 +26,11 @@ type GameStateHandler struct {
 	modelName string
 }
 
-func NewGameStateHandler(modelName string, storage storage.Storage, logger *slog.Logger) *GameStateHandler {
+func NewGameStateHandler(logger *slog.Logger, modelName string, storage storage.Storage) *GameStateHandler {
 	return &GameStateHandler{
-		storage:   storage,
 		logger:    logger,
 		modelName: modelName,
+		storage:   storage,
 	}
 }
 

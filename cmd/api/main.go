@@ -76,13 +76,13 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	healthHandler := handlers.NewHealthHandler(storageService, llmService, log)
+	healthHandler := handlers.NewHealthHandler(log, storageService, llmService)
 	mux.Handle("/health", healthHandler)
 
-	chatHandler := handlers.NewChatHandler(llmService, log, storageService)
+	chatHandler := handlers.NewChatHandler(log, storageService, llmService)
 	mux.Handle("/v1/chat", chatHandler)
 
-	gameStateHandler := handlers.NewGameStateHandler(cfg.ModelName, storageService, log)
+	gameStateHandler := handlers.NewGameStateHandler(log, cfg.ModelName, storageService)
 	mux.Handle("/v1/gamestate", gameStateHandler)
 	mux.Handle("/v1/gamestate/", gameStateHandler)
 
@@ -90,7 +90,7 @@ func main() {
 	mux.Handle("/v1/scenarios", scenarioHandler)
 	mux.Handle("/v1/scenarios/", scenarioHandler)
 
-	pcHandler := handlers.NewPCHandler(log, storageService, handlers.PCDataDir)
+	pcHandler := handlers.NewPCHandler(log, storageService)
 	mux.Handle("/v1/pcs", pcHandler)
 	mux.Handle("/v1/pcs/", pcHandler)
 

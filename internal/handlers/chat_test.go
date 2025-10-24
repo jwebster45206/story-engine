@@ -135,7 +135,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			}
 
 			// Create chat handler
-			handler := NewChatHandler(mockLLM, logger, mockSto)
+			handler := NewChatHandler(logger, mockSto, mockLLM)
 
 			// Prepare request body
 			var body []byte
@@ -270,7 +270,7 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
 
-	handler := NewChatHandler(mockLLM, logger, mockSto)
+	handler := NewChatHandler(logger, mockSto, mockLLM)
 	requestBody := chat.ChatRequest{
 		GameStateID: testGS.ID,
 		Message:     "Test message with special chars: !@#$%",
@@ -359,7 +359,7 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
 
-	handler := NewChatHandler(mockLLM, logger, mockSto)
+	handler := NewChatHandler(logger, mockSto, mockLLM)
 
 	// Test with missing Content-Type
 	requestBody := chat.ChatRequest{
@@ -505,7 +505,7 @@ func TestChatHandler_StreamingChat(t *testing.T) {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
 
-	handler := NewChatHandler(mockLLM, logger, mockSto)
+	handler := NewChatHandler(logger, mockSto, mockLLM)
 
 	t.Run("streaming request with unsupported provider", func(t *testing.T) {
 		requestBody := chat.ChatRequest{

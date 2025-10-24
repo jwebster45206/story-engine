@@ -3,8 +3,6 @@ package storage
 import (
 	"context"
 	"errors"
-	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -163,27 +161,16 @@ func (m *MockStorage) AddNarrator(narratorID string, n *scenario.Narrator) {
 	m.narrators[narratorID] = n
 }
 
-// GetPCSpec mocks getting a PC spec by path
-func (m *MockStorage) GetPCSpec(ctx context.Context, path string) (*actor.PCSpec, error) {
+// GetPCSpec mocks getting a PC spec by ID
+func (m *MockStorage) GetPCSpec(ctx context.Context, pcID string) (*actor.PCSpec, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Try exact match first
-	spec, exists := m.pcSpecs[path]
-	if exists {
-		return spec, nil
+	spec, exists := m.pcSpecs[pcID]
+	if !exists {
+		return nil, errors.New("PC spec not found")
 	}
-
-	// Try extracting ID from path and looking up by ID
-	// This handles cases where the handler constructs a path like "../../data/pcs/pirate_captain.json"
-	// but the test added it as just "pirate_captain"
-	id := strings.TrimSuffix(filepath.Base(path), ".json")
-	spec, exists = m.pcSpecs[id]
-	if exists {
-		return spec, nil
-	}
-
-	return nil, errors.New("PC spec not found")
+	return spec, nil
 }
 
 // ListPCs mocks listing PCs
@@ -192,19 +179,15 @@ func (m *MockStorage) ListPCs(ctx context.Context) ([]string, error) {
 	defer m.mu.RUnlock()
 
 	result := make([]string, 0, len(m.pcSpecs))
-	for key := range m.pcSpecs {
-		// Extract just the ID (filename without extension)
-		// If key is already just an ID (e.g., "pirate_captain"), use it
-		// If key is a path (e.g., "../../data/pcs/pirate_captain.json"), extract the ID
-		id := strings.TrimSuffix(filepath.Base(key), ".json")
+	for id := range m.pcSpecs {
 		result = append(result, id)
 	}
 	return result, nil
 }
 
 // AddPCSpec adds a PC spec to the mock storage (for testing)
-func (m *MockStorage) AddPCSpec(key string, spec *actor.PCSpec) {
+func (m *MockStorage) AddPCSpec(pcID string, spec *actor.PCSpec) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.pcSpecs[key] = spec
+	m.pcSpecs[pcID] = spec
 }

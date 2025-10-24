@@ -6,14 +6,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
 )
 
 // PC operations (filesystem-backed, returns PCSpec only)
 
-func (r *RedisStorage) GetPCSpec(ctx context.Context, path string) (*actor.PCSpec, error) {
+func (r *RedisStorage) GetPCSpec(ctx context.Context, pcID string) (*actor.PCSpec, error) {
+	// Construct the full path internally
+	path := filepath.Join(r.dataDir, "pcs", pcID+".json")
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read PC file: %w", err)
@@ -24,8 +26,8 @@ func (r *RedisStorage) GetPCSpec(ctx context.Context, path string) (*actor.PCSpe
 		return nil, fmt.Errorf("failed to unmarshal PC spec: %w", err)
 	}
 
-	// Filename overrides any ID in the JSON
-	spec.ID = strings.TrimSuffix(filepath.Base(path), ".json")
+	// Ensure ID is set from the parameter
+	spec.ID = pcID
 
 	return &spec, nil
 }

@@ -32,6 +32,6 @@ type Storage interface {
 	// PC operations (filesystem-backed, returns PCSpec not PC)
 	// GetPCSpec loads a PC spec from storage but does NOT construct the d20.Actor
 	// Use actor.NewPCFromSpec to build the full PC from the returned spec
-	GetPCSpec(ctx context.Context, path string) (*actor.PCSpec, error)
+	GetPCSpec(ctx context.Context, pcID string) (*actor.PCSpec, error)
 	ListPCs(ctx context.Context) ([]string, error)
 }

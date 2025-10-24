@@ -38,7 +38,7 @@ func TestGameStateHandler_Create(t *testing.T) {
 		},
 	})
 
-	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
 	// Test creating a new game state
 	reqBody := `{"scenario":"foo_scenario.json"}`
@@ -92,7 +92,7 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 		},
 	})
 
-	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
 	tests := []struct {
 		name            string
@@ -319,7 +319,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 	}))
 
 	mockStorage := storage.NewMockStorage()
-	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
 	// Create a test game state
 	testGS := state.NewGameState("FooScenario", "foo_model")
@@ -393,7 +393,7 @@ func TestGameStateHandler_Delete(t *testing.T) {
 	}))
 
 	mockStorage := storage.NewMockStorage()
-	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
 	// Create a test game state
 	testGS := state.NewGameState("FooScenario", "foo_model")
@@ -463,7 +463,7 @@ func TestGameStateHandler_MethodNotAllowed(t *testing.T) {
 	}))
 
 	mockStorage := storage.NewMockStorage()
-	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
 	// Test unsupported methods
 	methods := []string{http.MethodPut, http.MethodHead}
@@ -497,7 +497,7 @@ func TestGameStateHandler_MissingID(t *testing.T) {
 	}))
 
 	mockStorage := storage.NewMockStorage()
-	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
 	tests := []struct {
 		name   string

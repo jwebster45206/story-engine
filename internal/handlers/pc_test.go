@@ -69,7 +69,7 @@ func TestPCHandler_ListPCs(t *testing.T) {
 		},
 	})
 
-	handler := NewPCHandler(log, mockStorage, testPCDataDir)
+	handler := NewPCHandler(log, mockStorage)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/pcs", nil)
 	w := httptest.NewRecorder()
@@ -128,7 +128,7 @@ func TestPCHandler_GetPC(t *testing.T) {
 			Dexterity: 18,
 		},
 	})
-	handler := NewPCHandler(log, mockStorage, testPCDataDir)
+	handler := NewPCHandler(log, mockStorage)
 
 	// Test with pirate_captain which we know exists
 	req := httptest.NewRequest(http.MethodGet, "/v1/pcs/pirate_captain", nil)
@@ -173,7 +173,7 @@ func TestPCHandler_GetPC_Classic(t *testing.T) {
 		HP:    10,
 		MaxHP: 10,
 	})
-	handler := NewPCHandler(log, mockStorage, testPCDataDir)
+	handler := NewPCHandler(log, mockStorage)
 
 	// Test with classic which we know exists
 	req := httptest.NewRequest(http.MethodGet, "/v1/pcs/classic", nil)
@@ -202,7 +202,7 @@ func TestPCHandler_GetPC_Classic(t *testing.T) {
 func TestPCHandler_GetPC_NotFound(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	mockStorage := storage.NewMockStorage()
-	handler := NewPCHandler(log, mockStorage, testPCDataDir)
+	handler := NewPCHandler(log, mockStorage)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/pcs/nonexistent", nil)
 	w := httptest.NewRecorder()
@@ -217,7 +217,7 @@ func TestPCHandler_GetPC_NotFound(t *testing.T) {
 func TestPCHandler_GetPC_InvalidID(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	mockStorage := storage.NewMockStorage()
-	handler := NewPCHandler(log, mockStorage, testPCDataDir)
+	handler := NewPCHandler(log, mockStorage)
 
 	testCases := []struct {
 		name string
@@ -244,7 +244,7 @@ func TestPCHandler_GetPC_InvalidID(t *testing.T) {
 func TestPCHandler_MethodNotAllowed(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	mockStorage := storage.NewMockStorage()
-	handler := NewPCHandler(log, mockStorage, testPCDataDir)
+	handler := NewPCHandler(log, mockStorage)
 
 	methods := []string{http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch}
 	for _, method := range methods {
@@ -268,7 +268,7 @@ func TestPCHandler_ListPCs_WithTrailingSlash(t *testing.T) {
 		ID:   "test_pc",
 		Name: "Test PC",
 	})
-	handler := NewPCHandler(log, mockStorage, testPCDataDir)
+	handler := NewPCHandler(log, mockStorage)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/pcs/", nil)
 	w := httptest.NewRecorder()

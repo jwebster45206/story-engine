@@ -4,20 +4,15 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 )
 
-// PCDataDir is the default path to the PC data directory
-const PCDataDir = "data/pcs"
-
 type PCHandler struct {
 	log     *slog.Logger
 	storage storage.Storage
-	dataDir string
 }
 
 // ListPCs lists all available PC files
@@ -33,8 +28,7 @@ func (h *PCHandler) ListPCs(w http.ResponseWriter, r *http.Request) {
 	pcList := make([]map[string]interface{}, 0)
 	for _, pcID := range pcIDs {
 		// Load each PC spec to get details
-		pcPath := filepath.Join(h.dataDir, pcID+".json")
-		spec, err := h.storage.GetPCSpec(r.Context(), pcPath)
+		spec, err := h.storage.GetPCSpec(r.Context(), pcID)
 		if err != nil {
 			h.log.Warn("Failed to load PC spec", "error", err, "id", pcID)
 			continue
@@ -66,11 +60,10 @@ func (h *PCHandler) ListPCs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func NewPCHandler(log *slog.Logger, storage storage.Storage, dataDir string) *PCHandler {
+func NewPCHandler(log *slog.Logger, storage storage.Storage) *PCHandler {
 	return &PCHandler{
 		log:     log,
 		storage: storage,
-		dataDir: dataDir,
 	}
 }
 
@@ -102,12 +95,8 @@ func (h *PCHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Construct the file path
-	filename := id + ".json"
-	pcPath := filepath.Join(h.dataDir, filename)
-
-	// Load the PC spec
-	pcSpec, err := h.storage.GetPCSpec(r.Context(), pcPath)
+	// Load the PC spec by ID (storage handles path construction)
+	pcSpec, err := h.storage.GetPCSpec(r.Context(), id)
 	if err != nil {
 		if err.Error() == "PC spec not found" {
 			http.Error(w, "PC not found", http.StatusNotFound)

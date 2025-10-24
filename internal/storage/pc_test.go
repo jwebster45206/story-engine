@@ -54,14 +54,14 @@ func TestMockStorage_AddAndGetPCSpec(t *testing.T) {
 		t.Errorf("Expected strength 18, got %d", loaded.Stats.Strength)
 	}
 
-	// Get it back by path (MockStorage should handle path matching)
-	loaded2, err := mockStorage.GetPCSpec(ctx, "../../data/pcs/warrior.json")
+	// Get it back by ID
+	loaded2, err := mockStorage.GetPCSpec(ctx, "warrior")
 	if err != nil {
-		t.Fatalf("Failed to get PC spec by path: %v", err)
+		t.Fatalf("Failed to get PC spec by ID: %v", err)
 	}
 
 	if loaded2.ID != "warrior" {
-		t.Errorf("Expected ID 'warrior' when using path, got %v", loaded2.ID)
+		t.Errorf("Expected ID 'warrior' when using ID, got %v", loaded2.ID)
 	}
 }
 
@@ -143,7 +143,7 @@ func TestMockStorage_ListPCsEmpty(t *testing.T) {
 	}
 }
 
-func TestMockStorage_PCPathHandling(t *testing.T) {
+func TestMockStorage_PCIDHandling(t *testing.T) {
 	mockStorage := NewMockStorage()
 	ctx := context.Background()
 
@@ -157,23 +157,30 @@ func TestMockStorage_PCPathHandling(t *testing.T) {
 	}
 	mockStorage.AddPCSpec("test_hero", testPC)
 
-	// Test various path formats
-	testCases := []string{
-		"test_hero",
-		"test_hero.json",
-		"../../data/pcs/test_hero.json",
-		"/some/path/to/test_hero.json",
+	// Test various ID formats (only simple IDs should work now)
+	testCases := []struct {
+		id          string
+		shouldExist bool
+	}{
+		{"test_hero", true},
+		{"test_hero.json", false}, // .json suffix not supported
+		{"nonexistent", false},    // doesn't exist
 	}
 
-	for _, path := range testCases {
-		loaded, err := mockStorage.GetPCSpec(ctx, path)
-		if err != nil {
-			t.Errorf("Failed to get PC with path %q: %v", path, err)
-			continue
-		}
-
-		if loaded.ID != "test_hero" {
-			t.Errorf("For path %q, expected ID 'test_hero', got %v", path, loaded.ID)
+	for _, tc := range testCases {
+		loaded, err := mockStorage.GetPCSpec(ctx, tc.id)
+		if tc.shouldExist {
+			if err != nil {
+				t.Errorf("Failed to get PC with ID %q: %v", tc.id, err)
+				continue
+			}
+			if loaded.ID != "test_hero" {
+				t.Errorf("For ID %q, expected ID 'test_hero', got %v", tc.id, loaded.ID)
+			}
+		} else {
+			if err == nil {
+				t.Errorf("Expected error for ID %q, but got PC: %v", tc.id, loaded)
+			}
 		}
 	}
 }
