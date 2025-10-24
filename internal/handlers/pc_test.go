@@ -12,9 +12,6 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/actor"
 )
 
-// testPCDataDir is the relative path from the test location to the PC data
-const testPCDataDir = "../../data/pcs"
-
 func TestPCHandler_ListPCs(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	mockStorage := storage.NewMockStorage()
