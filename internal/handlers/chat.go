@@ -15,6 +15,7 @@ import (
 	"github.com/jwebster45206/story-engine/internal/services"
 	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/prompts"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -47,7 +48,6 @@ const PromptHistoryLimit = 6
 func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Only allow POST method and check for /v1/chat path
 	if r.Method != http.MethodPost || !strings.HasPrefix(r.URL.Path, "/v1/chat") {
 		h.logger.Warn("Method not allowed for chat endpoint",
 			"method", r.Method,
@@ -67,11 +67,6 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	h.logger.Debug("Chat endpoint accessed",
-		"method", r.Method,
-		"path", r.URL.Path,
-		"remote_addr", r.RemoteAddr)
 
 	var request chat.ChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -152,9 +147,6 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		return
 	}
 
-	// Narrator is embedded in gamestate (loaded once at creation)
-	// No need to load narrator separately - it's already in gs.Narrator
-
 	cmdResult, err := gs.TryHandleCommand(request.Message)
 	if err != nil {
 		h.logger.Error("Error handling command in chat", "error", err, "command", request.Message)
@@ -183,16 +175,21 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 	// Check for queued story events
 	storyEventPrompt := gs.GetStoryEvents()
 	if storyEventPrompt != "" {
-		gs.ClearStoryEventQueue()
 		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
 	}
 
-	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, loadedScenario, PromptHistoryLimit, storyEventPrompt)
+	// Build chat messages using the prompt builder
+	messages, err := prompts.New().
+		WithGameState(gs).
+		WithScenario(loadedScenario).
+		WithUserMessage(cmdResult.Message, cmdResult.Role).
+		WithHistoryLimit(PromptHistoryLimit).
+		Build()
 	if err != nil {
-		h.logger.Error("Error getting chat messages", "error", err)
+		h.logger.Error("Error building chat messages", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		response := ErrorResponse{
-			Error: "Failed to get chat messages.",
+			Error: "Failed to build chat messages.",
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Error encoding error response", "error", err)
@@ -200,7 +197,10 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		return
 	}
 
-	// Generate response using LLM
+	// Clear story events after building messages
+	if storyEventPrompt != "" {
+		gs.ClearStoryEventQueue()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -362,22 +362,32 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 	// Check for queued story events
 	storyEventPrompt := gs.GetStoryEvents()
 	if storyEventPrompt != "" {
-		gs.ClearStoryEventQueue()
 		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
 	}
 
-	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, loadedScenario, PromptHistoryLimit, storyEventPrompt)
+	// Build chat messages using the prompt builder
+	messages, err := prompts.New().
+		WithGameState(gs).
+		WithScenario(loadedScenario).
+		WithUserMessage(cmdResult.Message, cmdResult.Role).
+		WithHistoryLimit(PromptHistoryLimit).
+		Build()
 	if err != nil {
-		h.logger.Error("Error getting chat messages", "error", err)
+		h.logger.Error("Error building chat messages", "error", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		response := ErrorResponse{
-			Error: "Failed to get chat messages.",
+			Error: "Failed to build chat messages.",
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Error encoding error response", "error", err)
 		}
 		return
+	}
+
+	// Clear story events after building messages
+	if storyEventPrompt != "" {
+		gs.ClearStoryEventQueue()
 	}
 
 	// Initialize LLM streaming (final validation step before committing to SSE)
