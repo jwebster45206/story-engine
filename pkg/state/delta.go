@@ -23,6 +23,14 @@ type GameStateDelta struct {
 		Consumed *bool `json:"consumed,omitempty"`
 	} `json:"item_events,omitempty"`
 
+	NPCMovements []NPCMovement `json:"npc_movements,omitempty"`
+
 	SetVars   map[string]string `json:"set_vars,omitempty"`
 	GameEnded *bool             `json:"game_ended,omitempty"`
+}
+
+// NPCMovement represents an NPC changing location
+type NPCMovement struct {
+	NPCID      string `json:"npc_id"`
+	ToLocation string `json:"to_location"`
 }

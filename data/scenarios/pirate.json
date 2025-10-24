@@ -78,17 +78,40 @@
       "disposition": "loyal",
       "description": "The player's loyal first mate with a keen sense of duty.",
       "location": "black_pearl",
-      "items": []
+      "items": [],
+      "contingency_prompts": [
+        "Gibbs is always ready with practical advice about the ship and crew.",
+        "Gibbs speaks with nautical slang and occasionally refers to superstitions."
+      ]
     },
     "calypso": {
       "name": "Calypso",
       "type": "bartender",
       "disposition": "friendly but mysterious",
-      "description": "A bartender at the Sleepy Mermaid, known for her enchanting stories and elusive nature. Speaks with a Haitian accent.",
+      "description": "A bartender at the Sleepy Mermaid, known for her enchanting stories and elusive nature. ",
       "location": "sleepy_mermaid",
       "items": [
         "flagon of ale",
         "deck of cards"
+      ],
+      "contingency_prompts": [
+        "Calypso speaks with a subtle Haitian accent and mystical undertones.",
+        {
+          "prompt": "Calypso eyes you with particular interest, as if she knows more about your destiny than she lets on.",
+          "when": {
+            "vars": {
+              "ship_repair_ledger_acquired": "false"
+            }
+          }
+        },
+        {
+          "prompt": "Calypso occasionally shuffles her deck of tarot cards while serving drinks, hinting at hidden knowledge.",
+          "when": {
+            "vars": {
+              "shipwright_hired": "true"
+            }
+          }
+        }
       ]
     },
     "charming_danny": {
@@ -103,6 +126,10 @@
         "bottle of rum",
         "black powder",
         "flintlock pistol"
+      ],
+      "contingency_prompts": [
+        "Charming Danny is anything but charming - he's irritable and smells of fish.",
+        "Danny grumbles about the debt he owes you but will eventually honor it if pressed."
       ]
     },
     "shipwright": {
@@ -111,7 +138,18 @@
       "disposition": "gruff but helpful",
       "description": "A burly shipwright who will repair the player's ship. He requires a ship repair ledger to begin the work, and a payment of 500 gold doubloons to complete the repairs.",
       "location": "sleepy_mermaid",
-      "items": []
+      "items": [],
+      "contingency_prompts": [
+        "The shipwright is direct and business-like, focused on his craft.",
+        {
+          "prompt": "The shipwright taps his fingers impatiently, waiting for you to bring him the repair ledger.",
+          "when": {
+            "vars": {
+              "ship_repair_ledger_acquired": "false"
+            }
+          }
+        }
+      ]
     }
   },
   "scenes": {
@@ -188,7 +226,11 @@
           "description": "A grizzled old pirate with a wooden leg. Fellow captain and sometimes ally.",
           "important": false,
           "location": "tortuga_market",
-          "items": []
+          "items": [],
+          "contingency_prompts": [
+            "Davey tells tall tales of his adventures on the high seas.",
+            "Davey occasionally complains about his wooden leg aching before storms."
+          ]
         }
       },
       "contingency_prompts": [
@@ -255,6 +297,25 @@
             "treasure map",
             "flagon of ale",
             "deck of cards"
+          ],
+          "contingency_prompts": [
+            "Calypso is ready to close for the night and won't waste time with idle chatter.",
+            {
+              "prompt": "Calypso holds the treasure map close, waiting to see if you've truly earned her trust.",
+              "when": {
+                "vars": {
+                  "treasure_map_acquired": "false"
+                }
+              }
+            },
+            {
+              "prompt": "Calypso smiles knowingly, having already given you the map to your destiny.",
+              "when": {
+                "vars": {
+                  "treasure_map_acquired": "true"
+                }
+              }
+            }
           ]
         }
       },
@@ -293,8 +354,7 @@
   "contingency_prompts": [
     "Use some humor in responses.",
     "Encourage the player to embrace their villainous and piratical nature.",
-    "If stuck, the player should consult Calypso.",
-    "Calypso does not reciprocate flirtation."
+    "If stuck, the player should consult Calypso."
   ],
   "game_end_prompt": "Weigh anchor and evaluate the player's pirate career! Rate their performance using with humor. Consider cunning, speed, treasure acquired, and whether they lived up to the pirate code. Give them a proper pirate sendoff with humor and maritime flair!"
 }

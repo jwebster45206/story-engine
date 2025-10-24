@@ -57,8 +57,8 @@ If a player tries to go somewhere not listed in the current location's exits, po
 
 const GameEndSystemPrompt = `This user's session has ended. Regardless of the user's input, the game will not continue. Respond in a way that will wrap up the game in a narrative manner. End with a fancy "*.*.*.*.*.*. THE END .*.*.*.*.*.*" line, followed by instructions to use Ctrl+N to start a new game or Ctrl+C to exit.`
 
-// Prompt for extracting PromptState JSON from the LLM
-const PromptStateExtractionInstructions = `You are a backend reducer. Read the latest narrative and current game state, then output ONLY a JSON object matching the provided schema. No prose.
+// ReducerPrompt provides instructions for translating narrative to game state delta
+const ReducerPrompt = `You are a backend reducer. Read the latest narrative and current game state, then output ONLY a JSON object matching the provided schema. No prose.
 
 OUTPUT SCHEMA (strict)
 - user_location: string (always required)
@@ -66,8 +66,9 @@ OUTPUT SCHEMA (strict)
 - item_events: array of { item, action, from?, to?, consumed?, evidence? } (always required, may be empty)
   • action ∈ {"acquire","give","drop","move","use"}
   • from/to.type ∈ {"player","npc","location"}; include name when type ≠ "player"
+- npc_movements: array of { npc_id, to_location } (always required, may be empty)
 - set_vars: object (always required, may be empty)
-- game_ended: boolean (always required)
+- game_ended: boolean (always required) 
 
 GENERAL RULES
 - Do not invent scenes, locations, items, NPCs, or variables beyond those in the scenario.
@@ -88,6 +89,22 @@ ITEMS
   • move: explicit from→to between holders.
   • use: player uses an item they hold; set consumed=true only if narrative says so.
 - Use canonical item IDs from the scenario/state.
+
+NPC MOVEMENTS
+- Track NPC location changes when narrative explicitly indicates movement.
+  • When an NPC follows the player to a new location
+  • When an NPC is described as moving, leaving, or going somewhere
+  • When an NPC is explicitly told to go somewhere and complies
+- Format: {"npc_id": "gibbs", "to_location": "sleepy_mermaid"}
+- Use canonical NPC IDs and location IDs from the scenario/state
+- DO NOT track movements when:
+  • NPCs are merely mentioned or thought about
+  • Describing past events or speculation
+  • NPC is described as being "somewhere" without active movement
+- Examples:
+  • "Gibbs follows you into the tavern." + user_location="sleepy_mermaid" → npc_movements:[{npc_id:"gibbs", to_location:"sleepy_mermaid"}]
+  • "You tell Calypso to meet you at the docks. She nods and heads out." + docks="port_royal_docks" → npc_movements:[{npc_id:"calypso", to_location:"port_royal_docks"}]
+  • "You think about Gibbs back at the ship." → npc_movements:[] (no movement, just mention)
 
 SCENES
 - If a rule triggers a change in scene name, it is VERY IMPORTANT to include 'scene_change {to, reason}'.

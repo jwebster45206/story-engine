@@ -119,7 +119,7 @@ func (m *MockLLMAPI) Chat(ctx context.Context, messages []chat.ChatMessage) (*ch
 
 	// Detect if this is a PromptState extraction request (gamestate delta)
 	if len(messages) > 0 && messages[0].Role == chat.ChatRoleSystem {
-		promptPrefix := scenario.PromptStateExtractionInstructions
+		promptPrefix := scenario.ReducerPrompt
 		if len(promptPrefix) > 50 {
 			promptPrefix = promptPrefix[:50]
 		}
