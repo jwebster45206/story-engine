@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
@@ -101,7 +102,20 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			mockLLM := services.NewMockLLMAPI()
 			tt.mockSetup(mockLLM)
 
-			mockSto := services.NewMockStorage()
+			mockSto := storage.NewMockStorage()
+
+			// Add the test scenario that the gamestate references
+			mockSto.AddScenario("foo_scenario.json", &scenario.Scenario{
+				Name:     "Test Scenario",
+				FileName: "foo_scenario.json",
+				Story:    "A test scenario",
+				Locations: map[string]scenario.Location{
+					"start": {
+						Name:        "start",
+						Description: "Starting location",
+					},
+				},
+			})
 
 			// For tests that need a valid GameStateID, create one
 			var gameStateID uuid.UUID
@@ -121,7 +135,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			}
 
 			// Create chat handler
-			handler := NewChatHandler(mockLLM, logger, mockSto)
+			handler := NewChatHandler(logger, mockSto, mockLLM)
 
 			// Prepare request body
 			var body []byte
@@ -235,7 +249,20 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 
 		return &chat.ChatResponse{Message: "Response"}, nil
 	}
-	mockSto := services.NewMockStorage()
+	mockSto := storage.NewMockStorage()
+
+	// Add the test scenario that the gamestate references
+	mockSto.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:     "Test Scenario",
+		FileName: "foo_scenario.json",
+		Story:    "A test scenario",
+		Locations: map[string]scenario.Location{
+			"start": {
+				Name:        "start",
+				Description: "Starting location",
+			},
+		},
+	})
 
 	// Create a test game state
 	testGS := state.NewGameState("foo_scenario.json", "foo_model")
@@ -243,7 +270,7 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
 
-	handler := NewChatHandler(mockLLM, logger, mockSto)
+	handler := NewChatHandler(logger, mockSto, mockLLM)
 	requestBody := chat.ChatRequest{
 		GameStateID: testGS.ID,
 		Message:     "Test message with special chars: !@#$%",
@@ -311,7 +338,20 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 	}))
 
 	mockLLM := services.NewMockLLMAPI()
-	mockSto := services.NewMockStorage()
+	mockSto := storage.NewMockStorage()
+
+	// Add the test scenario that the gamestate references
+	mockSto.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:     "Test Scenario",
+		FileName: "foo_scenario.json",
+		Story:    "A test scenario",
+		Locations: map[string]scenario.Location{
+			"start": {
+				Name:        "start",
+				Description: "Starting location",
+			},
+		},
+	})
 
 	// Create a test game state
 	testGS := state.NewGameState("foo_scenario.json", "foo_model")
@@ -319,7 +359,7 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
 
-	handler := NewChatHandler(mockLLM, logger, mockSto)
+	handler := NewChatHandler(logger, mockSto, mockLLM)
 
 	// Test with missing Content-Type
 	requestBody := chat.ChatRequest{
@@ -444,7 +484,20 @@ func TestChatHandler_StreamingChat(t *testing.T) {
 	}))
 
 	mockLLM := services.NewMockLLMAPI()
-	mockSto := services.NewMockStorage()
+	mockSto := storage.NewMockStorage()
+
+	// Add the test scenario that the gamestate references
+	mockSto.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:     "Test Scenario",
+		FileName: "foo_scenario.json",
+		Story:    "A test scenario",
+		Locations: map[string]scenario.Location{
+			"start": {
+				Name:        "start",
+				Description: "Starting location",
+			},
+		},
+	})
 
 	// Create a test game state
 	testGS := state.NewGameState("foo_scenario.json", "foo_model")
@@ -452,7 +505,7 @@ func TestChatHandler_StreamingChat(t *testing.T) {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
 
-	handler := NewChatHandler(mockLLM, logger, mockSto)
+	handler := NewChatHandler(logger, mockSto, mockLLM)
 
 	t.Run("streaming request with unsupported provider", func(t *testing.T) {
 		requestBody := chat.ChatRequest{

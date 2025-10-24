@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/storage"
 )
 
 type ScenarioHandler struct {
 	log     *slog.Logger
-	storage services.Storage
+	storage storage.Storage
 }
 
 // ListScenarios lists all available scenario files
@@ -36,7 +36,7 @@ func (h *ScenarioHandler) ListScenarios(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func NewScenarioHandler(log *slog.Logger, storage services.Storage) *ScenarioHandler {
+func NewScenarioHandler(log *slog.Logger, storage storage.Storage) *ScenarioHandler {
 	return &ScenarioHandler{
 		log:     log,
 		storage: storage,

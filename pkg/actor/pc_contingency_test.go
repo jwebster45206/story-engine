@@ -2,96 +2,11 @@ package actor
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/jwebster45206/d20"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
-
-func TestLoadPC_WithContingencyPrompts(t *testing.T) {
-	tempDir := t.TempDir()
-	testFile := filepath.Join(tempDir, "test_pc_with_prompts.json")
-
-	// Test PC with both string and conditional contingency prompts
-	testPCJSON := `{
-		"id": "test_pc",
-		"name": "Test Character",
-		"pronouns": "they/them",
-		"description": "A test character",
-		"stats": {
-			"strength": 10,
-			"dexterity": 10,
-			"constitution": 10,
-			"intelligence": 10,
-			"wisdom": 10,
-			"charisma": 10
-		},
-		"hp": 10,
-		"max_hp": 10,
-		"ac": 10,
-		"contingency_prompts": [
-			"This character is always witty",
-			{
-				"prompt": "This character is tired after 10 turns",
-				"when": {"min_turns": 10}
-			},
-			{
-				"prompt": "This character is confident when has_sword is true",
-				"when": {"vars": {"has_sword": "true"}}
-			}
-		]
-	}`
-
-	if err := os.WriteFile(testFile, []byte(testPCJSON), 0644); err != nil {
-		t.Fatalf("Failed to write test file: %v", err)
-	}
-
-	pc, err := LoadPC(testFile)
-	if err != nil {
-		t.Fatalf("LoadPC() error = %v", err)
-	}
-
-	// Verify contingency prompts were loaded
-	if pc.Spec.ContingencyPrompts == nil {
-		t.Fatal("PC.Spec.ContingencyPrompts is nil")
-	}
-
-	if len(pc.Spec.ContingencyPrompts) != 3 {
-		t.Errorf("len(PC.Spec.ContingencyPrompts) = %d, want 3", len(pc.Spec.ContingencyPrompts))
-	}
-
-	// Check first prompt (unconditional string)
-	if pc.Spec.ContingencyPrompts[0].Prompt != "This character is always witty" {
-		t.Errorf("ContingencyPrompts[0].Prompt = %q, want %q", pc.Spec.ContingencyPrompts[0].Prompt, "This character is always witty")
-	}
-	if pc.Spec.ContingencyPrompts[0].When != nil {
-		t.Error("ContingencyPrompts[0].When should be nil for unconditional prompt")
-	}
-
-	// Check second prompt (conditional with min_turns)
-	if pc.Spec.ContingencyPrompts[1].Prompt != "This character is tired after 10 turns" {
-		t.Errorf("ContingencyPrompts[1].Prompt = %q, want %q", pc.Spec.ContingencyPrompts[1].Prompt, "This character is tired after 10 turns")
-	}
-	if pc.Spec.ContingencyPrompts[1].When == nil {
-		t.Fatal("ContingencyPrompts[1].When should not be nil")
-	}
-	if pc.Spec.ContingencyPrompts[1].When.MinTurns == nil || *pc.Spec.ContingencyPrompts[1].When.MinTurns != 10 {
-		t.Error("ContingencyPrompts[1].When.MinTurns should be 10")
-	}
-
-	// Check third prompt (conditional with vars)
-	if pc.Spec.ContingencyPrompts[2].Prompt != "This character is confident when has_sword is true" {
-		t.Errorf("ContingencyPrompts[2].Prompt = %q, want expected prompt", pc.Spec.ContingencyPrompts[2].Prompt)
-	}
-	if pc.Spec.ContingencyPrompts[2].When == nil {
-		t.Fatal("ContingencyPrompts[2].When should not be nil")
-	}
-	if pc.Spec.ContingencyPrompts[2].When.Vars == nil || pc.Spec.ContingencyPrompts[2].When.Vars["has_sword"] != "true" {
-		t.Error("ContingencyPrompts[2].When.Vars should contain has_sword=true")
-	}
-}
 
 func TestPCSpec_MarshalJSON_WithContingencyPrompts(t *testing.T) {
 	minTurns := 5

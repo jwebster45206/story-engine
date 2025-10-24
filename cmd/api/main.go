@@ -15,6 +15,7 @@ import (
 	"github.com/jwebster45206/story-engine/internal/logger"
 	"github.com/jwebster45206/story-engine/internal/middleware"
 	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/storage"
 )
 
 func main() {
@@ -55,11 +56,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	var storage services.Storage = services.NewRedisService(cfg.RedisURL, log)
+	storageService := storage.NewRedisStorage(cfg.RedisURL, "./data", log)
 	storageCtx, storageCancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer storageCancel()
 
-	if err := storage.Ping(storageCtx); err != nil {
+	if err := storageService.Ping(storageCtx); err != nil {
 		log.Error("Failed to connect to storage", "error", err)
 		os.Exit(1)
 	}
@@ -75,25 +76,25 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	healthHandler := handlers.NewHealthHandler(storage, llmService, log)
+	healthHandler := handlers.NewHealthHandler(log, storageService, llmService)
 	mux.Handle("/health", healthHandler)
 
-	chatHandler := handlers.NewChatHandler(llmService, log, storage)
+	chatHandler := handlers.NewChatHandler(log, storageService, llmService)
 	mux.Handle("/v1/chat", chatHandler)
 
-	gameStateHandler := handlers.NewGameStateHandler(cfg.ModelName, storage, log)
+	gameStateHandler := handlers.NewGameStateHandler(log, cfg.ModelName, storageService)
 	mux.Handle("/v1/gamestate", gameStateHandler)
 	mux.Handle("/v1/gamestate/", gameStateHandler)
 
-	scenarioHandler := handlers.NewScenarioHandler(log, storage)
+	scenarioHandler := handlers.NewScenarioHandler(log, storageService)
 	mux.Handle("/v1/scenarios", scenarioHandler)
 	mux.Handle("/v1/scenarios/", scenarioHandler)
 
-	pcHandler := handlers.NewPCHandler(log, handlers.PCDataDir)
+	pcHandler := handlers.NewPCHandler(log, storageService)
 	mux.Handle("/v1/pcs", pcHandler)
 	mux.Handle("/v1/pcs/", pcHandler)
 
-	narratorHandler := handlers.NewNarratorHandler(log, handlers.NarratorDataDir)
+	narratorHandler := handlers.NewNarratorHandler(log, storageService)
 	mux.Handle("/v1/narrators", narratorHandler)
 	mux.Handle("/v1/narrators/", narratorHandler)
 
@@ -122,7 +123,7 @@ func main() {
 	log.Info("Server is shutting down...")
 
 	// Close storage connection
-	if err := storage.Close(); err != nil {
+	if err := storageService.Close(); err != nil {
 		log.Error("Error closing storage connection", "error", err)
 	}
 

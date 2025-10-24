@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/storage"
 )
 
 type HealthResponse struct {
@@ -18,16 +19,16 @@ type HealthResponse struct {
 }
 
 type HealthHandler struct {
-	storage    services.Storage
+	storage    storage.Storage
 	llmService services.LLMService
 	logger     *slog.Logger
 }
 
-func NewHealthHandler(storage services.Storage, llmService services.LLMService, logger *slog.Logger) *HealthHandler {
+func NewHealthHandler(logger *slog.Logger, storage storage.Storage, llmService services.LLMService) *HealthHandler {
 	return &HealthHandler{
+		logger:     logger,
 		storage:    storage,
 		llmService: llmService,
-		logger:     logger,
 	}
 }
 

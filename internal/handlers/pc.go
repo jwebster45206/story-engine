@@ -4,52 +4,35 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 
+	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 )
 
-// PCDataDir is the default path to the PC data directory
-const PCDataDir = "data/pcs"
-
 type PCHandler struct {
 	log     *slog.Logger
-	dataDir string
+	storage storage.Storage
 }
 
 // ListPCs lists all available PC files
 func (h *PCHandler) ListPCs(w http.ResponseWriter, r *http.Request) {
-	entries, err := os.ReadDir(h.dataDir)
+	pcIDs, err := h.storage.ListPCs(r.Context())
 	if err != nil {
-		h.log.Error("Failed to read PCs directory", "error", err, "dir", h.dataDir)
+		h.log.Error("Failed to list PCs", "error", err)
 		http.Error(w, "Failed to list PCs", http.StatusInternalServerError)
 		return
 	}
 
 	// Initialize as empty slice instead of nil
 	pcList := make([]map[string]interface{}, 0)
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-
-		// Read JSON directly without building the full PC/Actor
-		pcPath := filepath.Join(h.dataDir, entry.Name())
-		jsonData, err := os.ReadFile(pcPath)
+	for _, pcID := range pcIDs {
+		// Load each PC spec to get details
+		spec, err := h.storage.GetPCSpec(r.Context(), pcID)
 		if err != nil {
-			h.log.Warn("Failed to read PC file", "error", err, "file", entry.Name())
+			h.log.Warn("Failed to load PC spec", "error", err, "id", pcID)
 			continue
 		}
-
-		// Parse just the PCSpec (no Actor building)
-		var spec actor.PCSpec
-		if err := json.Unmarshal(jsonData, &spec); err != nil {
-			h.log.Warn("Failed to parse PC file", "error", err, "file", entry.Name())
-			continue
-		}
-		spec.ID = strings.TrimSuffix(entry.Name(), ".json") // Set ID from filename, overriding any in JSON
 
 		// Create a summary object with just the key fields
 		pcSummary := map[string]interface{}{
@@ -77,10 +60,10 @@ func (h *PCHandler) ListPCs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func NewPCHandler(log *slog.Logger, dataDir string) *PCHandler {
+func NewPCHandler(log *slog.Logger, storage storage.Storage) *PCHandler {
 	return &PCHandler{
 		log:     log,
-		dataDir: dataDir,
+		storage: storage,
 	}
 }
 
@@ -112,21 +95,23 @@ func (h *PCHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Construct the file path
-	filename := id + ".json"
-	pcPath := filepath.Join(h.dataDir, filename)
-
-	// Check if file exists
-	if _, err := os.Stat(pcPath); os.IsNotExist(err) {
-		http.Error(w, "PC not found", http.StatusNotFound)
+	// Load the PC spec by ID (storage handles path construction)
+	pcSpec, err := h.storage.GetPCSpec(r.Context(), id)
+	if err != nil {
+		if err.Error() == "PC spec not found" {
+			http.Error(w, "PC not found", http.StatusNotFound)
+			return
+		}
+		h.log.Error("Failed to load PC spec", "error", err, "id", id)
+		http.Error(w, "Failed to load PC", http.StatusInternalServerError)
 		return
 	}
 
-	// Load the PC
-	loadedPC, err := actor.LoadPC(pcPath)
+	// Build the PC from the spec
+	loadedPC, err := actor.NewPCFromSpec(pcSpec)
 	if err != nil {
-		h.log.Error("Failed to load PC", "error", err, "id", id)
-		http.Error(w, "Failed to load PC", http.StatusInternalServerError)
+		h.log.Error("Failed to build PC from spec", "error", err, "id", id)
+		http.Error(w, "Failed to build PC", http.StatusInternalServerError)
 		return
 	}
 

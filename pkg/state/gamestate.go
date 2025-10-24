@@ -3,7 +3,6 @@ package state
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"maps"
 	"strings"
 	"time"
@@ -138,8 +137,8 @@ func (gs *GameState) GetContingencyPrompts(s *scenario.Scenario) []string {
 
 // GetChatMessages generates a "chat message" slice for LLM.
 // This slice includes all prompts and instructions to run the game.
-// TODO: This func needs to be refactored to move logic to the proper layers.
-func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, s *scenario.Scenario, count int, storyEventPrompt string) ([]chat.ChatMessage, error) {
+// narrator parameter is optional - pass nil if no narrator is desired
+func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, s *scenario.Scenario, narrator *scenario.Narrator, count int, storyEventPrompt string) ([]chat.ChatMessage, error) {
 	if gs == nil {
 		return nil, fmt.Errorf("game state is nil")
 	}
@@ -148,25 +147,6 @@ func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, 
 	statePrompt, err := gs.GetStatePrompt(s)
 	if err != nil {
 		return nil, fmt.Errorf("error generating state prompt: %w", err)
-	}
-
-	// Determine which narrator to use (gamestate override or scenario default)
-	narratorID := gs.NarratorID
-	if narratorID == "" {
-		narratorID = s.NarratorID
-	}
-
-	// Load narrator if specified
-	// TODO: save narrator in game state
-	var narrator *scenario.Narrator
-	if narratorID != "" {
-		narrator, err = scenario.LoadNarrator(narratorID)
-		if err != nil {
-			// Log warning but continue without narrator
-			log.Printf("[NARRATOR] Warning: failed to load narrator %s: %v", narratorID, err)
-		} else if narrator != nil {
-			log.Printf("[NARRATOR] Successfully loaded narrator: %s (%s) with %d prompts", narrator.ID, narrator.Name, len(narrator.Prompts))
-		}
 	}
 
 	// Build system prompt with narrator and PC

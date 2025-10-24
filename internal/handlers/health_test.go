@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/storage"
 )
 
 func TestHealthHandler_ServeHTTP(t *testing.T) {
@@ -20,15 +21,15 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		setupStorage    func() services.Storage
+		setupStorage    func() storage.Storage
 		expectedStatus  int
 		expectedHealth  string
 		expectedStorage string
 	}{
 		{
 			name: "all healthy",
-			setupStorage: func() services.Storage {
-				mockStorage := services.NewMockStorage()
+			setupStorage: func() storage.Storage {
+				mockStorage := storage.NewMockStorage()
 				mockStorage.SetPingSuccess() // Storage is healthy
 				return mockStorage
 			},
@@ -38,8 +39,8 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 		},
 		{
 			name: "unhealthy storage",
-			setupStorage: func() services.Storage {
-				mockStorage := services.NewMockStorage()
+			setupStorage: func() storage.Storage {
+				mockStorage := storage.NewMockStorage()
 				mockStorage.SetPingError(errors.New("connection failed")) // Storage is unhealthy
 				return mockStorage
 			},
@@ -54,7 +55,7 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 			storage := tt.setupStorage()
 			// Create a mock LLM service for the handler (even though we don't use it in health check)
 			mockLLM := services.NewMockLLMAPI()
-			handler := NewHealthHandler(storage, mockLLM, logger)
+			handler := NewHealthHandler(logger, storage, mockLLM)
 
 			req := httptest.NewRequest(http.MethodGet, "/health", nil)
 			rr := httptest.NewRecorder()
@@ -110,12 +111,12 @@ func TestHealthHandler_ResponseFormat(t *testing.T) {
 	}))
 
 	// Use mock services to ensure predictable behavior
-	mockStorage := services.NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	mockStorage.SetPingError(errors.New("storage unavailable"))
 
 	mockLLM := services.NewMockLLMAPI()
 
-	handler := NewHealthHandler(mockStorage, mockLLM, logger)
+	handler := NewHealthHandler(logger, mockStorage, mockLLM)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()

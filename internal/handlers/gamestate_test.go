@@ -11,7 +11,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/storage"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
@@ -20,8 +21,24 @@ func TestGameStateHandler_Create(t *testing.T) {
 		Level: slog.LevelError, // Reduce noise in tests
 	}))
 
-	mockStorage := services.NewMockStorage()
-	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+	mockStorage := storage.NewMockStorage()
+
+	// Add the test scenario
+	mockStorage.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:            "Test Scenario",
+		FileName:        "foo_scenario.json",
+		Story:           "A test scenario",
+		OpeningPrompt:   "Welcome to the test!",
+		OpeningLocation: "start",
+		Locations: map[string]scenario.Location{
+			"start": {
+				Name:        "start",
+				Description: "Starting location",
+			},
+		},
+	})
+
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
 	// Test creating a new game state
 	reqBody := `{"scenario":"foo_scenario.json"}`
@@ -58,8 +75,24 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 		Level: slog.LevelError,
 	}))
 
-	mockStorage := services.NewMockStorage()
-	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+	mockStorage := storage.NewMockStorage()
+
+	// Add the test scenario that tests reference
+	mockStorage.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:            "Test Scenario",
+		FileName:        "foo_scenario.json",
+		Story:           "A test scenario",
+		OpeningPrompt:   "Welcome to the test!",
+		OpeningLocation: "start",
+		Locations: map[string]scenario.Location{
+			"start": {
+				Name:        "start",
+				Description: "Starting location",
+			},
+		},
+	})
+
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
 	tests := []struct {
 		name            string
@@ -285,8 +318,8 @@ func TestGameStateHandler_Read(t *testing.T) {
 		Level: slog.LevelError,
 	}))
 
-	mockStorage := services.NewMockStorage()
-	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+	mockStorage := storage.NewMockStorage()
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
 	// Create a test game state
 	testGS := state.NewGameState("FooScenario", "foo_model")
@@ -359,8 +392,8 @@ func TestGameStateHandler_Delete(t *testing.T) {
 		Level: slog.LevelError,
 	}))
 
-	mockStorage := services.NewMockStorage()
-	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+	mockStorage := storage.NewMockStorage()
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
 	// Create a test game state
 	testGS := state.NewGameState("FooScenario", "foo_model")
@@ -429,8 +462,8 @@ func TestGameStateHandler_MethodNotAllowed(t *testing.T) {
 		Level: slog.LevelError,
 	}))
 
-	mockStorage := services.NewMockStorage()
-	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+	mockStorage := storage.NewMockStorage()
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
 	// Test unsupported methods
 	methods := []string{http.MethodPut, http.MethodHead}
@@ -463,8 +496,8 @@ func TestGameStateHandler_MissingID(t *testing.T) {
 		Level: slog.LevelError,
 	}))
 
-	mockStorage := services.NewMockStorage()
-	handler := NewGameStateHandler("foo_model", mockStorage, logger)
+	mockStorage := storage.NewMockStorage()
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
 	tests := []struct {
 		name   string
