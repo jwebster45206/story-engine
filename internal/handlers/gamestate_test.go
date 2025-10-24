@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/storage"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
@@ -21,6 +22,22 @@ func TestGameStateHandler_Create(t *testing.T) {
 	}))
 
 	mockStorage := storage.NewMockStorage()
+
+	// Add the test scenario
+	mockStorage.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:            "Test Scenario",
+		FileName:        "foo_scenario.json",
+		Story:           "A test scenario",
+		OpeningPrompt:   "Welcome to the test!",
+		OpeningLocation: "start",
+		Locations: map[string]scenario.Location{
+			"start": {
+				Name:        "start",
+				Description: "Starting location",
+			},
+		},
+	})
+
 	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
 	// Test creating a new game state
@@ -59,6 +76,22 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 	}))
 
 	mockStorage := storage.NewMockStorage()
+
+	// Add the test scenario that tests reference
+	mockStorage.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:            "Test Scenario",
+		FileName:        "foo_scenario.json",
+		Story:           "A test scenario",
+		OpeningPrompt:   "Welcome to the test!",
+		OpeningLocation: "start",
+		Locations: map[string]scenario.Location{
+			"start": {
+				Name:        "start",
+				Description: "Starting location",
+			},
+		},
+	})
+
 	handler := NewGameStateHandler("foo_model", mockStorage, logger)
 
 	tests := []struct {

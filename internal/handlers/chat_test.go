@@ -104,6 +104,19 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 
 			mockSto := storage.NewMockStorage()
 
+			// Add the test scenario that the gamestate references
+			mockSto.AddScenario("foo_scenario.json", &scenario.Scenario{
+				Name:     "Test Scenario",
+				FileName: "foo_scenario.json",
+				Story:    "A test scenario",
+				Locations: map[string]scenario.Location{
+					"start": {
+						Name:        "start",
+						Description: "Starting location",
+					},
+				},
+			})
+
 			// For tests that need a valid GameStateID, create one
 			var gameStateID uuid.UUID
 			if tt.expectedStatus == http.StatusOK || tt.name == "LLM service error" {
@@ -238,6 +251,19 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 	}
 	mockSto := storage.NewMockStorage()
 
+	// Add the test scenario that the gamestate references
+	mockSto.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:     "Test Scenario",
+		FileName: "foo_scenario.json",
+		Story:    "A test scenario",
+		Locations: map[string]scenario.Location{
+			"start": {
+				Name:        "start",
+				Description: "Starting location",
+			},
+		},
+	})
+
 	// Create a test game state
 	testGS := state.NewGameState("foo_scenario.json", "foo_model")
 	if err := mockSto.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
@@ -313,6 +339,19 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 
 	mockLLM := services.NewMockLLMAPI()
 	mockSto := storage.NewMockStorage()
+
+	// Add the test scenario that the gamestate references
+	mockSto.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:     "Test Scenario",
+		FileName: "foo_scenario.json",
+		Story:    "A test scenario",
+		Locations: map[string]scenario.Location{
+			"start": {
+				Name:        "start",
+				Description: "Starting location",
+			},
+		},
+	})
 
 	// Create a test game state
 	testGS := state.NewGameState("foo_scenario.json", "foo_model")
@@ -446,6 +485,19 @@ func TestChatHandler_StreamingChat(t *testing.T) {
 
 	mockLLM := services.NewMockLLMAPI()
 	mockSto := storage.NewMockStorage()
+
+	// Add the test scenario that the gamestate references
+	mockSto.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:     "Test Scenario",
+		FileName: "foo_scenario.json",
+		Story:    "A test scenario",
+		Locations: map[string]scenario.Location{
+			"start": {
+				Name:        "start",
+				Description: "Starting location",
+			},
+		},
+	})
 
 	// Create a test game state
 	testGS := state.NewGameState("foo_scenario.json", "foo_model")
