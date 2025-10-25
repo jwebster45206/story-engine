@@ -63,16 +63,8 @@ func main() {
 
 	log.Info("Redis connection established successfully")
 
-	// Create worker configuration
-	workerCfg := &worker.Config{
-		WorkerID:           os.Getenv("WORKER_ID"), // Empty = auto-generate
-		ConcurrentWorkers:  1,                      // Start with single-threaded for skeleton
-		PollIntervalMs:     100,
-		GameLockTTLSeconds: 300, // 5 minutes
-	}
-
 	// Create and start worker
-	w := worker.New(chatQueue, redisClient, log, workerCfg)
+	w := worker.New(chatQueue, redisClient, log, os.Getenv("WORKER_ID"))
 
 	// Handle graceful shutdown
 	quit := make(chan os.Signal, 1)

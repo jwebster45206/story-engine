@@ -12,7 +12,11 @@ import (
 	queuePkg "github.com/jwebster45206/story-engine/pkg/queue"
 )
 
-// Worker processes requests from the unified queue
+const (
+	workerTimeout = 5 * time.Second
+)
+
+// Worker processes messages in the chat queue
 type Worker struct {
 	id          string
 	queue       *queue.ChatQueue
@@ -22,19 +26,10 @@ type Worker struct {
 	cancel      context.CancelFunc
 }
 
-// Config holds worker configuration
-type Config struct {
-	WorkerID           string
-	ConcurrentWorkers  int
-	PollIntervalMs     int
-	GameLockTTLSeconds int
-}
-
 // New creates a new worker instance
-func New(queueClient *queue.ChatQueue, redisClient *redis.Client, log *slog.Logger, cfg *Config) *Worker {
+func New(queueClient *queue.ChatQueue, redisClient *redis.Client, log *slog.Logger, workerID string) *Worker {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	workerID := cfg.WorkerID
 	if workerID == "" {
 		workerID = fmt.Sprintf("worker-%s", uuid.New().String()[:8])
 	}
@@ -77,10 +72,10 @@ func (w *Worker) Stop() {
 // processNextRequest pulls the next request from the queue and processes it
 func (w *Worker) processNextRequest() error {
 	// Block waiting for next request (timeout after 5 seconds to check for shutdown)
-	ctx, cancel := context.WithTimeout(w.ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(w.ctx, workerTimeout)
 	defer cancel()
 
-	req, err := w.queue.BlockingDequeueRequest(ctx, 5)
+	req, err := w.queue.BlockingDequeueRequest(ctx, workerTimeout)
 	if err != nil {
 		// Real error (not timeout/cancellation)
 		return fmt.Errorf("failed to dequeue request: %w", err)
@@ -103,16 +98,14 @@ func (w *Worker) processNextRequest() error {
 	if err != nil {
 		return fmt.Errorf("failed to acquire game lock: %w", err)
 	}
-
 	if !locked {
-		// Another worker is processing this game
+		// Another worker is processing this gamestate
 		// Re-queue at the end and try next request
 		w.log.Info("Game already locked, re-queueing request",
 			"worker_id", w.id,
 			"request_id", req.RequestID,
 			"game_state_id", req.GameStateID.String(),
 		)
-
 		if err := w.queue.EnqueueRequest(w.ctx, req); err != nil {
 			return fmt.Errorf("failed to re-queue request: %w", err)
 		}
@@ -121,7 +114,6 @@ func (w *Worker) processNextRequest() error {
 
 	// Process the request
 	defer w.releaseGameLock(req.GameStateID)
-
 	return w.processRequest(req)
 }
 
@@ -130,8 +122,7 @@ func (w *Worker) processNextRequest() error {
 func (w *Worker) acquireGameLock(gameStateID uuid.UUID) (bool, error) {
 	lockKey := fmt.Sprintf("game-lock:%s", gameStateID.String())
 
-	// Try to set the lock with 5 minute TTL
-	result, err := w.redisClient.SetNX(w.ctx, lockKey, w.id, 5*time.Minute).Result()
+	result, err := w.redisClient.SetNX(w.ctx, lockKey, w.id, 30*time.Second).Result()
 	if err != nil {
 		return false, err
 	}

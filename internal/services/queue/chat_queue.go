@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
@@ -135,8 +136,8 @@ func (seq *ChatQueue) DequeueRequest(ctx context.Context) (*queue.Request, error
 
 // BlockingDequeueRequest blocks until a request is available, then returns it
 // timeout is in seconds, 0 means wait forever
-func (seq *ChatQueue) BlockingDequeueRequest(ctx context.Context, timeout int) (*queue.Request, error) {
-	result, err := seq.client.rdb.BLPop(ctx, 0, "requests").Result()
+func (seq *ChatQueue) BlockingDequeueRequest(ctx context.Context, timeout time.Duration) (*queue.Request, error) {
+	result, err := seq.client.rdb.BLPop(ctx, timeout, "requests").Result()
 	if err != nil {
 		// Context timeout/cancellation is expected when queue is empty
 		if err == context.DeadlineExceeded || err == context.Canceled {

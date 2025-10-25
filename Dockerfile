@@ -16,7 +16,7 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build both the API and worker binaries
+# Build the API and worker binaries
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o api ./cmd/api
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o worker ./cmd/worker
 
@@ -32,7 +32,7 @@ RUN addgroup -g 1001 -S appgroup && \
 
 WORKDIR /app
 
-# Copy both binaries from builder stage
+# Copy binaries from builder stage
 COPY --from=builder /app/api .
 COPY --from=builder /app/worker .
 
@@ -51,5 +51,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# Default to running the API (can be overridden in docker-compose)
+# Default to running the API (override for worker in docker-compose)
 CMD ["./api"]
