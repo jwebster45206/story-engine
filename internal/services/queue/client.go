@@ -16,12 +16,9 @@ type Client struct {
 
 // NewClient creates a new queue client
 func NewClient(redisURL string, logger *slog.Logger) (*Client, error) {
-	opt, err := redis.ParseURL(redisURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse redis URL: %w", err)
-	}
-
-	rdb := redis.NewClient(opt)
+	rdb := redis.NewClient(&redis.Options{
+		Addr: redisURL,
+	})
 
 	// Test connection
 	ctx := context.Background()
