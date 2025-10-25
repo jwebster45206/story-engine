@@ -148,6 +148,14 @@ func (seq *ChatQueue) DequeueRequest(ctx context.Context) (*queue.Request, error
 func (seq *ChatQueue) BlockingDequeueRequest(ctx context.Context, timeout int) (*queue.Request, error) {
 	result, err := seq.client.rdb.BLPop(ctx, 0, "requests").Result()
 	if err != nil {
+		// Context timeout/cancellation is expected when queue is empty
+		if err == context.DeadlineExceeded || err == context.Canceled {
+			return nil, nil
+		}
+		// Redis Nil means queue is empty (shouldn't happen with BLPOP, but handle it)
+		if err == redis.Nil {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to dequeue request: %w", err)
 	}
 

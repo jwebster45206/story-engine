@@ -82,15 +82,12 @@ func (w *Worker) processNextRequest() error {
 
 	req, err := w.queue.BlockingDequeueRequest(ctx, 5)
 	if err != nil {
-		// Check if it's a timeout or context cancellation (normal)
-		if err == context.DeadlineExceeded || err == context.Canceled {
-			return nil
-		}
+		// Real error (not timeout/cancellation)
 		return fmt.Errorf("failed to dequeue request: %w", err)
 	}
 
 	if req == nil {
-		// No request available (shouldn't happen with blocking dequeue)
+		// Queue is empty or timeout occurred - this is normal
 		return nil
 	}
 
