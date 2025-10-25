@@ -19,7 +19,11 @@ func main() {
 		log.Fatal("Failed to parse Redis URL:", err)
 	}
 	client := redis.NewClient(redisOpts)
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			log.Printf("Failed to close Redis client: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 

@@ -35,9 +35,11 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"method", r.Method,
 			"path", r.URL.Path)
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(ErrorResponse{
+		if err := json.NewEncoder(w).Encode(ErrorResponse{
 			Error: "Method not allowed. Only GET is supported.",
-		})
+		}); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
 		return
 	}
 
@@ -46,9 +48,11 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(pathParts) != 4 || pathParts[0] != "v1" || pathParts[1] != "events" || pathParts[2] != "games" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{
+		if err := json.NewEncoder(w).Encode(ErrorResponse{
 			Error: "Invalid path. Expected /v1/events/games/{gameStateID}",
-		})
+		}); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
 		return
 	}
 
@@ -56,9 +60,11 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	gameStateID, err := uuid.Parse(gameStateIDStr)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{
+		if err := json.NewEncoder(w).Encode(ErrorResponse{
 			Error: "Invalid game state ID format.",
-		})
+		}); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
 		return
 	}
 
@@ -80,7 +86,11 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Subscribe to game events channel
 	channel := fmt.Sprintf("game-events:%s", gameStateID.String())
 	pubsub := h.redisClient.Subscribe(r.Context(), channel)
-	defer pubsub.Close()
+	defer func() {
+		if err := pubsub.Close(); err != nil {
+			h.logger.Error("Failed to close pubsub", "error", err)
+		}
+	}()
 
 	h.logger.Debug("Subscribed to channel", "channel", channel)
 
@@ -118,7 +128,10 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		case <-keepaliveTicker.C:
 			// Send keepalive comment
-			fmt.Fprintf(w, ": keepalive\n\n")
+			if _, err := fmt.Fprintf(w, ": keepalive\n\n"); err != nil {
+				h.logger.Error("Failed to write keepalive", "error", err)
+				return
+			}
 			if flusher, ok := w.(http.Flusher); ok {
 				flusher.Flush()
 			}
@@ -134,8 +147,14 @@ func (h *EventsHandler) sendSSE(w http.ResponseWriter, eventType string, data in
 		return
 	}
 
-	fmt.Fprintf(w, "event: %s\n", eventType)
-	fmt.Fprintf(w, "data: %s\n\n", string(dataJSON))
+	if _, err := fmt.Fprintf(w, "event: %s\n", eventType); err != nil {
+		h.logger.Error("Failed to write event type", "error", err)
+		return
+	}
+	if _, err := fmt.Fprintf(w, "data: %s\n\n", string(dataJSON)); err != nil {
+		h.logger.Error("Failed to write event data", "error", err)
+		return
+	}
 
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()

@@ -102,9 +102,8 @@ func main() {
 	chatHandler := handlers.NewChatHandler(chatQueue, log)
 	mux.Handle("/v1/chat", chatHandler)
 
-	// SSE events endpoint for real-time updates
 	eventsHandler := handlers.NewEventsHandler(redisClient, log)
-	mux.Handle("/v1/events/games/", eventsHandler)
+	mux.Handle("/v1/events/gamestate/", eventsHandler)
 
 	gameStateHandler := handlers.NewGameStateHandler(log, cfg.ModelName, storageService)
 	mux.Handle("/v1/gamestate", gameStateHandler)

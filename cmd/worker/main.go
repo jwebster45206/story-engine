@@ -105,7 +105,11 @@ func main() {
 		log.Error("Failed to connect to Redis", "error", err)
 		os.Exit(1)
 	}
-	defer redisClient.Close()
+	defer func() {
+		if err := redisClient.Close(); err != nil {
+			log.Error("Failed to close Redis client", "error", err)
+		}
+	}()
 
 	log.Info("Redis connection established successfully")
 

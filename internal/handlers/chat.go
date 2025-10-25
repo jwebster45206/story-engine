@@ -94,6 +94,10 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Enqueue for async processing
+	// TODO: Future enhancement - Check if reducer is still processing story events
+	// for this game before allowing new chat messages. This would prevent race
+	// conditions where new messages are processed before queued story events.
+	// See docs/QUEUE-REFACTOR.md "Known Issues" for details.
 	if err := h.chatQueue.EnqueueRequest(r.Context(), queueReq); err != nil {
 		h.logger.Error("Failed to enqueue chat request", "error", err, "request_id", requestID)
 		w.WriteHeader(http.StatusInternalServerError)

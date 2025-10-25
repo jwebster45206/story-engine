@@ -562,8 +562,8 @@ Create SSE endpoint for real-time chat updates, allowing clients to receive noti
 ### Completed Changes
 
 #### 1. SSE Endpoint (`internal/handlers/events.go`)
-- ✅ Created `GET /v1/events/games/{gameStateID}` - SSE stream for all events in a game
-- ✅ Registered at `/v1/events/games/` in API server
+- ✅ Created `GET /v1/events/gamestate/{gameStateID}` - SSE stream for all events in a game
+- ✅ Registered at `/v1/events/gamestate/` in API server
 - ✅ SSE implementation with proper headers:
   - `Content-Type: text/event-stream`
   - `Cache-Control: no-cache`
@@ -623,7 +623,7 @@ type Event struct {
 - ✅ Worker initialized with broadcaster in `cmd/worker/main.go`
 
 #### 6. API Server Updates (`cmd/api/main.go`)
-- ✅ Events handler registered at `/v1/events/games/`
+- ✅ Events handler registered at `/v1/events/gamestate/`
 - ✅ Uses existing Redis client from queue service
 
 ### Success Criteria
@@ -637,7 +637,7 @@ type Event struct {
 ### Testing Plan
 Manual testing required:
 1. Start Redis, API, and worker
-2. Connect to SSE endpoint: `curl -N http://localhost:8080/v1/events/games/{gameID}`
+2. Connect to SSE endpoint: `curl -N http://localhost:8080/v1/events/gamestate/{gameID}`
 3. POST chat request with same gameID
 4. Verify events stream in real-time:
    - `request.processing` when worker picks up request
@@ -652,7 +652,7 @@ Manual testing required:
 - **Modified**: `cmd/worker/main.go` (initialize broadcaster, pass to worker)
 
 ### Architecture Notes
-- **Separation of concerns**: SSE endpoint (`GET /v1/events/games/{gameID}`) is separate from chat endpoint (`POST /v1/chat`)
+- **Separation of concerns**: SSE endpoint (`GET /v1/events/gamestate/{gameID}`) is separate from chat endpoint (`POST /v1/chat`)
 - **Redis Pub/Sub**: Worker publishes events, API subscribes and streams via SSE
 - **Per-game channels**: `game-events:{gameID}` allows targeted subscriptions
 - **Non-blocking**: Event publishing failures don't block request processing
@@ -894,7 +894,7 @@ PSUBSCRIBE game-events:*
 
 6. **Separate SSE Endpoint from Chat Streaming** ✅
    - Current: `POST /v1/chat` with `stream=true` for real-time LLM output
-   - New: `GET /v1/events/games/{gameID}` for status/state updates
+   - New: `GET /v1/events/gamestate/{gameID}` for status/state updates
    - Rationale: Different concerns - LLM streaming vs job status
 
 7. **Queue Access Layer Policy** ✅

@@ -1,9 +1,9 @@
 services:
-  story-engine:
+  story-engine-api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: story-engine
+    container_name: story-engine-api
     ports:
       - "8080:8080"
     volumes:
@@ -27,7 +27,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: story-engine-worker
-    command: ["./worker"]  # Override CMD to run worker instead
+    command: ["./worker"]  # Override CMD
     volumes:
       - ./data:/app/data
       - ./config.docker.json:/app/config.docker.json
