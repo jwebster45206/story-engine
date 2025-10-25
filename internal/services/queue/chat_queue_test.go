@@ -32,16 +32,16 @@ func setupTestRedis(t *testing.T) (*Client, *miniredis.Miniredis) {
 	return client, mr
 }
 
-func TestStoryEventQueue_EnqueueDequeue(t *testing.T) {
+func TestChatQueue_EnqueueAndDequeue(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
 	defer client.Close()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	seq := NewStoryEventQueue(client, logger)
+	seq := NewChatQueue(client, logger)
 
 	ctx := context.Background()
-	gameID := uuid.New()
+	gameStateID := uuid.New()
 
 	// Enqueue some events
 	events := []string{
@@ -51,14 +51,14 @@ func TestStoryEventQueue_EnqueueDequeue(t *testing.T) {
 	}
 
 	for _, event := range events {
-		err := seq.Enqueue(ctx, gameID, event)
+		err := seq.Enqueue(ctx, gameStateID, event)
 		if err != nil {
 			t.Fatalf("Failed to enqueue event: %v", err)
 		}
 	}
 
 	// Check depth
-	depth, err := seq.Depth(ctx, gameID)
+	depth, err := seq.Depth(ctx, gameStateID)
 	if err != nil {
 		t.Fatalf("Failed to get depth: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestStoryEventQueue_EnqueueDequeue(t *testing.T) {
 	}
 
 	// Dequeue and verify
-	dequeued, err := seq.Dequeue(ctx, gameID)
+	dequeued, err := seq.Dequeue(ctx, gameStateID)
 	if err != nil {
 		t.Fatalf("Failed to dequeue events: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestStoryEventQueue_EnqueueDequeue(t *testing.T) {
 	}
 
 	// Queue should be empty after dequeue
-	depth, err = seq.Depth(ctx, gameID)
+	depth, err = seq.Depth(ctx, gameStateID)
 	if err != nil {
 		t.Fatalf("Failed to get depth after dequeue: %v", err)
 	}
@@ -92,25 +92,25 @@ func TestStoryEventQueue_EnqueueDequeue(t *testing.T) {
 	}
 }
 
-func TestStoryEventQueue_Peek(t *testing.T) {
+func TestChatQueue_Peek(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
 	defer client.Close()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	seq := NewStoryEventQueue(client, logger)
+	seq := NewChatQueue(client, logger)
 
 	ctx := context.Background()
-	gameID := uuid.New()
+	gameStateID := uuid.New()
 
 	// Enqueue events
 	events := []string{"Event 1", "Event 2", "Event 3"}
 	for _, event := range events {
-		seq.Enqueue(ctx, gameID, event)
+		seq.Enqueue(ctx, gameStateID, event)
 	}
 
 	// Peek all
-	peeked, err := seq.Peek(ctx, gameID, 0)
+	peeked, err := seq.Peek(ctx, gameStateID, 0)
 	if err != nil {
 		t.Fatalf("Failed to peek: %v", err)
 	}
@@ -119,13 +119,13 @@ func TestStoryEventQueue_Peek(t *testing.T) {
 	}
 
 	// Peek should not remove events
-	depth, _ := seq.Depth(ctx, gameID)
+	depth, _ := seq.Depth(ctx, gameStateID)
 	if depth != len(events) {
 		t.Errorf("Peek removed events: expected depth %d, got %d", len(events), depth)
 	}
 
 	// Peek with limit
-	peeked, err = seq.Peek(ctx, gameID, 2)
+	peeked, err = seq.Peek(ctx, gameStateID, 2)
 	if err != nil {
 		t.Fatalf("Failed to peek with limit: %v", err)
 	}
@@ -134,47 +134,47 @@ func TestStoryEventQueue_Peek(t *testing.T) {
 	}
 }
 
-func TestStoryEventQueue_Clear(t *testing.T) {
+func TestChatQueue_Clear(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
 	defer client.Close()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	seq := NewStoryEventQueue(client, logger)
+	seq := NewChatQueue(client, logger)
 
 	ctx := context.Background()
-	gameID := uuid.New()
+	gameStateID := uuid.New()
 
 	// Enqueue events
-	seq.Enqueue(ctx, gameID, "Event 1")
-	seq.Enqueue(ctx, gameID, "Event 2")
+	seq.Enqueue(ctx, gameStateID, "Event 1")
+	seq.Enqueue(ctx, gameStateID, "Event 2")
 
 	// Clear
-	err := seq.Clear(ctx, gameID)
+	err := seq.Clear(ctx, gameStateID)
 	if err != nil {
 		t.Fatalf("Failed to clear: %v", err)
 	}
 
 	// Verify empty
-	depth, _ := seq.Depth(ctx, gameID)
+	depth, _ := seq.Depth(ctx, gameStateID)
 	if depth != 0 {
 		t.Errorf("Expected empty queue after clear, got depth %d", depth)
 	}
 }
 
-func TestStoryEventQueue_GetFormattedEvents(t *testing.T) {
+func TestChatQueue_GetFormattedEvents(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
 	defer client.Close()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	seq := NewStoryEventQueue(client, logger)
+	seq := NewChatQueue(client, logger)
 
 	ctx := context.Background()
-	gameID := uuid.New()
+	gameStateID := uuid.New()
 
 	// Test empty queue
-	formatted, err := seq.GetFormattedEvents(ctx, gameID)
+	formatted, err := seq.GetFormattedEvents(ctx, gameStateID)
 	if err != nil {
 		t.Fatalf("Failed to get formatted events: %v", err)
 	}
@@ -183,10 +183,10 @@ func TestStoryEventQueue_GetFormattedEvents(t *testing.T) {
 	}
 
 	// Enqueue events
-	seq.Enqueue(ctx, gameID, "Dragon appears")
-	seq.Enqueue(ctx, gameID, "Ground trembles")
+	seq.Enqueue(ctx, gameStateID, "Dragon appears")
+	seq.Enqueue(ctx, gameStateID, "Ground trembles")
 
-	formatted, err = seq.GetFormattedEvents(ctx, gameID)
+	formatted, err = seq.GetFormattedEvents(ctx, gameStateID)
 	if err != nil {
 		t.Fatalf("Failed to get formatted events: %v", err)
 	}
@@ -197,13 +197,13 @@ func TestStoryEventQueue_GetFormattedEvents(t *testing.T) {
 	}
 }
 
-func TestStoryEventQueue_MultipleGames(t *testing.T) {
+func TestChatQueue_MultipleGames(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
 	defer client.Close()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	seq := NewStoryEventQueue(client, logger)
+	seq := NewChatQueue(client, logger)
 
 	ctx := context.Background()
 	game1 := uuid.New()

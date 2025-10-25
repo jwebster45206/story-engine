@@ -32,7 +32,7 @@ type DeltaWorker struct {
 	delta    *GameStateDelta
 	scenario *scenario.Scenario
 	logger   *slog.Logger
-	queue    StoryEventQueue // Optional queue service for story events
+	queue    ChatQueue
 	ctx      context.Context
 }
 
@@ -49,7 +49,7 @@ func NewDeltaWorker(gs *GameState, delta *GameStateDelta, scen *scenario.Scenari
 
 // WithQueue sets the queue service for enqueuing story events
 // Returns the DeltaWorker for method chaining
-func (dw *DeltaWorker) WithQueue(queue StoryEventQueue) *DeltaWorker {
+func (dw *DeltaWorker) WithQueue(queue ChatQueue) *DeltaWorker {
 	dw.queue = queue
 	return dw
 }

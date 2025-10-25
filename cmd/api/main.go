@@ -75,7 +75,7 @@ func main() {
 	}
 	defer queueClient.Close()
 
-	storyEventQueue := queue.NewStoryEventQueue(queueClient, log)
+	chatQueue := queue.NewChatQueue(queueClient, log)
 	log.Info("Queue service initialized successfully")
 
 	// Initialize the model on startup
@@ -91,7 +91,7 @@ func main() {
 	healthHandler := handlers.NewHealthHandler(log, storageService, llmService)
 	mux.Handle("/health", healthHandler)
 
-	chatHandler := handlers.NewChatHandler(log, storageService, llmService, storyEventQueue)
+	chatHandler := handlers.NewChatHandler(log, storageService, llmService, chatQueue)
 	mux.Handle("/v1/chat", chatHandler)
 
 	gameStateHandler := handlers.NewGameStateHandler(log, cfg.ModelName, storageService)

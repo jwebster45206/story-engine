@@ -24,7 +24,7 @@ type ChatHandler struct {
 	llmService services.LLMService
 	logger     *slog.Logger
 	storage    storage.Storage
-	storyQueue state.StoryEventQueue // Queue service for reading story events
+	chatQueue  state.ChatQueue // Queue service for reading story events
 
 	// For background gamestate delta cancellation
 	metaCancelMu sync.Mutex
@@ -32,12 +32,12 @@ type ChatHandler struct {
 }
 
 // NewChatHandler creates a new chat handler
-func NewChatHandler(logger *slog.Logger, storage storage.Storage, llmService services.LLMService, storyQueue state.StoryEventQueue) *ChatHandler {
+func NewChatHandler(logger *slog.Logger, storage storage.Storage, llmService services.LLMService, storyQueue state.ChatQueue) *ChatHandler {
 	return &ChatHandler{
 		logger:     logger,
 		storage:    storage,
 		llmService: llmService,
-		storyQueue: storyQueue,
+		chatQueue:  storyQueue,
 		metaCancel: make(map[uuid.UUID]context.CancelFunc),
 	}
 }
@@ -183,9 +183,9 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 
 	// Check for queued story events from Redis queue
 	storyEventPrompt := ""
-	if h.storyQueue != nil {
+	if h.chatQueue != nil {
 		var err error
-		storyEventPrompt, err = h.storyQueue.GetFormattedEvents(r.Context(), gs.ID)
+		storyEventPrompt, err = h.chatQueue.GetFormattedEvents(r.Context(), gs.ID)
 		if err != nil {
 			h.logger.Error("Error getting story events from queue", "error", err, "game_id", gs.ID.String())
 			// Continue without story events on error
@@ -216,8 +216,8 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 	}
 
 	// Clear story events after building messages
-	if storyEventPrompt != "" && h.storyQueue != nil {
-		if err := h.storyQueue.Clear(r.Context(), gs.ID); err != nil {
+	if storyEventPrompt != "" && h.chatQueue != nil {
+		if err := h.chatQueue.Clear(r.Context(), gs.ID); err != nil {
 			h.logger.Error("Failed to clear story event queue", "error", err, "game_id", gs.ID.String())
 		}
 	}
@@ -370,9 +370,9 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 
 	// Check for queued story events from Redis queue
 	storyEventPrompt := ""
-	if h.storyQueue != nil {
+	if h.chatQueue != nil {
 		var err error
-		storyEventPrompt, err = h.storyQueue.GetFormattedEvents(r.Context(), gs.ID)
+		storyEventPrompt, err = h.chatQueue.GetFormattedEvents(r.Context(), gs.ID)
 		if err != nil {
 			h.logger.Error("Error getting story events from queue", "error", err, "game_id", gs.ID.String())
 			// Continue without story events on error
@@ -404,8 +404,8 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 	}
 
 	// Clear story events after consumption
-	if h.storyQueue != nil {
-		if err := h.storyQueue.Clear(r.Context(), gs.ID); err != nil {
+	if h.chatQueue != nil {
+		if err := h.chatQueue.Clear(r.Context(), gs.ID); err != nil {
 			h.logger.Warn("Failed to clear story events from queue", "error", err, "game_state_id", gs.ID.String())
 		}
 	}
@@ -653,7 +653,7 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 
 	// Use DeltaWorker to handle all delta application logic
 	worker := state.NewDeltaWorker(latestGS, delta, s, h.logger).
-		WithQueue(h.storyQueue).
+		WithQueue(h.chatQueue).
 		WithContext(metaCtx)
 
 	// Apply vars first (before evaluating conditionals)
