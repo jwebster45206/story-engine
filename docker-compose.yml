@@ -22,6 +22,23 @@ services:
     networks:
       - story-engine-network
 
+  story-engine-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: story-engine-worker
+    command: ["./worker"]  # Override CMD to run worker instead
+    volumes:
+      - ./config.docker.json:/app/config.docker.json
+    environment:
+      - GAME_CONFIG=/app/config.docker.json
+      - WORKER_ID=worker-1
+    depends_on:
+      - redis
+    networks:
+      - story-engine-network
+    restart: unless-stopped
+
   # ollama:
   #     image: ollama/ollama
   #     container_name: ollama

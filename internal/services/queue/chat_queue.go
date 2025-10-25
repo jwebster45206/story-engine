@@ -3,9 +3,11 @@ package queue
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/pkg/queue"
 )
 
 // ChatQueue manages a queue of chat messages and story events for games
@@ -21,16 +23,6 @@ func NewChatQueue(client *Client) *ChatQueue {
 
 func queueKey(gameStateID uuid.UUID) string {
 	return fmt.Sprintf("story-events:%s", gameStateID.String())
-}
-
-// Enqueue adds a story event prompt to the end of the queue for a game
-func (seq *ChatQueue) Enqueue(ctx context.Context, gameStateID uuid.UUID, eventPrompt string) error {
-	key := queueKey(gameStateID)
-	err := seq.client.rdb.RPush(ctx, key, eventPrompt).Err()
-	if err != nil {
-		return fmt.Errorf("failed to enqueue story event: %w", err)
-	}
-	return nil
 }
 
 // Dequeue removes and returns all queued chat messages and story events for a game
@@ -107,4 +99,75 @@ func (seq *ChatQueue) GetFormattedEvents(ctx context.Context, gameStateID uuid.U
 		}
 	}
 	return formatted, nil
+}
+
+// EnqueueRequest adds a unified request to the global requests queue
+func (seq *ChatQueue) EnqueueRequest(ctx context.Context, req *queue.Request) error {
+	data, err := req.ToJSON()
+	if err != nil {
+		return fmt.Errorf("failed to serialize request: %w", err)
+	}
+
+	err = seq.client.rdb.RPush(ctx, "requests", data).Err()
+	if err != nil {
+		return fmt.Errorf("failed to enqueue request: %w", err)
+	}
+	return nil
+}
+
+// DequeueRequest removes and returns the next request from the global queue
+// Returns nil if queue is empty
+func (seq *ChatQueue) DequeueRequest(ctx context.Context) (*queue.Request, error) {
+	result, err := seq.client.rdb.LPop(ctx, "requests").Result()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, nil // Queue is empty
+		}
+		return nil, fmt.Errorf("failed to dequeue request: %w", err)
+	}
+
+	req, err := queue.FromJSON([]byte(result))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse request: %w", err)
+	}
+
+	return req, nil
+}
+
+// BlockingDequeueRequest blocks until a request is available, then returns it
+// timeout is in seconds, 0 means wait forever
+func (seq *ChatQueue) BlockingDequeueRequest(ctx context.Context, timeout time.Duration) (*queue.Request, error) {
+	result, err := seq.client.rdb.BLPop(ctx, timeout, "requests").Result()
+	if err != nil {
+		// Context timeout/cancellation is expected when queue is empty
+		if err == context.DeadlineExceeded || err == context.Canceled {
+			return nil, nil
+		}
+		// Redis Nil means queue is empty (shouldn't happen with BLPOP, but handle it)
+		if err == redis.Nil {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to dequeue request: %w", err)
+	}
+
+	// BLPop returns [key, value]
+	if len(result) != 2 {
+		return nil, fmt.Errorf("unexpected BLPop result: %v", result)
+	}
+
+	req, err := queue.FromJSON([]byte(result[1]))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse request: %w", err)
+	}
+
+	return req, nil
+}
+
+// RequestQueueDepth returns the number of requests in the global queue
+func (seq *ChatQueue) RequestQueueDepth(ctx context.Context) (int, error) {
+	count, err := seq.client.rdb.LLen(ctx, "requests").Result()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get request queue depth: %w", err)
+	}
+	return int(count), nil
 }

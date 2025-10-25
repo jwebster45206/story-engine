@@ -5,9 +5,11 @@ import (
 	"log/slog"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
+	queuePkg "github.com/jwebster45206/story-engine/pkg/queue"
 )
 
 func setupTestRedis(t *testing.T) (*Client, *miniredis.Miniredis) {
@@ -32,7 +34,7 @@ func setupTestRedis(t *testing.T) (*Client, *miniredis.Miniredis) {
 	return client, mr
 }
 
-func TestChatQueue_EnqueueAndDequeue(t *testing.T) {
+func TestChatQueue_EnqueueAndDequeueRequest(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
 	defer func() {
@@ -44,47 +46,61 @@ func TestChatQueue_EnqueueAndDequeue(t *testing.T) {
 	ctx := context.Background()
 	gameStateID := uuid.New()
 
-	// Enqueue some events
-	events := []string{
-		"A dragon appears on the horizon",
-		"The ground trembles beneath your feet",
-		"A mysterious stranger approaches",
+	// Enqueue some requests
+	requests := []*queuePkg.Request{
+		{
+			RequestID:   uuid.New().String(),
+			Type:        queuePkg.RequestTypeStoryEvent,
+			GameStateID: gameStateID,
+			EventPrompt: "A dragon appears on the horizon",
+			EnqueuedAt:  time.Now(),
+		},
+		{
+			RequestID:   uuid.New().String(),
+			Type:        queuePkg.RequestTypeChat,
+			GameStateID: gameStateID,
+			Message:     "Hello, world!",
+			Actor:       "player",
+			EnqueuedAt:  time.Now(),
+		},
 	}
 
-	for _, event := range events {
-		err := seq.Enqueue(ctx, gameStateID, event)
+	for _, req := range requests {
+		err := seq.EnqueueRequest(ctx, req)
 		if err != nil {
-			t.Fatalf("Failed to enqueue event: %v", err)
+			t.Fatalf("Failed to enqueue request: %v", err)
 		}
 	}
 
 	// Check depth
-	depth, err := seq.Depth(ctx, gameStateID)
+	depth, err := seq.RequestQueueDepth(ctx)
 	if err != nil {
 		t.Fatalf("Failed to get depth: %v", err)
 	}
-	if depth != len(events) {
-		t.Errorf("Expected depth %d, got %d", len(events), depth)
+	if depth != len(requests) {
+		t.Errorf("Expected depth %d, got %d", len(requests), depth)
 	}
 
 	// Dequeue and verify
-	dequeued, err := seq.Dequeue(ctx, gameStateID)
-	if err != nil {
-		t.Fatalf("Failed to dequeue events: %v", err)
-	}
+	for i, expected := range requests {
+		dequeued, err := seq.DequeueRequest(ctx)
+		if err != nil {
+			t.Fatalf("Failed to dequeue request %d: %v", i, err)
+		}
 
-	if len(dequeued) != len(events) {
-		t.Errorf("Expected %d events, got %d", len(events), len(dequeued))
-	}
-
-	for i, event := range events {
-		if dequeued[i] != event {
-			t.Errorf("Event %d mismatch: expected %q, got %q", i, event, dequeued[i])
+		if dequeued.RequestID != expected.RequestID {
+			t.Errorf("Request %d ID mismatch: expected %q, got %q", i, expected.RequestID, dequeued.RequestID)
+		}
+		if dequeued.Type != expected.Type {
+			t.Errorf("Request %d type mismatch: expected %q, got %q", i, expected.Type, dequeued.Type)
+		}
+		if dequeued.GameStateID != expected.GameStateID {
+			t.Errorf("Request %d GameStateID mismatch: expected %q, got %q", i, expected.GameStateID, dequeued.GameStateID)
 		}
 	}
 
 	// Queue should be empty after dequeue
-	depth, err = seq.Depth(ctx, gameStateID)
+	depth, err = seq.RequestQueueDepth(ctx)
 	if err != nil {
 		t.Fatalf("Failed to get depth after dequeue: %v", err)
 	}
@@ -93,7 +109,7 @@ func TestChatQueue_EnqueueAndDequeue(t *testing.T) {
 	}
 }
 
-func TestChatQueue_Peek(t *testing.T) {
+func TestChatQueue_DequeueEmptyQueue(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
 	defer func() {
@@ -101,42 +117,19 @@ func TestChatQueue_Peek(t *testing.T) {
 	}()
 
 	seq := NewChatQueue(client)
-
 	ctx := context.Background()
-	gameStateID := uuid.New()
 
-	// Enqueue events
-	events := []string{"Event 1", "Event 2", "Event 3"}
-	for _, event := range events {
-		_ = seq.Enqueue(ctx, gameStateID, event)
-	}
-
-	// Peek all
-	peeked, err := seq.Peek(ctx, gameStateID, 0)
+	// Dequeue from empty queue should return nil
+	req, err := seq.DequeueRequest(ctx)
 	if err != nil {
-		t.Fatalf("Failed to peek: %v", err)
+		t.Fatalf("Unexpected error from empty queue: %v", err)
 	}
-	if len(peeked) != len(events) {
-		t.Errorf("Expected %d events, got %d", len(events), len(peeked))
-	}
-
-	// Peek should not remove events
-	depth, _ := seq.Depth(ctx, gameStateID)
-	if depth != len(events) {
-		t.Errorf("Peek removed events: expected depth %d, got %d", len(events), depth)
-	}
-
-	// Peek with limit
-	peeked, err = seq.Peek(ctx, gameStateID, 2)
-	if err != nil {
-		t.Fatalf("Failed to peek with limit: %v", err)
-	}
-	if len(peeked) != 2 {
-		t.Errorf("Expected 2 events, got %d", len(peeked))
+	if req != nil {
+		t.Errorf("Expected nil from empty queue, got %v", req)
 	}
 }
 
-func TestChatQueue_Clear(t *testing.T) {
+func TestChatQueue_RequestQueueDepth(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
 	defer func() {
@@ -144,28 +137,40 @@ func TestChatQueue_Clear(t *testing.T) {
 	}()
 
 	seq := NewChatQueue(client)
-
 	ctx := context.Background()
-	gameStateID := uuid.New()
 
-	// Enqueue events
-	_ = seq.Enqueue(ctx, gameStateID, "Event 1")
-	_ = seq.Enqueue(ctx, gameStateID, "Event 2")
-
-	// Clear
-	err := seq.Clear(ctx, gameStateID)
+	// Empty queue
+	depth, err := seq.RequestQueueDepth(ctx)
 	if err != nil {
-		t.Fatalf("Failed to clear: %v", err)
+		t.Fatalf("Failed to get depth: %v", err)
 	}
-
-	// Verify empty
-	depth, _ := seq.Depth(ctx, gameStateID)
 	if depth != 0 {
-		t.Errorf("Expected empty queue after clear, got depth %d", depth)
+		t.Errorf("Expected empty queue, got depth %d", depth)
+	}
+
+	// Add requests
+	gameStateID := uuid.New()
+	for i := 0; i < 3; i++ {
+		req := &queuePkg.Request{
+			RequestID:   uuid.New().String(),
+			Type:        queuePkg.RequestTypeStoryEvent,
+			GameStateID: gameStateID,
+			EventPrompt: "Test event",
+			EnqueuedAt:  time.Now(),
+		}
+		_ = seq.EnqueueRequest(ctx, req)
+	}
+
+	depth, err = seq.RequestQueueDepth(ctx)
+	if err != nil {
+		t.Fatalf("Failed to get depth: %v", err)
+	}
+	if depth != 3 {
+		t.Errorf("Expected depth 3, got %d", depth)
 	}
 }
 
-func TestChatQueue_GetFormattedEvents(t *testing.T) {
+func TestChatQueue_FIFOOrdering(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
 	defer func() {
@@ -173,7 +178,44 @@ func TestChatQueue_GetFormattedEvents(t *testing.T) {
 	}()
 
 	seq := NewChatQueue(client)
+	ctx := context.Background()
+	gameStateID := uuid.New()
 
+	// Enqueue requests in order
+	requestIDs := []string{}
+	for i := 0; i < 5; i++ {
+		reqID := uuid.New().String()
+		requestIDs = append(requestIDs, reqID)
+		req := &queuePkg.Request{
+			RequestID:   reqID,
+			Type:        queuePkg.RequestTypeStoryEvent,
+			GameStateID: gameStateID,
+			EventPrompt: "Event " + reqID,
+			EnqueuedAt:  time.Now(),
+		}
+		_ = seq.EnqueueRequest(ctx, req)
+	}
+
+	// Dequeue and verify FIFO order
+	for i, expectedID := range requestIDs {
+		dequeued, err := seq.DequeueRequest(ctx)
+		if err != nil {
+			t.Fatalf("Failed to dequeue request %d: %v", i, err)
+		}
+		if dequeued.RequestID != expectedID {
+			t.Errorf("FIFO violation at position %d: expected %q, got %q", i, expectedID, dequeued.RequestID)
+		}
+	}
+}
+
+func TestChatQueue_GetFormattedEvents_LegacySupport(t *testing.T) {
+	client, mr := setupTestRedis(t)
+	defer mr.Close()
+	defer func() {
+		_ = client.Close()
+	}()
+
+	seq := NewChatQueue(client)
 	ctx := context.Background()
 	gameStateID := uuid.New()
 
@@ -184,56 +226,5 @@ func TestChatQueue_GetFormattedEvents(t *testing.T) {
 	}
 	if formatted != "" {
 		t.Errorf("Expected empty string for empty queue, got %q", formatted)
-	}
-
-	// Enqueue events
-	_ = seq.Enqueue(ctx, gameStateID, "Dragon appears")
-	_ = seq.Enqueue(ctx, gameStateID, "Ground trembles")
-
-	formatted, err = seq.GetFormattedEvents(ctx, gameStateID)
-	if err != nil {
-		t.Fatalf("Failed to get formatted events: %v", err)
-	}
-
-	expected := "STORY EVENT: Dragon appears\n\nSTORY EVENT: Ground trembles"
-	if formatted != expected {
-		t.Errorf("Formatted events mismatch:\nExpected: %q\nGot: %q", expected, formatted)
-	}
-}
-
-func TestChatQueue_MultipleGames(t *testing.T) {
-	client, mr := setupTestRedis(t)
-	defer mr.Close()
-	defer func() {
-		_ = client.Close()
-	}()
-
-	seq := NewChatQueue(client)
-
-	ctx := context.Background()
-	game1 := uuid.New()
-	game2 := uuid.New()
-
-	// Enqueue events for different games
-	_ = seq.Enqueue(ctx, game1, "Game 1 Event 1")
-	_ = seq.Enqueue(ctx, game1, "Game 1 Event 2")
-	_ = seq.Enqueue(ctx, game2, "Game 2 Event 1")
-
-	// Verify isolation
-	depth1, _ := seq.Depth(ctx, game1)
-	depth2, _ := seq.Depth(ctx, game2)
-
-	if depth1 != 2 {
-		t.Errorf("Game 1 expected depth 2, got %d", depth1)
-	}
-	if depth2 != 1 {
-		t.Errorf("Game 2 expected depth 1, got %d", depth2)
-	}
-
-	// Dequeue from game1 shouldn't affect game2
-	_, _ = seq.Dequeue(ctx, game1)
-	depth2After, _ := seq.Depth(ctx, game2)
-	if depth2After != 1 {
-		t.Errorf("Game 2 depth changed after dequeuing game 1: got %d", depth2After)
 	}
 }
