@@ -15,6 +15,7 @@ import (
 	"github.com/jwebster45206/story-engine/internal/logger"
 	"github.com/jwebster45206/story-engine/internal/middleware"
 	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/services/queue"
 	"github.com/jwebster45206/story-engine/internal/storage"
 )
 
@@ -66,6 +67,18 @@ func main() {
 	}
 	log.Info("Storage connection established successfully")
 
+	// Initialize queue service for story events
+	queueClient, err := queue.NewClient(cfg.RedisURL, log)
+	if err != nil {
+		log.Error("Failed to create queue client", "error", err)
+		os.Exit(1)
+	}
+	defer queueClient.Close()
+
+	storyEventQueue := queue.NewStoryEventQueue(queueClient, log)
+	storyEventQueueAdapter := queue.NewStoryEventQueueAdapter(storyEventQueue, log)
+	log.Info("Queue service initialized successfully")
+
 	// Initialize the model on startup
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -79,7 +92,7 @@ func main() {
 	healthHandler := handlers.NewHealthHandler(log, storageService, llmService)
 	mux.Handle("/health", healthHandler)
 
-	chatHandler := handlers.NewChatHandler(log, storageService, llmService)
+	chatHandler := handlers.NewChatHandler(log, storageService, llmService, storyEventQueueAdapter)
 	mux.Handle("/v1/chat", chatHandler)
 
 	gameStateHandler := handlers.NewGameStateHandler(log, cfg.ModelName, storageService)
