@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
@@ -313,12 +312,11 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var loadedPC *actor.PC
-	pcPath := filepath.Join("data/pcs", pcID+".json")
-	pcSpec, pcErr := h.storage.GetPCSpec(r.Context(), pcPath)
+	pcSpec, pcErr := h.storage.GetPCSpec(r.Context(), pcID)
 	if pcErr != nil {
 		h.logger.Warn("Failed to load PC spec, trying fallback to classic", "pc_id", pcID, "error", pcErr)
 		// Try fallback to classic
-		pcSpec, pcErr = h.storage.GetPCSpec(r.Context(), "data/pcs/classic.json")
+		pcSpec, pcErr = h.storage.GetPCSpec(r.Context(), "classic")
 		if pcErr != nil {
 			h.logger.Error("Failed to load fallback PC 'classic'", "error", pcErr)
 			// Continue without PC rather than failing - PC is optional for now
@@ -369,8 +367,9 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		openingPrompt := s.OpeningPrompt
 
 		// Check if scenario prompt has placeholder and PC has opening prompt
-		if strings.Contains(openingPrompt, "%s") && loadedPC != nil && loadedPC.Spec.OpeningPrompt != "" {
-			openingPrompt = fmt.Sprintf(openingPrompt, loadedPC.Spec.OpeningPrompt)
+		// Use gs.PC instead of loadedPC since that's the canonical reference
+		if strings.Contains(openingPrompt, "%s") && gs.PC != nil && gs.PC.Spec != nil && gs.PC.Spec.OpeningPrompt != "" {
+			openingPrompt = fmt.Sprintf(openingPrompt, gs.PC.Spec.OpeningPrompt)
 		}
 
 		gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
