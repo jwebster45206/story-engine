@@ -7,15 +7,15 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
-	
-	"github.com/jwebster45206/story-engine/internal/storage"
+
 	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 func TestNarratorHandler_ListNarrators(t *testing.T) {
 	// Create mock storage
 	mockStorage := storage.NewMockStorage()
-	
+
 	// Add test narrators
 	mockStorage.AddNarrator("classic", &scenario.Narrator{
 		ID:          "classic",
@@ -23,7 +23,7 @@ func TestNarratorHandler_ListNarrators(t *testing.T) {
 		Description: "Traditional storytelling voice",
 		Prompts:     []string{"Be clear and direct"},
 	})
-	
+
 	mockStorage.AddNarrator("spooky", &scenario.Narrator{
 		ID:          "spooky",
 		Name:        "Spooky Narrator",
@@ -60,7 +60,7 @@ func TestNarratorHandler_ListNarrators(t *testing.T) {
 func TestNarratorHandler_GetNarrator(t *testing.T) {
 	// Create mock storage
 	mockStorage := storage.NewMockStorage()
-	
+
 	// Add test narrator
 	mockStorage.AddNarrator("classic", &scenario.Narrator{
 		ID:          "classic",

@@ -7,14 +7,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 func TestMockStorage_SaveAndLoadGameState(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Create a test gamestate
-	gs := state.NewGameState("test_scenario.json", "test_model")
+	gs := state.NewGameState("test_scenario.json", nil, "test_model")
 	gs.Location = "tavern"
 	gs.Inventory = []string{"sword", "shield"}
 
@@ -48,7 +49,7 @@ func TestMockStorage_SaveAndLoadGameState(t *testing.T) {
 }
 
 func TestMockStorage_LoadNonExistentGameState(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Try to load a non-existent gamestate
@@ -64,11 +65,11 @@ func TestMockStorage_LoadNonExistentGameState(t *testing.T) {
 }
 
 func TestMockStorage_DeleteGameState(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Create and save a gamestate
-	gs := state.NewGameState("test_scenario.json", "test_model")
+	gs := state.NewGameState("test_scenario.json", nil, "test_model")
 	err := mockStorage.SaveGameState(ctx, gs.ID, gs)
 	if err != nil {
 		t.Fatalf("Failed to save gamestate: %v", err)
@@ -97,11 +98,11 @@ func TestMockStorage_DeleteGameState(t *testing.T) {
 }
 
 func TestMockStorage_UpdateGameState(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Create and save initial gamestate
-	gs := state.NewGameState("test_scenario.json", "test_model")
+	gs := state.NewGameState("test_scenario.json", nil, "test_model")
 	gs.Location = "start"
 	err := mockStorage.SaveGameState(ctx, gs.ID, gs)
 	if err != nil {

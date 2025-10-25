@@ -15,11 +15,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/services"
-	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/prompts"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -45,7 +46,7 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			mockSetup: func(m *services.MockLLMAPI) {
 				m.GenerateResponseFunc = func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 					// Return valid JSON for meta extraction, otherwise normal test response
-					promptPrefix := scenario.ReducerPrompt
+					promptPrefix := prompts.ReducerPrompt
 					if len(promptPrefix) > 50 {
 						promptPrefix = promptPrefix[:50]
 					}
@@ -120,8 +121,8 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			// For tests that need a valid GameStateID, create one
 			var gameStateID uuid.UUID
 			if tt.expectedStatus == http.StatusOK || tt.name == "LLM service error" {
-				// Create a test game state
-				testGS := state.NewGameState("foo_scenario.json", "foo_model")
+				// Create a test game state (nil narrator is fine for tests)
+				testGS := state.NewGameState("foo_scenario.json", nil, "foo_model")
 				gameStateID = testGS.ID
 				if err := mockSto.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 					t.Fatalf("Failed to save test game state: %v", err)
@@ -231,7 +232,7 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 
 	mockLLM.GenerateResponseFunc = func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
 		// Return valid JSON for meta extraction, otherwise normal test response
-		promptPrefix := scenario.ReducerPrompt
+		promptPrefix := prompts.ReducerPrompt
 		if len(promptPrefix) > 50 {
 			promptPrefix = promptPrefix[:50]
 		}
@@ -264,8 +265,8 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 		},
 	})
 
-	// Create a test game state
-	testGS := state.NewGameState("foo_scenario.json", "foo_model")
+	// Create a test game state (nil narrator is fine for tests)
+	testGS := state.NewGameState("foo_scenario.json", nil, "foo_model")
 	if err := mockSto.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
@@ -353,8 +354,8 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 		},
 	})
 
-	// Create a test game state
-	testGS := state.NewGameState("foo_scenario.json", "foo_model")
+	// Create a test game state (nil narrator is fine for tests)
+	testGS := state.NewGameState("foo_scenario.json", nil, "foo_model")
 	if err := mockSto.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
@@ -499,8 +500,8 @@ func TestChatHandler_StreamingChat(t *testing.T) {
 		},
 	})
 
-	// Create a test game state
-	testGS := state.NewGameState("foo_scenario.json", "foo_model")
+	// Create a test game state (nil narrator is fine for tests)
+	testGS := state.NewGameState("foo_scenario.json", nil, "foo_model")
 	if err := mockSto.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}

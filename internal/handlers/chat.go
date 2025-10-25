@@ -13,10 +13,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/services"
-	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/chat"
-	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/prompts"
 	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 // ChatHandler handles chat requests
@@ -42,12 +42,30 @@ func NewChatHandler(logger *slog.Logger, storage storage.Storage, llmService ser
 
 const PromptHistoryLimit = 6
 
+// filterStoryEventMarkers removes "STORY EVENT:" markers from LLM responses
+// The LLM sometimes includes these markers despite instructions not to
+func filterStoryEventMarkers(text string) string {
+	// Remove "STORY EVENT:" at the start of lines (case-insensitive)
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		// Check for "STORY EVENT:" prefix (case-insensitive)
+		if len(trimmed) >= 12 {
+			prefix := strings.ToUpper(trimmed[:12])
+			if prefix == "STORY EVENT:" {
+				// Remove the prefix and preserve the rest
+				lines[i] = strings.TrimSpace(trimmed[12:])
+			}
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
 // ServeHTTP handles HTTP requests for chat.
 // This is the primary endpoint for user interaction with the LLM.
 func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Only allow POST method and check for /v1/chat path
 	if r.Method != http.MethodPost || !strings.HasPrefix(r.URL.Path, "/v1/chat") {
 		h.logger.Warn("Method not allowed for chat endpoint",
 			"method", r.Method,
@@ -67,11 +85,6 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	h.logger.Debug("Chat endpoint accessed",
-		"method", r.Method,
-		"path", r.URL.Path,
-		"remote_addr", r.RemoteAddr)
 
 	var request chat.ChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -137,6 +150,8 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 	}
 
 	// Get Scenario for the chat
+	// Load scenario from filesystem
+	// TODO: Add caching layer to reduce filesystem I/O
 	loadedScenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
 	if err != nil {
 		h.logger.Error("Error loading scenario for chat", "error", err, "scenario_filename", gs.Scenario)
@@ -150,34 +165,7 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		return
 	}
 
-	// Load narrator if specified (gamestate override or scenario default)
-	narratorID := gs.NarratorID
-	if narratorID == "" {
-		narratorID = loadedScenario.NarratorID
-	}
-	var narrator *scenario.Narrator
-	if narratorID != "" {
-		narrator, err = h.storage.GetNarrator(r.Context(), narratorID)
-		if err != nil {
-			// Log warning but continue without narrator
-			h.logger.Warn("Failed to load narrator", "narrator_id", narratorID, "error", err)
-		} else if narrator != nil {
-			h.logger.Debug("Successfully loaded narrator", "id", narrator.ID, "name", narrator.Name, "prompts", len(narrator.Prompts))
-		}
-	}
-
-	cmdResult, err := gs.TryHandleCommand(request.Message)
-	if err != nil {
-		h.logger.Error("Error handling command in chat", "error", err, "command", request.Message)
-		w.WriteHeader(http.StatusInternalServerError)
-		response := ErrorResponse{
-			Error: "Failed to handle command in chat.",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Error encoding error response", "error", err)
-		}
-		return
-	}
+	cmdResult := TryHandleCommand(gs, request.Message)
 	if cmdResult.Handled {
 		h.logger.Debug("Command handled in chat", "command", request.Message, "response", cmdResult.Message)
 		response := chat.ChatResponse{
@@ -194,16 +182,21 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 	// Check for queued story events
 	storyEventPrompt := gs.GetStoryEvents()
 	if storyEventPrompt != "" {
-		gs.ClearStoryEventQueue()
 		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
 	}
 
-	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, loadedScenario, narrator, PromptHistoryLimit, storyEventPrompt)
+	// Build chat messages using the prompt builder
+	messages, err := prompts.New().
+		WithGameState(gs).
+		WithScenario(loadedScenario).
+		WithUserMessage(cmdResult.Message, cmdResult.Role).
+		WithHistoryLimit(PromptHistoryLimit).
+		Build()
 	if err != nil {
-		h.logger.Error("Error getting chat messages", "error", err)
+		h.logger.Error("Error building chat messages", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		response := ErrorResponse{
-			Error: "Failed to get chat messages.",
+			Error: "Failed to build chat messages.",
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Error encoding error response", "error", err)
@@ -211,7 +204,10 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		return
 	}
 
-	// Generate response using LLM
+	// Clear story events after building messages
+	if storyEventPrompt != "" {
+		gs.ClearStoryEventQueue()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -268,8 +264,9 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		Content: request.Message,
 	})
 
-	// Add the LLM's response to the game state
+	// Filter out "STORY EVENT:" markers from LLM response and add to game state
 	response.Message = strings.TrimRight(response.Message, "\n")
+	response.Message = filterStoryEventMarkers(response.Message)
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
 		Role:    chat.ChatRoleAgent,
 		Content: response.Message,
@@ -326,6 +323,8 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 	}
 
 	// Get Scenario for the chat
+	// Load scenario from filesystem
+	// TODO: Add caching layer to reduce filesystem I/O
 	loadedScenario, err := h.storage.GetScenario(r.Context(), gs.Scenario)
 	if err != nil {
 		h.logger.Error("Error loading scenario for chat", "error", err, "scenario_filename", gs.Scenario)
@@ -340,35 +339,10 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		return
 	}
 
-	// Load narrator if specified (gamestate override or scenario default)
-	narratorID := gs.NarratorID
-	if narratorID == "" {
-		narratorID = loadedScenario.NarratorID
-	}
-	var narrator *scenario.Narrator
-	if narratorID != "" {
-		narrator, err = h.storage.GetNarrator(r.Context(), narratorID)
-		if err != nil {
-			// Log warning but continue without narrator
-			h.logger.Warn("Failed to load narrator", "narrator_id", narratorID, "error", err)
-		} else if narrator != nil {
-			h.logger.Debug("Successfully loaded narrator", "id", narrator.ID, "name", narrator.Name, "prompts", len(narrator.Prompts))
-		}
-	}
+	// Narrator is embedded in gamestate (loaded once at creation)
+	// No need to load narrator separately - it's already in gs.Narrator
 
-	cmdResult, err := gs.TryHandleCommand(request.Message)
-	if err != nil {
-		h.logger.Error("Error handling command in chat", "error", err, "command", request.Message)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		response := ErrorResponse{
-			Error: "Failed to handle command in chat.",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Error encoding error response", "error", err)
-		}
-		return
-	}
+	cmdResult := TryHandleCommand(gs, request.Message)
 	// Handle commands before streaming setup
 	if cmdResult.Handled {
 		h.logger.Debug("Command handled in chat", "command", request.Message, "response", cmdResult.Message)
@@ -384,22 +358,32 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 	// Check for queued story events
 	storyEventPrompt := gs.GetStoryEvents()
 	if storyEventPrompt != "" {
-		gs.ClearStoryEventQueue()
 		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
 	}
 
-	messages, err := gs.GetChatMessages(cmdResult.Message, cmdResult.Role, loadedScenario, narrator, PromptHistoryLimit, storyEventPrompt)
+	// Build chat messages using the prompt builder
+	messages, err := prompts.New().
+		WithGameState(gs).
+		WithScenario(loadedScenario).
+		WithUserMessage(cmdResult.Message, cmdResult.Role).
+		WithHistoryLimit(PromptHistoryLimit).
+		Build()
 	if err != nil {
-		h.logger.Error("Error getting chat messages", "error", err)
+		h.logger.Error("Error building chat messages", "error", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		response := ErrorResponse{
-			Error: "Failed to get chat messages.",
+			Error: "Failed to build chat messages.",
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Error encoding error response", "error", err)
 		}
 		return
+	}
+
+	// Clear story events after building messages
+	if storyEventPrompt != "" {
+		gs.ClearStoryEventQueue()
 	}
 
 	// Initialize LLM streaming (final validation step before committing to SSE)
@@ -453,11 +437,15 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 			return
 		}
 
-		// Send the chunk
-		h.sendSSEChunk(w, chunk)
+		// Filter and send the chunk
+		filteredChunk := chunk
+		if chunk.Content != "" {
+			filteredChunk.Content = filterStoryEventMarkers(chunk.Content)
+		}
+		h.sendSSEChunk(w, filteredChunk)
 		flusher.Flush()
 
-		// Accumulate content for game state update
+		// Accumulate original content for game state update (will be filtered later)
 		if chunk.Content != "" {
 			fullResponse.WriteString(chunk.Content)
 		}
@@ -507,7 +495,9 @@ func (h *ChatHandler) updateGameStateAfterStreaming(gs *state.GameState, userMes
 		Content: userMessage,
 	})
 
+	// Filter out "STORY EVENT:" markers from LLM response and add to game state
 	responseMessage = strings.TrimRight(responseMessage, "\n")
+	responseMessage = filterStoryEventMarkers(responseMessage)
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
 		Role:    chat.ChatRoleAgent,
 		Content: responseMessage,
@@ -530,14 +520,14 @@ func (h *ChatHandler) updateGameStateAfterStreaming(gs *state.GameState, userMes
 // of gamestate.
 func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, userMessage string, responseMessage string, storyEventPrompt string) {
 	start := time.Now()
-	h.logger.Debug("Starting background game gamestate delta", "game_state_id", gs.ID.String())
+	h.logger.Debug("Starting background game gamestate delta", "game_state_id", gs.ID.String(), "response", responseMessage)
 	defer func() {
 		h.metaCancelMu.Lock()
 		delete(h.metaCancel, gs.ID)
 		h.metaCancelMu.Unlock()
 	}()
 
-	currentStateJSON, err := json.Marshal(state.ToBackgroundPromptState(gs))
+	currentStateJSON, err := json.Marshal(prompts.ToBackgroundPromptState(gs))
 	if err != nil {
 		h.logger.Error("Failed to marshal current game state for gamestate delta", "error", err, "game_state_id", gs.ID.String())
 		return
@@ -549,7 +539,7 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 		return
 	}
 
-	contingencyRules := scenario.GlobalContingencyRules
+	contingencyRules := prompts.GlobalContingencyRules
 	contingencyRules = append(contingencyRules, s.ContingencyRules...)
 	if gs.SceneName != "" {
 		contingencyRules = append(contingencyRules, s.Scenes[gs.SceneName].ContingencyRules...)
@@ -558,7 +548,7 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: fmt.Sprintf(scenario.ReducerPrompt, strings.Join(contingencyRules, "\n- ")),
+			Content: fmt.Sprintf(prompts.ReducerPrompt, strings.Join(contingencyRules, "\n- ")),
 		},
 		{
 			Role:    chat.ChatRoleSystem,
@@ -628,6 +618,10 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 		h.logger.Warn("Game state not found during gamestate delta", "game_state_id", gs.ID.String())
 		return
 	}
+
+	// Clear story event queue from latestGS.
+	// This prevents events from being re-injected on subsequent turns.
+	latestGS.ClearStoryEventQueue()
 
 	// Increment turn counters on the latest game state
 	if !latestGS.IsEnded {

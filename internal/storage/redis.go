@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 // RedisStorage implements the Storage interface using Redis for gamestate
@@ -18,7 +19,7 @@ type RedisStorage struct {
 }
 
 // Ensure RedisStorage implements Storage interface
-var _ Storage = (*RedisStorage)(nil)
+var _ storage.Storage = (*RedisStorage)(nil)
 
 // NewRedisStorage creates a new Redis storage instance
 func NewRedisStorage(redisURL string, dataDir string, logger *slog.Logger) *RedisStorage {

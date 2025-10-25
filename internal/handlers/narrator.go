@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/jwebster45206/story-engine/internal/storage"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 // NarratorDataDir is the default path to the narrator data directory

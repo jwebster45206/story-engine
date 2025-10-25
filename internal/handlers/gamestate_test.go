@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 func TestGameStateHandler_Create(t *testing.T) {
@@ -159,9 +159,13 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 					t.Error("Expected non-nil game state ID")
 				}
 
-				// Check that override values are present if specified
-				if tt.checkNarratorID != "" && response.NarratorID != tt.checkNarratorID {
-					t.Errorf("Expected narrator_id %s, got %s", tt.checkNarratorID, response.NarratorID)
+				// Check that narrator is embedded if specified
+				if tt.checkNarratorID != "" {
+					if response.Narrator == nil {
+						t.Errorf("Expected narrator to be embedded, got nil")
+					} else if response.Narrator.ID != tt.checkNarratorID {
+						t.Errorf("Expected narrator ID %s, got %s", tt.checkNarratorID, response.Narrator.ID)
+					}
 				}
 
 				// Verify the gamestate was saved
@@ -321,8 +325,8 @@ func TestGameStateHandler_Read(t *testing.T) {
 	mockStorage := storage.NewMockStorage()
 	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
-	// Create a test game state
-	testGS := state.NewGameState("FooScenario", "foo_model")
+	// Create a test game state (nil narrator is fine for tests)
+	testGS := state.NewGameState("FooScenario", nil, "foo_model")
 	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
@@ -395,8 +399,8 @@ func TestGameStateHandler_Delete(t *testing.T) {
 	mockStorage := storage.NewMockStorage()
 	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
 
-	// Create a test game state
-	testGS := state.NewGameState("FooScenario", "foo_model")
+	// Create a test game state (nil narrator is fine for tests)
+	testGS := state.NewGameState("FooScenario", nil, "foo_model")
 	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}

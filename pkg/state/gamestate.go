@@ -19,7 +19,7 @@ type GameState struct {
 	ModelName          string                       `json:"model_name,omitempty" `     // Name of the large language model driving gameplay
 	Scenario           string                       `json:"scenario,omitempty" `       // Filename of the scenario being played. Ex: "foo_scenario.json"
 	SceneName          string                       `json:"scene_name,omitempty" `     // Current scene name in the scenario, if applicable
-	NarratorID         string                       `json:"narrator_id,omitempty"`     // Override narrator for this game session
+	Narrator           *scenario.Narrator           `json:"narrator,omitempty"`        // Embedded narrator for this game session (loaded once at creation)
 	PC                 *actor.PC                    `json:"pc,omitempty"`              // Player Character for this game session
 	NPCs               map[string]actor.NPC         `json:"npcs,omitempty" `           // All NPCs in the game world
 	WorldLocations     map[string]scenario.Location `json:"locations,omitempty" `      // Current locations in the game world
@@ -36,11 +36,12 @@ type GameState struct {
 	UpdatedAt          time.Time                    `json:"updated_at" `
 }
 
-func NewGameState(scenarioFileName string, modelName string) *GameState {
+func NewGameState(scenarioFileName string, narrator *scenario.Narrator, modelName string) *GameState {
 	return &GameState{
 		ID:                 uuid.New(),
 		ModelName:          modelName,
 		Scenario:           scenarioFileName,
+		Narrator:           narrator, // Embed full narrator object
 		ChatHistory:        make([]chat.ChatMessage, 0),
 		TurnCounter:        0,
 		SceneTurnCounter:   0,
@@ -59,38 +60,6 @@ func (gs *GameState) Validate() error {
 		return fmt.Errorf("scenario.file_name is required")
 	}
 	return nil
-}
-
-// GetStatePrompt provides gameplay and story instructions to the LLM.
-// It also provides scenario context and current game state context.
-func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, error) {
-	if gs == nil {
-		return chat.ChatMessage{}, fmt.Errorf("game state or scene is nil")
-	}
-
-	var scene *scenario.Scene
-	if gs.SceneName != "" {
-		sc, ok := s.Scenes[gs.SceneName]
-		if !ok {
-			return chat.ChatMessage{}, fmt.Errorf("scene %s not found in scenario %s", gs.SceneName, s.Name)
-		}
-		scene = &sc
-	}
-
-	ps := ToPromptState(gs)
-	jsonScene, err := json.Marshal(ps)
-	if err != nil {
-		return chat.ChatMessage{}, err
-	}
-
-	story := s.Story
-	if scene != nil && scene.Story != "" {
-		story += "\n\n" + scene.Story
-	}
-	return chat.ChatMessage{
-		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf(scenario.StatePromptTemplate, story, jsonScene),
-	}, nil
 }
 
 // GetContingencyPrompts returns all applicable contingency prompts for the current game state
@@ -133,97 +102,6 @@ func (gs *GameState) GetContingencyPrompts(s *scenario.Scenario) []string {
 	}
 
 	return prompts
-}
-
-// GetChatMessages generates a "chat message" slice for LLM.
-// This slice includes all prompts and instructions to run the game.
-// narrator parameter is optional - pass nil if no narrator is desired
-func (gs *GameState) GetChatMessages(requestMessage string, requestRole string, s *scenario.Scenario, narrator *scenario.Narrator, count int, storyEventPrompt string) ([]chat.ChatMessage, error) {
-	if gs == nil {
-		return nil, fmt.Errorf("game state is nil")
-	}
-
-	// Translate game state to a chat prompt
-	statePrompt, err := gs.GetStatePrompt(s)
-	if err != nil {
-		return nil, fmt.Errorf("error generating state prompt: %w", err)
-	}
-
-	// Build system prompt with narrator and PC
-	systemPrompt := scenario.BuildSystemPrompt(narrator, gs.PC)
-
-	// Add rating prompt
-	systemPrompt += "\n\nContent Rating: " + s.Rating
-	ratingPrompt := scenario.GetContentRatingPrompt(s.Rating)
-	if ratingPrompt != "" {
-		systemPrompt += " (" + ratingPrompt + ")"
-	}
-
-	// Add state context
-	systemPrompt += "\n\n" + statePrompt.Content
-
-	// contingency prompts otherwise
-	contingencyPrompts := gs.GetContingencyPrompts(s)
-	if len(contingencyPrompts) > 0 {
-		systemPrompt += "\n\nSome important storytelling guidelines:\n\n"
-		for i, prompt := range contingencyPrompts {
-			systemPrompt += fmt.Sprintf("%d. %s\n", i+1, prompt)
-		}
-	}
-
-	// start building chat messages, starting with
-	// the full system prompt
-	messages := []chat.ChatMessage{
-		{
-			Role:    chat.ChatRoleSystem,
-			Content: systemPrompt,
-		},
-	}
-
-	// Add chat history from game state
-	if len(gs.ChatHistory) > 0 {
-		if len(gs.ChatHistory) <= count {
-			messages = append(messages, gs.ChatHistory...)
-		} else {
-			messages = append(messages, gs.ChatHistory[len(gs.ChatHistory)-count:]...)
-		}
-	}
-
-	messages = append(messages, chat.ChatMessage{
-		Role:    requestRole,
-		Content: requestMessage,
-	})
-
-	// Insert a story event prompt after user's prompt if present
-	// TODO: move this to a queue system
-	if storyEventPrompt != "" {
-		messages = append(messages, chat.ChatMessage{
-			Role:    chat.ChatRoleAgent,
-			Content: storyEventPrompt,
-		})
-	}
-
-	// Final Reminders about how to respond.
-	// If the llm provider allows it, this will be appended after chat messages.
-	// If the llm provider does not, it will be appended to the system prompt.
-	if gs.IsEnded {
-		// if the game is over, add the end prompt
-		endPrompt := "" + scenario.GameEndSystemPrompt
-		if s.GameEndPrompt != "" {
-			endPrompt += "\n\n" + s.GameEndPrompt
-		}
-		messages = append(messages, chat.ChatMessage{
-			Role:    chat.ChatRoleSystem,
-			Content: endPrompt,
-		})
-	} else {
-		messages = append(messages, chat.ChatMessage{
-			Role:    chat.ChatRoleSystem,
-			Content: scenario.UserPostPrompt,
-		})
-	}
-
-	return messages, nil
 }
 
 func (gs *GameState) DeepCopy() (*GameState, error) {

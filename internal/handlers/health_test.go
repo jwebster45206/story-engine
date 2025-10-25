@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/jwebster45206/story-engine/internal/services"
-	"github.com/jwebster45206/story-engine/internal/storage"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 func TestHealthHandler_ServeHTTP(t *testing.T) {

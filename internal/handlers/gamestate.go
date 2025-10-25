@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 type ErrorResponse struct {
@@ -244,9 +243,6 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Create a new GameState
-	gs := state.NewGameState(req.Scenario, h.modelName)
-
 	// Get initial gamestate values from scenario
 	s, err := h.storage.GetScenario(r.Context(), req.Scenario)
 	if err != nil {
@@ -278,6 +274,24 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Determine which narrator to use and load it ONCE (will be embedded in gamestate)
+	narratorID := req.NarratorID // Use request override if provided
+	if narratorID == "" {
+		narratorID = s.NarratorID // Fall back to scenario's narrator
+	}
+	var narrator *scenario.Narrator
+	if narratorID != "" {
+		narrator, err = h.storage.GetNarrator(r.Context(), narratorID)
+		if err != nil {
+			h.logger.Warn("Failed to load narrator, continuing without narrator", "narrator_id", narratorID, "error", err)
+		} else {
+			h.logger.Debug("Loaded narrator for embedding", "narrator_id", narratorID, "name", narrator.Name, "source", map[bool]string{true: "request", false: "scenario"}[req.NarratorID != ""])
+		}
+	}
+
+	// Create a new GameState with embedded narrator
+	gs := state.NewGameState(req.Scenario, narrator, h.modelName)
+
 	// Initialize game state with scenario-level values
 	gs.NPCs = s.NPCs
 	gs.Location = s.OpeningLocation
@@ -287,16 +301,6 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	// Scenario-level prompts are already filtered and added in GetContingencyPrompts()
 	// so we don't copy them here to avoid duplication
 	gs.ContingencyPrompts = make([]string, 0)
-
-	// Determine which narrator to use
-	narratorID := req.NarratorID // Use request override if provided
-	if narratorID == "" {
-		narratorID = s.NarratorID // Fall back to scenario's narrator
-	}
-	if narratorID != "" {
-		gs.NarratorID = narratorID
-		h.logger.Debug("Using narrator", "narrator_id", narratorID, "source", map[bool]string{true: "request", false: "scenario"}[req.NarratorID != ""])
-	}
 
 	// Determine which PC to use
 	pcID := req.PCID // Use request override if provided
@@ -308,12 +312,11 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var loadedPC *actor.PC
-	pcPath := filepath.Join("data/pcs", pcID+".json")
-	pcSpec, pcErr := h.storage.GetPCSpec(r.Context(), pcPath)
+	pcSpec, pcErr := h.storage.GetPCSpec(r.Context(), pcID)
 	if pcErr != nil {
 		h.logger.Warn("Failed to load PC spec, trying fallback to classic", "pc_id", pcID, "error", pcErr)
 		// Try fallback to classic
-		pcSpec, pcErr = h.storage.GetPCSpec(r.Context(), "data/pcs/classic.json")
+		pcSpec, pcErr = h.storage.GetPCSpec(r.Context(), "classic")
 		if pcErr != nil {
 			h.logger.Error("Failed to load fallback PC 'classic'", "error", pcErr)
 			// Continue without PC rather than failing - PC is optional for now
@@ -364,8 +367,9 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		openingPrompt := s.OpeningPrompt
 
 		// Check if scenario prompt has placeholder and PC has opening prompt
-		if strings.Contains(openingPrompt, "%s") && loadedPC != nil && loadedPC.Spec.OpeningPrompt != "" {
-			openingPrompt = fmt.Sprintf(openingPrompt, loadedPC.Spec.OpeningPrompt)
+		// Use gs.PC instead of loadedPC since that's the canonical reference
+		if strings.Contains(openingPrompt, "%s") && gs.PC != nil && gs.PC.Spec != nil && gs.PC.Spec.OpeningPrompt != "" {
+			openingPrompt = fmt.Sprintf(openingPrompt, gs.PC.Spec.OpeningPrompt)
 		}
 
 		gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{

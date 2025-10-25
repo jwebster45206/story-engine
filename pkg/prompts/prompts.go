@@ -1,9 +1,13 @@
-package scenario
+package prompts
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 // BaseSystemPrompt is the default system prompt used for roleplay scenarios.
@@ -33,9 +37,6 @@ Sometimes you will receive special narrative instructions marked with "STORY EVE
 - The event takes precedence over normal story flow - it interrupts what was happening
 - Describe the event vividly and react to how it affects the scene and characters
 - Multiple STORY EVENTs in one message should all occur together in your response
-- IMPORTANT: Do NOT include the text "STORY EVENT:" in your narrative response - only incorporate the event content itself
-
-Example: If you receive "STORY EVENT: A strange cowboy enters the room!", your response must include that cowboy entering happening in the current moment, with appropriate description and consequences. Do not write "STORY EVENT:" in your output.
 
 ### Narrator responses 
 - Do not break the fourth wall. Do not acknowledge that you are an AI or a computer program. 
@@ -159,14 +160,14 @@ const ContentRatingPG = `Write content suitable for children and families. Mild 
 const ContentRatingPG13 = `Write content appropriate for teenagers. You may include mild swearing, romantic tension, action scenes, and complex emotional themes, but avoid explicit adult situations, graphic violence, or drug use. `
 const ContentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
 
-const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. "
+const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. PRIORITIZE \"STORY EVENTS\" IN YOUR RESPONSE. "
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
 const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following JSON describes the complete world and current state.\n\nGame State:\n```json\n%s\n```"
 
 // BuildSystemPrompt constructs the system prompt with narrator and PC prompts injected
 // pc is optional - pass nil if no PC
-func BuildSystemPrompt(narrator *Narrator, pc *actor.PC) string {
+func BuildSystemPrompt(narrator *scenario.Narrator, pc *actor.PC) string {
 	narratorPrompts := ""
 	narratorName := "the narrator"
 	if narrator != nil {
@@ -183,15 +184,47 @@ func BuildSystemPrompt(narrator *Narrator, pc *actor.PC) string {
 // GetContentRatingPrompt returns the appropriate content rating prompt
 func GetContentRatingPrompt(rating string) string {
 	switch rating {
-	case RatingG:
+	case scenario.RatingG:
 		return ContentRatingG
-	case RatingPG:
+	case scenario.RatingPG:
 		return ContentRatingPG
-	case RatingPG13:
+	case scenario.RatingPG13:
 		return ContentRatingPG13
-	case RatingR:
+	case scenario.RatingR:
 		return ContentRatingR
 	default:
 		return ContentRatingPG13 // Default to PG-13
 	}
+}
+
+// GetStatePrompt provides gameplay and story instructions to the LLM.
+// It also provides scenario context and current game state context.
+func GetStatePrompt(gs *state.GameState, s *scenario.Scenario) (chat.ChatMessage, error) {
+	if gs == nil {
+		return chat.ChatMessage{}, fmt.Errorf("game state or scene is nil")
+	}
+
+	var scene *scenario.Scene
+	if gs.SceneName != "" {
+		sc, ok := s.Scenes[gs.SceneName]
+		if !ok {
+			return chat.ChatMessage{}, fmt.Errorf("scene %s not found in scenario %s", gs.SceneName, s.Name)
+		}
+		scene = &sc
+	}
+
+	ps := ToPromptState(gs)
+	jsonScene, err := json.Marshal(ps)
+	if err != nil {
+		return chat.ChatMessage{}, err
+	}
+
+	story := s.Story
+	if scene != nil && scene.Story != "" {
+		story += "\n\n" + scene.Story
+	}
+	return chat.ChatMessage{
+		Role:    chat.ChatRoleSystem,
+		Content: fmt.Sprintf(StatePromptTemplate, story, jsonScene),
+	}, nil
 }
