@@ -160,7 +160,7 @@ const ContentRatingPG = `Write content suitable for children and families. Mild 
 const ContentRatingPG13 = `Write content appropriate for teenagers. You may include mild swearing, romantic tension, action scenes, and complex emotional themes, but avoid explicit adult situations, graphic violence, or drug use. `
 const ContentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
 
-const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. "
+const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. PRIORITIZE \"STORY EVENTS\" IN YOUR RESPONSE. "
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
 const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following JSON describes the complete world and current state.\n\nGame State:\n```json\n%s\n```"

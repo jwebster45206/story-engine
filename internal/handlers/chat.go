@@ -437,11 +437,15 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 			return
 		}
 
-		// Send the chunk
-		h.sendSSEChunk(w, chunk)
+		// Filter and send the chunk
+		filteredChunk := chunk
+		if chunk.Content != "" {
+			filteredChunk.Content = filterStoryEventMarkers(chunk.Content)
+		}
+		h.sendSSEChunk(w, filteredChunk)
 		flusher.Flush()
 
-		// Accumulate content for game state update
+		// Accumulate original content for game state update (will be filtered later)
 		if chunk.Content != "" {
 			fullResponse.WriteString(chunk.Content)
 		}

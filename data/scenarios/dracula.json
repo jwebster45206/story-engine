@@ -171,14 +171,14 @@
           "when": {
             "scene_turn_counter": 4
           },
-          "prompt": "A MASSIVE LIGHTNING BOLT suddenly CRASHES DOWN from the storm-torn heavens! The brilliant white flash illuminates the entire castle for a split second, revealing twisted shadows in every corner. The THUNDER that follows is absolutely DEAFENING, shaking the very foundation stones of the ancient fortress. The supernatural energy in the air intensifies dramatically - the storm itself seems to be WARNING you of the terrible dangers that lurk within these cursed walls."
+          "prompt": "A MASSIVE LIGHTNING BOLT CRASHES DOWN from the storm-torn heavens! "
         },
         "wolves_appear": {
           "when": {
             "location": "castle_gates",
             "min_scene_turns": 5
           },
-          "prompt": "THREE ENORMOUS DIRE WOLVES suddenly emerge from the darkness beyond the castle gates! Their eyes GLOW with an unnatural yellow light in the moonlight, and they circle you with predatory grace. Their GROWLS are low and threatening, resonating deep in your chest. These beasts are clearly Dracula's guardians - supernaturally large with matted black fur and fangs like DAGGERS. They position themselves to block any retreat, trapping you within the castle grounds."
+          "prompt": "THREE ENORMOUS DIRE WOLVES suddenly emerge from the darkness beyond the castle gates! "
         },
         "bats_swarm": {
           "when": {
@@ -188,7 +188,7 @@
             },
             "min_scene_turns": 2
           },
-          "prompt": "A MASSIVE SWARM of vampire bats suddenly ERUPTS from the castle's towers! They fill the night sky like a dark, writhing cloud, their screeching calls echoing off the stone walls. The bats swirl around you in a chaotic vortex before dispersing into the darkness. This is clearly a sign - the castle's master knows you are here."
+          "prompt": "A MASSIVE SWARM of vampire bats suddenly ERUPTS from the castle's towers! "
         }
       },
       "contingency_prompts": [],
