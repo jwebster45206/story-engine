@@ -37,8 +37,7 @@ func TestChatQueue_EnqueueAndDequeue(t *testing.T) {
 	defer mr.Close()
 	defer client.Close()
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	seq := NewChatQueue(client, logger)
+	seq := NewChatQueue(client)
 
 	ctx := context.Background()
 	gameStateID := uuid.New()
@@ -97,8 +96,7 @@ func TestChatQueue_Peek(t *testing.T) {
 	defer mr.Close()
 	defer client.Close()
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	seq := NewChatQueue(client, logger)
+	seq := NewChatQueue(client)
 
 	ctx := context.Background()
 	gameStateID := uuid.New()
@@ -139,8 +137,7 @@ func TestChatQueue_Clear(t *testing.T) {
 	defer mr.Close()
 	defer client.Close()
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	seq := NewChatQueue(client, logger)
+	seq := NewChatQueue(client)
 
 	ctx := context.Background()
 	gameStateID := uuid.New()
@@ -167,8 +164,7 @@ func TestChatQueue_GetFormattedEvents(t *testing.T) {
 	defer mr.Close()
 	defer client.Close()
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	seq := NewChatQueue(client, logger)
+	seq := NewChatQueue(client)
 
 	ctx := context.Background()
 	gameStateID := uuid.New()
@@ -202,8 +198,7 @@ func TestChatQueue_MultipleGames(t *testing.T) {
 	defer mr.Close()
 	defer client.Close()
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	seq := NewChatQueue(client, logger)
+	seq := NewChatQueue(client)
 
 	ctx := context.Background()
 	game1 := uuid.New()

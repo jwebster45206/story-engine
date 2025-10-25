@@ -3,7 +3,6 @@ package queue
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
@@ -12,13 +11,11 @@ import (
 // ChatQueue manages a queue of chat messages and story events for games
 type ChatQueue struct {
 	client *Client
-	logger *slog.Logger
 }
 
-func NewChatQueue(client *Client, logger *slog.Logger) *ChatQueue {
+func NewChatQueue(client *Client) *ChatQueue {
 	return &ChatQueue{
 		client: client,
-		logger: logger,
 	}
 }
 

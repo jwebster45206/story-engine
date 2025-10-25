@@ -75,7 +75,7 @@ func main() {
 	}
 	defer queueClient.Close()
 
-	chatQueue := queue.NewChatQueue(queueClient, log)
+	chatQueue := queue.NewChatQueue(queueClient)
 	log.Info("Queue service initialized successfully")
 
 	// Initialize the model on startup
