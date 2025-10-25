@@ -189,7 +189,6 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		if err != nil {
 			h.logger.Error("Error getting story events from queue", "error", err, "game_id", gs.ID.String())
 			// Continue without story events on error
-			storyEventPrompt = ""
 		}
 	}
 	if storyEventPrompt != "" {
@@ -218,7 +217,7 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 	// Clear story events after building messages
 	if storyEventPrompt != "" && h.chatQueue != nil {
 		if err := h.chatQueue.Clear(r.Context(), gs.ID); err != nil {
-			h.logger.Error("Failed to clear story event queue", "error", err, "game_id", gs.ID.String())
+			h.logger.Error("Failed to clear chat queue", "error", err, "game_id", gs.ID.String())
 		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -376,7 +375,6 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		if err != nil {
 			h.logger.Error("Error getting story events from queue", "error", err, "game_id", gs.ID.String())
 			// Continue without story events on error
-			storyEventPrompt = ""
 		}
 	}
 	if storyEventPrompt != "" {
@@ -406,7 +404,7 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 	// Clear story events after consumption
 	if h.chatQueue != nil {
 		if err := h.chatQueue.Clear(r.Context(), gs.ID); err != nil {
-			h.logger.Warn("Failed to clear story events from queue", "error", err, "game_state_id", gs.ID.String())
+			h.logger.Error("Failed to clear chat queue", "error", err, "game_state_id", gs.ID.String())
 		}
 	}
 
