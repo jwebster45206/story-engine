@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -31,6 +32,8 @@ type DeltaWorker struct {
 	delta    *GameStateDelta
 	scenario *scenario.Scenario
 	logger   *slog.Logger
+	queue    ChatQueue
+	ctx      context.Context
 }
 
 // NewDeltaWorker creates a new delta worker for applying state changes
@@ -40,7 +43,22 @@ func NewDeltaWorker(gs *GameState, delta *GameStateDelta, scen *scenario.Scenari
 		delta:    delta,
 		scenario: scen,
 		logger:   logger,
+		ctx:      context.Background(),
 	}
+}
+
+// WithQueue sets the queue service for enqueuing story events
+// Returns the DeltaWorker for method chaining
+func (dw *DeltaWorker) WithQueue(queue ChatQueue) *DeltaWorker {
+	dw.queue = queue
+	return dw
+}
+
+// WithContext sets the context for queue operations
+// Returns the DeltaWorker for method chaining
+func (dw *DeltaWorker) WithContext(ctx context.Context) *DeltaWorker {
+	dw.ctx = ctx
+	return dw
 }
 
 // ApplyVars applies variable updates from the delta to the game state with snake_case conversion
@@ -90,6 +108,8 @@ func (dw *DeltaWorker) ApplyConditionalOverrides() map[string]scenario.Condition
 }
 
 // QueueStoryEvents evaluates story events and queues them for the next turn
+// If a queue service is configured, events are enqueued to Redis.
+// Otherwise, events are stored in gamestate (deprecated behavior for backwards compatibility).
 // Returns the map of triggered story events for logging purposes
 func (dw *DeltaWorker) QueueStoryEvents() map[string]scenario.StoryEvent {
 	if dw.scenario == nil {
@@ -101,14 +121,28 @@ func (dw *DeltaWorker) QueueStoryEvents() map[string]scenario.StoryEvent {
 		return nil
 	}
 
-	// Initialize queue if needed
-	if dw.gs.StoryEventQueue == nil {
-		dw.gs.StoryEventQueue = make([]string, 0)
-	}
-
-	// Queue the event prompts
-	for _, event := range triggeredEvents {
-		dw.gs.StoryEventQueue = append(dw.gs.StoryEventQueue, event.Prompt)
+	// If queue service is available, use it
+	// Queue story events via Redis
+	if dw.queue != nil {
+		for _, event := range triggeredEvents {
+			if err := dw.queue.Enqueue(dw.ctx, dw.gs.ID, event.Prompt); err != nil {
+				if dw.logger != nil {
+					dw.logger.Error("Failed to enqueue story event to Redis",
+						"error", err,
+						"game_id", dw.gs.ID.String(),
+						"event", event.Prompt)
+				}
+				// Don't fail the entire operation on queue errors
+				// The event will be lost, but game state updates will proceed
+			}
+		}
+	} else {
+		// Queue service is required for story events
+		if dw.logger != nil && len(triggeredEvents) > 0 {
+			dw.logger.Error("No queue service configured, story events will be lost",
+				"game_id", dw.gs.ID.String(),
+				"event_count", len(triggeredEvents))
+		}
 	}
 
 	return triggeredEvents

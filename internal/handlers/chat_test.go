@@ -24,6 +24,50 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// mockStoryEventQueue is a simple in-memory mock for testing
+type mockStoryEventQueue struct {
+	events map[uuid.UUID][]string
+	mu     sync.Mutex
+}
+
+func newMockStoryEventQueue() *mockStoryEventQueue {
+	return &mockStoryEventQueue{
+		events: make(map[uuid.UUID][]string),
+	}
+}
+
+func (m *mockStoryEventQueue) Enqueue(ctx context.Context, gameID uuid.UUID, eventPrompt string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.events[gameID] = append(m.events[gameID], eventPrompt)
+	return nil
+}
+
+func (m *mockStoryEventQueue) GetFormattedEvents(ctx context.Context, gameID uuid.UUID) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	events := m.events[gameID]
+	if len(events) == 0 {
+		return "", nil
+	}
+	var formatted string
+	for i, event := range events {
+		if i == 0 {
+			formatted = "STORY EVENT: " + event
+		} else {
+			formatted += "\n\nSTORY EVENT: " + event
+		}
+	}
+	return formatted, nil
+}
+
+func (m *mockStoryEventQueue) Clear(ctx context.Context, gameID uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.events, gameID)
+	return nil
+}
+
 func TestChatHandler_ServeHTTP(t *testing.T) {
 	// Create a logger for testing
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
@@ -136,7 +180,8 @@ func TestChatHandler_ServeHTTP(t *testing.T) {
 			}
 
 			// Create chat handler
-			handler := NewChatHandler(logger, mockSto, mockLLM)
+			mockQueue := newMockStoryEventQueue()
+			handler := NewChatHandler(logger, mockSto, mockLLM, mockQueue)
 
 			// Prepare request body
 			var body []byte
@@ -271,7 +316,8 @@ func TestChatHandler_MessageFormatting(t *testing.T) {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
 
-	handler := NewChatHandler(logger, mockSto, mockLLM)
+	mockQueue := newMockStoryEventQueue()
+	handler := NewChatHandler(logger, mockSto, mockLLM, mockQueue)
 	requestBody := chat.ChatRequest{
 		GameStateID: testGS.ID,
 		Message:     "Test message with special chars: !@#$%",
@@ -360,7 +406,8 @@ func TestChatHandler_ContentTypeHandling(t *testing.T) {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
 
-	handler := NewChatHandler(logger, mockSto, mockLLM)
+	mockQueue := newMockStoryEventQueue()
+	handler := NewChatHandler(logger, mockSto, mockLLM, mockQueue)
 
 	// Test with missing Content-Type
 	requestBody := chat.ChatRequest{
@@ -506,7 +553,8 @@ func TestChatHandler_StreamingChat(t *testing.T) {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
 
-	handler := NewChatHandler(logger, mockSto, mockLLM)
+	mockQueue := newMockStoryEventQueue()
+	handler := NewChatHandler(logger, mockSto, mockLLM, mockQueue)
 
 	t.Run("streaming request with unsupported provider", func(t *testing.T) {
 		requestBody := chat.ChatRequest{

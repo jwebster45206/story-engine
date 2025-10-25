@@ -321,7 +321,6 @@ func TestBuilder_Build_HistoryWindowing(t *testing.T) {
 func TestBuilder_Build_WithStoryEvents(t *testing.T) {
 	gs := state.NewGameState("test.json", nil, "test-model")
 	gs.Location = "start"
-	gs.StoryEventQueue = []string{"Event 1", "Event 2"}
 
 	scenario := &scenario.Scenario{
 		Name:   "Test Scenario",
@@ -335,10 +334,14 @@ func TestBuilder_Build_WithStoryEvents(t *testing.T) {
 		},
 	}
 
+	// Format story events as the queue service would
+	storyEvents := "STORY EVENT: Event 1\n\nSTORY EVENT: Event 2"
+
 	messages, err := New().
 		WithGameState(gs).
 		WithScenario(scenario).
 		WithUserMessage("Test", chat.ChatRoleUser).
+		WithStoryEvents(storyEvents).
 		Build()
 
 	if err != nil {
@@ -458,7 +461,7 @@ func TestBuildMessages_ConvenienceFunction(t *testing.T) {
 		},
 	}
 
-	messages, err := BuildMessages(gs, scenario, "Test message", chat.ChatRoleUser, 10)
+	messages, err := BuildMessages(gs, scenario, "Test message", chat.ChatRoleUser, 10, "")
 
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -484,14 +487,14 @@ func TestBuildMessages_ConvenienceFunction(t *testing.T) {
 
 func TestBuildMessages_ErrorHandling(t *testing.T) {
 	// Test with nil gamestate
-	_, err := BuildMessages(nil, &scenario.Scenario{}, "Test", chat.ChatRoleUser, 10)
+	_, err := BuildMessages(nil, &scenario.Scenario{}, "Test", chat.ChatRoleUser, 10, "")
 	if err == nil {
 		t.Error("Expected error with nil gamestate")
 	}
 
 	// Test with nil scenario
 	gs := state.NewGameState("test.json", nil, "test-model")
-	_, err = BuildMessages(gs, nil, "Test", chat.ChatRoleUser, 10)
+	_, err = BuildMessages(gs, nil, "Test", chat.ChatRoleUser, 10, "")
 	if err == nil {
 		t.Error("Expected error with nil scenario")
 	}
