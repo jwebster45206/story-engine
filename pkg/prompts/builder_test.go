@@ -345,17 +345,17 @@ func TestBuilder_Build_WithStoryEvents(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	// Should have story event message after user message
+	// Should have story event message as a system message (not agent)
 	found := false
 	for _, msg := range messages {
-		if msg.Role == chat.ChatRoleAgent && contains(msg.Content, "STORY EVENT") {
+		if msg.Role == chat.ChatRoleSystem && contains(msg.Content, "STORY EVENT") {
 			found = true
 			break
 		}
 	}
 
 	if !found {
-		t.Error("Expected story events to be included in messages")
+		t.Error("Expected story events to be included in messages as system role")
 	}
 }
 

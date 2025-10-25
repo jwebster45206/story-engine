@@ -42,6 +42,25 @@ func NewChatHandler(logger *slog.Logger, storage storage.Storage, llmService ser
 
 const PromptHistoryLimit = 6
 
+// filterStoryEventMarkers removes "STORY EVENT:" markers from LLM responses
+// The LLM sometimes includes these markers despite instructions not to
+func filterStoryEventMarkers(text string) string {
+	// Remove "STORY EVENT:" at the start of lines (case-insensitive)
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		// Check for "STORY EVENT:" prefix (case-insensitive)
+		if len(trimmed) >= 12 {
+			prefix := strings.ToUpper(trimmed[:12])
+			if prefix == "STORY EVENT:" {
+				// Remove the prefix and preserve the rest
+				lines[i] = strings.TrimSpace(trimmed[12:])
+			}
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
 // ServeHTTP handles HTTP requests for chat.
 // This is the primary endpoint for user interaction with the LLM.
 func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -245,8 +264,9 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		Content: request.Message,
 	})
 
-	// Add the LLM's response to the game state
+	// Filter out "STORY EVENT:" markers from LLM response and add to game state
 	response.Message = strings.TrimRight(response.Message, "\n")
+	response.Message = filterStoryEventMarkers(response.Message)
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
 		Role:    chat.ChatRoleAgent,
 		Content: response.Message,
@@ -471,7 +491,9 @@ func (h *ChatHandler) updateGameStateAfterStreaming(gs *state.GameState, userMes
 		Content: userMessage,
 	})
 
+	// Filter out "STORY EVENT:" markers from LLM response and add to game state
 	responseMessage = strings.TrimRight(responseMessage, "\n")
+	responseMessage = filterStoryEventMarkers(responseMessage)
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
 		Role:    chat.ChatRoleAgent,
 		Content: responseMessage,
@@ -494,7 +516,7 @@ func (h *ChatHandler) updateGameStateAfterStreaming(gs *state.GameState, userMes
 // of gamestate.
 func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, userMessage string, responseMessage string, storyEventPrompt string) {
 	start := time.Now()
-	h.logger.Debug("Starting background game gamestate delta", "game_state_id", gs.ID.String())
+	h.logger.Debug("Starting background game gamestate delta", "game_state_id", gs.ID.String(), "response", responseMessage)
 	defer func() {
 		h.metaCancelMu.Lock()
 		delete(h.metaCancel, gs.ID)
@@ -592,6 +614,10 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 		h.logger.Warn("Game state not found during gamestate delta", "game_state_id", gs.ID.String())
 		return
 	}
+
+	// Clear story event queue from latestGS.
+	// This prevents events from being re-injected on subsequent turns.
+	latestGS.ClearStoryEventQueue()
 
 	// Increment turn counters on the latest game state
 	if !latestGS.IsEnded {

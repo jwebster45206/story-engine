@@ -183,7 +183,8 @@
         "bats_swarm": {
           "when": {
             "vars": {
-              "opened_grimoire": "true"
+              "opened_grimoire": "true",
+              "bats_swarmed": "false"
             },
             "min_scene_turns": 2
           },
@@ -193,6 +194,7 @@
       "contingency_prompts": [],
       "contingency_rules": [
         "Reading the vampire lore book adds it to inventory and provides knowledge about Dracula's weaknesses.",
+        "When a swarm of bats appears, set the var 'bats_swarmed' to 'true'.",
         "When the player collects both the ancient grimoire and vampire lore book, the scene changes to 'preparation'.",
         "If the ancient grimoire and vampire lore book are both in inventory, the scene changes to 'preparation'.",
         "Speaking to Renfield reveals the location of the secret passage to the crypt.",

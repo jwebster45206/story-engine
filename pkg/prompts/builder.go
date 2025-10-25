@@ -158,7 +158,7 @@ func (b *Builder) addStoryEvents() {
 	}
 
 	b.messages = append(b.messages, chat.ChatMessage{
-		Role:    chat.ChatRoleAgent,
+		Role:    chat.ChatRoleSystem,
 		Content: storyEventPrompt,
 	})
 }
