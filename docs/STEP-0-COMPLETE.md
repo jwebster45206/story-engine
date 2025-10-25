@@ -7,6 +7,12 @@
 
 Successfully migrated story event queuing from in-memory gamestate storage to Redis-backed queues. This is Step 0 of the larger async queue refactor plan (see `QUEUE-REFACTOR.md`).
 
+**Key Improvements:**
+- ✅ Type-safe UUID usage for game identification
+- ✅ Removed unnecessary adapter layer (direct interface implementation)
+- ✅ Renamed to `chatQueue` for clarity and future extensibility
+- ✅ Cleaner, simpler architecture
+
 ## Changes Implemented
 
 ### 1. Queue Service Infrastructure
@@ -18,6 +24,7 @@ Created new queue service package at `/internal/services/queue/`:
   - Queue key pattern: `story-events:{gameID}`
   - Operations: Enqueue, Dequeue, Peek, Clear, Depth, GetFormattedEvents
   - Implements `state.StoryEventQueue` interface directly
+  - **Uses `uuid.UUID` for type-safe game identification**
 - **`story_event_queue_test.go`**: Comprehensive unit tests using miniredis (all passing)
 
 ### 2. Interface Definition
@@ -25,7 +32,12 @@ Created new queue service package at `/internal/services/queue/`:
 Created `/pkg/state/queue.go`:
 - Defined `StoryEventQueue` interface for dependency injection
 - Enables testability and decoupling from Redis implementation
-- Three core methods: `Enqueue()`, `GetFormattedEvents()`, `Clear()`
+- Three core methods with `uuid.UUID` parameters:
+  ```go
+  Enqueue(ctx context.Context, gameID uuid.UUID, eventPrompt string) error
+  GetFormattedEvents(ctx context.Context, gameID uuid.UUID) (string, error)
+  Clear(ctx context.Context, gameID uuid.UUID) error
+  ```
 
 ### 3. DeltaWorker Updates
 
@@ -34,23 +46,27 @@ Modified `/pkg/state/deltaworker.go`:
 - Added `WithQueue()` method for fluent configuration
 - Added `WithContext()` method for context propagation
 - Updated `QueueStoryEvents()` to enqueue to Redis instead of gamestate
+- **Uses `uuid.UUID` directly**: `queue.Enqueue(ctx, gs.ID, ...)`
 - Removed fallback to gamestate queue (breaking change as planned)
 
 ### 4. Chat Handler Updates
 
 Modified `/internal/handlers/chat.go`:
-- Added `storyQueue state.StoryEventQueue` field
+- Added `chatQueue state.StoryEventQueue` field (renamed from `storyQueue`)
 - Updated `NewChatHandler()` signature to accept queue service
-- Read story events from Redis via `GetFormattedEvents()`
-- Clear story events after consumption via `Clear()`
-- Inject queue into DeltaWorker via `WithQueue()`
+- **Uses `uuid.UUID` directly**: `chatQueue.GetFormattedEvents(r.Context(), gs.ID)`
+- Clear story events: `chatQueue.Clear(r.Context(), gs.ID)`
+- Inject queue into DeltaWorker: `WithQueue(h.chatQueue)`
+
+**Note**: Renamed to `chatQueue` to reflect future purpose of handling both story events and chat requests.
 
 ### 5. Application Initialization
 
 Modified `/cmd/api/main.go`:
 - Initialize Redis client from config
 - Create `StoryEventQueue` service (implements interface directly)
-- Pass queue service to `ChatHandler`
+- Pass queue service directly to `ChatHandler` as `chatQueue`
+- **No adapter needed** - direct interface implementation
 
 ### 6. Prompt Builder Updates
 
@@ -124,17 +140,23 @@ go build ./cmd/api/
 
 ### Before (Gamestate-based)
 ```
-Chat Handler → DeltaWorker → GameState.StoryEventQueue
+Chat Handler → DeltaWorker → GameState.StoryEventQueue ([]string)
                 ↓
            GameState.GetStoryEvents() → Prompt Builder
 ```
 
-### After (Redis-based)
+### After (Redis-based with UUID)
 ```
-Chat Handler → DeltaWorker → Redis Queue (story-events:{gameID})
+Chat Handler → DeltaWorker → Redis Queue (story-events:{gameID.String()})
     ↓                             ↓
-    └─────→ StoryEventQueue.GetFormattedEvents() → Prompt Builder
+    └─────→ chatQueue.GetFormattedEvents(ctx, uuid.UUID) → Prompt Builder
 ```
+
+**Key Improvements:**
+- Type-safe `uuid.UUID` instead of string conversion
+- Direct interface implementation (no adapter)
+- Renamed to `chatQueue` for clarity
+- Simpler, cleaner architecture
 
 ## Breaking Changes
 
@@ -149,6 +171,11 @@ Chat Handler → DeltaWorker → Redis Queue (story-events:{gameID})
 3. **API Signatures**:
    - `NewChatHandler()` now requires `StoryEventQueue` parameter
    - `BuildMessages()` now requires `storyEvents string` parameter
+   - All queue methods use `uuid.UUID` instead of `string` for gameID
+
+4. **Variable Naming**:
+   - Field renamed from `storyQueue` to `chatQueue` in handlers
+   - Reflects future purpose of handling chat requests in addition to story events
 
 ## Redis Configuration
 
@@ -164,9 +191,11 @@ Connection string from config: `redis://redis:6379`
 
 ## Queue Key Naming
 
-Story event queues use the pattern: `story-events:{gameID}`
+Story event queues use the pattern: `story-events:{gameID.String()}`
 
 Example: `story-events:1a6594e3-b1c9-4126-b403-33334a298e71`
+
+**Type Safety**: All queue methods accept `uuid.UUID` and convert to string only within the queue service.
 
 ## Error Handling
 
@@ -226,6 +255,9 @@ As documented in `QUEUE-REFACTOR.md`, the next phases are:
 - ✅ DeltaWorker uses queue service
 - ✅ Chat handler reads from Redis queue
 - ✅ Prompt builder accepts story events parameter
+- ✅ Type-safe UUID usage throughout
+- ✅ No adapter layer (direct interface implementation)
+- ✅ Clear naming with `chatQueue`
 
 ## Notes
 
@@ -233,3 +265,6 @@ As documented in `QUEUE-REFACTOR.md`, the next phases are:
 - Redis must be running for queue operations to succeed
 - Story events are now ephemeral (cleared after consumption, not persisted in gamestate)
 - Queue service is mandatory for story events feature; no fallback exists
+- **Type Safety**: Using `uuid.UUID` eliminates string conversion errors
+- **Simplified Architecture**: Removed adapter layer for cleaner code
+- **Future-Ready**: `chatQueue` naming prepares for Step 1 (chat request queueing)

@@ -24,81 +24,62 @@ Currently, chat requests are processed synchronously within HTTP handlers, with 
 
 ## Step 0: Move Story Events to Redis Queue
 
-**Status**: 🔴 Not Started
+**Status**: ✅ COMPLETE (with improvements)
 
 ### Objective
 Move enqueued story events from gamestate storage to a Redis queue, and modify the chat processing to pull events from Redis instead of gamestate.
 
 ### Current State
-- Story events are stored in gamestate as part of the game state structure
-- Events are processed during synchronous chat handler execution
-- Events are coupled to the gamestate storage layer
+Story events are now stored in Redis queues and accessed via the `chatQueue` service using `uuid.UUID` for type-safe game identification.
 
-### Proposed Changes
+### Completed Changes
 
-#### 1. Redis Client Access & Architecture Layers
-- Redis is **already configured and running** (docker-compose.yml)
-- Config already has `RedisURL` field
-- Storage layer already uses Redis (`github.com/go-redis/redis/v8`)
-- **Action**: Create shared Redis client in `internal/services/queue/` (don't reuse storage client)
+#### 1. Redis Queue Service (`internal/services/queue/`)
+- ✅ **`client.go`**: Redis client wrapper with connection pooling
+- ✅ **`story_event_queue.go`**: StoryEventQueue service implementing `state.StoryEventQueue` interface
+  - Uses `uuid.UUID` for `gameID` parameter (type-safe)
+  - Queue key pattern: `story-events:{gameID.String()}`
+  - Methods: `Enqueue()`, `GetFormattedEvents()`, `Clear()`, `Peek()`, `Depth()`, `Dequeue()`
+- ✅ **`story_event_queue_test.go`**: Comprehensive unit tests using miniredis (all passing)
+- ✅ **Removed adapter**: `StoryEventQueue` implements interface directly (no wrapper needed)
 
-**Layer Access Policy:**
-
-✅ **Should Access Queue Service:**
-- `internal/handlers/chat.go` - Enqueues incoming chat requests only (no longer processes them)
-- `internal/worker/` - Dequeues requests, calls DeltaWorker, enqueues story events
-- `pkg/state/deltaworker.go` - **Needs queue service injected** to enqueue story events after delta processing
-- Integration tests - For validation and assertions
-
-❌ **Should NOT Access Queue Directly:**
-- `pkg/prompts/` - Prompt building logic (pure functions)
-- `pkg/scenario/` - Scenario/scene models (data structures)
-- `pkg/chat/` - Chat models (data structures)
-- `pkg/state/gamestate.go` - Game state model (should remain queue-agnostic)
-- `internal/storage/` - Keep storage separate from queue concerns
-- Console client - Uses HTTP API only, not queue internals
-
-**Rationale:**
-- Queue service is infrastructure, accessed via dependency injection
-- Keep domain models (`pkg/`) clean and testable
-- **DeltaWorker moves to worker context** - handlers no longer call it
-- DeltaWorker needs queue service to enqueue story events after processing deltas
-- Handlers become thin (validate + enqueue only)
-
-#### 2. New Queue Service
-Create `internal/services/queue/` with:
-- `story_event_queue.go`: Service for managing story event queues
-  - `EnqueueStoryEvent(gameID, eventID string, event StoryEvent) error`
-  - `DequeueStoryEvent(gameID string) (*StoryEvent, error)`
-  - `PeekStoryEvents(gameID string, limit int) ([]StoryEvent, error)`
-  - `ClearStoryEvents(gameID string) error`
-  - `GetQueueDepth(gameID string) (int, error)`
-
-#### 3. Queue Data Model
+#### 2. Interface Definition (`pkg/state/queue.go`)
 ```go
-type StoryEventMessage struct {
-    GameID      string
-    EventPrompt string    // Just the prompt text (matching current behavior)
-    EnqueuedAt  time.Time
+type StoryEventQueue interface {
+    Enqueue(ctx context.Context, gameID uuid.UUID, eventPrompt string) error
+    GetFormattedEvents(ctx context.Context, gameID uuid.UUID) (string, error)
+    Clear(ctx context.Context, gameID uuid.UUID) error
 }
 ```
 
-Queue naming convention: `story-events:{gameID}`
+#### 3. DeltaWorker Updates
+- ✅ Added `queue StoryEventQueue` field for dependency injection
+- ✅ Added `WithQueue()` and `WithContext()` methods
+- ✅ Updated `QueueStoryEvents()` to enqueue to Redis via `queue.Enqueue(ctx, gameID, ...)`
+- ✅ Removed gamestate fallback (queue service is required)
 
-**Note**: We only store the prompt strings in Redis, matching the current gamestate behavior where `StoryEventQueue` is `[]string`. Conditional evaluation happens before queueing.
+#### 4. Chat Handler Updates
+- ✅ Renamed to `chatQueue` (reflects future chat request queueing purpose)
+- ✅ Reads story events via `chatQueue.GetFormattedEvents(ctx, gs.ID)`
+- ✅ Clears events via `chatQueue.Clear(ctx, gs.ID)`
+- ✅ Passes queue to DeltaWorker via `WithQueue(h.chatQueue)`
+- ✅ Uses `uuid.UUID` directly (no `.String()` conversion needed)
 
-#### 4. Update Chat Processing
-- Chat handler will NO LONGER call DeltaWorker (this moves to worker in Step 2)
-- Update `DeltaWorker.QueueStoryEvents()` signature to accept queue service
-- For Step 0, maintain synchronous chat flow but read story events from Redis queue
-- DeltaWorker enqueues story events to Redis instead of gamestate
+#### 5. Application Initialization
+- ✅ `cmd/api/main.go` creates queue client and service
+- ✅ Passes queue service directly to ChatHandler (no adapter)
+- ✅ Variable named `chatQueue` for clarity
 
-#### 5. Migration Strategy
-- **Remove** `StoryEventQueue` field from gamestate struct (breaking change, but acceptable)
-- Update `DeltaWorker` constructor to accept queue service as dependency
-- Update `DeltaWorker.QueueStoryEvents()` to enqueue directly to Redis via injected queue service
-- Update chat handler to read story events from Redis queue (handler still calls DeltaWorker in Step 0)
-- **In Step 2**: Move DeltaWorker call from handler to worker completely
+#### 6. GameState Cleanup
+- ✅ **Removed** `StoryEventQueue []string` field (breaking change)
+- ✅ **Removed** `GetStoryEvents()` method
+- ✅ **Removed** `ClearStoryEventQueue()` method
+
+### Key Improvements Made
+1. **Type Safety**: Using `uuid.UUID` instead of `string` for gameID
+2. **No Adapter**: `StoryEventQueue` implements interface directly
+3. **Clear Naming**: Renamed to `chatQueue` to reflect future purpose
+4. **Simplified Architecture**: Removed unnecessary abstraction layer
 - No feature flags needed - direct cutover to Redis
 
 #### 6. Testing
@@ -122,31 +103,40 @@ Redis is already configured! Current setup:
 - ✅ All existing integration tests pass
 - ✅ `StoryEventQueue` removed from gamestate (breaking change to storage format, not API)
 - ✅ Queue operations are atomic and thread-safe
+- ✅ Type-safe UUID usage for game identification
+- ✅ No unnecessary adapter layer
+- ✅ Clear naming (`chatQueue`) for future extensibility
+
+### Test Results
+- ✅ Queue service tests: 5/5 passing
+- ✅ Handler tests: All passing
+- ✅ State package tests: All passing
+- ✅ Prompts package tests: All passing
+- ✅ Application builds successfully
 
 ### Dependencies
-- `github.com/go-redis/redis/v8` - **Already installed** ✅
-- Consider upgrading to `github.com/redis/go-redis/v9` (optional, for better features)
+- `github.com/go-redis/redis/v8` - ✅ Already installed
+- `github.com/google/uuid` - ✅ Already installed
 
-### Risks & Mitigations
-- **Risk**: Redis unavailability breaks story events
-  - **Mitigation**: Implement connection retry logic with exponential backoff
-  - **Mitigation**: Consider graceful degradation (fallback to in-memory queue)
-- **Risk**: Data loss during migration
-  - **Mitigation**: Thorough testing of migration logic
-  - **Mitigation**: Add logging for all queue operations
+### Architecture Notes
+- Queue service implements `state.StoryEventQueue` interface directly
+- Handler variable renamed from `storyQueue` → `chatQueue` for clarity
+- `chatQueue` will handle both story events (Step 0) and chat requests (Step 1+)
+- All queue methods use `uuid.UUID` for type safety
 
 ---
 
 ## Step 1: Async Chat Handler with Queue
 
-**Status**: 🔴 Not Started
+**Status**: 🔴 Not Started (Ready to begin)
 
 ### Objective
-Create a new chat handler endpoint that accepts chat requests and enqueues them to Redis, returning immediately with a request ID.
+Extend `chatQueue` to handle incoming chat requests asynchronously, returning immediately with a request ID.
 
 ### Proposed Changes
 
-#### 1. Unified Queue Strategy
+#### 1. Extend Queue Service
+Update `internal/services/queue/` to add:
 Create `internal/services/queue/unified_queue.go`:
 - **Single global FIFO queue** for all request types (chat + story events)
 - Simplifies ordering: pure FIFO regardless of type
