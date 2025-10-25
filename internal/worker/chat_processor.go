@@ -203,11 +203,9 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 	}
 
 	// Initialize LLM streaming
-	chatCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
+	// Use the context passed in from the worker - it will stay alive while consuming the stream
 	p.logger.Debug("Sending streaming chat request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
-	streamChan, err := p.llmService.ChatStream(chatCtx, messages)
+	streamChan, err := p.llmService.ChatStream(ctx, messages)
 	if err != nil {
 		return nil, "", fmt.Errorf("LLM chat stream failed: %w", err)
 	}
@@ -417,6 +415,18 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 		"duration_s", time.Since(start).Seconds(),
 		"backend_model", backendModel,
 	)
+}
+
+// GetGameState loads a game state by ID
+func (p *ChatProcessor) GetGameState(ctx context.Context, gameStateID uuid.UUID) (*state.GameState, error) {
+	gs, err := p.storage.LoadGameState(ctx, gameStateID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load game state: %w", err)
+	}
+	if gs == nil {
+		return nil, fmt.Errorf("game state not found: %s", gameStateID.String())
+	}
+	return gs, nil
 }
 
 // filterStoryEventMarkers removes "STORY EVENT:" markers from LLM responses
