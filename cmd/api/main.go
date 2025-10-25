@@ -73,7 +73,12 @@ func main() {
 		log.Error("Failed to create queue client", "error", err)
 		os.Exit(1)
 	}
-	defer queueClient.Close()
+	defer func() {
+		err = queueClient.Close()
+		if err != nil {
+			log.Error("Error closing queue client", "error", err)
+		}
+	}()
 
 	chatQueue := queue.NewChatQueue(queueClient)
 	log.Info("Queue service initialized successfully")

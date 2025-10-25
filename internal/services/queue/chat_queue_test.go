@@ -21,7 +21,7 @@ func setupTestRedis(t *testing.T) (*Client, *miniredis.Miniredis) {
 
 	// Create queue client
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	redisURL := "redis://" + mr.Addr()
+	redisURL := mr.Addr() // Just the address, not redis:// URL
 
 	client, err := NewClient(redisURL, logger)
 	if err != nil {
@@ -35,7 +35,9 @@ func setupTestRedis(t *testing.T) (*Client, *miniredis.Miniredis) {
 func TestChatQueue_EnqueueAndDequeue(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() {
+		_ = client.Close()
+	}()
 
 	seq := NewChatQueue(client)
 
@@ -94,7 +96,9 @@ func TestChatQueue_EnqueueAndDequeue(t *testing.T) {
 func TestChatQueue_Peek(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() {
+		_ = client.Close()
+	}()
 
 	seq := NewChatQueue(client)
 
@@ -135,7 +139,9 @@ func TestChatQueue_Peek(t *testing.T) {
 func TestChatQueue_Clear(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() {
+		_ = client.Close()
+	}()
 
 	seq := NewChatQueue(client)
 
@@ -162,7 +168,9 @@ func TestChatQueue_Clear(t *testing.T) {
 func TestChatQueue_GetFormattedEvents(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() {
+		_ = client.Close()
+	}()
 
 	seq := NewChatQueue(client)
 
@@ -196,7 +204,9 @@ func TestChatQueue_GetFormattedEvents(t *testing.T) {
 func TestChatQueue_MultipleGames(t *testing.T) {
 	client, mr := setupTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() {
+		_ = client.Close()
+	}()
 
 	seq := NewChatQueue(client)
 
@@ -221,7 +231,7 @@ func TestChatQueue_MultipleGames(t *testing.T) {
 	}
 
 	// Dequeue from game1 shouldn't affect game2
-	seq.Dequeue(ctx, game1)
+	_, _ = seq.Dequeue(ctx, game1)
 	depth2After, _ := seq.Depth(ctx, game2)
 	if depth2After != 1 {
 		t.Errorf("Game 2 depth changed after dequeuing game 1: got %d", depth2After)

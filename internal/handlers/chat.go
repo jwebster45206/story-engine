@@ -201,6 +201,7 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		WithScenario(loadedScenario).
 		WithUserMessage(cmdResult.Message, cmdResult.Role).
 		WithHistoryLimit(PromptHistoryLimit).
+		WithStoryEvents(storyEventPrompt).
 		Build()
 	if err != nil {
 		h.logger.Error("Error building chat messages", "error", err)
@@ -387,6 +388,7 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		WithScenario(loadedScenario).
 		WithUserMessage(cmdResult.Message, cmdResult.Role).
 		WithHistoryLimit(PromptHistoryLimit).
+		WithStoryEvents(storyEventPrompt).
 		Build()
 	if err != nil {
 		h.logger.Error("Error building chat messages", "error", err)
