@@ -18,6 +18,7 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/prompts"
+	"github.com/jwebster45206/story-engine/pkg/queue"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 	"github.com/jwebster45206/story-engine/pkg/storage"
@@ -26,20 +27,26 @@ import (
 
 // mockStoryEventQueue is a simple in-memory mock for testing
 type mockStoryEventQueue struct {
-	events map[uuid.UUID][]string
-	mu     sync.Mutex
+	events   map[uuid.UUID][]string
+	requests []*queue.Request
+	mu       sync.Mutex
 }
 
 func newMockStoryEventQueue() *mockStoryEventQueue {
 	return &mockStoryEventQueue{
-		events: make(map[uuid.UUID][]string),
+		events:   make(map[uuid.UUID][]string),
+		requests: make([]*queue.Request, 0),
 	}
 }
 
-func (m *mockStoryEventQueue) Enqueue(ctx context.Context, gameID uuid.UUID, eventPrompt string) error {
+func (m *mockStoryEventQueue) EnqueueRequest(ctx context.Context, req *queue.Request) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.events[gameID] = append(m.events[gameID], eventPrompt)
+	m.requests = append(m.requests, req)
+	// Also add to events map for backwards compatibility with tests
+	if req.Type == queue.RequestTypeStoryEvent {
+		m.events[req.GameStateID] = append(m.events[req.GameStateID], req.EventPrompt)
+	}
 	return nil
 }
 

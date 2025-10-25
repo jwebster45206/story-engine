@@ -24,16 +24,6 @@ func queueKey(gameStateID uuid.UUID) string {
 	return fmt.Sprintf("story-events:%s", gameStateID.String())
 }
 
-// Enqueue adds a story event prompt to the end of the queue for a game
-func (seq *ChatQueue) Enqueue(ctx context.Context, gameStateID uuid.UUID, eventPrompt string) error {
-	key := queueKey(gameStateID)
-	err := seq.client.rdb.RPush(ctx, key, eventPrompt).Err()
-	if err != nil {
-		return fmt.Errorf("failed to enqueue story event: %w", err)
-	}
-	return nil
-}
-
 // Dequeue removes and returns all queued chat messages and story events for a game
 func (seq *ChatQueue) Dequeue(ctx context.Context, gameStateID uuid.UUID) ([]string, error) {
 	key := queueKey(gameStateID)

@@ -6,7 +6,10 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/pkg/queue"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
@@ -108,8 +111,7 @@ func (dw *DeltaWorker) ApplyConditionalOverrides() map[string]scenario.Condition
 }
 
 // QueueStoryEvents evaluates story events and queues them for the next turn
-// If a queue service is configured, events are enqueued to Redis.
-// Otherwise, events are stored in gamestate (deprecated behavior for backwards compatibility).
+// Story events are enqueued as Request objects to the unified queue for worker processing.
 // Returns the map of triggered story events for logging purposes
 func (dw *DeltaWorker) QueueStoryEvents() map[string]scenario.StoryEvent {
 	if dw.scenario == nil {
@@ -121,27 +123,39 @@ func (dw *DeltaWorker) QueueStoryEvents() map[string]scenario.StoryEvent {
 		return nil
 	}
 
-	// If queue service is available, use it
-	// Queue story events via Redis
-	if dw.queue != nil {
-		for _, event := range triggeredEvents {
-			if err := dw.queue.Enqueue(dw.ctx, dw.gs.ID, event.Prompt); err != nil {
-				if dw.logger != nil {
-					dw.logger.Error("Failed to enqueue story event to Redis",
-						"error", err,
-						"game_id", dw.gs.ID.String(),
-						"event", event.Prompt)
-				}
-				// Don't fail the entire operation on queue errors
-				// The event will be lost, but game state updates will proceed
-			}
-		}
-	} else {
-		// Queue service is required for story events
+	// Queue service is required for story events
+	if dw.queue == nil {
 		if dw.logger != nil && len(triggeredEvents) > 0 {
 			dw.logger.Error("No queue service configured, story events will be lost",
-				"game_id", dw.gs.ID.String(),
+				"game_state_id", dw.gs.ID.String(),
 				"event_count", len(triggeredEvents))
+		}
+		return triggeredEvents
+	}
+
+	for _, event := range triggeredEvents {
+		req := &queue.Request{
+			RequestID:   uuid.New().String(),
+			Type:        queue.RequestTypeStoryEvent,
+			GameStateID: dw.gs.ID,
+			EventPrompt: event.Prompt,
+			EnqueuedAt:  time.Now(),
+		}
+
+		if err := dw.queue.EnqueueRequest(dw.ctx, req); err != nil {
+			if dw.logger != nil {
+				dw.logger.Error("Failed to enqueue story event to unified queue",
+					"error", err,
+					"game_state_id", dw.gs.ID.String(),
+					"request_id", req.RequestID,
+					"event", event.Prompt)
+			}
+			// game state updates will proceed
+		} else if dw.logger != nil {
+			dw.logger.Info("Story event enqueued to unified queue",
+				"game_state_id", dw.gs.ID.String(),
+				"request_id", req.RequestID,
+				"event_prompt", event.Prompt)
 		}
 	}
 
