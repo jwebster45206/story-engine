@@ -29,6 +29,7 @@ services:
     container_name: story-engine-worker
     command: ["./worker"]  # Override CMD to run worker instead
     volumes:
+      - ./data:/app/data
       - ./config.docker.json:/app/config.docker.json
     environment:
       - GAME_CONFIG=/app/config.docker.json

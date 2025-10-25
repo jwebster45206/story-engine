@@ -49,10 +49,12 @@ func (r *RedisStorage) ListScenarios(ctx context.Context) (map[string]string, er
 
 func (r *RedisStorage) GetScenario(ctx context.Context, filename string) (*scenario.Scenario, error) {
 	path := filepath.Join(r.dataDir, "scenarios", filename)
+	r.logger.Debug("Loading scenario", "filename", filename, "full_path", path, "dataDir", r.dataDir)
 
 	file, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			r.logger.Error("Scenario file not found", "path", path, "error", err)
 			return nil, fmt.Errorf("scenario not found: %s", filename)
 		}
 		return nil, fmt.Errorf("failed to read scenario file: %w", err)

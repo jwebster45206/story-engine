@@ -120,7 +120,7 @@ func (w *Worker) processNextRequest() error {
 		return nil
 	}
 
-	// Process the request
+	// Process the request, blocking the worker until done
 	defer w.releaseGameLock(req.GameStateID)
 	return w.processRequest(req)
 }
