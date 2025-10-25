@@ -96,7 +96,7 @@ func main() {
 	healthHandler := handlers.NewHealthHandler(log, storageService, llmService)
 	mux.Handle("/health", healthHandler)
 
-	chatHandler := handlers.NewChatHandler(log, storageService, llmService, chatQueue)
+	chatHandler := handlers.NewChatHandler(chatQueue, log)
 	mux.Handle("/v1/chat", chatHandler)
 
 	gameStateHandler := handlers.NewGameStateHandler(log, cfg.ModelName, storageService)

@@ -5,13 +5,16 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/internal/logger"
+	"github.com/jwebster45206/story-engine/internal/services"
 	"github.com/jwebster45206/story-engine/internal/services/queue"
+	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/internal/worker"
 )
 
@@ -43,14 +46,57 @@ func main() {
 	chatQueue := queue.NewChatQueue(queueClient)
 	log.Info("Queue service initialized successfully")
 
-	// Create a separate Redis client for worker locking
-	// (separate from queue client to avoid connection conflicts)
-	redisOpts, err := redis.ParseURL("redis://" + cfg.RedisURL)
-	if err != nil {
-		log.Error("Failed to parse Redis URL", "error", err)
+	// Initialize storage service
+	storageService := storage.NewRedisStorage(cfg.RedisURL, "./data", log)
+	storageCtx, storageCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer storageCancel()
+
+	if err := storageService.Ping(storageCtx); err != nil {
+		log.Error("Failed to connect to storage", "error", err)
 		os.Exit(1)
 	}
-	redisClient := redis.NewClient(redisOpts)
+	log.Info("Storage service initialized successfully")
+
+	// Initialize LLM service
+	var llmService services.LLMService
+	switch strings.ToLower(cfg.LLMProvider) {
+	case "anthropic":
+		if cfg.AnthropicAPIKey == "" {
+			log.Error("Anthropic API key is required when using anthropic provider")
+			os.Exit(1)
+		}
+		llmService = services.NewAnthropicService(cfg.AnthropicAPIKey, cfg.ModelName, cfg.BackendModelName, log)
+		log.Info("Using Anthropic LLM provider")
+	case "venice":
+		if cfg.VeniceAPIKey == "" {
+			log.Error("Venice API key is required when using venice provider")
+			os.Exit(1)
+		}
+		llmService = services.NewVeniceService(cfg.VeniceAPIKey, cfg.ModelName, cfg.BackendModelName)
+		log.Info("Using Venice LLM provider")
+	default:
+		log.Error("Invalid LLM provider specified", "provider", cfg.LLMProvider, "supported", []string{"anthropic", "venice"})
+		os.Exit(1)
+	}
+
+	// Initialize the model
+	initCtx, initCancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer initCancel()
+	if err := llmService.InitModel(initCtx, cfg.ModelName); err != nil {
+		log.Error("Failed to initialize LLM model", "error", err, "model", cfg.ModelName)
+		os.Exit(1)
+	}
+	log.Info("LLM service initialized successfully", "model", cfg.ModelName)
+
+	// Create ChatProcessor
+	processor := worker.NewChatProcessor(storageService, llmService, chatQueue, log)
+	log.Info("Chat processor initialized successfully")
+
+	// Create a separate Redis client for worker locking
+	// (separate from queue client to avoid connection conflicts)
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: cfg.RedisURL,
+	})
 
 	// Test Redis connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -63,8 +109,8 @@ func main() {
 
 	log.Info("Redis connection established successfully")
 
-	// Create and start worker
-	w := worker.New(chatQueue, redisClient, log, os.Getenv("WORKER_ID"))
+	// Create and start worker with processor
+	w := worker.New(chatQueue, processor, redisClient, log, os.Getenv("WORKER_ID"))
 
 	// Handle graceful shutdown
 	quit := make(chan os.Signal, 1)

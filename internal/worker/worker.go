@@ -9,6 +9,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/services/queue"
+	"github.com/jwebster45206/story-engine/pkg/chat"
 	queuePkg "github.com/jwebster45206/story-engine/pkg/queue"
 )
 
@@ -20,6 +21,7 @@ const (
 type Worker struct {
 	id          string
 	queue       *queue.ChatQueue
+	processor   *ChatProcessor
 	redisClient *redis.Client
 	log         *slog.Logger
 	ctx         context.Context
@@ -27,7 +29,7 @@ type Worker struct {
 }
 
 // New creates a new worker instance
-func New(queueClient *queue.ChatQueue, redisClient *redis.Client, log *slog.Logger, workerID string) *Worker {
+func New(queueClient *queue.ChatQueue, processor *ChatProcessor, redisClient *redis.Client, log *slog.Logger, workerID string) *Worker {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	if workerID == "" {
@@ -37,6 +39,7 @@ func New(queueClient *queue.ChatQueue, redisClient *redis.Client, log *slog.Logg
 	return &Worker{
 		id:          workerID,
 		queue:       queueClient,
+		processor:   processor,
 		redisClient: redisClient,
 		log:         log,
 		ctx:         ctx,
@@ -148,45 +151,53 @@ func (w *Worker) releaseGameLock(gameStateID uuid.UUID) {
 	}
 }
 
-// processRequest processes a single request (skeleton implementation)
+// processRequest processes a single request using the ChatProcessor
 func (w *Worker) processRequest(req *queuePkg.Request) error {
-	w.log.Info("Processing request (SKELETON - no actual processing yet)",
+	w.log.Info("Processing request",
 		"worker_id", w.id,
 		"request_id", req.RequestID,
 		"type", req.Type,
 		"game_state_id", req.GameStateID.String(),
-		"message", req.Message,
-		"actor", req.Actor,
-		"event_prompt", req.EventPrompt,
-		"enqueued_at", req.EnqueuedAt.Format(time.RFC3339),
 	)
 
-	// Simulate some processing time
-	time.Sleep(500 * time.Millisecond)
+	start := time.Now()
 
 	switch req.Type {
 	case queuePkg.RequestTypeChat:
-		w.log.Info("Would process chat request",
+		// Convert queue request to chat request
+		chatReq := chat.ChatRequest{
+			GameStateID: req.GameStateID,
+			Message:     req.Message,
+		}
+
+		// Process using ChatProcessor
+		_, err := w.processor.ProcessChatRequest(w.ctx, chatReq)
+		if err != nil {
+			w.log.Error("Failed to process chat request",
+				"error", err,
+				"request_id", req.RequestID,
+				"game_state_id", req.GameStateID.String(),
+			)
+			return fmt.Errorf("failed to process chat request: %w", err)
+		}
+
+		w.log.Info("Chat request processed successfully",
+			"worker_id", w.id,
 			"request_id", req.RequestID,
-			"game_state_id", req.GameStateID.String(),
-			"message", req.Message,
-			"actor", req.Actor,
+			"duration_ms", time.Since(start).Milliseconds(),
 		)
+
 	case queuePkg.RequestTypeStoryEvent:
-		w.log.Info("Would process story event",
+		w.log.Info("Story event processing not yet implemented",
 			"request_id", req.RequestID,
 			"game_state_id", req.GameStateID.String(),
 			"event_prompt", req.EventPrompt,
 		)
+		// TODO: Implement story event processing when needed
+
 	default:
 		return fmt.Errorf("unknown request type: %s", req.Type)
 	}
-
-	w.log.Info("Request processing complete (SKELETON)",
-		"worker_id", w.id,
-		"request_id", req.RequestID,
-		"duration_ms", time.Since(req.EnqueuedAt).Milliseconds(),
-	)
 
 	return nil
 }
