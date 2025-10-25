@@ -17,6 +17,7 @@ type Builder struct {
 	userMessage  string
 	userRole     string
 	historyLimit int
+	storyEvents  string // Formatted story events from queue
 	messages     []chat.ChatMessage
 }
 
@@ -50,6 +51,12 @@ func (b *Builder) WithUserMessage(message string, role string) *Builder {
 // WithHistoryLimit sets the chat history window size.
 func (b *Builder) WithHistoryLimit(limit int) *Builder {
 	b.historyLimit = limit
+	return b
+}
+
+// WithStoryEvents sets the formatted story events string from the queue.
+func (b *Builder) WithStoryEvents(events string) *Builder {
+	b.storyEvents = events
 	return b
 }
 
@@ -152,14 +159,13 @@ func (b *Builder) addUserMessage() {
 
 // addStoryEvents adds queued story events if present.
 func (b *Builder) addStoryEvents() {
-	storyEventPrompt := b.gs.GetStoryEvents()
-	if storyEventPrompt == "" {
+	if b.storyEvents == "" {
 		return
 	}
 
 	b.messages = append(b.messages, chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
-		Content: storyEventPrompt,
+		Content: b.storyEvents,
 	})
 }
 
@@ -191,11 +197,13 @@ func BuildMessages(
 	message string,
 	role string,
 	historyLimit int,
+	storyEvents string,
 ) ([]chat.ChatMessage, error) {
 	return New().
 		WithGameState(gs).
 		WithScenario(scenario).
 		WithUserMessage(message, role).
 		WithHistoryLimit(historyLimit).
+		WithStoryEvents(storyEvents).
 		Build()
 }

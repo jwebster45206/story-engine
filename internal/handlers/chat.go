@@ -24,6 +24,7 @@ type ChatHandler struct {
 	llmService services.LLMService
 	logger     *slog.Logger
 	storage    storage.Storage
+	storyQueue state.StoryEventQueue // Queue service for reading story events
 
 	// For background gamestate delta cancellation
 	metaCancelMu sync.Mutex
@@ -31,11 +32,12 @@ type ChatHandler struct {
 }
 
 // NewChatHandler creates a new chat handler
-func NewChatHandler(logger *slog.Logger, storage storage.Storage, llmService services.LLMService) *ChatHandler {
+func NewChatHandler(logger *slog.Logger, storage storage.Storage, llmService services.LLMService, storyQueue state.StoryEventQueue) *ChatHandler {
 	return &ChatHandler{
 		logger:     logger,
 		storage:    storage,
 		llmService: llmService,
+		storyQueue: storyQueue,
 		metaCancel: make(map[uuid.UUID]context.CancelFunc),
 	}
 }
@@ -179,8 +181,17 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		return
 	}
 
-	// Check for queued story events
-	storyEventPrompt := gs.GetStoryEvents()
+	// Check for queued story events from Redis queue
+	storyEventPrompt := ""
+	if h.storyQueue != nil {
+		var err error
+		storyEventPrompt, err = h.storyQueue.GetFormattedEvents(r.Context(), gs.ID.String())
+		if err != nil {
+			h.logger.Error("Error getting story events from queue", "error", err, "game_id", gs.ID.String())
+			// Continue without story events on error
+			storyEventPrompt = ""
+		}
+	}
 	if storyEventPrompt != "" {
 		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
 	}
@@ -205,8 +216,10 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 	}
 
 	// Clear story events after building messages
-	if storyEventPrompt != "" {
-		gs.ClearStoryEventQueue()
+	if storyEventPrompt != "" && h.storyQueue != nil {
+		if err := h.storyQueue.Clear(r.Context(), gs.ID.String()); err != nil {
+			h.logger.Error("Failed to clear story event queue", "error", err, "game_id", gs.ID.String())
+		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -355,8 +368,17 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		return
 	}
 
-	// Check for queued story events
-	storyEventPrompt := gs.GetStoryEvents()
+	// Check for queued story events from Redis queue
+	storyEventPrompt := ""
+	if h.storyQueue != nil {
+		var err error
+		storyEventPrompt, err = h.storyQueue.GetFormattedEvents(r.Context(), gs.ID.String())
+		if err != nil {
+			h.logger.Error("Error getting story events from queue", "error", err, "game_id", gs.ID.String())
+			// Continue without story events on error
+			storyEventPrompt = ""
+		}
+	}
 	if storyEventPrompt != "" {
 		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
 	}
@@ -382,8 +404,10 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 	}
 
 	// Clear story events after building messages
-	if storyEventPrompt != "" {
-		gs.ClearStoryEventQueue()
+	if storyEventPrompt != "" && h.storyQueue != nil {
+		if err := h.storyQueue.Clear(r.Context(), gs.ID.String()); err != nil {
+			h.logger.Error("Failed to clear story event queue", "error", err, "game_id", gs.ID.String())
+		}
 	}
 
 	// Initialize LLM streaming (final validation step before committing to SSE)
@@ -619,9 +643,8 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 		return
 	}
 
-	// Clear story event queue from latestGS.
-	// This prevents events from being re-injected on subsequent turns.
-	latestGS.ClearStoryEventQueue()
+	// Note: Story events are now in Redis queue, not in gamestate
+	// Clear operation happens in chat handler before building messages
 
 	// Increment turn counters on the latest game state
 	if !latestGS.IsEnded {
@@ -629,7 +652,9 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 	}
 
 	// Use DeltaWorker to handle all delta application logic
-	worker := state.NewDeltaWorker(latestGS, delta, s, h.logger)
+	worker := state.NewDeltaWorker(latestGS, delta, s, h.logger).
+		WithQueue(h.storyQueue).
+		WithContext(metaCtx)
 
 	// Apply vars first (before evaluating conditionals)
 	worker.ApplyVars()

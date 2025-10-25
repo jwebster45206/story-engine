@@ -1,7 +1,6 @@
 package state
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
@@ -438,181 +437,30 @@ func validateItemSingletons(t *testing.T, normalizedState *GameState, originalSt
 	}
 }
 
-func TestGameState_GetStoryEvents(t *testing.T) {
-	tests := []struct {
-		name     string
-		gs       *GameState
-		expected string
-	}{
-		{
-			name: "empty queue",
-			gs: &GameState{
-				StoryEventQueue: []string{},
-			},
-			expected: "",
-		},
-		{
-			name: "single event",
-			gs: &GameState{
-				StoryEventQueue: []string{"Count Dracula materializes from the shadows, his eyes burning with ancient hunger."},
-			},
-			expected: "STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger.",
-		},
-		{
-			name: "multiple events",
-			gs: &GameState{
-				StoryEventQueue: []string{
-					"Count Dracula materializes from the shadows, his eyes burning with ancient hunger.",
-					"A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the stones!",
-				},
-			},
-			expected: "STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger.\n\nSTORY EVENT: A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the stones!",
-		},
-		{
-			name: "three events",
-			gs: &GameState{
-				StoryEventQueue: []string{
-					"Event one.",
-					"Event two.",
-					"Event three.",
-				},
-			},
-			expected: "STORY EVENT: Event one.\n\nSTORY EVENT: Event two.\n\nSTORY EVENT: Event three.",
-		},
-		{
-			name: "nil queue",
-			gs: &GameState{
-				StoryEventQueue: nil,
-			},
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.gs.GetStoryEvents()
-			if result != tt.expected {
-				t.Errorf("GetStoryEvents() = %q, expected %q", result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestGameState_ClearStoryEventQueue(t *testing.T) {
-	tests := []struct {
-		name         string
-		initialQueue []string
-	}{
-		{
-			name:         "clear empty queue",
-			initialQueue: []string{},
-		},
-		{
-			name:         "clear single event",
-			initialQueue: []string{"Event one"},
-		},
-		{
-			name:         "clear multiple events",
-			initialQueue: []string{"Event one", "Event two", "Event three"},
-		},
-		{
-			name:         "clear nil queue",
-			initialQueue: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gs := &GameState{
-				StoryEventQueue: tt.initialQueue,
-			}
-
-			gs.ClearStoryEventQueue()
-
-			if len(gs.StoryEventQueue) != 0 {
-				t.Errorf("ClearStoryEventQueue() left %d events in queue, expected 0", len(gs.StoryEventQueue))
-			}
-
-			// Verify it's an empty slice, not nil (for consistency)
-			if gs.StoryEventQueue == nil {
-				t.Error("ClearStoryEventQueue() resulted in nil queue, expected empty slice")
-			}
-		})
-	}
-}
-
-func TestGameState_StoryEventQueue_Persistence(t *testing.T) {
-	// Test that story event queue persists through serialization/deserialization
-	gs := NewGameState("test.json", nil, "test-model")
-	gs.StoryEventQueue = []string{
-		"Event one",
-		"Event two",
-	}
-
-	// Serialize
-	data, err := json.Marshal(gs)
-	if err != nil {
-		t.Fatalf("Failed to marshal GameState: %v", err)
-	}
-
-	// Deserialize
-	var restored GameState
-	if err := json.Unmarshal(data, &restored); err != nil {
-		t.Fatalf("Failed to unmarshal GameState: %v", err)
-	}
-
-	// Verify queue persisted
-	if len(restored.StoryEventQueue) != len(gs.StoryEventQueue) {
-		t.Errorf("Expected %d events in queue after deserialization, got %d", len(gs.StoryEventQueue), len(restored.StoryEventQueue))
-	}
-
-	for i, event := range gs.StoryEventQueue {
-		if restored.StoryEventQueue[i] != event {
-			t.Errorf("Event %d: expected %q, got %q", i, event, restored.StoryEventQueue[i])
-		}
-	}
-}
-
-func TestGameState_StoryEventQueue_EnqueueDequeue(t *testing.T) {
+func TestGameState_IncrementTurnCounters(t *testing.T) {
 	gs := NewGameState("test.json", nil, "test-model")
 
-	// Initially empty
-	if len(gs.StoryEventQueue) != 0 {
-		t.Errorf("Expected empty queue initially, got %d events", len(gs.StoryEventQueue))
+	if gs.TurnCounter != 0 {
+		t.Errorf("Expected TurnCounter to be 0 initially, got %d", gs.TurnCounter)
+	}
+	if gs.SceneTurnCounter != 0 {
+		t.Errorf("Expected SceneTurnCounter to be 0 initially, got %d", gs.SceneTurnCounter)
 	}
 
-	// Enqueue first event
-	event1 := "First event"
-	gs.StoryEventQueue = append(gs.StoryEventQueue, event1)
-	if len(gs.StoryEventQueue) != 1 {
-		t.Errorf("Expected 1 event after first enqueue, got %d", len(gs.StoryEventQueue))
+	gs.IncrementTurnCounters()
+	if gs.TurnCounter != 1 {
+		t.Errorf("Expected TurnCounter to be 1 after first increment, got %d", gs.TurnCounter)
+	}
+	if gs.SceneTurnCounter != 1 {
+		t.Errorf("Expected SceneTurnCounter to be 1 after first increment, got %d", gs.SceneTurnCounter)
 	}
 
-	// Enqueue second event
-	event2 := "Second event"
-	gs.StoryEventQueue = append(gs.StoryEventQueue, event2)
-	if len(gs.StoryEventQueue) != 2 {
-		t.Errorf("Expected 2 events after second enqueue, got %d", len(gs.StoryEventQueue))
+	gs.IncrementTurnCounters()
+	if gs.TurnCounter != 2 {
+		t.Errorf("Expected TurnCounter to be 2 after second increment, got %d", gs.TurnCounter)
 	}
-
-	// Verify order (FIFO)
-	if gs.StoryEventQueue[0] != event1 {
-		t.Errorf("Expected first event to be %q, got %q", event1, gs.StoryEventQueue[0])
-	}
-	if gs.StoryEventQueue[1] != event2 {
-		t.Errorf("Expected second event to be %q, got %q", event2, gs.StoryEventQueue[1])
-	}
-
-	// Dequeue (via GetStoryEvents and Clear)
-	formattedEvents := gs.GetStoryEvents()
-	expectedFormat := "STORY EVENT: First event\n\nSTORY EVENT: Second event"
-	if formattedEvents != expectedFormat {
-		t.Errorf("Expected formatted events %q, got %q", expectedFormat, formattedEvents)
-	}
-
-	gs.ClearStoryEventQueue()
-	if len(gs.StoryEventQueue) != 0 {
-		t.Errorf("Expected empty queue after clear, got %d events", len(gs.StoryEventQueue))
+	if gs.SceneTurnCounter != 2 {
+		t.Errorf("Expected SceneTurnCounter to be 2 after second increment, got %d", gs.SceneTurnCounter)
 	}
 }
 
