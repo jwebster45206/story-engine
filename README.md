@@ -3,80 +3,91 @@ A lightweight narrative engine for immersive, structured text adventures. Game e
 
 ## Features
 
-The Story Engine supports a comprehensive set of game mechanics for creating rich text adventures:
+Features are geared towards a closed-world / on-rails style of D&D adventure. 
 
-### Scene-Based Narrative
-- **Linear Progression**: Stories can progress through defined scenes with specific contexts and characters
-- **Branching Support**: Framework supports branching narratives (linear implementation currently, but designed for branching)
-- **Scene Transitions**: Automatic scene changes based on game conditions and player actions
-
-### Location & Map System  
-- **Room-Based Navigation**: Players move between defined locations with explicit exit connections
-- **Exit Restrictions**: Movement limited to available exits from current location - no teleportation
-- **Location Descriptions**: Rich descriptions and contextual details for each area
-
-### Item & Inventory Management
-- **Player Inventory**: Track items carried by the player
-- **Location Items**: Items available in specific locations
-- **Item Interactions**: Pick up, use, and give items with proper state tracking
-- **Transaction Control**: Prevents item duplication and ensures realistic acquisition mechanics
-
-### Player Character System
-- **Character Identity**: Players control a defined PC with name, pronouns, background, and personality
-- **Narrative Integration**: PC details automatically influence how the narrator tells the story
-- **Stats & Abilities**: D&D 5e-compatible stat blocks for future combat and skill check integration
-- **Customizable PCs**: JSON-based PC definitions stored in `data/pcs/` directory
-- **Scenario Defaults**: Scenarios can specify which PC to use 
-
-### NPC System
-- **Character Presence**: NPCs with specific locations, descriptions, and personalities  
-- **Dynamic Behavior**: NPCs can move between locations and change demeanor based on story events
-- **Dialogue Integration**: Named character speech with proper formatting
-- **Inventory Support**: NPCs can carry and exchange items
-
-### Variables & Game State
-- **Custom Variables**: Track story-specific flags and counters (implementation varies by LLM model)
-- **Persistent State**: Variables maintained throughout the game session
-- **Conditional Logic**: Story branching based on variable values
-
-### Story Events
-- **Key Narrative Moments**: Deterministic story events that reliably occur at specific points
-- **Conditional Triggers**: Events activate based on player actions, location, time, or game state
-- **Guaranteed Integration**: Unlike hints, story events are injected directly into the narrative stream
-- **One-Time Occurrences**: Events fire once when conditions are met, then clear from the queue
-- **Immediate Impact**: Events appear in the very next turn after triggering, ensuring perfect timing
-
-### Turn Tracking
-- **Session Counters**: Track total number of interactions across the entire game
-- **Scene Counters**: Track interactions within individual scenes
-- **Reliability Note**: More consistent with some LLM models than others
-
-### Game End Conditions
-- **Narrative Endings**: Stories can conclude based on player actions and story progression
-- **Conditional Endings**: Multiple possible endings based on game state
-- **Final Response**: Special handling for concluding game sessions with proper closure
-
-### Not Implemented
-- **Combat**: Potential roadmap item
+- **Scene-Based Narrative** - Linear or branching scenes, used to tell a story over a series of "acts." Confining information to scenes reduces LLM confusion.
+- **Location & Map System** - Confines the gameworld to a defined set of locations with movement rules. 
+- **Item & Inventory Management** - Player can acquire, drop, give and use items.
+- **Player Character System** - Players take the roles of 5e-compatible PC's. PCs are decoupled from scenarios.
+- **NPC System** - Story-scoped NPCs with planned mutable properties. Mutable properties aren't well fleshed out or tested yet. 
+- **Variables** - Simple vars for tracking story progression. It's relatively easy for an LLM to track these, so they can be combined with conditional logic for powerful game control. 
+- **Story Events** - Ability to inject story events into the chat flow.
 
 ## Architecture
-Project includes a Go microservice API and a console app. Console app is lightweight, to demonstrate a barebones gameplay session. 
+Project includes a Go microservice API and a console app. 
+
+### Package Organization
+
+The codebase follows a clean architecture with clear separation of concerns:
+
+```
+pkg/
+├── state/          # Game state data structures (low-level)
+├── prompts/        # LLM message construction (high-level)
+├── scenario/       # Scenario definitions and rules
+├── actor/          # Player characters and NPCs
+├── chat/           # Chat message types
+└── storage/        # Storage interface
+
+internal/
+└── handlers/       # HTTP request handlers and business logic
+└── services/       # LLM interface and implementations
+└── storage/        # Filesystem and Redis storage implementations
+```
+
+### Prompt Builder
+
+The prompt builder package (`pkg/prompts`) provides a fluent interface for constructing LLM chat messages:
+
+- **Separation of Concerns**: Isolates prompt construction logic from game state management
+- **Fluent Interface**: Chainable methods for composing complex prompts
+- **Automatic Context Assembly**: Combines narrator voice, player character details, scenario rules, game state, and chat history
+- **Story Event Injection**: Seamlessly integrates queued story events into the conversation flow
+- **Contingency Prompts**: Handles conditional prompts based on game state (variables, turn count, scene)
+- **History Windowing**: Manages chat history with configurable limits to control token usage
+
+**Usage Example:**
+```go
+messages, err := prompts.New().
+    WithGameState(gameState).
+    WithScenario(scenario).
+    WithUserMessage(userInput, "user").
+    WithHistoryLimit(20).
+    Build()
+```
+
+The builder automatically:
+- Loads narrator personality and style from embedded game state
+- Includes player character details and conditional prompts
+- Adds scenario rules and content rating guidelines
+- Manages chat history with proper windowing
+- Injects story events at the appropriate position
+- Appends final reminders or game-end prompts
 
 ### Storage Interface
 
-The project uses Redis as the primary storage backend for game state persistence. The storage interface provides:
+The storage layer uses a **public interface** with **private implementations**:
 
-- **Game State Management**: Create, read, update, and delete operations for game sessions
-- **Redis Integration**: High-performance in-memory storage with optional persistence
+- **Interface (`pkg/storage/`)**: Defines the storage contract for game state, scenarios, narrators, and PCs
+- **Implementation (`internal/storage/`)**: Redis-backed game state persistence and filesystem-backed resource loading
+- **Session Isolation**: Each game session identified by unique UUID
+- **Embedded Data**: Game states include embedded narrator and player character data for reduced I/O
+
+**Storage Strategy:**
+- **Narrator & PC**: Embedded in game state (loaded once at creation, stored in Redis)
+- **Scenario**: Referenced by filename (loaded from filesystem per request, enables live updates)
+- **Chat History**: Stored in Redis as part of game state
+- **Future Optimization**: Scenario caching planned to reduce filesystem I/O
 
 ### LLM Interface
 
-The LLM interface provides an abstraction layer for Large Language Model integration:
+The LLM service layer (`internal/services/`) provides an abstraction for Large Language Model integration:
 
-- **Interface Design**: Pluggable architecture supporting multiple LLM providers
+- **Provider Abstraction**: Pluggable architecture supporting multiple LLM providers (Anthropic Claude, VeniceAI)
 - **Chat Integration**: Handles conversation context and message formatting
-- **Model Management**: API for model initialization and readiness checks
-- **Provider Implementations**: Anthropic Claude and VeniceAI
+- **Streaming Support**: Real-time response streaming with delta updates
+- **Game State Extraction**: Parses LLM responses to extract game state changes (location, inventory, variables)
+- **Model Management**: Provider initialization and health checks
 
 ### Scenario and Rules
 

@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 func TestMockStorage_AddAndGetNarrator(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Add a test narrator
@@ -44,7 +45,7 @@ func TestMockStorage_AddAndGetNarrator(t *testing.T) {
 }
 
 func TestMockStorage_GetNonExistentNarrator(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Try to get a non-existent narrator
@@ -59,7 +60,7 @@ func TestMockStorage_GetNonExistentNarrator(t *testing.T) {
 }
 
 func TestMockStorage_GetNarratorEmptyID(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Get with empty ID should return nil, nil
@@ -74,7 +75,7 @@ func TestMockStorage_GetNarratorEmptyID(t *testing.T) {
 }
 
 func TestMockStorage_ListNarrators(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Add multiple narrators
@@ -119,7 +120,7 @@ func TestMockStorage_ListNarrators(t *testing.T) {
 }
 
 func TestMockStorage_ListNarratorsEmpty(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// List narrators when none exist

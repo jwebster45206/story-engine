@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 func TestScenarioHandler_ServeHTTP(t *testing.T) {

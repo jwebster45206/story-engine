@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 func TestMockStorage_AddAndGetPCSpec(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Add a test PC spec
@@ -66,7 +67,7 @@ func TestMockStorage_AddAndGetPCSpec(t *testing.T) {
 }
 
 func TestMockStorage_GetNonExistentPCSpec(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Try to get a non-existent PC
@@ -81,7 +82,7 @@ func TestMockStorage_GetNonExistentPCSpec(t *testing.T) {
 }
 
 func TestMockStorage_ListPCs(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Add multiple PCs
@@ -129,7 +130,7 @@ func TestMockStorage_ListPCs(t *testing.T) {
 }
 
 func TestMockStorage_ListPCsEmpty(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// List PCs when none exist
@@ -144,7 +145,7 @@ func TestMockStorage_ListPCsEmpty(t *testing.T) {
 }
 
 func TestMockStorage_PCIDHandling(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Add PC with simple ID

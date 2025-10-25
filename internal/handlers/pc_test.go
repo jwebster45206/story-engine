@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 func TestPCHandler_ListPCs(t *testing.T) {

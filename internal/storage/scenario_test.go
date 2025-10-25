@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 func TestMockStorage_AddAndGetScenario(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Add a test scenario
@@ -51,7 +52,7 @@ func TestMockStorage_AddAndGetScenario(t *testing.T) {
 }
 
 func TestMockStorage_GetNonExistentScenario(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Try to get a non-existent scenario
@@ -66,7 +67,7 @@ func TestMockStorage_GetNonExistentScenario(t *testing.T) {
 }
 
 func TestMockStorage_ListScenarios(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Add multiple scenarios
@@ -108,7 +109,7 @@ func TestMockStorage_ListScenarios(t *testing.T) {
 }
 
 func TestMockStorage_ListScenariosEmpty(t *testing.T) {
-	mockStorage := NewMockStorage()
+	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// List scenarios when none exist

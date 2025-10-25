@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 func TestGameStateHandler_Create(t *testing.T) {
