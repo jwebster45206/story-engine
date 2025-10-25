@@ -26,24 +26,24 @@ import (
 
 // mockStoryEventQueue is a simple in-memory mock for testing
 type mockStoryEventQueue struct {
-	events map[string][]string
+	events map[uuid.UUID][]string
 	mu     sync.Mutex
 }
 
 func newMockStoryEventQueue() *mockStoryEventQueue {
 	return &mockStoryEventQueue{
-		events: make(map[string][]string),
+		events: make(map[uuid.UUID][]string),
 	}
 }
 
-func (m *mockStoryEventQueue) Enqueue(ctx context.Context, gameID, eventPrompt string) error {
+func (m *mockStoryEventQueue) Enqueue(ctx context.Context, gameID uuid.UUID, eventPrompt string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.events[gameID] = append(m.events[gameID], eventPrompt)
 	return nil
 }
 
-func (m *mockStoryEventQueue) GetFormattedEvents(ctx context.Context, gameID string) (string, error) {
+func (m *mockStoryEventQueue) GetFormattedEvents(ctx context.Context, gameID uuid.UUID) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	events := m.events[gameID]
@@ -61,7 +61,7 @@ func (m *mockStoryEventQueue) GetFormattedEvents(ctx context.Context, gameID str
 	return formatted, nil
 }
 
-func (m *mockStoryEventQueue) Clear(ctx context.Context, gameID string) error {
+func (m *mockStoryEventQueue) Clear(ctx context.Context, gameID uuid.UUID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.events, gameID)

@@ -185,7 +185,7 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 	storyEventPrompt := ""
 	if h.storyQueue != nil {
 		var err error
-		storyEventPrompt, err = h.storyQueue.GetFormattedEvents(r.Context(), gs.ID.String())
+		storyEventPrompt, err = h.storyQueue.GetFormattedEvents(r.Context(), gs.ID)
 		if err != nil {
 			h.logger.Error("Error getting story events from queue", "error", err, "game_id", gs.ID.String())
 			// Continue without story events on error
@@ -193,7 +193,7 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		}
 	}
 	if storyEventPrompt != "" {
-		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
+		h.logger.Debug("Story events will be injected", "game_state_id", gs.ID, "events", storyEventPrompt)
 	}
 
 	// Build chat messages using the prompt builder
@@ -217,7 +217,7 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 
 	// Clear story events after building messages
 	if storyEventPrompt != "" && h.storyQueue != nil {
-		if err := h.storyQueue.Clear(r.Context(), gs.ID.String()); err != nil {
+		if err := h.storyQueue.Clear(r.Context(), gs.ID); err != nil {
 			h.logger.Error("Failed to clear story event queue", "error", err, "game_id", gs.ID.String())
 		}
 	}
@@ -372,7 +372,7 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 	storyEventPrompt := ""
 	if h.storyQueue != nil {
 		var err error
-		storyEventPrompt, err = h.storyQueue.GetFormattedEvents(r.Context(), gs.ID.String())
+		storyEventPrompt, err = h.storyQueue.GetFormattedEvents(r.Context(), gs.ID)
 		if err != nil {
 			h.logger.Error("Error getting story events from queue", "error", err, "game_id", gs.ID.String())
 			// Continue without story events on error
@@ -403,10 +403,10 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 		return
 	}
 
-	// Clear story events after building messages
-	if storyEventPrompt != "" && h.storyQueue != nil {
-		if err := h.storyQueue.Clear(r.Context(), gs.ID.String()); err != nil {
-			h.logger.Error("Failed to clear story event queue", "error", err, "game_id", gs.ID.String())
+	// Clear story events after consumption
+	if h.storyQueue != nil {
+		if err := h.storyQueue.Clear(r.Context(), gs.ID); err != nil {
+			h.logger.Warn("Failed to clear story events from queue", "error", err, "game_state_id", gs.ID.String())
 		}
 	}
 

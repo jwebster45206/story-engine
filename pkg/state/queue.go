@@ -1,16 +1,19 @@
 package state
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 // StoryEventQueue defines the interface for managing story events
-// This allows handlers and DeltaWorker to remain testable without a hard dependency on Redis
 type StoryEventQueue interface {
 	// Enqueue adds a story event prompt to the queue for a game
-	Enqueue(ctx context.Context, gameID, eventPrompt string) error
+	Enqueue(ctx context.Context, gameID uuid.UUID, eventPrompt string) error
 
 	// GetFormattedEvents returns all queued story events formatted as a single prompt
-	GetFormattedEvents(ctx context.Context, gameID string) (string, error)
+	GetFormattedEvents(ctx context.Context, gameID uuid.UUID) (string, error)
 
 	// Clear removes all story events for a game
-	Clear(ctx context.Context, gameID string) error
+	Clear(ctx context.Context, gameID uuid.UUID) error
 }

@@ -125,7 +125,7 @@ func (dw *DeltaWorker) QueueStoryEvents() map[string]scenario.StoryEvent {
 	// Queue story events via Redis
 	if dw.queue != nil {
 		for _, event := range triggeredEvents {
-			if err := dw.queue.Enqueue(dw.ctx, dw.gs.ID.String(), event.Prompt); err != nil {
+			if err := dw.queue.Enqueue(dw.ctx, dw.gs.ID, event.Prompt); err != nil {
 				if dw.logger != nil {
 					dw.logger.Error("Failed to enqueue story event to Redis",
 						"error", err,

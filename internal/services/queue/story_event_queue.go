@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 )
 
 // StoryEventQueue manages story event queues per game
@@ -23,12 +24,12 @@ func NewStoryEventQueue(client *Client, logger *slog.Logger) *StoryEventQueue {
 }
 
 // queueKey returns the Redis key for a game's story event queue
-func (seq *StoryEventQueue) queueKey(gameID string) string {
-	return fmt.Sprintf("story-events:%s", gameID)
+func (seq *StoryEventQueue) queueKey(gameID uuid.UUID) string {
+	return fmt.Sprintf("story-events:%s", gameID.String())
 }
 
 // Enqueue adds a story event prompt to the end of the queue for a game
-func (seq *StoryEventQueue) Enqueue(ctx context.Context, gameID, eventPrompt string) error {
+func (seq *StoryEventQueue) Enqueue(ctx context.Context, gameID uuid.UUID, eventPrompt string) error {
 	key := seq.queueKey(gameID)
 
 	err := seq.client.rdb.RPush(ctx, key, eventPrompt).Err()
@@ -48,7 +49,7 @@ func (seq *StoryEventQueue) Enqueue(ctx context.Context, gameID, eventPrompt str
 }
 
 // Dequeue removes and returns all story events for a game
-func (seq *StoryEventQueue) Dequeue(ctx context.Context, gameID string) ([]string, error) {
+func (seq *StoryEventQueue) Dequeue(ctx context.Context, gameID uuid.UUID) ([]string, error) {
 	key := seq.queueKey(gameID)
 
 	// Get all events
@@ -80,7 +81,7 @@ func (seq *StoryEventQueue) Dequeue(ctx context.Context, gameID string) ([]strin
 }
 
 // Peek returns all story events without removing them
-func (seq *StoryEventQueue) Peek(ctx context.Context, gameID string, limit int) ([]string, error) {
+func (seq *StoryEventQueue) Peek(ctx context.Context, gameID uuid.UUID, limit int) ([]string, error) {
 	key := seq.queueKey(gameID)
 
 	end := int64(limit - 1)
@@ -101,7 +102,7 @@ func (seq *StoryEventQueue) Peek(ctx context.Context, gameID string, limit int) 
 }
 
 // Clear removes all story events for a game
-func (seq *StoryEventQueue) Clear(ctx context.Context, gameID string) error {
+func (seq *StoryEventQueue) Clear(ctx context.Context, gameID uuid.UUID) error {
 	key := seq.queueKey(gameID)
 
 	err := seq.client.rdb.Del(ctx, key).Err()
@@ -118,7 +119,7 @@ func (seq *StoryEventQueue) Clear(ctx context.Context, gameID string) error {
 }
 
 // Depth returns the number of story events queued for a game
-func (seq *StoryEventQueue) Depth(ctx context.Context, gameID string) (int, error) {
+func (seq *StoryEventQueue) Depth(ctx context.Context, gameID uuid.UUID) (int, error) {
 	key := seq.queueKey(gameID)
 
 	count, err := seq.client.rdb.LLen(ctx, key).Result()
@@ -135,7 +136,7 @@ func (seq *StoryEventQueue) Depth(ctx context.Context, gameID string) (int, erro
 
 // GetFormattedEvents returns all queued story events formatted as a single prompt
 // This matches the behavior of GameState.GetStoryEvents()
-func (seq *StoryEventQueue) GetFormattedEvents(ctx context.Context, gameID string) (string, error) {
+func (seq *StoryEventQueue) GetFormattedEvents(ctx context.Context, gameID uuid.UUID) (string, error) {
 	events, err := seq.Peek(ctx, gameID, 0)
 	if err != nil {
 		return "", err

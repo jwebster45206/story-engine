@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/google/uuid"
 )
 
 func setupTestRedis(t *testing.T) (*Client, *miniredis.Miniredis) {
@@ -21,7 +22,7 @@ func setupTestRedis(t *testing.T) (*Client, *miniredis.Miniredis) {
 	// Create queue client
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	redisURL := "redis://" + mr.Addr()
-	
+
 	client, err := NewClient(redisURL, logger)
 	if err != nil {
 		mr.Close()
@@ -40,7 +41,7 @@ func TestStoryEventQueue_EnqueueDequeue(t *testing.T) {
 	seq := NewStoryEventQueue(client, logger)
 
 	ctx := context.Background()
-	gameID := "test-game-123"
+	gameID := uuid.New()
 
 	// Enqueue some events
 	events := []string{
@@ -100,7 +101,7 @@ func TestStoryEventQueue_Peek(t *testing.T) {
 	seq := NewStoryEventQueue(client, logger)
 
 	ctx := context.Background()
-	gameID := "test-game-456"
+	gameID := uuid.New()
 
 	// Enqueue events
 	events := []string{"Event 1", "Event 2", "Event 3"}
@@ -142,7 +143,7 @@ func TestStoryEventQueue_Clear(t *testing.T) {
 	seq := NewStoryEventQueue(client, logger)
 
 	ctx := context.Background()
-	gameID := "test-game-789"
+	gameID := uuid.New()
 
 	// Enqueue events
 	seq.Enqueue(ctx, gameID, "Event 1")
@@ -170,7 +171,7 @@ func TestStoryEventQueue_GetFormattedEvents(t *testing.T) {
 	seq := NewStoryEventQueue(client, logger)
 
 	ctx := context.Background()
-	gameID := "test-game-format"
+	gameID := uuid.New()
 
 	// Test empty queue
 	formatted, err := seq.GetFormattedEvents(ctx, gameID)
@@ -205,8 +206,8 @@ func TestStoryEventQueue_MultipleGames(t *testing.T) {
 	seq := NewStoryEventQueue(client, logger)
 
 	ctx := context.Background()
-	game1 := "game-1"
-	game2 := "game-2"
+	game1 := uuid.New()
+	game2 := uuid.New()
 
 	// Enqueue events for different games
 	seq.Enqueue(ctx, game1, "Game 1 Event 1")
