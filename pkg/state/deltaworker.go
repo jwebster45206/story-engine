@@ -183,7 +183,10 @@ func (dw *DeltaWorker) Apply() error {
 
 	// Handle location change
 	if dw.delta.UserLocation != "" {
-		if locationKey, found := dw.scenario.GetLocation(dw.delta.UserLocation); found {
+		locationKey := strings.ToLower(strings.TrimSpace(dw.delta.UserLocation))
+
+		// Check if location exists in current game world
+		if _, found := dw.gs.WorldLocations[locationKey]; found {
 			// Update to the location key (ID), not the display name
 			if dw.gs.Location != locationKey {
 				if dw.logger != nil {
@@ -195,9 +198,29 @@ func (dw *DeltaWorker) Apply() error {
 			}
 			dw.gs.Location = locationKey
 		} else {
-			dw.logger.Warn("Could not find location",
-				"input", dw.delta.UserLocation,
-				"current", dw.gs.Location)
+			// Try matching by location name
+			found := false
+			for key, loc := range dw.gs.WorldLocations {
+				if strings.ToLower(loc.Name) == locationKey {
+					if dw.gs.Location != key {
+						if dw.logger != nil {
+							dw.logger.Info("Location changed",
+								"from", dw.gs.Location,
+								"to", key,
+								"input", dw.delta.UserLocation)
+						}
+					}
+					dw.gs.Location = key
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				dw.logger.Warn("Could not find location",
+					"input", dw.delta.UserLocation,
+					"current", dw.gs.Location)
+			}
 		}
 	}
 
@@ -324,9 +347,24 @@ func (dw *DeltaWorker) handleUseItem(itemEvent itemEvent) {
 
 // handleNPCMovement updates an NPC's location
 func (dw *DeltaWorker) handleNPCMovement(movement NPCMovement) {
-	// Try to find the NPC by ID or name
-	npcKey, found := dw.scenario.GetNPC(movement.NPCID)
-	if !found {
+	// Normalize the NPC identifier
+	npcKey := strings.ToLower(strings.TrimSpace(movement.NPCID))
+
+	// Try to find the NPC in game state by key first
+	npc, npcExists := dw.gs.NPCs[npcKey]
+	if !npcExists {
+		// Try matching by NPC name
+		for key, n := range dw.gs.NPCs {
+			if strings.ToLower(n.Name) == npcKey {
+				npcKey = key
+				npc = n
+				npcExists = true
+				break
+			}
+		}
+	}
+
+	if !npcExists {
 		if dw.logger != nil {
 			dw.logger.Warn("NPC not found for movement",
 				"npc_id", movement.NPCID,
@@ -335,9 +373,21 @@ func (dw *DeltaWorker) handleNPCMovement(movement NPCMovement) {
 		return
 	}
 
-	// Verify the destination location exists
-	locationKey, found := dw.scenario.GetLocation(movement.ToLocation)
-	if !found {
+	// Normalize and verify the destination location exists
+	locationKey := strings.ToLower(strings.TrimSpace(movement.ToLocation))
+	_, locationExists := dw.gs.WorldLocations[locationKey]
+	if !locationExists {
+		// Try matching by location name
+		for key, loc := range dw.gs.WorldLocations {
+			if strings.ToLower(loc.Name) == locationKey {
+				locationKey = key
+				locationExists = true
+				break
+			}
+		}
+	}
+
+	if !locationExists {
 		if dw.logger != nil {
 			dw.logger.Warn("Location not found for NPC movement",
 				"npc_id", movement.NPCID,
@@ -347,22 +397,15 @@ func (dw *DeltaWorker) handleNPCMovement(movement NPCMovement) {
 	}
 
 	// Update the NPC's location in game state
-	if npc, exists := dw.gs.NPCs[npcKey]; exists {
-		oldLocation := npc.Location
-		npc.Location = locationKey
-		dw.gs.NPCs[npcKey] = npc
+	oldLocation := npc.Location
+	npc.Location = locationKey
+	dw.gs.NPCs[npcKey] = npc
 
-		if dw.logger != nil {
-			dw.logger.Info("NPC moved",
-				"npc", npcKey,
-				"from", oldLocation,
-				"to", locationKey)
-		}
-	} else {
-		if dw.logger != nil {
-			dw.logger.Warn("NPC not found in game state",
-				"npc_key", npcKey)
-		}
+	if dw.logger != nil {
+		dw.logger.Info("NPC moved",
+			"npc", npcKey,
+			"from", oldLocation,
+			"to", locationKey)
 	}
 }
 
@@ -397,10 +440,9 @@ func (dw *DeltaWorker) removeItemFromSource(item string, from *struct {
 		}
 	case "npc":
 		// Remove from NPC
-		npcKey, found := dw.scenario.GetNPC(from.Name)
-		if !found {
-			return
-		}
+		npcKey := strings.ToLower(strings.TrimSpace(from.Name))
+
+		// Try to find NPC in game state by key first
 		if npc, ok := gs.NPCs[npcKey]; ok {
 			for i, invItem := range npc.Items {
 				if invItem == item {
@@ -408,6 +450,21 @@ func (dw *DeltaWorker) removeItemFromSource(item string, from *struct {
 					gs.NPCs[npcKey] = npc // Write back
 					break
 				}
+			}
+			return
+		}
+
+		// Try matching by NPC name
+		for key, npc := range gs.NPCs {
+			if strings.ToLower(npc.Name) == npcKey {
+				for i, invItem := range npc.Items {
+					if invItem == item {
+						npc.Items = append(npc.Items[:i], npc.Items[i+1:]...)
+						gs.NPCs[key] = npc // Write back
+						break
+					}
+				}
+				break
 			}
 		}
 	}
@@ -443,16 +500,28 @@ func (dw *DeltaWorker) addItemToDestination(item string, to *struct {
 		}
 	case "npc":
 		// Add to NPC
-		npcKey, found := dw.scenario.GetNPC(to.Name)
-		if !found {
-			return
-		}
+		npcKey := strings.ToLower(strings.TrimSpace(to.Name))
+
+		// Try to find NPC in game state by key first
 		if npc, ok := gs.NPCs[npcKey]; ok {
 			if npc.Items == nil {
 				npc.Items = make([]string, 0)
 			}
 			npc.Items = append(npc.Items, item)
 			gs.NPCs[npcKey] = npc // Write back
+			return
+		}
+
+		// Try matching by NPC name
+		for key, npc := range gs.NPCs {
+			if strings.ToLower(npc.Name) == npcKey {
+				if npc.Items == nil {
+					npc.Items = make([]string, 0)
+				}
+				npc.Items = append(npc.Items, item)
+				gs.NPCs[key] = npc // Write back
+				break
+			}
 		}
 	}
 }

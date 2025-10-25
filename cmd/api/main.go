@@ -83,6 +83,9 @@ func main() {
 	chatQueue := queue.NewChatQueue(queueClient)
 	log.Info("Queue service initialized successfully")
 
+	// Create Redis client for SSE (reusing queue client's redis)
+	redisClient := queueClient.GetRedisClient()
+
 	// Initialize the model on startup
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -96,8 +99,11 @@ func main() {
 	healthHandler := handlers.NewHealthHandler(log, storageService, llmService)
 	mux.Handle("/health", healthHandler)
 
-	chatHandler := handlers.NewChatHandler(log, storageService, llmService, chatQueue)
+	chatHandler := handlers.NewChatHandler(chatQueue, log)
 	mux.Handle("/v1/chat", chatHandler)
+
+	eventsHandler := handlers.NewEventsHandler(redisClient, log)
+	mux.Handle("/v1/events/gamestate/", eventsHandler)
 
 	gameStateHandler := handlers.NewGameStateHandler(log, cfg.ModelName, storageService)
 	mux.Handle("/v1/gamestate", gameStateHandler)
