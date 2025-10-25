@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/internal/services/events"
 	"github.com/jwebster45206/story-engine/internal/services/queue"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	queuePkg "github.com/jwebster45206/story-engine/pkg/queue"
@@ -22,6 +23,7 @@ type Worker struct {
 	id          string
 	queue       *queue.ChatQueue
 	processor   *ChatProcessor
+	broadcaster *events.Broadcaster
 	redisClient *redis.Client
 	log         *slog.Logger
 	ctx         context.Context
@@ -36,10 +38,13 @@ func New(queueClient *queue.ChatQueue, processor *ChatProcessor, redisClient *re
 		workerID = fmt.Sprintf("worker-%s", uuid.New().String()[:8])
 	}
 
+	broadcaster := events.NewBroadcaster(redisClient, log)
+
 	return &Worker{
 		id:          workerID,
 		queue:       queueClient,
 		processor:   processor,
+		broadcaster: broadcaster,
 		redisClient: redisClient,
 		log:         log,
 		ctx:         ctx,
@@ -162,6 +167,12 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 
 	start := time.Now()
 
+	// Publish processing event
+	if err := w.broadcaster.PublishRequestProcessing(w.ctx, req.GameStateID, req.RequestID, string(req.Type)); err != nil {
+		w.log.Error("Failed to publish processing event", "error", err)
+		// Don't fail the request just because event publishing failed
+	}
+
 	switch req.Type {
 	case queuePkg.RequestTypeChat:
 		// Convert queue request to chat request
@@ -171,13 +182,19 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		}
 
 		// Process using ChatProcessor
-		_, err := w.processor.ProcessChatRequest(w.ctx, chatReq)
+		response, err := w.processor.ProcessChatRequest(w.ctx, chatReq)
 		if err != nil {
 			w.log.Error("Failed to process chat request",
 				"error", err,
 				"request_id", req.RequestID,
 				"game_state_id", req.GameStateID.String(),
 			)
+
+			// Publish failure event
+			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
+				w.log.Error("Failed to publish failure event", "error", pubErr)
+			}
+
 			return fmt.Errorf("failed to process chat request: %w", err)
 		}
 
@@ -186,6 +203,14 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			"request_id", req.RequestID,
 			"duration_ms", time.Since(start).Milliseconds(),
 		)
+
+		// Publish completion event
+		result := map[string]interface{}{
+			"message": response.Message,
+		}
+		if err := w.broadcaster.PublishRequestCompleted(w.ctx, req.GameStateID, req.RequestID, result); err != nil {
+			w.log.Error("Failed to publish completion event", "error", err)
+		}
 
 	case queuePkg.RequestTypeStoryEvent:
 		w.log.Info("Story event processing not yet implemented",
