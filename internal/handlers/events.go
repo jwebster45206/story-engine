@@ -44,12 +44,12 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Extract gameStateID from path
-	// Expected: /v1/events/games/{gameStateID}
+	// Expected: /v1/events/gamestate/{gameStateID}
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(pathParts) != 4 || pathParts[0] != "v1" || pathParts[1] != "events" || pathParts[2] != "games" {
+	if len(pathParts) != 4 || pathParts[0] != "v1" || pathParts[1] != "events" || pathParts[2] != "gamestate" {
 		w.WriteHeader(http.StatusBadRequest)
 		if err := json.NewEncoder(w).Encode(ErrorResponse{
-			Error: "Invalid path. Expected /v1/events/games/{gameStateID}",
+			Error: "Invalid path. Expected /v1/events/gamestate/{gameStateID}",
 		}); err != nil {
 			h.logger.Error("Failed to encode error response", "error", err)
 		}
