@@ -17,8 +17,8 @@ Created new queue service package at `/internal/services/queue/`:
 - **`story_event_queue.go`**: Story event queue service with per-game FIFO queues
   - Queue key pattern: `story-events:{gameID}`
   - Operations: Enqueue, Dequeue, Peek, Clear, Depth, GetFormattedEvents
+  - Implements `state.StoryEventQueue` interface directly
 - **`story_event_queue_test.go`**: Comprehensive unit tests using miniredis (all passing)
-- **`adapter.go`**: Adapter implementing `state.StoryEventQueue` interface for handler integration
 
 ### 2. Interface Definition
 
@@ -49,9 +49,8 @@ Modified `/internal/handlers/chat.go`:
 
 Modified `/cmd/api/main.go`:
 - Initialize Redis client from config
-- Create `StoryEventQueue` service
-- Wrap in adapter for interface compatibility
-- Pass adapter to `ChatHandler`
+- Create `StoryEventQueue` service (implements interface directly)
+- Pass queue service to `ChatHandler`
 
 ### 6. Prompt Builder Updates
 
@@ -197,7 +196,6 @@ As documented in `QUEUE-REFACTOR.md`, the next phases are:
 - `/internal/services/queue/client.go`
 - `/internal/services/queue/story_event_queue.go`
 - `/internal/services/queue/story_event_queue_test.go`
-- `/internal/services/queue/adapter.go`
 - `/pkg/state/queue.go`
 
 **Modified:**
@@ -210,7 +208,10 @@ As documented in `QUEUE-REFACTOR.md`, the next phases are:
 - `/pkg/prompts/builder.go`
 - `/pkg/prompts/builder_test.go`
 
-**Lines Changed:** ~600 lines added, ~200 lines removed
+**Deleted:**
+- `/internal/services/queue/adapter.go` (unnecessary - `StoryEventQueue` implements interface directly)
+
+**Lines Changed:** ~600 lines added, ~250 lines removed
 
 ## Validation Checklist
 
