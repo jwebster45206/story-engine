@@ -62,38 +62,6 @@ func (gs *GameState) Validate() error {
 	return nil
 }
 
-// GetStatePrompt provides gameplay and story instructions to the LLM.
-// It also provides scenario context and current game state context.
-func (gs *GameState) GetStatePrompt(s *scenario.Scenario) (chat.ChatMessage, error) {
-	if gs == nil {
-		return chat.ChatMessage{}, fmt.Errorf("game state or scene is nil")
-	}
-
-	var scene *scenario.Scene
-	if gs.SceneName != "" {
-		sc, ok := s.Scenes[gs.SceneName]
-		if !ok {
-			return chat.ChatMessage{}, fmt.Errorf("scene %s not found in scenario %s", gs.SceneName, s.Name)
-		}
-		scene = &sc
-	}
-
-	ps := ToPromptState(gs)
-	jsonScene, err := json.Marshal(ps)
-	if err != nil {
-		return chat.ChatMessage{}, err
-	}
-
-	story := s.Story
-	if scene != nil && scene.Story != "" {
-		story += "\n\n" + scene.Story
-	}
-	return chat.ChatMessage{
-		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf(scenario.StatePromptTemplate, story, jsonScene),
-	}, nil
-}
-
 // GetContingencyPrompts returns all applicable contingency prompts for the current game state
 // Filters prompts based on their conditional requirements
 func (gs *GameState) GetContingencyPrompts(s *scenario.Scenario) []string {

@@ -1,9 +1,13 @@
-package scenario
+package prompts
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 // BaseSystemPrompt is the default system prompt used for roleplay scenarios.
@@ -166,7 +170,7 @@ const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe fo
 
 // BuildSystemPrompt constructs the system prompt with narrator and PC prompts injected
 // pc is optional - pass nil if no PC
-func BuildSystemPrompt(narrator *Narrator, pc *actor.PC) string {
+func BuildSystemPrompt(narrator *scenario.Narrator, pc *actor.PC) string {
 	narratorPrompts := ""
 	narratorName := "the narrator"
 	if narrator != nil {
@@ -183,15 +187,47 @@ func BuildSystemPrompt(narrator *Narrator, pc *actor.PC) string {
 // GetContentRatingPrompt returns the appropriate content rating prompt
 func GetContentRatingPrompt(rating string) string {
 	switch rating {
-	case RatingG:
+	case scenario.RatingG:
 		return ContentRatingG
-	case RatingPG:
+	case scenario.RatingPG:
 		return ContentRatingPG
-	case RatingPG13:
+	case scenario.RatingPG13:
 		return ContentRatingPG13
-	case RatingR:
+	case scenario.RatingR:
 		return ContentRatingR
 	default:
 		return ContentRatingPG13 // Default to PG-13
 	}
+}
+
+// GetStatePrompt provides gameplay and story instructions to the LLM.
+// It also provides scenario context and current game state context.
+func GetStatePrompt(gs *state.GameState, s *scenario.Scenario) (chat.ChatMessage, error) {
+	if gs == nil {
+		return chat.ChatMessage{}, fmt.Errorf("game state or scene is nil")
+	}
+
+	var scene *scenario.Scene
+	if gs.SceneName != "" {
+		sc, ok := s.Scenes[gs.SceneName]
+		if !ok {
+			return chat.ChatMessage{}, fmt.Errorf("scene %s not found in scenario %s", gs.SceneName, s.Name)
+		}
+		scene = &sc
+	}
+
+	ps := ToPromptState(gs)
+	jsonScene, err := json.Marshal(ps)
+	if err != nil {
+		return chat.ChatMessage{}, err
+	}
+
+	story := s.Story
+	if scene != nil && scene.Story != "" {
+		story += "\n\n" + scene.Story
+	}
+	return chat.ChatMessage{
+		Role:    chat.ChatRoleSystem,
+		Content: fmt.Sprintf(StatePromptTemplate, story, jsonScene),
+	}, nil
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/prompts"
-	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
@@ -147,18 +146,7 @@ func (h *ChatHandler) handleRestChat(w http.ResponseWriter, r *http.Request, req
 		return
 	}
 
-	cmdResult, err := gs.TryHandleCommand(request.Message)
-	if err != nil {
-		h.logger.Error("Error handling command in chat", "error", err, "command", request.Message)
-		w.WriteHeader(http.StatusInternalServerError)
-		response := ErrorResponse{
-			Error: "Failed to handle command in chat.",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Error encoding error response", "error", err)
-		}
-		return
-	}
+	cmdResult := TryHandleCommand(gs, request.Message)
 	if cmdResult.Handled {
 		h.logger.Debug("Command handled in chat", "command", request.Message, "response", cmdResult.Message)
 		response := chat.ChatResponse{
@@ -334,19 +322,7 @@ func (h *ChatHandler) handleStreamChat(w http.ResponseWriter, r *http.Request, r
 	// Narrator is embedded in gamestate (loaded once at creation)
 	// No need to load narrator separately - it's already in gs.Narrator
 
-	cmdResult, err := gs.TryHandleCommand(request.Message)
-	if err != nil {
-		h.logger.Error("Error handling command in chat", "error", err, "command", request.Message)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		response := ErrorResponse{
-			Error: "Failed to handle command in chat.",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Error encoding error response", "error", err)
-		}
-		return
-	}
+	cmdResult := TryHandleCommand(gs, request.Message)
 	// Handle commands before streaming setup
 	if cmdResult.Handled {
 		h.logger.Debug("Command handled in chat", "command", request.Message, "response", cmdResult.Message)
@@ -525,7 +501,7 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 		h.metaCancelMu.Unlock()
 	}()
 
-	currentStateJSON, err := json.Marshal(state.ToBackgroundPromptState(gs))
+	currentStateJSON, err := json.Marshal(prompts.ToBackgroundPromptState(gs))
 	if err != nil {
 		h.logger.Error("Failed to marshal current game state for gamestate delta", "error", err, "game_state_id", gs.ID.String())
 		return
@@ -537,7 +513,7 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 		return
 	}
 
-	contingencyRules := scenario.GlobalContingencyRules
+	contingencyRules := prompts.GlobalContingencyRules
 	contingencyRules = append(contingencyRules, s.ContingencyRules...)
 	if gs.SceneName != "" {
 		contingencyRules = append(contingencyRules, s.Scenes[gs.SceneName].ContingencyRules...)
@@ -546,7 +522,7 @@ func (h *ChatHandler) syncGameState(ctx context.Context, gs *state.GameState, us
 	messages := []chat.ChatMessage{
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: fmt.Sprintf(scenario.ReducerPrompt, strings.Join(contingencyRules, "\n- ")),
+			Content: fmt.Sprintf(prompts.ReducerPrompt, strings.Join(contingencyRules, "\n- ")),
 		},
 		{
 			Role:    chat.ChatRoleSystem,

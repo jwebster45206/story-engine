@@ -90,18 +90,18 @@ func (b *Builder) addSystemPrompt() error {
 	var sb strings.Builder
 
 	// Build system prompt with embedded narrator and PC
-	systemPrompt := scenario.BuildSystemPrompt(b.gs.Narrator, b.gs.PC)
+	systemPrompt := BuildSystemPrompt(b.gs.Narrator, b.gs.PC)
 	sb.WriteString(systemPrompt)
 
 	// Add rating prompt
 	sb.WriteString("\n\nContent Rating: " + b.scenario.Rating)
-	ratingPrompt := scenario.GetContentRatingPrompt(b.scenario.Rating)
+	ratingPrompt := GetContentRatingPrompt(b.scenario.Rating)
 	if ratingPrompt != "" {
 		sb.WriteString(" (" + ratingPrompt + ")")
 	}
 
 	// Add state context
-	statePrompt, err := b.gs.GetStatePrompt(b.scenario)
+	statePrompt, err := GetStatePrompt(b.gs, b.scenario)
 	if err != nil {
 		return fmt.Errorf("error generating state prompt: %w", err)
 	}
@@ -169,12 +169,12 @@ func (b *Builder) addFinalPrompt() {
 
 	if b.gs.IsEnded {
 		// If the game is over, add the end prompt
-		finalPrompt = scenario.GameEndSystemPrompt
+		finalPrompt = GameEndSystemPrompt
 		if b.scenario.GameEndPrompt != "" {
 			finalPrompt += "\n\n" + b.scenario.GameEndPrompt
 		}
 	} else {
-		finalPrompt = scenario.UserPostPrompt
+		finalPrompt = UserPostPrompt
 	}
 
 	b.messages = append(b.messages, chat.ChatMessage{

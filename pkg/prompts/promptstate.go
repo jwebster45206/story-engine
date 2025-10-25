@@ -1,8 +1,9 @@
-package state
+package prompts
 
 import (
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 // PromptState is a reduced game state for LLM prompts.
@@ -20,7 +21,7 @@ type PromptState struct {
 	SceneTurnCounter int                          `json:"scene_turn_counter,omitempty"` // Number of successful chat interactions in
 }
 
-func ToPromptState(gs *GameState) *PromptState {
+func ToPromptState(gs *state.GameState) *PromptState {
 	// Filter NPCs: only include those in the same location as user OR marked as important
 	filteredNPCs := make(map[string]actor.NPC)
 	for name, npc := range gs.NPCs {
@@ -64,7 +65,7 @@ func filterLocations(worldLocations map[string]scenario.Location, currentLocatio
 	return filteredLocations
 }
 
-func ToBackgroundPromptState(gs *GameState) *PromptState {
+func ToBackgroundPromptState(gs *state.GameState) *PromptState {
 	// Filter NPCs: only include those in the same location as user OR marked as important
 	filteredNPCs := make(map[string]actor.NPC)
 	for name, npc := range gs.NPCs {
@@ -88,7 +89,7 @@ func ToBackgroundPromptState(gs *GameState) *PromptState {
 }
 
 // ApplyPromptStateToGameState copies fields from a PromptState to a GameState.
-func ApplyPromptStateToGameState(ps *PromptState, gs *GameState) {
+func ApplyPromptStateToGameState(ps *PromptState, gs *state.GameState) {
 	if ps == nil || gs == nil {
 		return
 	}
