@@ -104,7 +104,7 @@ func TestChatQueue_Peek(t *testing.T) {
 	// Enqueue events
 	events := []string{"Event 1", "Event 2", "Event 3"}
 	for _, event := range events {
-		seq.Enqueue(ctx, gameStateID, event)
+		_ = seq.Enqueue(ctx, gameStateID, event)
 	}
 
 	// Peek all
@@ -143,8 +143,8 @@ func TestChatQueue_Clear(t *testing.T) {
 	gameStateID := uuid.New()
 
 	// Enqueue events
-	seq.Enqueue(ctx, gameStateID, "Event 1")
-	seq.Enqueue(ctx, gameStateID, "Event 2")
+	_ = seq.Enqueue(ctx, gameStateID, "Event 1")
+	_ = seq.Enqueue(ctx, gameStateID, "Event 2")
 
 	// Clear
 	err := seq.Clear(ctx, gameStateID)
@@ -179,8 +179,8 @@ func TestChatQueue_GetFormattedEvents(t *testing.T) {
 	}
 
 	// Enqueue events
-	seq.Enqueue(ctx, gameStateID, "Dragon appears")
-	seq.Enqueue(ctx, gameStateID, "Ground trembles")
+	_ = seq.Enqueue(ctx, gameStateID, "Dragon appears")
+	_ = seq.Enqueue(ctx, gameStateID, "Ground trembles")
 
 	formatted, err = seq.GetFormattedEvents(ctx, gameStateID)
 	if err != nil {
@@ -205,9 +205,9 @@ func TestChatQueue_MultipleGames(t *testing.T) {
 	game2 := uuid.New()
 
 	// Enqueue events for different games
-	seq.Enqueue(ctx, game1, "Game 1 Event 1")
-	seq.Enqueue(ctx, game1, "Game 1 Event 2")
-	seq.Enqueue(ctx, game2, "Game 2 Event 1")
+	_ = seq.Enqueue(ctx, game1, "Game 1 Event 1")
+	_ = seq.Enqueue(ctx, game1, "Game 1 Event 2")
+	_ = seq.Enqueue(ctx, game2, "Game 2 Event 1")
 
 	// Verify isolation
 	depth1, _ := seq.Depth(ctx, game1)
