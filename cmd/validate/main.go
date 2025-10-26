@@ -117,12 +117,6 @@ func (v *ScenarioValidator) validateScene(scene *scenario.Scene, sceneID string)
 		v.validateConditional(&conditional, sceneID, conditionalKey)
 	}
 
-	// Validate story event keys (map keys are the event IDs)
-	for eventKey, event := range scene.StoryEvents {
-		v.validateIDFormat("story event key", eventKey)
-		v.validateStoryEvent(&event, sceneID, eventKey)
-	}
-
 	for _, cp := range scene.ContingencyPrompts {
 		v.validateContingencyPrompt(&cp)
 	}
@@ -131,13 +125,28 @@ func (v *ScenarioValidator) validateScene(scene *scenario.Scene, sceneID string)
 func (v *ScenarioValidator) validateConditional(conditional *scenario.Conditional, sceneID string, conditionalKey string) {
 	v.validateConditionalWhen(&conditional.When, fmt.Sprintf("conditional %s in scene %s", conditionalKey, sceneID), conditionalKey)
 
+	// Validate Then clause has at least one action
+	actionCount := 0
 	if conditional.Then.Scene != "" {
 		v.validateIDFormat("conditional then scene", conditional.Then.Scene)
+		actionCount++
 	}
-}
+	if conditional.Then.GameEnded != nil {
+		actionCount++
+	}
+	if conditional.Then.Prompt != nil {
+		if strings.TrimSpace(*conditional.Then.Prompt) == "" {
+			v.addError(fmt.Sprintf("conditional %s in scene %s has empty prompt", conditionalKey, sceneID))
+		}
+		actionCount++
+	}
 
-func (v *ScenarioValidator) validateStoryEvent(event *scenario.StoryEvent, sceneID string, eventKey string) {
-	v.validateConditionalWhen(&event.When, fmt.Sprintf("story event %s in scene %s", eventKey, sceneID), eventKey)
+	if actionCount == 0 {
+		v.addError(fmt.Sprintf("conditional %s in scene %s has no action in 'then' clause", conditionalKey, sceneID))
+	}
+	if actionCount > 1 {
+		v.addError(fmt.Sprintf("conditional %s in scene %s has multiple actions in 'then' clause (only one allowed)", conditionalKey, sceneID))
+	}
 }
 
 func (v *ScenarioValidator) validateContingencyPrompt(cp *conditionals.ContingencyPrompt) {

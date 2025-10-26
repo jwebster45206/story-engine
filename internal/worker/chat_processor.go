@@ -380,18 +380,14 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 			if conditional.Then.GameEnded != nil {
 				p.logger.Info("Conditional game ended", "game_state_id", latestGS.ID.String(), "conditional_id", conditionalID, "ended", *conditional.Then.GameEnded)
 			}
-		}
-	}
-
-	// Queue story events for next turn
-	triggeredEvents := worker.QueueStoryEvents()
-	if len(triggeredEvents) > 0 {
-		for eventKey, event := range triggeredEvents {
-			previewLen := 50
-			if len(event.Prompt) < previewLen {
-				previewLen = len(event.Prompt)
+			if conditional.Then.Prompt != nil {
+				previewLen := 50
+				prompt := *conditional.Then.Prompt
+				if len(prompt) < previewLen {
+					previewLen = len(prompt)
+				}
+				p.logger.Info("Conditional prompt triggered", "game_state_id", latestGS.ID.String(), "conditional_id", conditionalID, "prompt_preview", prompt[:previewLen]+"...")
 			}
-			p.logger.Info("Story event queued", "game_state_id", latestGS.ID.String(), "event_key", eventKey, "prompt_preview", event.Prompt[:previewLen]+"...")
 		}
 	}
 

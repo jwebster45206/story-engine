@@ -172,7 +172,7 @@
   "scenes": {
     "arrival": {
       "story": "The player has just arrived at Castle Dracula and must gain entry and begin exploring. The castle's defenses are at their weakest, but time is running short until dawn.",
-      "story_events": {
+      "conditionals": {
         "dracula_materializes": {
           "when": {
             "vars": {
@@ -180,13 +180,17 @@
               "dracula_appeared": "false"
             }
           },
-          "prompt": "The temperature drops precipitously as a misty dark presence fills the room. Dracula's fangs glisten as he materializes in the candlelight."
+          "then": {
+            "prompt": "STORY EVENT: The temperature drops precipitously as a misty dark presence fills the room. Dracula's fangs glisten as he materializes in the candlelight."
+          }
         },
         "lightning_strike": {
           "when": {
             "scene_turn_counter": 2
           },
-          "prompt": "The heavens rumble as a bolt of lightning crashes very near the castle. "
+          "then": {
+            "prompt": "STORY EVENT: The heavens rumble as a bolt of lightning crashes very near the castle. "
+          }
         }
       },
       "contingency_prompts": [],
