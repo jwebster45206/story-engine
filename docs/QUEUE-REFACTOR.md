@@ -10,21 +10,38 @@
   - Worker processes requests using ChatProcessor
   - Worker initialization includes storage, LLM service, processor
   - Breaking change: No more synchronous chat responses
+- ✅ **Step 3**: SSE endpoint for real-time updates (COMPLETE)
+  - SSE endpoint implemented at `/v1/events/gamestate/{gameStateID}`
+  - Redis Pub/Sub broadcasting from worker
+  - Real-time streaming of chat responses via `chat.chunk` events
+  - Event types: `request.processing`, `chat.chunk`, `request.completed`, `request.failed`
+  - Tested and working in production
+- ✅ **Step 4**: Console client updated (COMPLETE)
+  - Console uses async chat API
+  - SSE listener runs perpetually, receives all events
+  - User messages added from `request.processing` events
+  - Streaming responses displayed via `chat.chunk` events
+  - External messages (API posts, story events) fully supported
+  - Story event processing implemented (formatted as user messages with "STORY EVENT:" prefix)
+  - HTTP client timeout set to unlimited for long-lived SSE connections
+  - Manual testing completed successfully
 
 **Next Steps:**
-1. **Testing**: Validate async flow end-to-end (handler → queue → worker → gamestate)
-2. **Step 3**: SSE endpoint for real-time updates
-3. **Step 4**: Update console client
-4. **Step 5**: Update integration tests
-5. **Handler Tests**: Rewrite chat_test.go for async architecture (currently placeholder)
+1. **Step 5**: Update integration tests for async architecture
+2. **Handler Tests**: Rewrite chat_test.go for async architecture (currently placeholder)
 
-**Recent Changes (Step 0.5 + Steps 1-2):**
-- Created `internal/worker/chat_processor.go` with all processing logic from handler
-- Removed command handling (TryHandleCommand) - not being used
-- Simplified `internal/handlers/chat.go` to just enqueue and return request_id
-- Updated `cmd/worker/main.go` to initialize storage, LLM, and ChatProcessor
-- Updated `internal/worker/worker.go` to call processor.ProcessChatRequest()
-- Updated `cmd/api/main.go` to use new handler signature (chatQueue, log only)
+**Recent Changes (Steps 3-4):**
+- Implemented SSE endpoint with Redis Pub/Sub for real-time events
+- Worker broadcasts events during request processing (processing, chunks, completion, failure)
+- Console client completely updated for async + SSE architecture
+- User messages now added from SSE events (supports external messages)
+- Story event processing implemented in worker (formatted as user messages)
+- Story events changed from system role to user role for Anthropic compatibility
+- Removed `filterStoryEventMarkers` filter (replaced with system prompt instruction)
+- Added system prompt instruction: "NEVER write 'STORY EVENT:' in your own responses"
+- Console streaming state management improved (resets on gamestate merge)
+- SSE connection timeout removed (unlimited, with 30s server keepalive)
+- Manual testing validated full async flow: console → API → queue → worker → SSE → console
 
 ## Overview
 
@@ -554,7 +571,7 @@ Create `internal/worker/`:
 
 ## Step 3: Server-Sent Events (SSE) Endpoint
 
-**Status**: ✅ **COMPLETE**
+**Status**: ✅ **COMPLETE** (Tested and working in production)
 
 ### Objective
 Create SSE endpoint for real-time chat updates, allowing clients to receive notifications when their requests are processed.
@@ -634,15 +651,16 @@ type Event struct {
 - ✅ Multiple clients can subscribe to same game (pub/sub pattern)
 - ✅ Build successful for both API and worker
 
-### Testing Plan
-Manual testing required:
-1. Start Redis, API, and worker
-2. Connect to SSE endpoint: `curl -N http://localhost:8080/v1/events/gamestate/{gameID}`
-3. POST chat request with same gameID
-4. Verify events stream in real-time:
-   - `request.processing` when worker picks up request
-   - `request.completed` when processing finishes
-   - `request.failed` if processing errors
+### Testing Results
+✅ **Manual testing completed successfully:**
+1. ✅ SSE connections established and maintained
+2. ✅ Worker publishes events correctly during processing
+3. ✅ Console receives all event types in real-time
+4. ✅ Streaming LLM responses display properly via `chat.chunk` events
+5. ✅ External messages (API posts, story events) work correctly
+6. ✅ Multiple simultaneous clients can subscribe to same game
+7. ✅ Connection keepalive prevents timeouts (30s server-side pings)
+8. ✅ Graceful handling of connection closures
 
 ### Files Changed
 - **Created**: `internal/services/events/broadcaster.go` (Redis Pub/Sub publisher)
@@ -662,95 +680,202 @@ Manual testing required:
 
 ## Step 4: Update Console Client
 
-**Status**: 🔴 **NOT STARTED** (Blocked on Steps 1-3)
+**Status**: ✅ **COMPLETE** (Tested and working)
 
 ### Objective
 Update the console client to use async chat API and SSE for real-time updates.
 
-### Proposed Changes
+### Completed Changes
 
-#### 1. Update Chat API Client
-Modify `cmd/console/api.go`:
-- Add `PostChatAsync(gameID, message, actor string) (requestID string, err error)`
-- Add `StreamGameEvents(gameID string, handler EventHandler) error`
-- Maintain backward compatibility with sync API (feature flag?)
+#### 1. Async Chat API Client (`cmd/console/api.go`)
+- ✅ Created `sendChatAsync()` - posts to async endpoint, returns request_id
+- ✅ Created `listenToSSE()` - connects to SSE stream, parses events, sends to channel
+- ✅ SSE client properly handles event stream format (event type + data JSON)
+- ✅ Removed old synchronous chat functions
 
-#### 2. SSE Client Implementation
-- Connect to SSE endpoint when game starts
-- Handle incoming events and update UI
-- Reconnect on connection loss
-- Display real-time status updates
+#### 2. SSE Integration (`cmd/console/ui.go`)
+- ✅ SSE listener starts when game is created (in `gameStateCreatedMsg` handler)
+- ✅ Perpetual event consumer (`consumeSSEEvents`) runs continuously
+- ✅ Event channel buffered (size 10) to prevent blocking
+- ✅ SSE goroutine closes channel gracefully on disconnect
+- ✅ HTTP client timeout set to 0 (unlimited) for long-lived connections
+- ✅ Server sends keepalive every 30 seconds to maintain connection
 
-#### 3. UI Updates
-- Show "processing..." indicator when chat is queued
-- Display chat responses as they arrive
-- Show story events in real-time
-- Add status indicator (connected/disconnected)
+#### 3. Event Handling
+- ✅ `request.processing` - Stops loading spinner, adds user message from event data
+- ✅ `chat.chunk` - Streams LLM response in real-time, appends to assistant message
+- ✅ `request.completed` - Stops streaming, triggers gamestate refresh, restarts SSE consumer
+- ✅ `request.failed` - Displays error, removes failed user message, restarts SSE consumer
 
-#### 4. Error Handling
-- Handle SSE connection failures
-- Display timeout messages
-- Retry failed requests
-- Graceful degradation if SSE unavailable
+#### 4. User Message Flow
+- ✅ Console no longer adds user messages immediately when sending chat
+- ✅ User messages added when `request.processing` event received
+- ✅ Supports external messages (API posts, story events) - they appear automatically
+- ✅ Message field in event: `user_message` for chat, `STORY EVENT: ...` for story events
 
-### Success Criteria
-- ✅ Console uses async chat API
-- ✅ Real-time updates displayed correctly
-- ✅ Error handling works properly
-- ✅ User experience is smooth
+#### 5. Story Event Support
+- ✅ Worker formats story events as user messages with "STORY EVENT:" prefix
+- ✅ Console receives and displays story event messages via `request.processing`
+- ✅ LLM responses to story events stream normally via `chat.chunk`
+- ✅ Prompt builder changed story events from system role to user role (Anthropic compatibility)
+- ✅ System prompt instructs LLM not to write "STORY EVENT:" markers
+
+#### 6. Streaming State Management
+- ✅ Streaming state (`isStreaming`, `streamingMessageIdx`) resets on gamestate merge
+- ✅ Fixes issue where external messages appeared all at once instead of streaming
+- ✅ Console properly handles rapid successive messages
+
+#### 7. UI Improvements
+- ✅ Loading progress bar shows while request is queued
+- ✅ Real-time streaming display of LLM responses
+- ✅ Smooth user experience with perpetual SSE connection
+- ✅ Graceful degradation if SSE disconnects (channel closes, no panic)
+
+### Success Criteria - All Met ✅
+- ✅ Console uses async chat API (`POST /v1/chat` returns request_id)
+- ✅ Real-time updates displayed correctly via SSE
+- ✅ Streaming responses work for both console-initiated and external messages
+- ✅ Story events processed and displayed correctly
+- ✅ Error handling works (displays errors, cleans up state)
+- ✅ User experience is smooth and responsive
+- ✅ Long game sessions work (unlimited timeout for SSE)
+
+### Files Changed
+- **Modified**: `cmd/console/api.go` (async chat, SSE listener)
+- **Modified**: `cmd/console/ui.go` (SSE integration, event handling, state management)
+- **Modified**: `cmd/console/main.go` (HTTP client timeout set to 0)
+- **Modified**: `internal/worker/worker.go` (story event processing, message formatting)
+- **Modified**: `internal/services/events/broadcaster.go` (includes user_message in events)
+- **Modified**: `pkg/prompts/builder.go` (story events as user role)
+- **Modified**: `pkg/prompts/prompts.go` (instruction not to write "STORY EVENT:")
+- **Modified**: `internal/worker/chat_processor.go` (removed filterStoryEventMarkers)
 
 ---
 
 ## Step 5: Update Integration Test Framework
 
-**Status**: 🔴 **NOT STARTED** (Blocked on Steps 1-4)
+**Status**: 🔴 **NOT STARTED**
 
 ### Objective
-Update integration tests to work with async queue-based architecture.
+Update integration tests to work with async queue-based architecture using gamestate polling.
+
+### Strategy
+Replace synchronous chat response handling with gamestate polling:
+1. **POST chat message** → receive request_id (202 Accepted)
+2. **Poll gamestate** until chat history length increases
+3. **First update**: Chat response appears in history (assistant message added)
+4. **Second update**: DeltaWorker completes (vars, inventory, location, etc. updated)
+5. **Run assertions** against final gamestate
+6. **Continue to next test step**
 
 ### Proposed Changes
 
 #### 1. Test Infrastructure Updates
 Modify `integration/`:
-- Add Redis container to test docker-compose
-- Update test runner to start worker process
-- Add SSE client for test verification
-- Create helper functions for async testing
+- ✅ Redis container already in test docker-compose
+- ✅ Worker process already starts alongside API
+- Remove SSE client (not needed for tests - polling is simpler)
+- Update test runner to use polling instead of response waiting
 
 #### 2. New Test Helpers
 Create `integration/runner/async_helpers.go`:
-- `WaitForChatCompletion(requestID string, timeout time.Duration) (*ChatResponse, error)`
-- `WaitForEventType(gameID, eventType string, timeout time.Duration) (*Event, error)`
-- `VerifyQueueEmpty(queueName string) error`
-- `GetQueueDepth(queueName string) (int, error)`
+```go
+// PollForChatResponse polls gamestate until new assistant message appears
+// Returns when chat_history length increases by 2 (user + assistant)
+func PollForChatResponse(ctx context.Context, client *http.Client, gameStateID uuid.UUID, initialHistoryLen int, timeout time.Duration) (*state.GameState, error)
 
-#### 3. Update Test Cases
-Update existing test cases in `integration/cases/`:
-- Use async chat API
-- Add timeout handling
-- Verify events via SSE
-- Check queue states
-- Validate worker processing
+// PollForDeltaWorkerCompletion polls gamestate until meta fields update
+// Returns when turn_counter or vars change (indicates DeltaWorker finished)
+func PollForDeltaWorkerCompletion(ctx context.Context, client *http.Client, gameStateID uuid.UUID, timeout time.Duration) (*state.GameState, error)
 
-#### 4. Worker Test Mode
-- Start worker alongside API server in tests: `./story-engine --worker`
-- Single worker instance for predictable testing
-- Fast poll intervals for quick tests
-- Shorter timeouts
+// PostChatAsync posts chat message to async endpoint
+func PostChatAsync(ctx context.Context, client *http.Client, gameStateID uuid.UUID, message string) (requestID string, error)
 
-#### 5. Test Scenarios
-Add new test cases:
-- `test_async_chat_flow.json`: Basic async chat
-- `test_concurrent_requests.json`: Multiple requests
-- `test_worker_failure.json`: Worker restart/recovery
-- `test_queue_ordering.json`: FIFO validation
-- `test_sse_delivery.json`: Event delivery
+// VerifyQueueEmpty checks that request queue is empty
+func VerifyQueueEmpty(ctx context.Context, redisClient *redis.Client) error
+
+// GetQueueDepth returns number of pending requests
+func GetQueueDepth(ctx context.Context, redisClient *redis.Client) (int, error)
+```
+
+#### 3. Update Test Runner Flow
+Modify `integration/runner/runner.go`:
+```go
+// Old flow (synchronous):
+// 1. POST /v1/chat → wait for response
+// 2. Parse response
+// 3. Run assertions
+
+// New flow (async with polling):
+// 1. Get current gamestate (for initial chat_history length)
+// 2. POST /v1/chat → receive request_id
+// 3. Poll gamestate until chat_history length increases
+//    - First increase: chat response added (user + assistant messages)
+// 4. Poll gamestate until meta fields update
+//    - Second update: DeltaWorker completed (turn_counter, vars, etc.)
+// 5. Run assertions against final gamestate
+// 6. Continue to next step
+```
+
+#### 4. Polling Configuration
+```go
+const (
+    PollInterval = 100 * time.Millisecond  // Check every 100ms
+    ChatTimeout  = 30 * time.Second        // Max wait for chat response
+    DeltaTimeout = 10 * time.Second        // Max wait for DeltaWorker
+)
+```
+
+#### 5. Update Test Cases
+Existing test cases in `integration/cases/` need minimal changes:
+- Test case JSON format stays the same
+- Runner automatically uses async flow
+- Assertions run after DeltaWorker completes
+- No changes to assertion format
+
+#### 6. Example Test Flow
+```go
+func (r *Runner) executeStep(step TestStep) error {
+    // Get initial state
+    initialGS, err := r.getGameState(r.gameStateID)
+    initialLen := len(initialGS.ChatHistory)
+    
+    // POST async chat
+    requestID, err := PostChatAsync(r.ctx, r.client, r.gameStateID, step.Input)
+    
+    // Poll for chat response (history length increases by 2)
+    gsAfterChat, err := PollForChatResponse(r.ctx, r.client, r.gameStateID, initialLen, ChatTimeout)
+    
+    // Poll for DeltaWorker completion (turn_counter or vars change)
+    finalGS, err := PollForDeltaWorkerCompletion(r.ctx, r.client, r.gameStateID, DeltaTimeout)
+    
+    // Run assertions on final gamestate
+    return r.runAssertions(step.Assertions, finalGS)
+}
+```
 
 ### Success Criteria
-- ✅ All existing tests pass with async architecture
-- ✅ New async-specific tests added
-- ✅ Tests run reliably in CI/CD
-- ✅ Test execution time reasonable (<5min)
+- ✅ All existing test cases pass with new async flow
+- ✅ Polling reliably detects chat responses
+- ✅ Polling reliably detects DeltaWorker completion
+- ✅ Tests run in reasonable time (<30s per test case)
+- ✅ No flaky tests due to timing issues
+- ✅ Queue is empty after each test step
+
+### Benefits of Polling Approach
+- ✅ **Simpler**: No SSE client needed in tests
+- ✅ **Reliable**: Polling is deterministic, no race conditions
+- ✅ **Clear**: Easy to detect when DeltaWorker finishes
+- ✅ **Debuggable**: Can inspect gamestate at each poll
+- ✅ **Matches production**: Same as how real clients would work
+
+### Test Scenarios to Validate
+- Basic async chat flow
+- Multiple chat messages in sequence
+- Story events triggering and processing
+- DeltaWorker updating vars, inventory, location
+- Concurrent requests (if needed)
+- Queue ordering (FIFO validation)
 
 ---
 
@@ -773,12 +898,17 @@ Add new test cases:
 - **Goal**: SSE endpoint working, events delivered
 - **Validation**: Multiple clients receive events
 
-### Phase 4: Client Updates (Steps 4-5)
-- **Duration**: 4-5 days
-- **Goal**: Console and tests updated for async flow
-- **Validation**: Full end-to-end flow working
+### Phase 4: Client Updates (Step 4)
+- **Duration**: ✅ **COMPLETE** (2 days actual)
+- **Goal**: Console updated for async flow
+- **Validation**: Full end-to-end flow working, manual testing completed
 
-**Total Estimated Duration**: 14-19 days
+### Phase 5: Integration Tests (Step 5)
+- **Duration**: 3-4 days (estimated)
+- **Goal**: Update integration tests for async architecture
+- **Validation**: All tests pass with new async flow
+
+**Total Estimated Duration**: 14-19 days (14 days actual for Steps 0-4)
 
 **Note**: No incremental rollout needed - deploy all changes together as breaking changes are acceptable.
 
