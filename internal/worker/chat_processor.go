@@ -80,17 +80,12 @@ func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatReq
 		p.logger.Debug("Story events will be injected", "game_state_id", gs.ID, "events", storyEventPrompt)
 	}
 
-	// Format user message with PC name prefix
-	formattedMessage := req.Message
-	if gs.PC != nil && gs.PC.Spec != nil && gs.PC.Spec.Name != "" {
-		formattedMessage = chat.FormatWithPCName(req.Message, gs.PC.Spec.Name)
-	}
-
 	// Build chat messages using the prompt builder
+	// Note: req.Message should be pre-formatted with PC name if applicable
 	messages, err := prompts.New().
 		WithGameState(gs).
 		WithScenario(loadedScenario).
-		WithUserMessage(formattedMessage, chat.ChatRoleUser).
+		WithUserMessage(req.Message, chat.ChatRoleUser).
 		WithHistoryLimit(PromptHistoryLimit).
 		WithStoryEvents(storyEventPrompt).
 		Build()
@@ -188,17 +183,12 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 		p.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
 	}
 
-	// Format user message with PC name prefix
-	formattedMessage := req.Message
-	if gs.PC != nil && gs.PC.Spec != nil && gs.PC.Spec.Name != "" {
-		formattedMessage = chat.FormatWithPCName(req.Message, gs.PC.Spec.Name)
-	}
-
 	// Build chat messages using the prompt builder
+	// req.Message is already formatted with PC name if applicable
 	messages, err := prompts.New().
 		WithGameState(gs).
 		WithScenario(loadedScenario).
-		WithUserMessage(formattedMessage, chat.ChatRoleUser).
+		WithUserMessage(req.Message, chat.ChatRoleUser).
 		WithHistoryLimit(PromptHistoryLimit).
 		WithStoryEvents(storyEventPrompt).
 		Build()
