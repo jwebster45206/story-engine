@@ -261,8 +261,14 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			return fmt.Errorf("failed to load game state: %w", err)
 		}
 
+		// Format user message with PC name prefix
+		formattedMessage := req.Message
+		if gs.PC != nil && gs.PC.Spec != nil && gs.PC.Spec.Name != "" {
+			formattedMessage = chat.FormatWithPCName(req.Message, gs.PC.Spec.Name)
+		}
+
 		// Update game state with the full streamed message
-		if err := w.processor.UpdateGameStateAfterStream(gs, req.Message, fullMessage, storyEventPrompt); err != nil {
+		if err := w.processor.UpdateGameStateAfterStream(gs, formattedMessage, fullMessage, storyEventPrompt); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,

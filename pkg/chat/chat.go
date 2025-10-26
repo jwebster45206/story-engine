@@ -2,9 +2,12 @@ package chat
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 )
+
+const MaxMessageLength = 100
 
 // ChatRequest represents a chat message request made by the user
 // to the story engine api.
@@ -41,8 +44,25 @@ func (cr *ChatRequest) Validate() error {
 	if cr.Message == "" {
 		return fmt.Errorf("message cannot be empty")
 	}
+	if len(cr.Message) > MaxMessageLength {
+		return fmt.Errorf("message exceeds maximum length of %d characters", MaxMessageLength)
+	}
 	if cr.GameStateID == uuid.Nil {
 		return fmt.Errorf("game state ID cannot be empty")
 	}
 	return nil
+}
+
+// FormatWithPCName prefixes the message with the PC's name unless it already has a speaker prefix
+// Returns the formatted message
+func FormatWithPCName(message, pcName string) string {
+	// Check if message already has a speaker prefix (format: "Name: message")
+	// Accept any text before ": " within the first 50 characters as a valid speaker prefix
+	if colonIndex := strings.Index(message, ": "); colonIndex > 0 && colonIndex < 50 {
+		// Already has a speaker prefix, return as-is
+		return message
+	}
+
+	// No speaker prefix found, add PC name
+	return fmt.Sprintf("%s: %s", pcName, message)
 }
