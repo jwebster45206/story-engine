@@ -17,7 +17,6 @@ type Builder struct {
 	userMessage  string
 	userRole     string
 	historyLimit int
-	storyEvents  string // Formatted story events from queue
 	messages     []chat.ChatMessage
 }
 
@@ -54,12 +53,6 @@ func (b *Builder) WithHistoryLimit(limit int) *Builder {
 	return b
 }
 
-// WithStoryEvents sets the formatted story events string from the queue.
-func (b *Builder) WithStoryEvents(events string) *Builder {
-	b.storyEvents = events
-	return b
-}
-
 // Build constructs and returns the final message array for LLM consumption.
 func (b *Builder) Build() ([]chat.ChatMessage, error) {
 	if b.gs == nil {
@@ -69,26 +62,13 @@ func (b *Builder) Build() ([]chat.ChatMessage, error) {
 		return nil, fmt.Errorf("scenario is required")
 	}
 
-	// Reset messages
 	b.messages = make([]chat.ChatMessage, 0)
-
-	// 1. System prompt
 	if err := b.addSystemPrompt(); err != nil {
 		return nil, fmt.Errorf("error building system prompt: %w", err)
 	}
-
-	// 2. Windowed chat history
 	b.addHistory()
-
-	// 3. User message
 	b.addUserMessage()
-
-	// 4. Story events (if any)
-	b.addStoryEvents()
-
-	// 5. Final reminders
 	b.addFinalPrompt()
-
 	return b.messages, nil
 }
 
@@ -157,21 +137,6 @@ func (b *Builder) addUserMessage() {
 	})
 }
 
-// addStoryEvents adds queued story events if present.
-// Story events are added as user messages (not system) because Anthropic
-// doesn't allow system messages in chat history. The "STORY EVENT:" prefix
-// signals to the LLM that this is a mandatory narrative directive.
-func (b *Builder) addStoryEvents() {
-	if b.storyEvents == "" {
-		return
-	}
-
-	b.messages = append(b.messages, chat.ChatMessage{
-		Role:    chat.ChatRoleUser,
-		Content: b.storyEvents,
-	})
-}
-
 // addFinalPrompt adds game-end or standard reminders.
 func (b *Builder) addFinalPrompt() {
 	var finalPrompt string
@@ -207,6 +172,5 @@ func BuildMessages(
 		WithScenario(scenario).
 		WithUserMessage(message, role).
 		WithHistoryLimit(historyLimit).
-		WithStoryEvents(storyEvents).
 		Build()
 }

@@ -66,20 +66,6 @@ func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatReq
 		return nil, fmt.Errorf("failed to load scenario: %w", err)
 	}
 
-	// Check for queued story events from Redis queue
-	storyEventPrompt := ""
-	if p.chatQueue != nil {
-		var err error
-		storyEventPrompt, err = p.chatQueue.GetFormattedEvents(ctx, gs.ID)
-		if err != nil {
-			p.logger.Error("Error getting story events from queue", "error", err, "game_id", gs.ID.String())
-			// Continue without story events on error
-		}
-	}
-	if storyEventPrompt != "" {
-		p.logger.Debug("Story events will be injected", "game_state_id", gs.ID, "events", storyEventPrompt)
-	}
-
 	// Build chat messages using the prompt builder
 	// Note: req.Message should be pre-formatted with PC name if applicable
 	messages, err := prompts.New().
@@ -87,17 +73,9 @@ func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatReq
 		WithScenario(loadedScenario).
 		WithUserMessage(req.Message, chat.ChatRoleUser).
 		WithHistoryLimit(PromptHistoryLimit).
-		WithStoryEvents(storyEventPrompt).
 		Build()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build chat messages: %w", err)
-	}
-
-	// Clear story events after building messages
-	if storyEventPrompt != "" && p.chatQueue != nil {
-		if err := p.chatQueue.Clear(ctx, gs.ID); err != nil {
-			p.logger.Error("Failed to clear chat queue", "error", err, "game_id", gs.ID.String())
-		}
 	}
 
 	chatCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -125,7 +103,7 @@ func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatReq
 			p.logger.Error("Failed to copy game state for background sync", "error", err, "game_state_id", gs.ID.String())
 		} else {
 			// Start background goroutine to update game meta (PromptState)
-			go p.syncGameState(metaCtx, gsCopy, req.Message, response.Message, storyEventPrompt)
+			go p.syncGameState(metaCtx, gsCopy, req.Message, response.Message)
 		}
 	}
 
@@ -169,20 +147,6 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 		return nil, "", fmt.Errorf("failed to load scenario: %w", err)
 	}
 
-	// Check for queued story events from Redis queue
-	storyEventPrompt := ""
-	if p.chatQueue != nil {
-		var err error
-		storyEventPrompt, err = p.chatQueue.GetFormattedEvents(ctx, gs.ID)
-		if err != nil {
-			p.logger.Error("Error getting story events from queue", "error", err, "game_id", gs.ID.String())
-			// Continue without story events on error
-		}
-	}
-	if storyEventPrompt != "" {
-		p.logger.Debug("Story events will be injected", "game_state_id", gs.ID.String(), "events", storyEventPrompt)
-	}
-
 	// Build chat messages using the prompt builder
 	// req.Message is already formatted with PC name if applicable
 	messages, err := prompts.New().
@@ -190,7 +154,6 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 		WithScenario(loadedScenario).
 		WithUserMessage(req.Message, chat.ChatRoleUser).
 		WithHistoryLimit(PromptHistoryLimit).
-		WithStoryEvents(storyEventPrompt).
 		Build()
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to build chat messages: %w", err)
@@ -213,7 +176,7 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 
 	// Return the stream channel and additional context for post-processing
 	// The caller is responsible for consuming the stream and updating game state
-	return streamChan, storyEventPrompt, nil
+	return streamChan, "", nil
 }
 
 // UpdateGameStateAfterStream updates game state after streaming is complete
@@ -248,7 +211,7 @@ func (p *ChatProcessor) UpdateGameStateAfterStream(gs *state.GameState, userMess
 
 	// Start background gamestate delta update if game is not ended
 	if !gs.IsEnded {
-		go p.syncGameState(metaCtx, gs, userMessage, responseMessage, storyEventPrompt)
+		go p.syncGameState(metaCtx, gs, userMessage, responseMessage)
 	}
 
 	p.logger.Debug("Game state updated after streaming", "game_state_id", gs.ID.String())
@@ -256,7 +219,7 @@ func (p *ChatProcessor) UpdateGameStateAfterStream(gs *state.GameState, userMess
 }
 
 // syncGameState runs in the background to extract and update the stateful parts of gamestate
-func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, userMessage string, responseMessage string, storyEventPrompt string) {
+func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, userMessage string, responseMessage string) {
 	start := time.Now()
 	p.logger.Debug("Starting background game gamestate delta", "game_state_id", gs.ID.String(), "response", responseMessage)
 	defer func() {
@@ -296,14 +259,6 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 			Role:    chat.ChatRoleUser,
 			Content: userMessage,
 		},
-	}
-
-	// Add story event message if it exists
-	if storyEventPrompt != "" {
-		messages = append(messages, chat.ChatMessage{
-			Role:    chat.ChatRoleSystem,
-			Content: storyEventPrompt,
-		})
 	}
 
 	// Add the narrator response

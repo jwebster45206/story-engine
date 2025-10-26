@@ -318,49 +318,6 @@ func TestBuilder_Build_HistoryWindowing(t *testing.T) {
 	}
 }
 
-func TestBuilder_Build_WithStoryEvents(t *testing.T) {
-	gs := state.NewGameState("test.json", nil, "test-model")
-	gs.Location = "start"
-
-	scenario := &scenario.Scenario{
-		Name:   "Test Scenario",
-		Story:  "A test adventure",
-		Rating: scenario.RatingPG,
-		Locations: map[string]scenario.Location{
-			"start": {
-				Name:        "start",
-				Description: "Starting location",
-			},
-		},
-	}
-
-	// Format story events as the queue service would
-	storyEvents := "STORY EVENT: Event 1\n\nSTORY EVENT: Event 2"
-
-	messages, err := New().
-		WithGameState(gs).
-		WithScenario(scenario).
-		WithUserMessage("Test", chat.ChatRoleUser).
-		WithStoryEvents(storyEvents).
-		Build()
-
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-
-	found := false
-	for _, msg := range messages {
-		if msg.Role == chat.ChatRoleSystem && contains(msg.Content, "STORY EVENT") {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		t.Error("Expected story events to be included in messages as system role")
-	}
-}
-
 func TestBuilder_Build_GameEnded(t *testing.T) {
 	gs := state.NewGameState("test.json", nil, "test-model")
 	gs.Location = "start"
