@@ -168,11 +168,31 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 
 	start := time.Now()
 
+	// Load game state early for message formatting
+	gs, err := w.processor.GetGameState(w.ctx, req.GameStateID)
+	if err != nil {
+		w.log.Error("Failed to load game state",
+			"error", err,
+			"request_id", req.RequestID,
+		)
+
+		// Publish failure event
+		if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
+			w.log.Error("Failed to publish failure event", "error", pubErr)
+		}
+
+		return fmt.Errorf("failed to load game state: %w", err)
+	}
+
 	// Determine user message based on request type
 	var userMessage string
 	switch req.Type {
 	case queuePkg.RequestTypeChat:
+		// Format message with PC name prefix for display
 		userMessage = req.Message
+		if gs.PC != nil && gs.PC.Spec != nil && gs.PC.Spec.Name != "" {
+			userMessage = chat.FormatWithPCName(req.Message, gs.PC.Spec.Name)
+		}
 	case queuePkg.RequestTypeStoryEvent:
 		userMessage = fmt.Sprintf("%s%s", scenario.StoryEventPrefix, req.EventPrompt)
 	default:
@@ -245,23 +265,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			return fmt.Errorf("failed to process chat request: %w", streamErr)
 		}
 
-		// Load game state to update it
-		gs, err := w.processor.GetGameState(w.ctx, req.GameStateID)
-		if err != nil {
-			w.log.Error("Failed to load game state for update",
-				"error", err,
-				"request_id", req.RequestID,
-			)
-
-			// Publish failure event
-			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
-				w.log.Error("Failed to publish failure event", "error", pubErr)
-			}
-
-			return fmt.Errorf("failed to load game state: %w", err)
-		}
-
-		// Format user message with PC name prefix
+		// Format user message with PC name prefix (gs already loaded earlier)
 		formattedMessage := req.Message
 		if gs.PC != nil && gs.PC.Spec != nil && gs.PC.Spec.Name != "" {
 			formattedMessage = chat.FormatWithPCName(req.Message, gs.PC.Spec.Name)
