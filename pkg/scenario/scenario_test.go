@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
-	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
-func TestScene_UnmarshalStoryEvents(t *testing.T) {
+// TestScene_UnmarshalConditionalPrompt tests conditionals with prompt field
+func TestScene_UnmarshalConditionalPrompt(t *testing.T) {
 	tests := []struct {
 		name        string
 		jsonData    string
@@ -16,229 +16,91 @@ func TestScene_UnmarshalStoryEvents(t *testing.T) {
 		validate    func(*testing.T, Scene)
 	}{
 		{
-			name: "scene with single story event",
+			name: "conditional with story event prompt",
 			jsonData: `{
 				"story": "Test scene",
-				"story_events": {
-					"test_event": {
+				"conditionals": {
+					"dracula_appears": {
 						"when": {
-							"vars": {"test_var": "true"}
+							"vars": {"opened_grimoire": "true"}
 						},
-						"prompt": "Test event triggered."
+						"then": {
+							"prompt": "STORY EVENT: Count Dracula materializes from the shadows."
+						}
 					}
 				}
 			}`,
 			expectError: false,
 			validate: func(t *testing.T, scene Scene) {
-				if len(scene.StoryEvents) != 1 {
-					t.Errorf("Expected 1 story event, got %d", len(scene.StoryEvents))
+				if len(scene.Conditionals) != 1 {
+					t.Errorf("Expected 1 conditional, got %d", len(scene.Conditionals))
 					return
 				}
-				event, exists := scene.StoryEvents["test_event"]
+				cond, exists := scene.Conditionals["dracula_appears"]
 				if !exists {
-					t.Error("Expected 'test_event' key to exist")
+					t.Error("Expected 'dracula_appears' key to exist")
 					return
 				}
-				if event.Prompt != "Test event triggered." {
-					t.Errorf("Expected prompt 'Test event triggered.', got %q", event.Prompt)
+				if cond.Then.Prompt == nil {
+					t.Error("Expected prompt to be set")
+					return
 				}
-				if len(event.When.Vars) != 1 {
-					t.Errorf("Expected 1 var condition, got %d", len(event.When.Vars))
-				}
-				if event.When.Vars["test_var"] != "true" {
-					t.Errorf("Expected test_var='true', got %q", event.When.Vars["test_var"])
+				expected := "STORY EVENT: Count Dracula materializes from the shadows."
+				if *cond.Then.Prompt != expected {
+					t.Errorf("Expected prompt %q, got %q", expected, *cond.Then.Prompt)
 				}
 			},
 		},
 		{
-			name: "scene with multiple story events",
+			name: "conditional with regular prompt (no prefix)",
 			jsonData: `{
 				"story": "Test scene",
-				"story_events": {
-					"event1": {
+				"conditionals": {
+					"room_cold": {
 						"when": {
-							"vars": {"var1": "true"}
+							"vars": {"window_open": "true"}
 						},
-						"prompt": "First event."
-					},
-					"event2": {
-						"when": {
-							"scene_turn_counter": 5
-						},
-						"prompt": "Second event."
-					},
-					"event3": {
-						"when": {
-							"turn_counter": 10
-						},
-						"prompt": "Third event."
+						"then": {
+							"prompt": "The room grows noticeably colder."
+						}
 					}
 				}
 			}`,
 			expectError: false,
 			validate: func(t *testing.T, scene Scene) {
-				if len(scene.StoryEvents) != 3 {
-					t.Errorf("Expected 3 story events, got %d", len(scene.StoryEvents))
+				cond := scene.Conditionals["room_cold"]
+				if cond.Then.Prompt == nil {
+					t.Error("Expected prompt to be set")
 					return
 				}
-
-				// Validate first event
-				event1, exists := scene.StoryEvents["event1"]
-				if !exists {
-					t.Error("Expected 'event1' key to exist")
-					return
-				}
-				if event1.Prompt != "First event." {
-					t.Errorf("Expected prompt 'First event.', got %q", event1.Prompt)
-				}
-
-				// Validate second event
-				event2, exists := scene.StoryEvents["event2"]
-				if !exists {
-					t.Error("Expected 'event2' key to exist")
-					return
-				}
-				if event2.When.SceneTurnCounter == nil {
-					t.Error("Expected scene_turn_counter condition, got nil")
-				} else if *event2.When.SceneTurnCounter != 5 {
-					t.Errorf("Expected scene_turn_counter=5, got %d", *event2.When.SceneTurnCounter)
-				}
-
-				// Validate third event
-				event3, exists := scene.StoryEvents["event3"]
-				if !exists {
-					t.Error("Expected 'event3' key to exist")
-					return
-				}
-				if event3.When.TurnCounter == nil {
-					t.Error("Expected turn_counter condition, got nil")
-				} else if *event3.When.TurnCounter != 10 {
-					t.Errorf("Expected turn_counter=10, got %d", *event3.When.TurnCounter)
+				if *cond.Then.Prompt != "The room grows noticeably colder." {
+					t.Errorf("Unexpected prompt: %q", *cond.Then.Prompt)
 				}
 			},
 		},
 		{
-			name: "scene with story event with multiple conditions",
+			name: "conditional with scene change (no prompt)",
 			jsonData: `{
 				"story": "Test scene",
-				"story_events": {
-					"complex_event": {
+				"conditionals": {
+					"advance_scene": {
 						"when": {
-							"vars": {"has_key": "true", "door_locked": "true"},
-							"scene_turn_counter": 3,
-							"location": "dungeon"
+							"vars": {"quest_complete": "true"}
 						},
-						"prompt": "Complex event triggered."
+						"then": {
+							"scene": "next_scene"
+						}
 					}
 				}
 			}`,
 			expectError: false,
 			validate: func(t *testing.T, scene Scene) {
-				if len(scene.StoryEvents) != 1 {
-					t.Errorf("Expected 1 story event, got %d", len(scene.StoryEvents))
-					return
+				cond := scene.Conditionals["advance_scene"]
+				if cond.Then.Prompt != nil {
+					t.Error("Expected prompt to be nil")
 				}
-
-				event, exists := scene.StoryEvents["complex_event"]
-				if !exists {
-					t.Error("Expected 'complex_event' key to exist")
-					return
-				}
-				if len(event.When.Vars) != 2 {
-					t.Errorf("Expected 2 var conditions, got %d", len(event.When.Vars))
-				}
-				if event.When.SceneTurnCounter == nil {
-					t.Error("Expected scene_turn_counter condition, got nil")
-				}
-				if event.When.Location != "dungeon" {
-					t.Errorf("Expected location='dungeon', got %q", event.When.Location)
-				}
-			},
-		},
-		{
-			name: "scene with no story events",
-			jsonData: `{
-				"story": "Test scene",
-				"story_events": {}
-			}`,
-			expectError: false,
-			validate: func(t *testing.T, scene Scene) {
-				if len(scene.StoryEvents) != 0 {
-					t.Errorf("Expected 0 story events, got %d", len(scene.StoryEvents))
-				}
-			},
-		},
-		{
-			name: "scene without story_events field",
-			jsonData: `{
-				"story": "Test scene"
-			}`,
-			expectError: false,
-			validate: func(t *testing.T, scene Scene) {
-				if len(scene.StoryEvents) != 0 {
-					t.Errorf("Expected nil or empty story events, got %d", len(scene.StoryEvents))
-				}
-			},
-		},
-		{
-			name: "story event with min_scene_turns",
-			jsonData: `{
-				"story": "Test scene",
-				"story_events": {
-					"min_turns_event": {
-						"when": {
-							"min_scene_turns": 5
-						},
-						"prompt": "Minimum turns reached."
-					}
-				}
-			}`,
-			expectError: false,
-			validate: func(t *testing.T, scene Scene) {
-				if len(scene.StoryEvents) != 1 {
-					t.Errorf("Expected 1 story event, got %d", len(scene.StoryEvents))
-					return
-				}
-				event, exists := scene.StoryEvents["min_turns_event"]
-				if !exists {
-					t.Error("Expected 'min_turns_event' key to exist")
-					return
-				}
-				if event.When.MinSceneTurns == nil {
-					t.Error("Expected min_scene_turns condition, got nil")
-				} else if *event.When.MinSceneTurns != 5 {
-					t.Errorf("Expected min_scene_turns=5, got %d", *event.When.MinSceneTurns)
-				}
-			},
-		},
-		{
-			name: "story event with min_turns",
-			jsonData: `{
-				"story": "Test scene",
-				"story_events": {
-					"global_min_turns": {
-						"when": {
-							"min_turns": 20
-						},
-						"prompt": "Global minimum turns reached."
-					}
-				}
-			}`,
-			expectError: false,
-			validate: func(t *testing.T, scene Scene) {
-				if len(scene.StoryEvents) != 1 {
-					t.Errorf("Expected 1 story event, got %d", len(scene.StoryEvents))
-					return
-				}
-				event, exists := scene.StoryEvents["global_min_turns"]
-				if !exists {
-					t.Error("Expected 'global_min_turns' key to exist")
-					return
-				}
-				if event.When.MinTurns == nil {
-					t.Error("Expected min_turns condition, got nil")
-				} else if *event.When.MinTurns != 20 {
-					t.Errorf("Expected min_turns=20, got %d", *event.When.MinTurns)
+				if cond.Then.Scene != "next_scene" {
+					t.Errorf("Expected scene 'next_scene', got %q", cond.Then.Scene)
 				}
 			},
 		},
@@ -265,119 +127,6 @@ func TestScene_UnmarshalStoryEvents(t *testing.T) {
 				tt.validate(t, scene)
 			}
 		})
-	}
-}
-
-func TestScenario_UnmarshalStoryEvents(t *testing.T) {
-	jsonData := `{
-		"name": "Test Scenario",
-		"story": "A test scenario with story events",
-		"opening_scene": "intro",
-		"scenes": {
-			"intro": {
-				"story": "Introduction scene",
-				"story_events": {
-					"intro_event": {
-						"when": {
-							"vars": {"started": "true"}
-						},
-						"prompt": "The adventure begins!"
-					}
-				}
-			},
-			"castle": {
-				"story": "Castle scene",
-				"story_events": {
-					"dracula_appears": {
-						"when": {
-							"vars": {"opened_grimoire": "true"}
-						},
-						"prompt": "Count Dracula materializes from the shadows."
-					},
-					"lightning_strike": {
-						"when": {
-							"scene_turn_counter": 4
-						},
-						"prompt": "A massive LIGHTNING bolt strikes the castle tower!"
-					}
-				}
-			}
-		}
-	}`
-
-	var scenario Scenario
-	err := json.Unmarshal([]byte(jsonData), &scenario)
-	if err != nil {
-		t.Fatalf("Failed to unmarshal scenario: %v", err)
-	}
-
-	// Verify intro scene
-	introScene, ok := scenario.Scenes["intro"]
-	if !ok {
-		t.Fatal("Expected 'intro' scene to exist")
-	}
-	if len(introScene.StoryEvents) != 1 {
-		t.Errorf("Expected 1 story event in intro scene, got %d", len(introScene.StoryEvents))
-	}
-	if _, exists := introScene.StoryEvents["intro_event"]; !exists {
-		t.Error("Expected 'intro_event' key to exist in intro scene")
-	}
-
-	// Verify castle scene
-	castleScene, ok := scenario.Scenes["castle"]
-	if !ok {
-		t.Fatal("Expected 'castle' scene to exist")
-	}
-	if len(castleScene.StoryEvents) != 2 {
-		t.Errorf("Expected 2 story events in castle scene, got %d", len(castleScene.StoryEvents))
-	}
-	if _, exists := castleScene.StoryEvents["dracula_appears"]; !exists {
-		t.Error("Expected 'dracula_appears' key to exist in castle scene")
-	}
-	if _, exists := castleScene.StoryEvents["lightning_strike"]; !exists {
-		t.Error("Expected 'lightning_strike' key to exist in castle scene")
-	}
-}
-
-func TestStoryEvent_MarshalUnmarshal(t *testing.T) {
-	original := StoryEvent{
-		When: conditionals.ConditionalWhen{
-			Vars:             map[string]string{"test": "true", "other": "false"},
-			SceneTurnCounter: intPtr(5),
-			Location:         "dungeon",
-		},
-		Prompt: "Test event prompt with special characters: \"quotes\", \nnewlines",
-	}
-
-	// Marshal to JSON
-	data, err := json.Marshal(original)
-	if err != nil {
-		t.Fatalf("Failed to marshal StoryEvent: %v", err)
-	}
-
-	// Unmarshal back
-	var restored StoryEvent
-	if err := json.Unmarshal(data, &restored); err != nil {
-		t.Fatalf("Failed to unmarshal StoryEvent: %v", err)
-	}
-
-	// Verify all fields
-	if restored.Prompt != original.Prompt {
-		t.Errorf("Prompt: expected %q, got %q", original.Prompt, restored.Prompt)
-	}
-	if len(restored.When.Vars) != len(original.When.Vars) {
-		t.Errorf("Vars length: expected %d, got %d", len(original.When.Vars), len(restored.When.Vars))
-	}
-	for k, v := range original.When.Vars {
-		if restored.When.Vars[k] != v {
-			t.Errorf("Var %q: expected %q, got %q", k, v, restored.When.Vars[k])
-		}
-	}
-	if restored.When.SceneTurnCounter == nil || *restored.When.SceneTurnCounter != *original.When.SceneTurnCounter {
-		t.Errorf("SceneTurnCounter mismatch")
-	}
-	if restored.When.Location != original.When.Location {
-		t.Errorf("Location: expected %q, got %q", original.When.Location, restored.When.Location)
 	}
 }
 

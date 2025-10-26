@@ -37,40 +37,40 @@
   },
   "steps": [
     {
-      "name": "Open grimoire (queues story event for next turn)",
+      "name": "Open grimoire (queues story event)",
       "user_prompt": "I carefully open the ancient grimoire and begin reading its forbidden knowledge.",
       "expect": {
         "scene_name": "arrival",
         "user_location": "library",
+        "turn_counter": 3,
         "vars": {
           "opened_grimoire": "true"
         }
       }
     },
     {
-      "name": "Story event fires (Dracula materializes)",
-      "user_prompt": "I continue reading the grimoire, absorbing its dark secrets.",
+      "name": "Dracula story event",
+      "user_prompt": "WAIT_FOR_STORY_EVENT",
+      "turn_counter": 4,
       "expect": {
-        "scene_name": "arrival",
-        "user_location": "library",
-        "vars": {
-          "opened_grimoire": "true"
-        },
-        "response_contains": [
-          "Dracula"
-        ]
+        "story_event_contains": ["dracula"],
+        "response_contains": ["dracula"]
       }
     },
     {
-      "name": "Event does not fire again (one-time use)",
-      "user_prompt": "I close the grimoire and step back cautiously.",
+      "name": "No repeat of Dracula event 1",
+      "user_prompt": "I clutch my silver cross tightly and prepare to face whatever comes next.",
       "expect": {
-        "scene_name": "arrival",
-        "user_location": "library",
-        "vars": {
-          "opened_grimoire": "true"
-        }
+        "turn_counter": 5
+      }
+    },
+    {
+      "name": "No repeat of Dracula event 2",
+      "user_prompt": "I close the grimoire and put it back on the table.",
+      "expect": {
+        "turn_counter": 6
       }
     }
+    
   ]
 }

@@ -346,45 +346,47 @@ One powerful use of `min_scene_turns` is preventing players from getting stuck i
 | Feature | Story Events | Contingency Prompts |
 |---------|--------------|---------------------|
 | **Reliability** | Guaranteed to appear | May be ignored by LLM |
-| **Timing** | Precise (fires once when triggered) | Continuous suggestion while active |
-| **Delivery** | Injected into chat as priority message | Added to system prompt context |
-| **Use Case** | Critical plot moments, dramatic beats | Atmospheric guidance, storytelling hints |
-| **Persistence** | One-time (clears after firing) | Continuous (remains while condition true) |
+| **Delivery** | Visibly injected into chat | Added to system prompt context in background |
+| **Use Case** | Interruptive plot moments, random encounters | Softer storytelling suggestions |
 
 **When to Use Story Events:**
 - Critical plot moments that MUST happen: "The villain appears!"
 - Dramatic beats with precise timing: "Lightning strikes on turn 4"
 - One-time reveals or transformations: "The statue comes to life"
 - Surprise interruptions: "An explosion rocks the building"
+- The event is not likely to contradict other narrative that's in flight. 
 
 **When to Use Contingency Prompts:**
 - General storytelling tone and style
 - Ongoing atmospheric suggestions
 - NPC personality hints
-- Location description guidance
-- Flexible narrative nudges
+- Narrative *suggestions* rather than hard requirements
 
-### Defining Story Events
+### Story Events via Conditional Prompts
 
-Story events are defined **within individual scenes** using the `story_events` map:
+Story events are narrative moments that trigger based on game state conditions. They are defined **within conditionals** using the `prompt` field with the `"STORY EVENT: "` prefix:
 
 ```json
 "scenes": {
   "castle_arrival": {
     "story": "The player approaches Castle Ravenloft...",
-    "story_events": {
+    "conditionals": {
       "dracula_materializes": {
-        "prompt": "Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with oppressive, supernatural dread.",
         "when": {
           "vars": {
             "opened_grimoire": "true"
           }
+        },
+        "then": {
+          "prompt": "STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with oppressive, supernatural dread."
         }
       },
       "lightning_strike": {
-        "prompt": "A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet! The air crackles with electricity.",
         "when": {
           "scene_turn_counter": 4
+        },
+        "then": {
+          "prompt": "STORY EVENT: A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet! The air crackles with electricity."
         }
       }
     }
@@ -394,17 +396,19 @@ Story events are defined **within individual scenes** using the `story_events` m
 
 ### Story Event Naming Conventions
 
-Use **lowercase snake_case** for story event keys (e.g., `"dracula_materializes"`, `"lightning_strike"`). These are internal IDs used for debugging and logging.
+Use **lowercase snake_case** for conditional keys that trigger story events (e.g., `"dracula_materializes"`, `"lightning_strike"`). These are internal IDs used for debugging and logging.
 
-**Each story event has:**
-- **Key**: The event ID in snake_case (used as the map key)
-- `prompt`: The exact narrative text that will be injected into the story
-- `when`: Conditional logic determining when the event triggers (see **Conditional Logic** section above for all supported conditions)
+**Each story event conditional has:**
+- **Key**: The conditional ID in snake_case (used as the map key)
+- `when`: Conditional logic determining when the event triggers (see **Conditional Logic** section above)
+- `then.prompt`: The narrative text prefixed with `"STORY EVENT: "` that will be injected into the story
 
 ### How Story Events Work
 
+Story events are **single-occurrence** — once triggered, they never fire again for that game session.
+
 **1. Evaluation (Turn N):**
-When a player submits an action, the engine evaluates all story events in the current scene against the game state. Any events whose conditions are met are added to a queue.
+When a player submits an action, the engine evaluates all conditionals in the current scene. Any conditionals with prompts starting with `"STORY EVENT: "` whose conditions are met (and haven't previously fired) are queued.
 
 **2. Injection (Turn N+1):**
 On the **next turn**, queued story events are injected into the conversation history as a special assistant/agent message:
@@ -412,28 +416,28 @@ On the **next turn**, queued story events are injected into the conversation his
 ```
 User: I examine the grimoire carefully.
 Assistant: [Story event injected here]
-STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger.
+Count Dracula materializes from the shadows, his eyes burning with ancient hunger.
 User: [Current player action]
 ```
 
-The LLM sees this as a mandatory narrative directive and incorporates it into the response.
+The `"STORY EVENT: "` prefix is removed before injection. The LLM sees this as a mandatory narrative directive and incorporates it into the response.
 
-**3. Clearing:**
-After injection, the story event is cleared from the queue. It will **never fire again** (one-time use).
+**3. Tracking:**
+After injection, the story event conditional ID is tracked in game state to prevent re-triggering.
 
 ### Writing Effective Story Events
 
 **Be Descriptive and Complete:**
-Story events should contain the full narrative beat you want to occur. The LLM will incorporate this into the response naturally.
+Story events should contain the full narrative beat you want to occur, and should be written in an appropriate voice for the story. It will be rendered in chat history.
 
 **❌ Too Vague:**
 ```json
-"prompt": "Dracula appears"
+"prompt": "STORY EVENT: Dracula appears"
 ```
 
-**✅ Descriptive and Atmospheric:**
+**✅ Descriptive and Chat-Appropriate:**
 ```json
-"prompt": "Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with oppressive, supernatural dread. He speaks: 'Welcome to my domain, mortal.'"
+"prompt": "STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with oppressive, supernatural dread. He speaks: 'Welcome to my domain, mortal.'"
 ```
 
 **Use Present Tense and Active Voice:**
@@ -441,20 +445,20 @@ Events describe what's happening right now in the story.
 
 **❌ Past or Future Tense:**
 ```json
-"prompt": "Lightning will strike the tower" // Future
-"prompt": "Lightning struck the tower" // Past
+"prompt": "STORY EVENT: Lightning will strike the tower" // Future
+"prompt": "STORY EVENT: Lightning struck the tower" // Past
 ```
 
 **✅ Present Tense:**
 ```json
-"prompt": "A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet!"
+"prompt": "STORY EVENT: A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet!"
 ```
 
 **Include Sensory Details:**
 Good story events engage multiple senses and create atmosphere.
 
 ```json
-"prompt": "A swarm of bats erupts from the ceiling, their screeching filling the air! The wind from thousands of wings buffets your face as they circle overhead."
+"prompt": "STORY EVENT: A swarm of bats erupts from the ceiling, their screeching filling the air! The wind from thousands of wings buffets your face as they circle overhead."
 ```
 
 **Use Emphasis for Impact:**
@@ -478,7 +482,7 @@ The LLM will incorporate both events into its response.
 
 ### Complete Example
 
-Here's a scene with story events, contingency prompts, rules, and conditionals working together:
+Here's a scene with story events (via conditional prompts), contingency prompts, rules, and conditionals working together:
 
 ```json
 "scenes": {
@@ -488,18 +492,32 @@ Here's a scene with story events, contingency prompts, rules, and conditionals w
       "opened_grimoire": "false",
       "dracula_appeared": "false"
     },
-    "story_events": [
-      {
-        "name": "dracula_materializes",
-        "prompt": "Count Dracula materializes from the shadows, his eyes burning with ancient hunger. \"So, another fool seeks to challenge me.\"",
-        "when": {"vars": {"opened_grimoire": "true"}}
+    "conditionals": {
+      "dracula_materializes": {
+        "when": {
+          "vars": {"opened_grimoire": "true"}
+        },
+        "then": {
+          "prompt": "STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger. \"So, another fool seeks to challenge me.\""
+        }
       },
-      {
-        "name": "lightning_strike",
-        "prompt": "A MASSIVE lightning bolt strikes the tower! Thunder shakes the castle!",
-        "when": {"scene_turn_counter": 4}
+      "lightning_strike": {
+        "when": {
+          "scene_turn_counter": 4
+        },
+        "then": {
+          "prompt": "STORY EVENT: A MASSIVE lightning bolt strikes the tower! Thunder shakes the castle!"
+        }
+      },
+      "victory_transition": {
+        "when": {
+          "vars": {"dracula_defeated": "true"}
+        },
+        "then": {
+          "scene": "epilogue"
+        }
       }
-    ],
+    },
     "contingency_prompts": [
       "Describe the castle as ancient, foreboding, and filled with supernatural dread.",
       "Dracula speaks with formal, aristocratic language from centuries past."
@@ -507,13 +525,6 @@ Here's a scene with story events, contingency prompts, rules, and conditionals w
     "contingency_rules": [
       "When the player opens or reads the ancient grimoire, set opened_grimoire to true.",
       "If the player defeats or escapes Dracula, the scene changes to 'epilogue'."
-    ],
-    "conditionals": [
-      {
-        "name": "victory_transition",
-        "when": {"dracula_defeated": "true"},
-        "then": {"scene": "epilogue"}
-      }
     ]
   }
 }
@@ -536,22 +547,25 @@ Here's a scene with story events, contingency prompts, rules, and conditionals w
 
 ❌ **Don't use for general atmosphere** (use contingency prompts instead)
 ❌ **Don't use for state changes** (use contingency rules instead)
-❌ **Don't make events fire repeatedly** (they auto-clear after injection)
+❌ **Don't rely on re-triggering** (story events fire only once per game session)
 ❌ **Don't write vague events** - be specific and descriptive
 
 ### Story Events vs Conditionals vs Contingency Rules
 
 It's important to understand when to use each system:
 
-**Story Events**: "What dramatic narrative moment should occur?"
+**Story Events** (via conditional prompts): "What dramatic narrative moment should occur?"
 ```json
-"story_events": [
-  {
-    "name": "betrayal",
-    "prompt": "Captain Morgan suddenly draws his pistol and aims it at you! 'I'm sorry, but the treasure means more to me than friendship.'",
-    "when": {"vars": {"treasure_revealed": "true"}}
+"conditionals": {
+  "betrayal": {
+    "when": {
+      "vars": {"treasure_revealed": "true"}
+    },
+    "then": {
+      "prompt": "STORY EVENT: Captain Morgan suddenly draws his pistol and aims it at you! 'I'm sorry, but the treasure means more to me than friendship.'"
+    }
   }
-]
+}
 ```
 
 **Contingency Rules**: "What mechanical state changes should happen?"
@@ -562,15 +576,18 @@ It's important to understand when to use each system:
 ]
 ```
 
-**Conditionals**: "What scene transition should be enforced?"
+**Conditionals** (scene transitions): "What scene transition should be enforced?"
 ```json
-"conditionals": [
-  {
-    "name": "betrayal_scene",
-    "when": {"morgan_hostile": "true"},
-    "then": {"scene": "betrayal_confrontation"}
+"conditionals": {
+  "betrayal_scene": {
+    "when": {
+      "vars": {"morgan_hostile": "true"}
+    },
+    "then": {
+      "scene": "betrayal_confrontation"
+    }
   }
-]
+}
 ```
 
 All three work together to create reliable, dramatic storytelling.

@@ -80,6 +80,7 @@ func (dw *DeltaWorker) ApplyVars() {
 }
 
 // ApplyConditionalOverrides evaluates conditionals and overrides delta fields based on results
+// Also handles prompt-based actions (story events, etc.) by queuing them
 // Returns a map of triggered conditional IDs to their conditionals for logging purposes
 func (dw *DeltaWorker) ApplyConditionalOverrides() map[string]scenario.Conditional {
 	if dw.scenario == nil {
@@ -92,7 +93,7 @@ func (dw *DeltaWorker) ApplyConditionalOverrides() map[string]scenario.Condition
 	}
 
 	// Process conditional actions and override delta
-	for _, conditional := range triggeredConditionals {
+	for conditionalID, conditional := range triggeredConditionals {
 		if conditional.Then.Scene != "" {
 			dw.delta.SceneChange = &struct {
 				To     string `json:"to"`
@@ -105,61 +106,87 @@ func (dw *DeltaWorker) ApplyConditionalOverrides() map[string]scenario.Condition
 		if conditional.Then.GameEnded != nil {
 			dw.delta.GameEnded = conditional.Then.GameEnded
 		}
+		if conditional.Then.Prompt != nil {
+			prompt := *conditional.Then.Prompt
+			// Check if it's a story event (starts with "STORY EVENT: " prefix)
+			if strings.HasPrefix(prompt, scenario.StoryEventPrefix) {
+				// Check if this story event has already fired
+				if dw.hasStoryEventFired(conditionalID) {
+					if dw.logger != nil {
+						dw.logger.Debug("Story event already fired, skipping",
+							"game_state_id", dw.gs.ID.String(),
+							"conditional_id", conditionalID)
+					}
+					continue
+				}
+
+				// Strip the prefix and queue as story event
+				eventText := strings.TrimPrefix(prompt, scenario.StoryEventPrefix)
+				dw.queueStoryEvent(conditionalID, eventText)
+			}
+			// Future: Could handle other prompt types here (e.g., "NPC_NAME: dialogue")
+		}
 	}
 
 	return triggeredConditionals
 }
 
-// QueueStoryEvents evaluates story events and queues them for the next turn
-// Story events are enqueued as Request objects to the unified queue for worker processing.
-// Returns the map of triggered story events for logging purposes
-func (dw *DeltaWorker) QueueStoryEvents() map[string]scenario.StoryEvent {
-	if dw.scenario == nil {
-		return nil
+// hasStoryEventFired checks if a story event has already been fired
+func (dw *DeltaWorker) hasStoryEventFired(conditionalID string) bool {
+	if dw.gs == nil || dw.gs.FiredStoryEvents == nil {
+		return false
 	}
-
-	triggeredEvents := dw.scenario.EvaluateStoryEvents(dw.gs)
-	if len(triggeredEvents) == 0 {
-		return nil
+	for _, firedID := range dw.gs.FiredStoryEvents {
+		if firedID == conditionalID {
+			return true
+		}
 	}
+	return false
+}
 
+// queueStoryEvent queues a single story event for the next turn and marks it as fired
+func (dw *DeltaWorker) queueStoryEvent(conditionalID string, eventText string) {
 	// Queue service is required for story events
 	if dw.queue == nil {
-		if dw.logger != nil && len(triggeredEvents) > 0 {
-			dw.logger.Error("No queue service configured, story events will be lost",
+		if dw.logger != nil {
+			dw.logger.Error("No queue service configured, story event will be lost",
 				"game_state_id", dw.gs.ID.String(),
-				"event_count", len(triggeredEvents))
+				"event", eventText)
 		}
-		return triggeredEvents
+		return
 	}
 
-	for _, event := range triggeredEvents {
-		req := &queue.Request{
-			RequestID:   uuid.New().String(),
-			Type:        queue.RequestTypeStoryEvent,
-			GameStateID: dw.gs.ID,
-			EventPrompt: event.Prompt,
-			EnqueuedAt:  time.Now(),
-		}
+	req := &queue.Request{
+		RequestID:   uuid.New().String(),
+		Type:        queue.RequestTypeStoryEvent,
+		GameStateID: dw.gs.ID,
+		EventPrompt: eventText,
+		EnqueuedAt:  time.Now(),
+	}
 
-		if err := dw.queue.EnqueueRequest(dw.ctx, req); err != nil {
-			if dw.logger != nil {
-				dw.logger.Error("Failed to enqueue story event to unified queue",
-					"error", err,
-					"game_state_id", dw.gs.ID.String(),
-					"request_id", req.RequestID,
-					"event", event.Prompt)
-			}
-			// game state updates will proceed
-		} else if dw.logger != nil {
+	if err := dw.queue.EnqueueRequest(dw.ctx, req); err != nil {
+		if dw.logger != nil {
+			dw.logger.Error("Failed to enqueue story event to unified queue",
+				"error", err,
+				"game_state_id", dw.gs.ID.String(),
+				"request_id", req.RequestID,
+				"event", eventText)
+		}
+	} else {
+		// Successfully queued - mark this story event as fired
+		if dw.gs.FiredStoryEvents == nil {
+			dw.gs.FiredStoryEvents = make([]string, 0)
+		}
+		dw.gs.FiredStoryEvents = append(dw.gs.FiredStoryEvents, conditionalID)
+
+		if dw.logger != nil {
 			dw.logger.Info("Story event enqueued to unified queue",
 				"game_state_id", dw.gs.ID.String(),
 				"request_id", req.RequestID,
-				"event_prompt", event.Prompt)
+				"conditional_id", conditionalID,
+				"event_prompt", eventText)
 		}
 	}
-
-	return triggeredEvents
 }
 
 // Apply applies the delta to the game state (scene changes, items, location, game end)

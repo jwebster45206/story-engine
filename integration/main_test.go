@@ -301,7 +301,7 @@ func TestSingleSuite(t *testing.T) {
 						t.Logf("   ↻ %s (%v)", stepResult.StepName, stepResult.Duration)
 					} else if stepResult.IsStoryEventWait {
 						// Story event wait steps
-						t.Logf("   ⏱ %s (%v) - Event: %s", stepResult.StepName, stepResult.Duration, stepResult.StoryEventText)
+						t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
 					} else if stepResult.Success {
 						t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
 					} else {
