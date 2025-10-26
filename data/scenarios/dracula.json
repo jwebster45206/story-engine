@@ -176,8 +176,7 @@
         "dracula_materializes": {
           "when": {
             "vars": {
-              "opened_grimoire": "true",
-              "dracula_appeared": "false"
+              "opened_grimoire": "true" 
             }
           },
           "then": {

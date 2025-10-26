@@ -671,3 +671,89 @@ func TestGameState_GetContingencyPrompts_WithNPCs(t *testing.T) {
 		})
 	}
 }
+
+func TestDeltaWorker_StoryEventFiringPrevention(t *testing.T) {
+	promptText := "STORY EVENT: Dracula appears in a cloud of mist."
+	
+	tests := []struct {
+		name                  string
+		firedStoryEvents      []string
+		conditionalID         string
+		shouldFire            bool
+		description           string
+	}{
+		{
+			name:                  "story event fires first time",
+			firedStoryEvents:      []string{},
+			conditionalID:         "dracula_appears",
+			shouldFire:            true,
+			description:           "story event should fire when it hasn't fired before",
+		},
+		{
+			name:                  "story event prevented from firing twice",
+			firedStoryEvents:      []string{"dracula_appears"},
+			conditionalID:         "dracula_appears",
+			shouldFire:            false,
+			description:           "story event should not fire when it has already fired",
+		},
+		{
+			name:                  "different story event can fire",
+			firedStoryEvents:      []string{"dracula_appears"},
+			conditionalID:         "lightning_strike",
+			shouldFire:            true,
+			description:           "different story event should fire even if another has fired",
+		},
+		{
+			name:                  "story event prevented with multiple fired events",
+			firedStoryEvents:      []string{"event1", "event2", "dracula_appears", "event3"},
+			conditionalID:         "dracula_appears",
+			shouldFire:            false,
+			description:           "story event should not fire when it appears in list of fired events",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create game state with fired events
+			gs := &GameState{
+				FiredStoryEvents: append([]string{}, tt.firedStoryEvents...), // Copy to avoid mutation
+				SceneName:        "test",
+				Vars:             map[string]string{"trigger": "true"},
+			}
+			
+			delta := &GameStateDelta{}
+			
+			scen := &scenario.Scenario{
+				Scenes: map[string]scenario.Scene{
+					"test": {
+						Conditionals: map[string]scenario.Conditional{
+							tt.conditionalID: {
+								When: conditionals.ConditionalWhen{
+									Vars: map[string]string{"trigger": "true"},
+								},
+								Then: scenario.ConditionalThen{
+									Prompt: &promptText,
+								},
+							},
+						},
+					},
+				},
+			}
+			
+			worker := NewDeltaWorker(gs, delta, scen, nil)
+			
+			// Check hasStoryEventFired method directly
+			hasFired := worker.hasStoryEventFired(tt.conditionalID)
+			
+			if tt.shouldFire {
+				if hasFired {
+					t.Errorf("Expected hasStoryEventFired to return false for %q, got true", tt.conditionalID)
+				}
+			} else {
+				if !hasFired {
+					t.Errorf("Expected hasStoryEventFired to return true for %q, got false", tt.conditionalID)
+				}
+			}
+		})
+	}
+}

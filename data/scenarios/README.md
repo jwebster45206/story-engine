@@ -405,8 +405,10 @@ Use **lowercase snake_case** for conditional keys that trigger story events (e.g
 
 ### How Story Events Work
 
+Story events are **single-occurrence** — once triggered, they never fire again for that game session.
+
 **1. Evaluation (Turn N):**
-When a player submits an action, the engine evaluates all conditionals in the current scene. Any conditionals with prompts starting with `"STORY EVENT: "` whose conditions are met are queued.
+When a player submits an action, the engine evaluates all conditionals in the current scene. Any conditionals with prompts starting with `"STORY EVENT: "` whose conditions are met (and haven't previously fired) are queued.
 
 **2. Injection (Turn N+1):**
 On the **next turn**, queued story events are injected into the conversation history as a special assistant/agent message:
@@ -420,8 +422,8 @@ User: [Current player action]
 
 The `"STORY EVENT: "` prefix is removed before injection. The LLM sees this as a mandatory narrative directive and incorporates it into the response.
 
-**3. Clearing:**
-After injection, the story event is cleared from the queue. It will **never fire again** (one-time use).
+**3. Tracking:**
+After injection, the story event conditional ID is tracked in game state to prevent re-triggering.
 
 ### Writing Effective Story Events
 
@@ -545,7 +547,7 @@ Here's a scene with story events (via conditional prompts), contingency prompts,
 
 ❌ **Don't use for general atmosphere** (use contingency prompts instead)
 ❌ **Don't use for state changes** (use contingency rules instead)
-❌ **Don't make events fire repeatedly** (they auto-clear after injection)
+❌ **Don't rely on re-triggering** (story events fire only once per game session)
 ❌ **Don't write vague events** - be specific and descriptive
 
 ### Story Events vs Conditionals vs Contingency Rules
