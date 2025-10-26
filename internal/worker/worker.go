@@ -167,8 +167,19 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 
 	start := time.Now()
 
-	// Publish processing event
-	if err := w.broadcaster.PublishRequestProcessing(w.ctx, req.GameStateID, req.RequestID, string(req.Type)); err != nil {
+	// Determine user message based on request type
+	var userMessage string
+	switch req.Type {
+	case queuePkg.RequestTypeChat:
+		userMessage = req.Message
+	case queuePkg.RequestTypeStoryEvent:
+		userMessage = fmt.Sprintf("STORY EVENT: %s", req.EventPrompt)
+	default:
+		userMessage = ""
+	}
+
+	// Publish processing event with user message
+	if err := w.broadcaster.PublishRequestProcessing(w.ctx, req.GameStateID, req.RequestID, string(req.Type), userMessage); err != nil {
 		w.log.Error("Failed to publish processing event", "error", err)
 		// Don't fail the request just because event publishing failed
 	}
@@ -280,12 +291,113 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		}
 
 	case queuePkg.RequestTypeStoryEvent:
-		w.log.Info("Story event processing not yet implemented",
+		// Format story event as a user message with STORY EVENT prefix
+		// (Anthropic doesn't allow system messages in chat history)
+		storyEventMessage := fmt.Sprintf("STORY EVENT: %s", req.EventPrompt)
+
+		// Convert to chat request
+		chatReq := chat.ChatRequest{
+			GameStateID: req.GameStateID,
+			Message:     storyEventMessage,
+		}
+
+		// Process using streaming ChatProcessor
+		streamChan, storyEventPrompt, err := w.processor.ProcessChatStream(w.ctx, chatReq)
+		if err != nil {
+			w.log.Error("Failed to start story event stream",
+				"error", err,
+				"request_id", req.RequestID,
+				"game_state_id", req.GameStateID.String(),
+			)
+
+			// Publish failure event
+			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
+				w.log.Error("Failed to publish failure event", "error", pubErr)
+			}
+
+			return fmt.Errorf("failed to process story event: %w", err)
+		}
+
+		// Stream chunks to SSE as they arrive
+		var fullMessage string
+		var streamErr error
+
+		for chunk := range streamChan {
+			if chunk.Error != nil {
+				streamErr = chunk.Error
+				w.log.Error("Error in story event stream",
+					"error", chunk.Error,
+					"request_id", req.RequestID,
+				)
+				break
+			}
+
+			fullMessage += chunk.Content
+
+			// Publish chunk to SSE
+			if err := w.broadcaster.PublishChatChunk(w.ctx, req.GameStateID, req.RequestID, chunk.Content, chunk.Done); err != nil {
+				w.log.Error("Failed to publish chat chunk", "error", err)
+				// Don't fail the stream, just log it
+			}
+
+			if chunk.Done {
+				break
+			}
+		}
+
+		if streamErr != nil {
+			// Publish failure event
+			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, streamErr.Error()); pubErr != nil {
+				w.log.Error("Failed to publish failure event", "error", pubErr)
+			}
+			return fmt.Errorf("failed to process story event: %w", streamErr)
+		}
+
+		// Load game state to update it
+		gs, err := w.processor.GetGameState(w.ctx, req.GameStateID)
+		if err != nil {
+			w.log.Error("Failed to load game state for update",
+				"error", err,
+				"request_id", req.RequestID,
+			)
+
+			// Publish failure event
+			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
+				w.log.Error("Failed to publish failure event", "error", pubErr)
+			}
+
+			return fmt.Errorf("failed to load game state: %w", err)
+		}
+
+		// Update game state with the full streamed message
+		if err := w.processor.UpdateGameStateAfterStream(gs, storyEventMessage, fullMessage, storyEventPrompt); err != nil {
+			w.log.Error("Failed to update game state after stream",
+				"error", err,
+				"request_id", req.RequestID,
+			)
+
+			// Publish failure event
+			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
+				w.log.Error("Failed to publish failure event", "error", pubErr)
+			}
+
+			return fmt.Errorf("failed to update game state: %w", err)
+		}
+
+		w.log.Info("Story event processed successfully",
+			"worker_id", w.id,
 			"request_id", req.RequestID,
-			"game_state_id", req.GameStateID.String(),
-			"event_prompt", req.EventPrompt,
+			"duration_ms", time.Since(start).Milliseconds(),
 		)
-		// TODO: Implement story event processing when needed
+
+		// Publish completion event with full message
+		result := map[string]interface{}{
+			"message":     fullMessage,
+			"duration_ms": time.Since(start).Milliseconds(),
+		}
+		if err := w.broadcaster.PublishRequestCompleted(w.ctx, req.GameStateID, req.RequestID, result); err != nil {
+			w.log.Error("Failed to publish completion event", "error", err)
+		}
 
 	default:
 		return fmt.Errorf("unknown request type: %s", req.Type)

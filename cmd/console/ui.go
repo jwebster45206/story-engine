@@ -222,6 +222,11 @@ func (m *ConsoleUI) mergeServerGameState(serverGS *state.GameState) {
 
 	// If chat history length changed or pending merges occurred, re-render chat (but don't lose scroll pin state)
 	if len(m.gameState.ChatHistory) != origLen {
+		// Reset streaming state since chat history has changed
+		// This ensures external messages can start streaming fresh
+		m.isStreaming = false
+		m.streamingMessageIdx = -1
+		m.streamingContent = ""
 		m.writeChatContent()
 	}
 }
@@ -676,16 +681,8 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.finalMessageSent = true
 			}
 
-			// Add user message to game state first
-			userMessage := chat.ChatMessage{
-				Role:    "user",
-				Content: input,
-			}
-			m.gameState.ChatHistory = append(m.gameState.ChatHistory, userMessage)
-			m.pendingUserMessages = append(m.pendingUserMessages, userMessage)
-
-			// Reformat content to include the new user message
-			m.writeChatContent()
+			// Don't add user message here - it will be added when we receive the request.processing event
+			// This allows us to handle external chat messages as well
 
 			// Record the start time for latency tracking
 			m.chatRequestStartTime = time.Now()
@@ -809,6 +806,22 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Request has been picked up by worker - can stop showing progress bar
 			m.loading = false
 
+			// Add the user message from the event data (if present)
+			if userMsg, ok := msg.event.Data["user_message"].(string); ok && userMsg != "" {
+				userMessage := chat.ChatMessage{
+					Role:    "user",
+					Content: userMsg,
+				}
+				m.gameState.ChatHistory = append(m.gameState.ChatHistory, userMessage)
+				m.pendingUserMessages = append(m.pendingUserMessages, userMessage)
+
+				// Reformat content to include the new user message
+				m.writeChatContent()
+				if !m.userPinned {
+					m.chatViewport.GotoBottom()
+				}
+			}
+
 		case "chat.chunk":
 			// Get content from the data map
 			content, ok := msg.event.Data["content"].(string)
@@ -860,7 +873,12 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Update metadata to show polling indicator
 			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
 
-			return m, tea.Batch(m.refreshGameState(), startPollingCmd)
+			// Continue consuming SSE events while also refreshing gamestate
+			var sseCmd tea.Cmd
+			if m.eventChan != nil {
+				sseCmd = m.consumeSSEEvents(m.eventChan)
+			}
+			return m, tea.Batch(m.refreshGameState(), startPollingCmd, sseCmd)
 
 		case "request.failed":
 			// Request failed
@@ -1168,10 +1186,11 @@ func (m ConsoleUI) updatePCModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 			eventChan := make(chan SSEEvent, 10)
 			m.eventChan = eventChan
 			go func() {
-				ctx := context.Background() // TODO: consider using a cancellable context
-				if err := listenToSSE(ctx, m.client, m.config.APIBaseURL, m.gameState.ID, eventChan); err != nil {
-					panic(fmt.Sprintf("SSE connection failed: %v", err))
-				}
+				ctx := context.Background()
+				// listenToSSE blocks until connection closes or error occurs
+				// When it returns, just close the channel gracefully
+				_ = listenToSSE(ctx, m.client, m.config.APIBaseURL, m.gameState.ID, eventChan)
+				close(eventChan)
 			}()
 			return m, tea.Batch(textarea.Blink, m.consumeSSEEvents(eventChan))
 		}
