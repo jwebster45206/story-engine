@@ -127,8 +127,8 @@ func (v *ScenarioValidator) validateConditional(conditional *scenario.Conditiona
 
 	// Validate Then clause has at least one action
 	actionCount := 0
-	if conditional.Then.Scene != "" {
-		v.validateIDFormat("conditional then scene", conditional.Then.Scene)
+	if conditional.Then.SceneChange != nil && conditional.Then.SceneChange.To != "" {
+		v.validateIDFormat("conditional then scene", conditional.Then.SceneChange.To)
 		actionCount++
 	}
 	if conditional.Then.GameEnded != nil {

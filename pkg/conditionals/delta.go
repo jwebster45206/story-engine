@@ -1,4 +1,4 @@
-package state
+package conditionals
 
 // GameStateDelta is a compact, structured representation of changes to game state.
 // It is intentionally smaller and stricter than the full game state.
@@ -27,6 +27,7 @@ type GameStateDelta struct {
 
 	SetVars   map[string]string `json:"set_vars,omitempty"`
 	GameEnded *bool             `json:"game_ended,omitempty"`
+	Prompt    *string           `json:"prompt,omitempty"` // Narrative prompt to inject (use "STORY EVENT: " prefix for story events)
 }
 
 // NPCMovement represents an NPC changing location

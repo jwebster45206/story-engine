@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/queue"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
@@ -32,7 +33,7 @@ type itemEvent = struct {
 // including variable updates and conditional overrides
 type DeltaWorker struct {
 	gs       *GameState
-	delta    *GameStateDelta
+	delta    *conditionals.GameStateDelta
 	scenario *scenario.Scenario
 	logger   *slog.Logger
 	queue    ChatQueue
@@ -40,7 +41,7 @@ type DeltaWorker struct {
 }
 
 // NewDeltaWorker creates a new delta worker for applying state changes
-func NewDeltaWorker(gs *GameState, delta *GameStateDelta, scen *scenario.Scenario, logger *slog.Logger) *DeltaWorker {
+func NewDeltaWorker(gs *GameState, delta *conditionals.GameStateDelta, scen *scenario.Scenario, logger *slog.Logger) *DeltaWorker {
 	return &DeltaWorker{
 		gs:       gs,
 		delta:    delta,
@@ -94,41 +95,81 @@ func (dw *DeltaWorker) ApplyConditionalOverrides() map[string]scenario.Condition
 
 	// Process conditional actions and override delta
 	for conditionalID, conditional := range triggeredConditionals {
-		if conditional.Then.Scene != "" {
-			dw.delta.SceneChange = &struct {
-				To     string `json:"to"`
-				Reason string `json:"reason"`
-			}{
-				To:     conditional.Then.Scene,
-				Reason: "conditional",
-			}
-		}
-		if conditional.Then.GameEnded != nil {
-			dw.delta.GameEnded = conditional.Then.GameEnded
-		}
-		if conditional.Then.Prompt != nil {
-			prompt := *conditional.Then.Prompt
-			// Check if it's a story event (starts with "STORY EVENT: " prefix)
-			if strings.HasPrefix(prompt, scenario.StoryEventPrefix) {
-				// Check if this story event has already fired
-				if dw.hasStoryEventFired(conditionalID) {
-					if dw.logger != nil {
-						dw.logger.Debug("Story event already fired, skipping",
-							"game_state_id", dw.gs.ID.String(),
-							"conditional_id", conditionalID)
-					}
-					continue
-				}
-
-				// Strip the prefix and queue as story event
-				eventText := strings.TrimPrefix(prompt, scenario.StoryEventPrefix)
-				dw.queueStoryEvent(conditionalID, eventText)
-			}
-			// Future: Could handle other prompt types here (e.g., "NPC_NAME: dialogue")
-		}
+		// Merge conditional.Then (GameStateDelta) into the existing delta
+		dw.mergeDelta(&conditional.Then, conditionalID)
 	}
 
 	return triggeredConditionals
+}
+
+// mergeDelta merges a conditional's delta into the worker's delta, with special handling for prompts
+func (dw *DeltaWorker) mergeDelta(conditionalDelta *conditionals.GameStateDelta, conditionalID string) {
+	if conditionalDelta == nil {
+		return
+	}
+
+	// Merge scene change
+	if conditionalDelta.SceneChange != nil && conditionalDelta.SceneChange.To != "" {
+		dw.delta.SceneChange = &struct {
+			To     string `json:"to"`
+			Reason string `json:"reason"`
+		}{
+			To:     conditionalDelta.SceneChange.To,
+			Reason: "conditional",
+		}
+	}
+
+	// Merge game ended state
+	if conditionalDelta.GameEnded != nil {
+		dw.delta.GameEnded = conditionalDelta.GameEnded
+	}
+
+	// Merge user location
+	if conditionalDelta.UserLocation != "" {
+		dw.delta.UserLocation = conditionalDelta.UserLocation
+	}
+
+	// Merge variables
+	if len(conditionalDelta.SetVars) > 0 {
+		if dw.delta.SetVars == nil {
+			dw.delta.SetVars = make(map[string]string)
+		}
+		for k, v := range conditionalDelta.SetVars {
+			dw.delta.SetVars[k] = v
+		}
+	}
+
+	// Merge item events
+	if len(conditionalDelta.ItemEvents) > 0 {
+		dw.delta.ItemEvents = append(dw.delta.ItemEvents, conditionalDelta.ItemEvents...)
+	}
+
+	// Merge NPC movements
+	if len(conditionalDelta.NPCMovements) > 0 {
+		dw.delta.NPCMovements = append(dw.delta.NPCMovements, conditionalDelta.NPCMovements...)
+	}
+
+	// Handle prompt with special story event logic
+	if conditionalDelta.Prompt != nil {
+		prompt := *conditionalDelta.Prompt
+		// Check if it's a story event (starts with "STORY EVENT: " prefix)
+		if strings.HasPrefix(prompt, scenario.StoryEventPrefix) {
+			// Check if this story event has already fired
+			if dw.hasStoryEventFired(conditionalID) {
+				if dw.logger != nil {
+					dw.logger.Debug("Story event already fired, skipping",
+						"game_state_id", dw.gs.ID.String(),
+						"conditional_id", conditionalID)
+				}
+				return
+			}
+
+			// Strip the prefix and queue as story event
+			eventText := strings.TrimPrefix(prompt, scenario.StoryEventPrefix)
+			dw.queueStoryEvent(conditionalID, eventText)
+		}
+		// Future: Could handle other prompt types here (e.g., "NPC_NAME: dialogue")
+	}
 }
 
 // hasStoryEventFired checks if a story event has already been fired
@@ -373,7 +414,7 @@ func (dw *DeltaWorker) handleUseItem(itemEvent itemEvent) {
 }
 
 // handleNPCMovement updates an NPC's location
-func (dw *DeltaWorker) handleNPCMovement(movement NPCMovement) {
+func (dw *DeltaWorker) handleNPCMovement(movement conditionals.NPCMovement) {
 	// Normalize the NPC identifier
 	npcKey := strings.ToLower(strings.TrimSpace(movement.NPCID))
 

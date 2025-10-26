@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/prompts"
-	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 // MockLLMAPI is a mock implementation of LLMService for testing
@@ -24,11 +24,11 @@ type MockLLMAPI struct {
 }
 
 // DeltaUpdate mocks the DeltaUpdate functionality
-func (m *MockLLMAPI) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
+func (m *MockLLMAPI) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, string, error) {
 	// For testing, return a simple mock DeltaUpdate
 	t := true
 	f := false
-	return &state.GameStateDelta{
+	return &conditionals.GameStateDelta{
 		UserLocation: "mock_location",
 		SceneChange: &struct {
 			To     string `json:"to"`

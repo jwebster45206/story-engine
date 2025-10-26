@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
-	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
 const (
@@ -421,7 +421,7 @@ func (v *VeniceService) ChatStream(ctx context.Context, messages []chat.ChatMess
 	return chunkChan, nil
 }
 
-func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
+func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, string, error) {
 	modelToUse := v.modelName
 	if v.backendModelName != "" {
 		modelToUse = v.backendModelName

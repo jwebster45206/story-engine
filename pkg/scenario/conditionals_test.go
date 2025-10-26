@@ -232,7 +232,7 @@ func TestScenario_EvaluateConditionals_WithPrompt(t *testing.T) {
 								When: conditionals.ConditionalWhen{
 									Vars: map[string]string{"opened_grimoire": "true"},
 								},
-								Then: ConditionalThen{
+								Then: conditionals.GameStateDelta{
 									Prompt: &storyEventPrompt,
 								},
 							},
@@ -256,7 +256,7 @@ func TestScenario_EvaluateConditionals_WithPrompt(t *testing.T) {
 								When: conditionals.ConditionalWhen{
 									Vars: map[string]string{"window_open": "true"},
 								},
-								Then: ConditionalThen{
+								Then: conditionals.GameStateDelta{
 									Prompt: &regularPrompt,
 								},
 							},
@@ -280,7 +280,7 @@ func TestScenario_EvaluateConditionals_WithPrompt(t *testing.T) {
 								When: conditionals.ConditionalWhen{
 									Vars: map[string]string{"opened_grimoire": "true"},
 								},
-								Then: ConditionalThen{
+								Then: conditionals.GameStateDelta{
 									Prompt: &storyEventPrompt,
 								},
 							},

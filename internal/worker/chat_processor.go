@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/services"
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/prompts"
 	"github.com/jwebster45206/story-engine/pkg/state"
 	"github.com/jwebster45206/story-engine/pkg/storage"
@@ -271,7 +272,7 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 	defer cancel()
 
 	// Send the gamestate delta request to the LLM (with one retry on error)
-	var delta *state.GameStateDelta
+	var delta *conditionals.GameStateDelta
 	var backendModel string
 	var deltaErr error
 
@@ -331,8 +332,8 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 	// Log triggered conditionals
 	if len(triggeredConditionals) > 0 {
 		for conditionalID, conditional := range triggeredConditionals {
-			if conditional.Then.Scene != "" {
-				p.logger.Info("Conditional scene change", "game_state_id", latestGS.ID.String(), "conditional_id", conditionalID, "to_scene", conditional.Then.Scene)
+			if conditional.Then.SceneChange.To != "" {
+				p.logger.Info("Conditional scene change", "game_state_id", latestGS.ID.String(), "conditional_id", conditionalID, "to_scene", conditional.Then.SceneChange.To, "reason", conditional.Then.SceneChange.Reason)
 			}
 			if conditional.Then.GameEnded != nil {
 				p.logger.Info("Conditional game ended", "game_state_id", latestGS.ID.String(), "conditional_id", conditionalID, "ended", *conditional.Then.GameEnded)

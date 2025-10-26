@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
-	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
 func TestNewAnthropicService(t *testing.T) {
@@ -267,7 +267,7 @@ func TestAnthropicService_MetaUpdateJSONParsing(t *testing.T) {
 			mTxt = strings.Join(cleanLines, "\n")
 			mTxt = strings.TrimSpace(mTxt)
 
-			var metaUpdate state.GameStateDelta
+			var metaUpdate conditionals.GameStateDelta
 			err := json.Unmarshal([]byte(mTxt), &metaUpdate)
 
 			if tt.expectedError {

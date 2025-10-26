@@ -21,15 +21,5 @@ type Scene struct {
 // Conditional represents a deterministic rule to execute when conditions are met
 type Conditional struct {
 	When conditionals.ConditionalWhen `json:"when"` // Conditions that must be met
-	Then ConditionalThen              `json:"then"` // Actions to execute when conditions are met
-}
-
-// ConditionalThen defines the actions to take when conditions are met
-type ConditionalThen struct {
-	Scene     string  `json:"scene,omitempty"`      // Change to this scene
-	GameEnded *bool   `json:"game_ended,omitempty"` // Set game ended state (true/false)
-	Prompt    *string `json:"prompt,omitempty"`     // Narrative prompt to inject (use "STORY EVENT: " prefix for story events)
-	// TODO: Add inventory modifications
-	// AddItems    []string `json:"add_items,omitempty"`
-	// RemoveItems []string `json:"remove_items,omitempty"`
+	Then conditionals.GameStateDelta  `json:"then"` // Actions to execute when conditions are met
 }
