@@ -93,8 +93,8 @@ func TestPromptState_ToString_BlockedExits(t *testing.T) {
 	if !strings.Contains(result, "Exits:") {
 		t.Error("Missing Exits section")
 	}
-	if !strings.Contains(result, "- north is blocked (the door is locked)") {
-		t.Error("Missing blocked exit information")
+	if !strings.Contains(result, "- north leads to Great Hall but is blocked (the door is locked)") {
+		t.Errorf("Missing blocked exit information; got: %s", result)
 	}
 }
 

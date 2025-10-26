@@ -163,7 +163,7 @@ const ContentRatingR = `Write with full freedom for adult audiences. All content
 const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. PRIORITIZE \"STORY EVENTS\" IN YOUR RESPONSE. "
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
-const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following describes the immediately surrounding world.\n\n// -- BEGIN WORLD STATE --\n%s\n// -- END WORLD STATE --\n\n```"
+const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following describes the immediately surrounding world.\n\n// -- BEGIN WORLD STATE --\n%s\n// -- END WORLD STATE --\n\n"
 
 // BuildSystemPrompt constructs the system prompt with narrator and PC prompts injected
 // pc is optional - pass nil if no PC

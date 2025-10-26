@@ -146,17 +146,27 @@ func (ps *PromptState) ToString() string {
 		}
 
 		if len(currentLoc.Exits) > 0 || len(currentLoc.BlockedExits) > 0 {
-			sb.WriteString("\nExits:\n")
+			sb.WriteString("Exits:\n")
 			for direction, locationID := range currentLoc.Exits {
-				if destLoc, ok := currentLoc.BlockedExits[direction]; ok {
-					sb.WriteString(fmt.Sprintf("- %s is blocked (%s)\n", direction, destLoc))
-					continue
+				blockedReason := ""
+				if reason, ok := currentLoc.BlockedExits[direction]; ok {
+					blockedReason = reason
 				}
 				if destLoc, ok := ps.WorldLocations[locationID]; ok {
-					sb.WriteString(fmt.Sprintf("- %s leads to %s\n", direction, destLoc.Name))
+					sb.WriteString(fmt.Sprintf("- %s leads to %s", direction, destLoc.Name))
+					if blockedReason != "" {
+						sb.WriteString(fmt.Sprintf(" but is blocked (%s)", blockedReason))
+					}
+					sb.WriteString("\n")
 					continue
 				}
 				// an undefined locationID is skipped
+			}
+			// Also include blocked exits that don't have a defined exit
+			for direction, reason := range currentLoc.BlockedExits {
+				if _, ok := currentLoc.Exits[direction]; !ok {
+					sb.WriteString(fmt.Sprintf("- %s is blocked (%s)\n", direction, reason))
+				}
 			}
 		}
 	} else {

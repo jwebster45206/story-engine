@@ -50,11 +50,19 @@ func TestGetStatePrompt(t *testing.T) {
 				Role: chat.ChatRoleSystem,
 				Content: `The user is roleplaying this scenario: A test adventure
 
-The following JSON describes the complete world and current state.
+The following describes the immediately surrounding world.
 
-Game State:
-` + "```json\n" + `{"locations":{"Tortuga":{"name":"Tortuga","description":"A pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass","spyglass"],"is_ended":false}
-` + "```",
+// -- BEGIN WORLD STATE --
+CURRENT LOCATION:
+Tortuga: A pirate port
+Exits:
+
+USER'S INVENTORY: 
+cutlass, spyglass
+
+// -- END WORLD STATE --
+
+`,
 			},
 		},
 		{
@@ -100,11 +108,22 @@ Game State:
 
 Find the shipwright
 
-The following JSON describes the complete world and current state.
+The following describes the immediately surrounding world.
 
-Game State:
-` + "```json\n" + `{"npcs":{"Shipwright":{"name":"Shipwright","type":"craftsman","disposition":"gruff","location":"Tortuga"}},"locations":{"Tortuga":{"name":"Tortuga","description":"A bustling pirate port","exits":{"east":"Black Pearl"}}},"user_location":"Tortuga","user_inventory":["cutlass"],"is_ended":false}
-` + "```",
+// -- BEGIN WORLD STATE --
+CURRENT LOCATION:
+Tortuga: A bustling pirate port
+Exits:
+
+NPCs:
+Shipwright (gruff)
+
+USER'S INVENTORY: 
+cutlass
+
+// -- END WORLD STATE --
+
+`,
 			},
 		},
 		{
