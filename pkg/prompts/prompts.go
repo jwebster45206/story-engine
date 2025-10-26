@@ -1,7 +1,6 @@
 package prompts
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
@@ -164,7 +163,7 @@ const ContentRatingR = `Write with full freedom for adult audiences. All content
 const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. PRIORITIZE \"STORY EVENTS\" IN YOUR RESPONSE. "
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
-const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following JSON describes the complete world and current state.\n\nGame State:\n```json\n%s\n```"
+const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following describes the immediately surrounding world.\n\n// -- BEGIN WORLD STATE --\n%s\n// -- END WORLD STATE --\n\n"
 
 // BuildSystemPrompt constructs the system prompt with narrator and PC prompts injected
 // pc is optional - pass nil if no PC
@@ -214,18 +213,13 @@ func GetStatePrompt(gs *state.GameState, s *scenario.Scenario) (chat.ChatMessage
 		scene = &sc
 	}
 
-	ps := ToPromptState(gs)
-	jsonScene, err := json.Marshal(ps)
-	if err != nil {
-		return chat.ChatMessage{}, err
-	}
-
 	story := s.Story
 	if scene != nil && scene.Story != "" {
 		story += "\n\n" + scene.Story
 	}
+
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf(StatePromptTemplate, story, jsonScene),
+		Content: fmt.Sprintf(StatePromptTemplate, story, ToPromptState(gs).ToString()),
 	}, nil
 }

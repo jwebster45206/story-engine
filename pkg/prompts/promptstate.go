@@ -1,6 +1,9 @@
 package prompts
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
@@ -101,4 +104,119 @@ func ApplyPromptStateToGameState(ps *PromptState, gs *state.GameState) {
 		gs.Vars = ps.Vars
 	}
 	// ContingencyPrompts are never copied as they're handled separately
+}
+
+// ToString converts the PromptState into a human-readable string format
+// optimized for LLM comprehension. Focuses on clear descriptions over IDs.
+//
+// Example output:
+// CURRENT LOCATION:
+// Castle Hallway: A long stone corridor.
+// Items located here: key, map
+//
+// Exits:
+// - north leads to Great Hall
+// - south leads to Dungeon
+// - south is blocked (the door is locked)
+//
+// NEARBY LOCATIONS:
+// Great Hall: A grand room with high ceilings and ornate decorations.
+//
+// NPCs:
+// Guard (neutral): A stern-looking guard in armor.
+// Items: sword, shield
+//
+// USER'S INVENTORY:
+// torch, rope
+func (ps *PromptState) ToString() string {
+	var sb strings.Builder
+
+	// Current Location
+	sb.WriteString("CURRENT LOCATION:\n")
+	if currentLoc, ok := ps.WorldLocations[ps.Location]; ok {
+		sb.WriteString(currentLoc.Name)
+		if currentLoc.Description != "" {
+			sb.WriteString(fmt.Sprintf(": %s", currentLoc.Description))
+		}
+		sb.WriteString("\n")
+		if len(currentLoc.Items) > 0 {
+			sb.WriteString("Items located here: ")
+			sb.WriteString(strings.Join(currentLoc.Items, ", "))
+			sb.WriteString("\n")
+		}
+
+		if len(currentLoc.Exits) > 0 || len(currentLoc.BlockedExits) > 0 {
+			sb.WriteString("Exits:\n")
+			for direction, locationID := range currentLoc.Exits {
+				blockedReason := ""
+				if reason, ok := currentLoc.BlockedExits[direction]; ok {
+					blockedReason = reason
+				}
+				if destLoc, ok := ps.WorldLocations[locationID]; ok {
+					sb.WriteString(fmt.Sprintf("- %s leads to %s", direction, destLoc.Name))
+					if blockedReason != "" {
+						sb.WriteString(fmt.Sprintf(" but is blocked (%s)", blockedReason))
+					}
+					sb.WriteString("\n")
+					continue
+				}
+				// an undefined locationID is skipped
+			}
+			// Also include blocked exits that don't have a defined exit
+			for direction, reason := range currentLoc.BlockedExits {
+				if _, ok := currentLoc.Exits[direction]; !ok {
+					sb.WriteString(fmt.Sprintf("- %s is blocked (%s)\n", direction, reason))
+				}
+			}
+		}
+	} else {
+		sb.WriteString(fmt.Sprintf("Unknown location: %s\n", ps.Location))
+	}
+
+	// Other Locations (adjacent or important)
+	otherLocations := make([]scenario.Location, 0)
+	for id, loc := range ps.WorldLocations {
+		if id != ps.Location {
+			otherLocations = append(otherLocations, loc)
+		}
+	}
+	if len(otherLocations) > 0 {
+		sb.WriteString("\nNEARBY LOCATIONS:")
+		for _, loc := range otherLocations {
+			sb.WriteString(fmt.Sprintf("\n%s", loc.Name))
+			if loc.Description != "" {
+				sb.WriteString(fmt.Sprintf(": %s", loc.Description))
+			}
+			sb.WriteString("\n")
+		}
+	}
+
+	// NPCs
+	if len(ps.NPCs) > 0 {
+		sb.WriteString("\nNPCs:")
+		for _, npc := range ps.NPCs {
+			sb.WriteString(fmt.Sprintf("\n%s", npc.Name))
+			if npc.Disposition != "" {
+				sb.WriteString(fmt.Sprintf(" (%s)", npc.Disposition))
+			}
+
+			if npc.Description != "" {
+				sb.WriteString(fmt.Sprintf(": %s", npc.Description))
+			}
+
+			if len(npc.Items) > 0 {
+				sb.WriteString(fmt.Sprintf("; Items: %s\n", strings.Join(npc.Items, ", ")))
+			}
+			sb.WriteString("\n")
+		}
+	}
+
+	// User Inventory
+	if len(ps.Inventory) > 0 {
+		sb.WriteString("\nUSER'S INVENTORY: \n")
+		sb.WriteString(strings.Join(ps.Inventory, ", "))
+		sb.WriteString("\n")
+	}
+
+	return sb.String()
 }

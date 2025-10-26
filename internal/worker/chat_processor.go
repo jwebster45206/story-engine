@@ -81,6 +81,7 @@ func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatReq
 	}
 
 	// Build chat messages using the prompt builder
+	// Note: req.Message should be pre-formatted with PC name if applicable
 	messages, err := prompts.New().
 		WithGameState(gs).
 		WithScenario(loadedScenario).
@@ -183,6 +184,7 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 	}
 
 	// Build chat messages using the prompt builder
+	// req.Message is already formatted with PC name if applicable
 	messages, err := prompts.New().
 		WithGameState(gs).
 		WithScenario(loadedScenario).

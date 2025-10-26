@@ -287,7 +287,7 @@
     }
   },
   "opening_scene": "telegram_mystery",
-  "opening_prompt": "The year is 1923, and the desert wind carries whispers of ancient secrets as you arrive at your hotel in Cairo, Egypt.\n\n%s\n\nA cryptic telegram burns in your pocket, its mysterious message haunting your thoughts: 'The stars align as they did when the old gods walked among mortals. What was lost shall be found, but beware - some knowledge comes at a price.'\n\nYour adventure into the unknown begins now.",
+  "opening_prompt": "The year is 1923, and the desert wind carries whispers of ancient secrets as you arrive at your hotel in Cairo, Egypt.\n\n%s\n\nA cryptic telegram burns in your pocket, its mysterious message haunting your thoughts. 'The stars align as they did when the old gods walked among mortals. What was lost shall be found, but beware - some knowledge comes at a price.'\n\nYour adventure into the unknown begins now.",
   "opening_location": "cairo_hotel",
   "opening_inventory": [
     "archaeological tools",
@@ -295,9 +295,6 @@
     "cryptic telegram"
   ],
   "contingency_prompts": [
-    "Maintain the atmosphere of 1920s archaeological adventure throughout.",
-    "Treat the content like an Call of Cthulhu mystery, filled with cosmic horror and ancient secrets.",
-    "Narrator speaks with the voice of Agatha Christie.",
     "Professor Blackwood could be a rival or an ally, depending on the player's actions."
   ]
 }

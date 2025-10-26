@@ -168,18 +168,33 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 
 	start := time.Now()
 
-	// Determine user message based on request type
+	gs, err := w.processor.GetGameState(w.ctx, req.GameStateID)
+	if err != nil {
+		w.log.Error("Failed to load game state",
+			"error", err,
+			"request_id", req.RequestID,
+		)
+		if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
+			w.log.Error("Failed to publish failure event", "error", pubErr)
+		}
+		return fmt.Errorf("failed to load game state: %w", err)
+	}
+
 	var userMessage string
 	switch req.Type {
 	case queuePkg.RequestTypeChat:
+		// Format message with PC name prefix if available
 		userMessage = req.Message
+		if gs.PC != nil && gs.PC.Spec != nil && gs.PC.Spec.Name != "" {
+			userMessage = chat.FormatWithPCName(req.Message, gs.PC.Spec.Name)
+		}
 	case queuePkg.RequestTypeStoryEvent:
 		userMessage = fmt.Sprintf("%s%s", scenario.StoryEventPrefix, req.EventPrompt)
 	default:
 		userMessage = ""
 	}
 
-	// Publish processing event with user message
+	// Publish processing event with formatted user message
 	if err := w.broadcaster.PublishRequestProcessing(w.ctx, req.GameStateID, req.RequestID, string(req.Type), userMessage); err != nil {
 		w.log.Error("Failed to publish processing event", "error", err)
 		// Don't fail the request just because event publishing failed
@@ -187,10 +202,10 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 
 	switch req.Type {
 	case queuePkg.RequestTypeChat:
-		// Convert queue request to chat request
+		// Convert queue request to chat request (using pre-formatted message)
 		chatReq := chat.ChatRequest{
 			GameStateID: req.GameStateID,
-			Message:     req.Message,
+			Message:     userMessage,
 		}
 
 		// Process using streaming ChatProcessor
@@ -245,24 +260,8 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			return fmt.Errorf("failed to process chat request: %w", streamErr)
 		}
 
-		// Load game state to update it
-		gs, err := w.processor.GetGameState(w.ctx, req.GameStateID)
-		if err != nil {
-			w.log.Error("Failed to load game state for update",
-				"error", err,
-				"request_id", req.RequestID,
-			)
-
-			// Publish failure event
-			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
-				w.log.Error("Failed to publish failure event", "error", pubErr)
-			}
-
-			return fmt.Errorf("failed to load game state: %w", err)
-		}
-
-		// Update game state with the full streamed message
-		if err := w.processor.UpdateGameStateAfterStream(gs, req.Message, fullMessage, storyEventPrompt); err != nil {
+		// Update game state with the full streamed message (using pre-formatted userMessage)
+		if err := w.processor.UpdateGameStateAfterStream(gs, userMessage, fullMessage, storyEventPrompt); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
