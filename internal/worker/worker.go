@@ -12,6 +12,7 @@ import (
 	"github.com/jwebster45206/story-engine/internal/services/queue"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	queuePkg "github.com/jwebster45206/story-engine/pkg/queue"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
 const (
@@ -173,7 +174,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 	case queuePkg.RequestTypeChat:
 		userMessage = req.Message
 	case queuePkg.RequestTypeStoryEvent:
-		userMessage = fmt.Sprintf("STORY EVENT: %s", req.EventPrompt)
+		userMessage = fmt.Sprintf("%s%s", scenario.StoryEventPrefix, req.EventPrompt)
 	default:
 		userMessage = ""
 	}
@@ -293,7 +294,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 	case queuePkg.RequestTypeStoryEvent:
 		// Format story event as a user message with STORY EVENT prefix
 		// (Anthropic doesn't allow system messages in chat history)
-		storyEventMessage := fmt.Sprintf("STORY EVENT: %s", req.EventPrompt)
+		storyEventMessage := fmt.Sprintf("%s%s", scenario.StoryEventPrefix, req.EventPrompt)
 
 		// Convert to chat request
 		chatReq := chat.ChatRequest{

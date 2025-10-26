@@ -9,7 +9,8 @@ import (
 
 // Special user prompt values that trigger non-chat actions
 const (
-	ResetGameStatePrompt = "RESET_GAMESTATE"
+	ResetGameStatePrompt    = "RESET_GAMESTATE"
+	WaitForStoryEventPrompt = "WAIT_FOR_STORY_EVENT"
 )
 
 // TestSuite defines a complete integration test scenario
@@ -29,6 +30,7 @@ func (ts *TestSuite) IsSequence() bool {
 
 // TestStep defines a single test interaction and its expected outcomes
 // Use user_prompt: "RESET_GAMESTATE" to reset to the original seed state
+// Use user_prompt: "WAIT_FOR_STORY_EVENT" to wait for a story event to trigger and complete
 type TestStep struct {
 	Name         string       `json:"name,omitempty"`
 	UserPrompt   string       `json:"user_prompt"`
@@ -54,17 +56,25 @@ type Expectations struct {
 	ResponseRegex       string   `json:"response_regex,omitempty"`
 	ResponseMinLength   *int     `json:"response_min_length,omitempty"`
 	ResponseMaxLength   *int     `json:"response_max_length,omitempty"`
+
+	// Story Event Analysis (for WAIT_FOR_STORY_EVENT steps)
+	StoryEventContains    []string `json:"story_event_contains,omitempty"`     // Story event message must contain these strings
+	StoryEventNotContains []string `json:"story_event_not_contains,omitempty"` // Story event message must NOT contain these strings
+	StoryEventExact       *string  `json:"story_event_exact,omitempty"`        // Exact story event message text
 }
 
 // TestResult contains the outcome of running a test step
 type TestResult struct {
-	TestName     string
-	StepName     string
-	Success      bool
-	Error        error
-	Duration     time.Duration
-	ResponseText string
-	IsReset      bool // True if this was a RESET_GAMESTATE step (should not count toward pass/fail metrics)
+	TestName         string
+	StepName         string
+	RequestID        string // Request ID from async chat endpoint
+	Success          bool
+	Error            error
+	Duration         time.Duration
+	ResponseText     string
+	StoryEventText   string // Story event message text (for WAIT_FOR_STORY_EVENT steps)
+	IsReset          bool   // True if this was a RESET_GAMESTATE step (should not count toward pass/fail metrics)
+	IsStoryEventWait bool   // True if this was a WAIT_FOR_STORY_EVENT step
 }
 
 // TestJob represents a test suite to be executed by a worker

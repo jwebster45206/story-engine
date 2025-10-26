@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
@@ -335,6 +336,66 @@ func (r *Runner) executeStep(ctx context.Context, gameStateID uuid.UUID, step Te
 		return result
 	}
 
+	// Check if this is a wait for story event step
+	if step.UserPrompt == WaitForStoryEventPrompt {
+		// Get gamestate before waiting
+		preGameState, err := r.getGameState(ctx, gameStateID)
+		if err != nil {
+			result.Error = fmt.Errorf("failed to get gamestate before waiting: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+
+		initialHistoryLen := len(preGameState.ChatHistory)
+		r.Logger("    Waiting for story event (current history length: %d)...", initialHistoryLen)
+
+		// Poll for chat response (story event should trigger automatically)
+		afterChatState, assistantResponse, err := PollForChatResponse(ctx, r.Client, r.BaseURL, gameStateID, initialHistoryLen)
+		if err != nil {
+			result.Error = fmt.Errorf("failed to poll for story event: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+
+		assertedStoryEvent := afterChatState.ChatHistory[len(afterChatState.ChatHistory)-2]
+		assertedResponse := afterChatState.ChatHistory[len(afterChatState.ChatHistory)-1]
+		if assertedStoryEvent.Role != "user" || !strings.HasPrefix(assertedStoryEvent.Content, scenario.StoryEventPrefix) {
+			result.Error = fmt.Errorf("unexpected chat message while waiting for story event: %+v", assertedStoryEvent)
+			result.Duration = time.Since(start)
+			return result
+		}
+
+		result.StoryEventText = strings.TrimPrefix(assertedStoryEvent.Content, scenario.StoryEventPrefix)
+		result.ResponseText = assertedResponse.Content
+		result.IsStoryEventWait = true
+
+		// Poll for DeltaWorker completion
+		postGameState, err := PollForDeltaWorkerCompletion(ctx, r.Client, r.BaseURL, gameStateID, afterChatState)
+		if err != nil {
+			result.Error = fmt.Errorf("failed to poll for DeltaWorker completion: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+
+		// Check expectations (including story event specific ones)
+		if err := r.checkExpectations(step.Expectations, preGameState, postGameState, prevTurnCounter, prevInventory, assistantResponse); err != nil {
+			result.Error = fmt.Errorf("expectation failed: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+
+		// Check story event specific expectations
+		if err := r.checkStoryEventExpectations(step.Expectations, result.StoryEventText); err != nil {
+			result.Error = fmt.Errorf("story event expectation failed: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+
+		result.Success = true
+		result.Duration = time.Since(start)
+		return result
+	}
+
 	// Get gamestate before chat for expectations comparison
 	preGameState, err := r.getGameState(ctx, gameStateID)
 	if err != nil {
@@ -343,28 +404,36 @@ func (r *Runner) executeStep(ctx context.Context, gameStateID uuid.UUID, step Te
 		return result
 	}
 
-	// Send chat message
-	chatResp, err := r.sendChatMessage(ctx, gameStateID, step.UserPrompt)
+	initialHistoryLen := len(preGameState.ChatHistory)
+
+	// Post async chat message and get request_id
+	requestID, err := PostChatAsync(ctx, r.Client, r.BaseURL, gameStateID, step.UserPrompt)
 	if err != nil {
-		result.Error = fmt.Errorf("failed to send chat message: %w", err)
+		result.Error = fmt.Errorf("failed to post async chat: %w", err)
 		result.Duration = time.Since(start)
 		return result
 	}
-	result.ResponseText = chatResp
+	result.RequestID = requestID
 
-	// Capture timestamp AFTER receiving chat response (like ui.go does)
-	chatCompletedAt := time.Now()
-
-	// Wait for gamestate to be updated (poll until UpdatedAt is after chat completion)
-	postGameState, err := r.waitForGameStateUpdate(ctx, gameStateID, chatCompletedAt)
+	// Poll for chat response (wait for history to increase)
+	afterChatState, assistantResponse, err := PollForChatResponse(ctx, r.Client, r.BaseURL, gameStateID, initialHistoryLen)
 	if err != nil {
-		result.Error = fmt.Errorf("failed to wait for gamestate update: %w", err)
+		result.Error = fmt.Errorf("failed to poll for chat response: %w", err)
+		result.Duration = time.Since(start)
+		return result
+	}
+	result.ResponseText = assistantResponse
+
+	// Poll for DeltaWorker completion (wait for meta fields to update)
+	postGameState, err := PollForDeltaWorkerCompletion(ctx, r.Client, r.BaseURL, gameStateID, afterChatState)
+	if err != nil {
+		result.Error = fmt.Errorf("failed to poll for DeltaWorker completion: %w", err)
 		result.Duration = time.Since(start)
 		return result
 	}
 
 	// Check expectations
-	if err := r.checkExpectations(step.Expectations, preGameState, postGameState, prevTurnCounter, prevInventory, chatResp); err != nil {
+	if err := r.checkExpectations(step.Expectations, preGameState, postGameState, prevTurnCounter, prevInventory, assistantResponse); err != nil {
 		result.Error = fmt.Errorf("expectation failed: %w", err)
 		result.Duration = time.Since(start)
 		return result
@@ -375,102 +444,9 @@ func (r *Runner) executeStep(ctx context.Context, gameStateID uuid.UUID, step Te
 	return result
 }
 
-// sendChatMessage sends a chat message and returns the response content
-func (r *Runner) sendChatMessage(ctx context.Context, gameStateID uuid.UUID, message string) (string, error) {
-	chatReq := map[string]interface{}{
-		"gamestate_id": gameStateID.String(),
-		"message":      message,
-		"stream":       false, // Use non-streaming for simpler testing
-	}
-
-	reqBody, err := json.Marshal(chatReq)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal chat request: %w", err)
-	}
-
-	url := fmt.Sprintf("%s/v1/chat", r.BaseURL)
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return "", fmt.Errorf("failed to create chat request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := r.Client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to send chat request: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("chat endpoint returned %d: %s", resp.StatusCode, string(body))
-	}
-
-	// Parse response to get the message content
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read chat response: %w", err)
-	}
-
-	var chatResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(body, &chatResp); err != nil {
-		return "", fmt.Errorf("failed to parse chat response: %w", err)
-	}
-
-	return chatResp.Message, nil
-}
-
 // getGameState retrieves the current gamestate
 func (r *Runner) getGameState(ctx context.Context, gameStateID uuid.UUID) (*state.GameState, error) {
-	url := fmt.Sprintf("%s/v1/gamestate/%s", r.BaseURL, gameStateID.String())
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create gamestate request: %w", err)
-	}
-
-	resp, err := r.Client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send gamestate request: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("gamestate endpoint returned %d: %s", resp.StatusCode, string(body))
-	}
-
-	var gameState state.GameState
-	if err := json.NewDecoder(resp.Body).Decode(&gameState); err != nil {
-		return nil, fmt.Errorf("failed to decode gamestate: %w", err)
-	}
-
-	return &gameState, nil
-}
-
-// waitForGameStateUpdate polls until the gamestate UpdatedAt field changes
-func (r *Runner) waitForGameStateUpdate(ctx context.Context, gameStateID uuid.UUID, preUpdateTime time.Time) (*state.GameState, error) {
-	timeout := time.After(r.Timeout)
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-timeout:
-			return nil, fmt.Errorf("timeout waiting for gamestate update")
-		case <-ticker.C:
-			gameState, err := r.getGameState(ctx, gameStateID)
-			if err != nil {
-				continue // Retry on error
-			}
-			if gameState.UpdatedAt.After(preUpdateTime) {
-				return gameState, nil
-			}
-		}
-	}
+	return GetGameState(ctx, r.Client, r.BaseURL, gameStateID)
 }
 
 // checkExpectations validates the test expectations against the actual gamestate changes
@@ -600,6 +576,38 @@ func (r *Runner) checkExpectations(exp Expectations, preState, postState *state.
 	if exp.IsEnded != nil {
 		if postState.IsEnded != *exp.IsEnded {
 			return fmt.Errorf("expected is_ended to be %t, got %t", *exp.IsEnded, postState.IsEnded)
+		}
+	}
+
+	return nil
+}
+
+// checkStoryEventExpectations validates story event specific expectations
+func (r *Runner) checkStoryEventExpectations(exp Expectations, storyEventText string) error {
+	// Check exact match if specified
+	if exp.StoryEventExact != nil {
+		if storyEventText != *exp.StoryEventExact {
+			return fmt.Errorf("expected exact story event '%s', got '%s'", *exp.StoryEventExact, storyEventText)
+		}
+	}
+
+	// Check contains
+	if len(exp.StoryEventContains) > 0 {
+		lowerEvent := strings.ToLower(storyEventText)
+		for _, expectedText := range exp.StoryEventContains {
+			if !strings.Contains(lowerEvent, strings.ToLower(expectedText)) {
+				return fmt.Errorf("expected story event to contain '%s', but it didn't. Event: %s", expectedText, storyEventText)
+			}
+		}
+	}
+
+	// Check not contains
+	if len(exp.StoryEventNotContains) > 0 {
+		lowerEvent := strings.ToLower(storyEventText)
+		for _, unexpectedText := range exp.StoryEventNotContains {
+			if strings.Contains(lowerEvent, strings.ToLower(unexpectedText)) {
+				return fmt.Errorf("expected story event to NOT contain '%s', but it did. Event: %s", unexpectedText, storyEventText)
+			}
 		}
 	}
 

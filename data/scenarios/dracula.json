@@ -125,12 +125,19 @@
       "name": "Crypt Entrance",
       "description": "Stone steps lead down into the castle's crypt. The heavy door is sealed with mystical symbols that seem to writhe in the torchlight. A sense of ancient evil emanates from beyond the door.",
       "exits": {
-        "up": "courtyard"
+        "up": "courtyard",
+        "down": "crypt"
       },
       "blocked_exits": {
         "down": "The crypt door is sealed with dark magic. You need the proper key and ritual components."
-      },
-      "items": []
+      }
+    },
+    "crypt": {
+      "name": "Crypt",
+      "description": "A vast underground chamber carved from living rock. Ancient sarcophagi line the walls, and at the center sits an ornate black coffin lined with Transylvanian soil. The air thrums with dark power, and shadows seem to move independently of their sources.",
+      "exits": {
+        "up": "crypt_entrance"
+      }
     }
   },
   "npcs": {
@@ -152,6 +159,14 @@
       "description": "An ancient stone guardian that comes to life when threatened. Its eyes glow red and its claws are razor sharp. It guards important areas of the castle.",
       "location": "library",
       "items": []
+    },
+    "count_dracula": {
+      "name": "Count Dracula",
+      "type": "vampire lord",
+      "disposition": "supremely arrogant and deadly",
+      "description": "The legendary vampire count appears as a tall, pale aristocrat in formal evening wear. His eyes burn like crimson coals and his smile reveals gleaming fangs. Despite his refined appearance, an aura of ancient evil and immense power surrounds him.",
+      "location": "crypt",
+      "items": []
     }
   },
   "scenes": {
@@ -165,30 +180,13 @@
               "dracula_appeared": "false"
             }
           },
-          "prompt": "Count Dracula suddenly MATERIALIZES from the shadows before you, his crimson eyes blazing with ancient hunger! He hisses menacingly: \"You DARE disturb the ancient grimoire? You have awakened me from my slumber, and now I am STARVING!\" The temperature drops precipitously as his dark presence fills the room. His fangs glisten in the candlelight."
+          "prompt": "The temperature drops precipitously as a misty dark presence fills the room. Dracula's fangs glisten as he materializes in the candlelight."
         },
         "lightning_strike": {
           "when": {
-            "scene_turn_counter": 4
+            "scene_turn_counter": 2
           },
-          "prompt": "A MASSIVE LIGHTNING BOLT CRASHES DOWN from the storm-torn heavens! "
-        },
-        "wolves_appear": {
-          "when": {
-            "location": "castle_gates",
-            "min_scene_turns": 5
-          },
-          "prompt": "THREE ENORMOUS DIRE WOLVES suddenly emerge from the darkness beyond the castle gates! "
-        },
-        "bats_swarm": {
-          "when": {
-            "vars": {
-              "opened_grimoire": "true",
-              "bats_swarmed": "false"
-            },
-            "min_scene_turns": 2
-          },
-          "prompt": "A MASSIVE SWARM of vampire bats suddenly ERUPTS from the castle's towers! "
+          "prompt": "The heavens rumble as a bolt of lightning crashes very near the castle. "
         }
       },
       "contingency_prompts": [],

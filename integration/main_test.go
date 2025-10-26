@@ -122,6 +122,9 @@ func TestIntegrationSuites(t *testing.T) {
 				if stepResult.IsReset {
 					// Reset steps don't count toward pass/fail metrics
 					t.Logf("   ↻ %s (%v)", stepResult.StepName, stepResult.Duration)
+				} else if stepResult.IsStoryEventWait {
+					// Story event steps
+					t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
 				} else if stepResult.Success {
 					t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
 				} else {
@@ -296,6 +299,9 @@ func TestSingleSuite(t *testing.T) {
 					if stepResult.IsReset {
 						// Reset steps don't count toward pass/fail metrics
 						t.Logf("   ↻ %s (%v)", stepResult.StepName, stepResult.Duration)
+					} else if stepResult.IsStoryEventWait {
+						// Story event wait steps
+						t.Logf("   ⏱ %s (%v) - Event: %s", stepResult.StepName, stepResult.Duration, stepResult.StoryEventText)
 					} else if stepResult.Success {
 						t.Logf("   ✓ %s (%v)", stepResult.StepName, stepResult.Duration)
 					} else {
