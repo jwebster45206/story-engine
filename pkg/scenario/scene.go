@@ -5,6 +5,8 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
+const StoryEventPrefix = "STORY EVENT: "
+
 // Scene represents a single scene within a scenario with its own locations, NPCs, and rules
 type Scene struct {
 	Story              string                           `json:"story"`                  // Description of what happens in this scene

@@ -8,6 +8,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/pkg/queue"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
 // ChatQueue manages a queue of chat messages and story events for games
@@ -93,7 +94,7 @@ func (seq *ChatQueue) GetFormattedEvents(ctx context.Context, gameStateID uuid.U
 	var formatted string
 	for i, event := range events {
 		if i == 0 {
-			formatted = "STORY EVENT: " + event
+			formatted = scenario.StoryEventPrefix + event
 		} else {
 			formatted += "\n\nSTORY EVENT: " + event
 		}

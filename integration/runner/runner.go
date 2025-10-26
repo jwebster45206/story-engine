@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
@@ -335,6 +336,66 @@ func (r *Runner) executeStep(ctx context.Context, gameStateID uuid.UUID, step Te
 		return result
 	}
 
+	// Check if this is a wait for story event step
+	if step.UserPrompt == WaitForStoryEventPrompt {
+		// Get gamestate before waiting
+		preGameState, err := r.getGameState(ctx, gameStateID)
+		if err != nil {
+			result.Error = fmt.Errorf("failed to get gamestate before waiting: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+
+		initialHistoryLen := len(preGameState.ChatHistory)
+		r.Logger("    Waiting for story event (current history length: %d)...", initialHistoryLen)
+
+		// Poll for chat response (story event should trigger automatically)
+		afterChatState, assistantResponse, err := PollForChatResponse(ctx, r.Client, r.BaseURL, gameStateID, initialHistoryLen)
+		if err != nil {
+			result.Error = fmt.Errorf("failed to poll for story event: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+
+		assertedStoryEvent := afterChatState.ChatHistory[len(afterChatState.ChatHistory)-2]
+		assertedResponse := afterChatState.ChatHistory[len(afterChatState.ChatHistory)-1]
+		if assertedStoryEvent.Role != "user" || !strings.HasPrefix(assertedStoryEvent.Content, scenario.StoryEventPrefix) {
+			result.Error = fmt.Errorf("unexpected chat message while waiting for story event: %+v", assertedStoryEvent)
+			result.Duration = time.Since(start)
+			return result
+		}
+
+		result.StoryEventText = strings.TrimPrefix(assertedStoryEvent.Content, scenario.StoryEventPrefix)
+		result.ResponseText = assertedResponse.Content
+		result.IsStoryEventWait = true
+
+		// Poll for DeltaWorker completion
+		postGameState, err := PollForDeltaWorkerCompletion(ctx, r.Client, r.BaseURL, gameStateID, afterChatState)
+		if err != nil {
+			result.Error = fmt.Errorf("failed to poll for DeltaWorker completion: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+
+		// Check expectations (including story event specific ones)
+		if err := r.checkExpectations(step.Expectations, preGameState, postGameState, prevTurnCounter, prevInventory, assistantResponse); err != nil {
+			result.Error = fmt.Errorf("expectation failed: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+
+		// Check story event specific expectations
+		if err := r.checkStoryEventExpectations(step.Expectations, result.StoryEventText); err != nil {
+			result.Error = fmt.Errorf("story event expectation failed: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+
+		result.Success = true
+		result.Duration = time.Since(start)
+		return result
+	}
+
 	// Get gamestate before chat for expectations comparison
 	preGameState, err := r.getGameState(ctx, gameStateID)
 	if err != nil {
@@ -515,6 +576,38 @@ func (r *Runner) checkExpectations(exp Expectations, preState, postState *state.
 	if exp.IsEnded != nil {
 		if postState.IsEnded != *exp.IsEnded {
 			return fmt.Errorf("expected is_ended to be %t, got %t", *exp.IsEnded, postState.IsEnded)
+		}
+	}
+
+	return nil
+}
+
+// checkStoryEventExpectations validates story event specific expectations
+func (r *Runner) checkStoryEventExpectations(exp Expectations, storyEventText string) error {
+	// Check exact match if specified
+	if exp.StoryEventExact != nil {
+		if storyEventText != *exp.StoryEventExact {
+			return fmt.Errorf("expected exact story event '%s', got '%s'", *exp.StoryEventExact, storyEventText)
+		}
+	}
+
+	// Check contains
+	if len(exp.StoryEventContains) > 0 {
+		lowerEvent := strings.ToLower(storyEventText)
+		for _, expectedText := range exp.StoryEventContains {
+			if !strings.Contains(lowerEvent, strings.ToLower(expectedText)) {
+				return fmt.Errorf("expected story event to contain '%s', but it didn't. Event: %s", expectedText, storyEventText)
+			}
+		}
+	}
+
+	// Check not contains
+	if len(exp.StoryEventNotContains) > 0 {
+		lowerEvent := strings.ToLower(storyEventText)
+		for _, unexpectedText := range exp.StoryEventNotContains {
+			if strings.Contains(lowerEvent, strings.ToLower(unexpectedText)) {
+				return fmt.Errorf("expected story event to NOT contain '%s', but it did. Event: %s", unexpectedText, storyEventText)
+			}
 		}
 	}
 

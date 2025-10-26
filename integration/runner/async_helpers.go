@@ -20,6 +20,8 @@ const (
 	ChatTimeout = 30 * time.Second
 	// DeltaTimeout is max time to wait for DeltaWorker to complete
 	DeltaTimeout = 30 * time.Second
+	// StoryEventTimeout is max time to wait for a story event to trigger
+	StoryEventTimeout = 30 * time.Second
 )
 
 // AsyncChatResponse is the response from the async chat endpoint
