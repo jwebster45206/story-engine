@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const MaxMessageLength = 100
+const MaxMessageLength = 255
 
 // ChatRequest represents a chat message request made by the user
 // to the story engine api.
