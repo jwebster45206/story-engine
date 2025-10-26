@@ -134,9 +134,8 @@ func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatReq
 		Content: req.Message,
 	})
 
-	// Filter out "STORY EVENT:" markers from LLM response and add to game state
+	// Add to game state
 	response.Message = strings.TrimRight(response.Message, "\n")
-	response.Message = filterStoryEventMarkers(response.Message)
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
 		Role:    chat.ChatRoleAgent,
 		Content: response.Message,
@@ -234,9 +233,8 @@ func (p *ChatProcessor) UpdateGameStateAfterStream(gs *state.GameState, userMess
 		Content: userMessage,
 	})
 
-	// Filter out "STORY EVENT:" markers from LLM response and add to game state
+	// Add to game state
 	responseMessage = strings.TrimRight(responseMessage, "\n")
-	responseMessage = filterStoryEventMarkers(responseMessage)
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
 		Role:    chat.ChatRoleAgent,
 		Content: responseMessage,
@@ -427,23 +425,4 @@ func (p *ChatProcessor) GetGameState(ctx context.Context, gameStateID uuid.UUID)
 		return nil, fmt.Errorf("game state not found: %s", gameStateID.String())
 	}
 	return gs, nil
-}
-
-// filterStoryEventMarkers removes "STORY EVENT:" markers from LLM responses
-// The LLM sometimes includes these markers despite instructions not to
-func filterStoryEventMarkers(text string) string {
-	// Remove "STORY EVENT:" at the start of lines (case-insensitive)
-	lines := strings.Split(text, "\n")
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		// Check for "STORY EVENT:" prefix (case-insensitive)
-		if len(trimmed) >= 12 {
-			prefix := strings.ToUpper(trimmed[:12])
-			if prefix == "STORY EVENT:" {
-				// Remove the prefix and preserve the rest
-				lines[i] = strings.TrimSpace(trimmed[12:])
-			}
-		}
-	}
-	return strings.Join(lines, "\n")
 }
