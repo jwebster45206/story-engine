@@ -60,6 +60,7 @@ type Expectations struct {
 type TestResult struct {
 	TestName     string
 	StepName     string
+	RequestID    string // Request ID from async chat endpoint
 	Success      bool
 	Error        error
 	Duration     time.Duration
