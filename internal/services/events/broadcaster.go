@@ -59,14 +59,15 @@ func (b *Broadcaster) PublishRequestQueued(ctx context.Context, gameID uuid.UUID
 }
 
 // PublishRequestProcessing publishes a request.processing event
-func (b *Broadcaster) PublishRequestProcessing(ctx context.Context, gameID uuid.UUID, requestID string, requestType string) error {
+func (b *Broadcaster) PublishRequestProcessing(ctx context.Context, gameID uuid.UUID, requestID string, requestType string, userMessage string) error {
 	event := Event{
 		Type:      EventTypeRequestProcessing,
 		RequestID: requestID,
 		GameID:    gameID.String(),
 		Data: map[string]interface{}{
-			"status": "processing",
-			"type":   requestType,
+			"status":       "processing",
+			"type":         requestType,
+			"user_message": userMessage,
 		},
 	}
 	return b.publishToGame(ctx, gameID, event)
@@ -130,7 +131,7 @@ func (b *Broadcaster) PublishGameStateUpdated(ctx context.Context, gameID uuid.U
 // publishToGame publishes an event to the game-specific channel
 func (b *Broadcaster) publishToGame(ctx context.Context, gameID uuid.UUID, event Event) error {
 	channel := fmt.Sprintf("game-events:%s", gameID.String())
-	
+
 	data, err := json.Marshal(event)
 	if err != nil {
 		b.logger.Error("Failed to marshal event", "error", err, "event", event)

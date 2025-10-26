@@ -21,7 +21,7 @@ type ErrorResponse struct {
 func main() {
 	cfg := &ConsoleConfig{
 		APIBaseURL: getEnv("API_BASE_URL", "http://localhost:8080"),
-		Timeout:    60 * time.Second,
+		Timeout:    10 * time.Minute, // Long timeout for SSE connections
 	}
 
 	client := &http.Client{

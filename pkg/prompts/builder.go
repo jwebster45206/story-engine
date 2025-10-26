@@ -158,13 +158,16 @@ func (b *Builder) addUserMessage() {
 }
 
 // addStoryEvents adds queued story events if present.
+// Story events are added as user messages (not system) because Anthropic
+// doesn't allow system messages in chat history. The "STORY EVENT:" prefix
+// signals to the LLM that this is a mandatory narrative directive.
 func (b *Builder) addStoryEvents() {
 	if b.storyEvents == "" {
 		return
 	}
 
 	b.messages = append(b.messages, chat.ChatMessage{
-		Role:    chat.ChatRoleSystem,
+		Role:    chat.ChatRoleUser,
 		Content: b.storyEvents,
 	})
 }
