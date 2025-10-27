@@ -23,7 +23,13 @@ type GameStateDelta struct {
 		Consumed *bool `json:"consumed,omitempty"`
 	} `json:"item_events,omitempty"`
 
+	// TODO: Replace NPCMovements with more general NPCEvents structure
+	// to track NPC state changes more generally. Also add a "following" field to
+	// NPC struct to track if NPC is following another actor.
 	NPCMovements []NPCMovement `json:"npc_movements,omitempty"`
+
+	// TODO: Maybe add LocationEvents structure to track stateful elements of locations:
+	// such as exits being blocked/unblocked, conditions changing, etc.
 
 	SetVars   map[string]string `json:"set_vars,omitempty"`
 	GameEnded *bool             `json:"game_ended,omitempty"`
