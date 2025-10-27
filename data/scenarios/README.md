@@ -514,7 +514,10 @@ Here's a scene with story events (via conditional prompts), contingency prompts,
           "vars": {"dracula_defeated": "true"}
         },
         "then": {
-          "scene": "epilogue"
+          "scene_change": {
+            "to": "epilogue",
+            "reason": "conditional"
+          }
         }
       }
     },
@@ -584,7 +587,10 @@ It's important to understand when to use each system:
       "vars": {"morgan_hostile": "true"}
     },
     "then": {
-      "scene": "betrayal_confrontation"
+      "scene_change": {
+        "to": "betrayal_confrontation",
+        "reason": "conditional"
+      }
     }
   }
 }
@@ -750,51 +756,100 @@ Conditionals enforce reliable scene transitions based on variable state. They ov
 ```json
 "scenes": {
   "shipwright": {
-    "conditionals": [
-      {
-        "name": "transition_to_british_docks",
+    "conditionals": {
+      "transition_to_british_docks": {
         "when": {
-          "shipwright_hired": "true"
+          "vars": {
+            "shipwright_hired": "true"
+          }
         },
         "then": {
-          "scene": "british_docks"
+          "scene_change": {
+            "to": "british_docks",
+            "reason": "conditional"
+          }
         }
       }
-    ]
+    }
   }
+}
+```
+
+**Understanding the "then" action structure:**
+
+The `then` clause now uses an object structure to specify different types of actions:
+
+**Scene change:**
+```json
+"then": {
+  "scene_change": {
+    "to": "calypsos_map",
+    "reason": "conditional"
+  }
+}
+```
+- `to`: The ID of the target scene
+- `reason`: Why the scene is changing (use `"conditional"` for conditional triggers, `"story_event"` for story event triggers, or `"llm"` for AI-driven transitions)
+
+**Set variable:**
+```json
+"then": {
+  "set_var": {
+    "key": "treasure_found",
+    "value": "true"
+  }
+}
+```
+
+**Story event (narrative prompt):**
+```json
+"then": {
+  "prompt": "STORY EVENT: The vault door swings open with a deafening CRACK!"
+}
+```
+
+**Game over:**
+```json
+"then": {
+  "game_ended": true
 }
 ```
 
 **Multiple conditions (all must be true):**
 ```json
-"conditionals": [
-  {
-    "name": "proceed_to_finale",
+"conditionals": {
+  "proceed_to_finale": {
     "when": {
-      "gold_acquired": "true",
-      "shipwright_paid_in_full": "true"
+      "vars": {
+        "gold_acquired": "true",
+        "shipwright_paid_in_full": "true"
+      }
     },
     "then": {
-      "scene": "calypsos_map"
+      "scene_change": {
+        "to": "calypsos_map",
+        "reason": "conditional"
+      }
     }
   }
-]
+}
 ```
 
 **Conditionals can also end the game:**
 ```json
-"conditionals": [
-  {
-    "name": "game_over_captured",
+"conditionals": {
+  "game_over_captured": {
     "when": {
-      "caught_by_guards": "true",
-      "disguise_acquired": "false"
+      "vars": {
+        "caught_by_guards": "true",
+        "disguise_acquired": "false"
+      }
     },
     "then": {
       "game_ended": true
     }
   }
-]
+}
 ```
 
 ### Best Practice: Combine Narrative and Deterministic Approaches
@@ -818,13 +873,21 @@ For reliable scene progression, use **both** contingency prompts and conditional
 
 **3. Enforce it with a conditional:**
 ```json
-"conditionals": [
-  {
-    "name": "shipwright_scene_transition",
-    "when": {"shipwright_hired": "true"},
-    "then": {"scene": "british_docks"}
+"conditionals": {
+  "shipwright_scene_transition": {
+    "when": {
+      "vars": {
+        "shipwright_hired": "true"
+      }
+    },
+    "then": {
+      "scene_change": {
+        "to": "british_docks",
+        "reason": "conditional"
+      }
+    }
   }
-]
+}
 ```
 
 This layered approach ensures:

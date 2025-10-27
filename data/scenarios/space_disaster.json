@@ -25,7 +25,10 @@
             "scene_turn_counter": 3
           },
           "then": {
-            "scene": "turn_counter"
+            "scene_change": {
+              "to": "turn_counter",
+              "reason": "conditional"
+            }
           }
         }
       }
@@ -43,7 +46,10 @@
             "turn_counter": 5
           },
           "then": {
-            "scene": "min_scene_turns"
+            "scene_change": {
+              "to": "min_scene_turns",
+              "reason": "conditional"
+            }
           }
         }
       }
@@ -61,7 +67,10 @@
             "min_scene_turns": 2
           },
           "then": {
-            "scene": "min_turns"
+            "scene_change": {
+              "to": "min_turns",
+              "reason": "conditional"
+            }
           }
         }
       }
