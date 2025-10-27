@@ -332,7 +332,7 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 	// Log triggered conditionals
 	if len(triggeredConditionals) > 0 {
 		for conditionalID, conditional := range triggeredConditionals {
-			if conditional.Then.SceneChange.To != "" {
+			if conditional.Then.SceneChange != nil && conditional.Then.SceneChange.To != "" {
 				p.logger.Info("Conditional scene change", "game_state_id", latestGS.ID.String(), "conditional_id", conditionalID, "to_scene", conditional.Then.SceneChange.To, "reason", conditional.Then.SceneChange.Reason)
 			}
 			if conditional.Then.GameEnded != nil {
