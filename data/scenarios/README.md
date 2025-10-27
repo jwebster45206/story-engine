@@ -364,7 +364,7 @@ One powerful use of `min_scene_turns` is preventing players from getting stuck i
 
 ### Story Events via Conditional Prompts
 
-Story events are narrative moments that trigger based on game state conditions. They are defined **within conditionals** using the `prompt` field with the `"STORY EVENT: "` prefix:
+Story events are narrative moments that trigger based on game state conditions. They are defined **within conditionals** using the `prompt` field:
 
 ```json
 "scenes": {
@@ -401,7 +401,7 @@ Use **lowercase snake_case** for conditional keys that trigger story events (e.g
 **Each story event conditional has:**
 - **Key**: The conditional ID in snake_case (used as the map key)
 - `when`: Conditional logic determining when the event triggers (see **Conditional Logic** section above)
-- `then.prompt`: The narrative text prefixed with `"STORY EVENT: "` that will be injected into the story
+- `then.prompt`: The narrative text that will be injected into the story (prefix like "STORY EVENT: " is optional but recommended for clarity)
 
 ### How Story Events Work
 
@@ -416,11 +416,11 @@ On the **next turn**, queued story events are injected into the conversation his
 ```
 User: I examine the grimoire carefully.
 Assistant: [Story event injected here]
-Count Dracula materializes from the shadows, his eyes burning with ancient hunger.
+STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger.
 User: [Current player action]
 ```
 
-The `"STORY EVENT: "` prefix is removed before injection. The LLM sees this as a mandatory narrative directive and incorporates it into the response.
+The full prompt text (including any prefix like "STORY EVENT: ") is shown to the player. The LLM sees this as a mandatory narrative directive and incorporates it into the response.
 
 **3. Tracking:**
 After injection, the story event conditional ID is tracked in game state to prevent re-triggering.

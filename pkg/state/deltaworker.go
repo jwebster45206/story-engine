@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -119,24 +120,22 @@ func (dw *DeltaWorker) mergeDelta(conditionalDelta *conditionals.GameStateDelta,
 		}
 	}
 
-	// Merge game ended state
+	// Merge game ended state, overriding any previous value
 	if conditionalDelta.GameEnded != nil {
 		dw.delta.GameEnded = conditionalDelta.GameEnded
 	}
 
-	// Merge user location
+	// Merge user location, overriding any previous value
 	if conditionalDelta.UserLocation != "" {
 		dw.delta.UserLocation = conditionalDelta.UserLocation
 	}
 
-	// Merge variables
+	// Merge variables, overriding any previous values
 	if len(conditionalDelta.SetVars) > 0 {
 		if dw.delta.SetVars == nil {
 			dw.delta.SetVars = make(map[string]string)
 		}
-		for k, v := range conditionalDelta.SetVars {
-			dw.delta.SetVars[k] = v
-		}
+		maps.Copy(dw.delta.SetVars, conditionalDelta.SetVars)
 	}
 
 	// Merge item events
@@ -149,26 +148,18 @@ func (dw *DeltaWorker) mergeDelta(conditionalDelta *conditionals.GameStateDelta,
 		dw.delta.NPCMovements = append(dw.delta.NPCMovements, conditionalDelta.NPCMovements...)
 	}
 
-	// Handle prompt with special story event logic
+	// Handle prompt - any prompt in a conditional is treated as a story event
 	if conditionalDelta.Prompt != nil {
 		prompt := *conditionalDelta.Prompt
-		// Check if it's a story event (starts with "STORY EVENT: " prefix)
-		if strings.HasPrefix(prompt, scenario.StoryEventPrefix) {
-			// Check if this story event has already fired
-			if dw.hasStoryEventFired(conditionalID) {
-				if dw.logger != nil {
-					dw.logger.Debug("Story event already fired, skipping",
-						"game_state_id", dw.gs.ID.String(),
-						"conditional_id", conditionalID)
-				}
-				return
-			}
-
-			// Strip the prefix and queue as story event
-			eventText := strings.TrimPrefix(prompt, scenario.StoryEventPrefix)
-			dw.queueStoryEvent(conditionalID, eventText)
+		// Check if this story event has already fired
+		if !dw.hasStoryEventFired(conditionalID) {
+			// Queue the story event
+			dw.queueStoryEvent(conditionalID, prompt)
+		} else if dw.logger != nil {
+			dw.logger.Debug("Story event already fired, skipping",
+				"game_state_id", dw.gs.ID.String(),
+				"conditional_id", conditionalID)
 		}
-		// Future: Could handle other prompt types here (e.g., "NPC_NAME: dialogue")
 	}
 }
 

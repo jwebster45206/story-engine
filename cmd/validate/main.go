@@ -140,12 +140,27 @@ func (v *ScenarioValidator) validateConditional(conditional *scenario.Conditiona
 		}
 		actionCount++
 	}
+	if len(conditional.Then.SetVars) > 0 {
+		for varName := range conditional.Then.SetVars {
+			if !isValidVariableName(varName) {
+				v.addError(fmt.Sprintf("conditional %s in scene %s has invalid variable name '%s' in then.set_vars - should be lowercase snake_case", conditionalKey, sceneID, varName))
+			}
+		}
+		actionCount++
+	}
+	if len(conditional.Then.ItemEvents) > 0 {
+		actionCount++
+	}
+	if len(conditional.Then.NPCMovements) > 0 {
+		actionCount++
+	}
+	if conditional.Then.UserLocation != "" {
+		v.validateIDFormat("conditional then user_location", conditional.Then.UserLocation)
+		actionCount++
+	}
 
 	if actionCount == 0 {
 		v.addError(fmt.Sprintf("conditional %s in scene %s has no action in 'then' clause", conditionalKey, sceneID))
-	}
-	if actionCount > 1 {
-		v.addError(fmt.Sprintf("conditional %s in scene %s has multiple actions in 'then' clause (only one allowed)", conditionalKey, sceneID))
 	}
 }
 
