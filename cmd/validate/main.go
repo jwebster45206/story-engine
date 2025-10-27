@@ -151,8 +151,45 @@ func (v *ScenarioValidator) validateConditional(conditional *scenario.Conditiona
 	if len(conditional.Then.ItemEvents) > 0 {
 		actionCount++
 	}
-	if len(conditional.Then.NPCMovements) > 0 {
+	if len(conditional.Then.NPCEvents) > 0 {
 		actionCount++
+		// Validate NPC event structure
+		for _, npcEvent := range conditional.Then.NPCEvents {
+			if npcEvent.NPCID == "" {
+				v.addError(fmt.Sprintf("conditional %s in scene %s has NPC event with empty npc_id", conditionalKey, sceneID))
+			}
+			if npcEvent.LocationChange == nil {
+				v.addError(fmt.Sprintf("conditional %s in scene %s has NPC event with no location_change", conditionalKey, sceneID))
+			} else {
+				if npcEvent.LocationChange.To == "" {
+					v.addError(fmt.Sprintf("conditional %s in scene %s has NPC event with empty location_change.to", conditionalKey, sceneID))
+				} else {
+					v.validateIDFormat(fmt.Sprintf("conditional %s npc_event location_change.to", conditionalKey), npcEvent.LocationChange.To)
+				}
+			}
+		}
+	}
+	if len(conditional.Then.LocationEvents) > 0 {
+		actionCount++
+		// Validate location event structure
+		for _, locEvent := range conditional.Then.LocationEvents {
+			if locEvent.LocationID == "" {
+				v.addError(fmt.Sprintf("conditional %s in scene %s has location event with empty location_id", conditionalKey, sceneID))
+			} else {
+				v.validateIDFormat(fmt.Sprintf("conditional %s location_event location_id", conditionalKey), locEvent.LocationID)
+			}
+			if len(locEvent.ExitChanges) == 0 {
+				v.addError(fmt.Sprintf("conditional %s in scene %s has location event with no exit_changes", conditionalKey, sceneID))
+			}
+			for _, exitChange := range locEvent.ExitChanges {
+				if exitChange.ExitID == "" {
+					v.addError(fmt.Sprintf("conditional %s in scene %s has exit change with empty exit_id", conditionalKey, sceneID))
+				}
+				if exitChange.Status != "blocked" && exitChange.Status != "unblocked" {
+					v.addError(fmt.Sprintf("conditional %s in scene %s has exit change with invalid status '%s' (must be 'blocked' or 'unblocked')", conditionalKey, sceneID, exitChange.Status))
+				}
+			}
+		}
 	}
 	if conditional.Then.UserLocation != "" {
 		v.validateIDFormat("conditional then user_location", conditional.Then.UserLocation)

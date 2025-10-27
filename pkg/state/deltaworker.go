@@ -143,9 +143,14 @@ func (dw *DeltaWorker) mergeDelta(conditionalDelta *conditionals.GameStateDelta,
 		dw.delta.ItemEvents = append(dw.delta.ItemEvents, conditionalDelta.ItemEvents...)
 	}
 
-	// Merge NPC movements
-	if len(conditionalDelta.NPCMovements) > 0 {
-		dw.delta.NPCMovements = append(dw.delta.NPCMovements, conditionalDelta.NPCMovements...)
+	// Merge NPC events
+	if len(conditionalDelta.NPCEvents) > 0 {
+		dw.delta.NPCEvents = append(dw.delta.NPCEvents, conditionalDelta.NPCEvents...)
+	}
+
+	// Merge location events
+	if len(conditionalDelta.LocationEvents) > 0 {
+		dw.delta.LocationEvents = append(dw.delta.LocationEvents, conditionalDelta.LocationEvents...)
 	}
 
 	// Handle prompt - any prompt in a conditional is treated as a story event
@@ -303,9 +308,14 @@ func (dw *DeltaWorker) Apply() error {
 		}
 	}
 
-	// Handle NPC movements
-	for _, npcMovement := range dw.delta.NPCMovements {
-		dw.handleNPCMovement(npcMovement)
+	// Handle NPC events
+	for _, npcEvent := range dw.delta.NPCEvents {
+		dw.handleNPCEvent(npcEvent)
+	}
+
+	// Handle location events
+	for _, locationEvent := range dw.delta.LocationEvents {
+		dw.handleLocationEvent(locationEvent)
 	}
 
 	// Handle Game End
@@ -404,10 +414,18 @@ func (dw *DeltaWorker) handleUseItem(itemEvent itemEvent) {
 	}
 }
 
-// handleNPCMovement updates an NPC's location
-func (dw *DeltaWorker) handleNPCMovement(movement conditionals.NPCMovement) {
+// handleNPCEvent processes an NPC event
+func (dw *DeltaWorker) handleNPCEvent(event conditionals.NPCEvent) {
+	// Handle location change if present
+	if event.LocationChange != nil {
+		dw.handleNPCLocationChange(event.NPCID, event.LocationChange.To, event.LocationChange.Reason)
+	}
+}
+
+// handleNPCLocationChange updates an NPC's location
+func (dw *DeltaWorker) handleNPCLocationChange(npcID, toLocation, reason string) {
 	// Normalize the NPC identifier
-	npcKey := strings.ToLower(strings.TrimSpace(movement.NPCID))
+	npcKey := strings.ToLower(strings.TrimSpace(npcID))
 
 	// Try to find the NPC in game state by key first
 	npc, npcExists := dw.gs.NPCs[npcKey]
@@ -426,14 +444,15 @@ func (dw *DeltaWorker) handleNPCMovement(movement conditionals.NPCMovement) {
 	if !npcExists {
 		if dw.logger != nil {
 			dw.logger.Warn("NPC not found for movement",
-				"npc_id", movement.NPCID,
-				"to_location", movement.ToLocation)
+				"npc_id", npcID,
+				"to_location", toLocation,
+				"reason", reason)
 		}
 		return
 	}
 
 	// Normalize and verify the destination location exists
-	locationKey := strings.ToLower(strings.TrimSpace(movement.ToLocation))
+	locationKey := strings.ToLower(strings.TrimSpace(toLocation))
 	_, locationExists := dw.gs.WorldLocations[locationKey]
 	if !locationExists {
 		// Try matching by location name
@@ -449,8 +468,9 @@ func (dw *DeltaWorker) handleNPCMovement(movement conditionals.NPCMovement) {
 	if !locationExists {
 		if dw.logger != nil {
 			dw.logger.Warn("Location not found for NPC movement",
-				"npc_id", movement.NPCID,
-				"to_location", movement.ToLocation)
+				"npc_id", npcID,
+				"to_location", toLocation,
+				"reason", reason)
 		}
 		return
 	}
@@ -464,7 +484,88 @@ func (dw *DeltaWorker) handleNPCMovement(movement conditionals.NPCMovement) {
 		dw.logger.Info("NPC moved",
 			"npc", npcKey,
 			"from", oldLocation,
-			"to", locationKey)
+			"to", locationKey,
+			"reason", reason)
+	}
+}
+
+// handleLocationEvent processes a location event
+func (dw *DeltaWorker) handleLocationEvent(event conditionals.LocationEvent) {
+	// Normalize location ID
+	locationKey := strings.ToLower(strings.TrimSpace(event.LocationID))
+
+	// Try to find the location in game state by key first
+	location, locationExists := dw.gs.WorldLocations[locationKey]
+	if !locationExists {
+		// Try matching by location name
+		for key, loc := range dw.gs.WorldLocations {
+			if strings.ToLower(loc.Name) == locationKey {
+				locationKey = key
+				location = loc
+				locationExists = true
+				break
+			}
+		}
+	}
+
+	if !locationExists {
+		if dw.logger != nil {
+			dw.logger.Warn("Location not found for location event",
+				"location_id", event.LocationID)
+		}
+		return
+	}
+
+	// Process exit changes
+	if len(event.ExitChanges) > 0 {
+		// Initialize BlockedExits map if needed
+		if location.BlockedExits == nil {
+			location.BlockedExits = make(map[string]string)
+		}
+
+		for _, exitChange := range event.ExitChanges {
+			exitID := strings.ToLower(strings.TrimSpace(exitChange.ExitID))
+
+			switch exitChange.Status {
+			case "blocked":
+				// Add or update the blocked exit
+				reason := exitChange.Reason
+				if reason == "" {
+					reason = "blocked"
+				}
+				location.BlockedExits[exitID] = reason
+
+				if dw.logger != nil {
+					dw.logger.Info("Exit blocked",
+						"location", locationKey,
+						"exit", exitID,
+						"reason", reason)
+				}
+
+			case "unblocked":
+				// Remove the exit from blocked list
+				if _, wasBlocked := location.BlockedExits[exitID]; wasBlocked {
+					delete(location.BlockedExits, exitID)
+
+					if dw.logger != nil {
+						dw.logger.Info("Exit unblocked",
+							"location", locationKey,
+							"exit", exitID)
+					}
+				}
+
+			default:
+				if dw.logger != nil {
+					dw.logger.Warn("Unknown exit status",
+						"location", locationKey,
+						"exit", exitID,
+						"status", exitChange.Status)
+				}
+			}
+		}
+
+		// Write back the modified location
+		dw.gs.WorldLocations[locationKey] = location
 	}
 }
 
