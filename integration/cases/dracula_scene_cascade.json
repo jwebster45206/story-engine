@@ -1,0 +1,63 @@
+{
+  "name": "Dracula Scene Load Cascade",
+  "description": "Tests that entering the confrontation scene triggers a cascade of conditionals: scene loads (counter=0), player moves to sanctum and sets var, story event fires based on that var",
+  "scenario": "dracula.json",
+  "seed_game_state": {
+    "scene_name": "preparation",
+    "user_location": "master_bedroom",
+    "turn_counter": 50,
+    "scene_turn_counter": 10,
+    "user_inventory": [
+      "crypt key",
+      "blessed wooden stake",
+      "consecrated silver blade"
+    ],
+    "vars": {},
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "You notice a hidden lever beside the ornate bedframe. Pulling it reveals a secret passage descending into darkness."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Wait in preparation scene",
+      "user_prompt": "I check for my vampire hunting supplies. This might be dangerous.",
+      "expect": {
+        "scene_name": "preparation",
+        "user_location": "master_bedroom",
+        "scene_turn_counter": 11
+      }
+    },
+    {
+      "name": "Enter secret passage",
+      "user_prompt": "I take a deep breath and head down the secret passage.",
+      "expect": {
+        "scene_name": "confrontation",
+        "user_location": "draculas_sanctum",
+        "scene_turn_counter": 0,
+        "vars": {
+          "entered_sanctum": "true"
+        }
+      }
+    },
+    {
+      "name": "Story event fires - Dracula rises",
+      "user_prompt": "WAIT_FOR_STORY_EVENT",
+      "expect": {
+        "scene_name": "confrontation",
+        "user_location": "draculas_sanctum",
+        "scene_turn_counter": 1,
+        "vars": {
+          "entered_sanctum": "true"
+        },
+        "response_contains": [
+          "dracula",
+          "coffin",
+          "rises"
+        ]
+      }
+    }
+  ]
+}

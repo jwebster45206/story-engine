@@ -144,7 +144,9 @@ Each test step sends a user prompt and validates the response and resulting game
 - `user_prompt`: The message sent to the engine (player's action or dialogue)
 - `expect`: Object defining what to validate after this step
 
-### Special Step: Reset Game State
+### Special Steps
+
+#### Reset Game State
 
 You can reset the game state back to the seed data mid-test:
 
@@ -160,6 +162,39 @@ You can reset the game state back to the seed data mid-test:
 ```
 
 This is useful for testing multiple branches from the same starting point without duplicating seed data.
+
+#### Wait for Story Event
+
+Use `WAIT_FOR_STORY_EVENT` to consume a queued story event and validate its content:
+
+```json
+{
+  "name": "Story event fires - Dracula rises",
+  "user_prompt": "WAIT_FOR_STORY_EVENT",
+  "expect": {
+    "scene_turn_counter": 1,
+    "vars": {
+      "entered_sanctum": "true"
+    },
+    "response_contains": [
+      "dracula",
+      "coffin",
+      "rises"
+    ]
+  }
+}
+```
+
+**Important turn counting behavior:**
+- `WAIT_FOR_STORY_EVENT` **increments turn counters** (just like a normal user action)
+- If the previous step had `scene_turn_counter: 0`, this step will have `scene_turn_counter: 1`
+- Story events are queued by conditionals with a `prompt` field
+- The story event text appears in the AI's response for that turn
+
+**When to use this:**
+- Testing that conditionals fire story events correctly
+- Validating the content of story event prompts
+- Ensuring scene initialization events trigger (e.g., `scene_turn_counter: 0` conditionals)
 
 ## Expectations
 

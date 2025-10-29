@@ -854,7 +854,7 @@ The `then` clause now uses an object structure to specify different types of act
 
 ### Best Practice: Combine Narrative and Deterministic Approaches
 
-For reliable scene progression, use **both** contingency prompts and conditionals:
+Scene progression is critical, so it's worth extra attention to lock it in. For reliable scene progression, use **both** contingency prompts and conditionals:
 
 **1. Guide the AI with contingency prompts:**
 ```json
@@ -896,6 +896,75 @@ This layered approach ensures:
 - The AI attempts scene transitions naturally through contingency rules
 - The conditional guarantees the transition happens regardless of AI compliance
 - Story progression remains reliable and predictable
+
+**This is the recommended approach for all scene transitions.** The specific condition in the `when` clause can vary (variables, location, turn counters, etc.) depending on your needs, but the three-layer pattern remains the same.
+
+**Example with location-based trigger:**
+```json
+"conditionals": {
+  "enter_confrontation_secret": {
+    "when": {
+      "location": "secret_passage"
+    },
+    "then": {
+      "scene_change": {
+        "to": "confrontation",
+        "reason": "entered via secret passage"
+      }
+    }
+  }
+}
+```
+
+With supporting contingency rules:
+```json
+"contingency_rules": [
+  "When the player enters the secret passage, set the variable 'found_sanctum' to 'true'.",
+  "When the player has the proper equipment and enters the secret passage, the scene changes to 'confrontation'."
+]
+```
+
+### Best Practice: Scene Initialization with `scene_turn_counter: 0`
+
+When a scene loads, you can trigger initialization conditionals that fire immediately before the player's first action in that scene.
+
+**Example: Force starting location and set required variables:**
+```json
+"confrontation": {
+  "story": "The final battle with Dracula begins...",
+  "conditionals": {
+    "enter_sanctum": {
+      "when": {
+        "scene_turn_counter": 0
+      },
+      "then": {
+        "user_location": "draculas_sanctum",
+        "set_vars": {
+          "entered_sanctum": "true",
+          "dracula_aware": "true"
+        }
+      }
+    }
+  }
+}
+```
+
+**When to use scene initialization:**
+- **Lock in required variables** - Ensure the scene starts with critical game state set correctly
+- **Force starting location** - Put the player exactly where they need to be
+- **Prevent AI drift** - Establish firm ground truth before AI narration begins
+- **Trigger cascading conditionals** - Set variables that trigger other conditionals (like story events)
+- **Reset scene-specific state** - Clear or set flags that are specific to this scene
+
+**Execution flow:**
+1. Scene changes (via scene change conditional or AI)
+2. `scene_turn_counter` resets to 0
+3. `scene_turn_counter: 0` conditional triggers immediately
+4. Location changes, variables set, or story events queued
+5. Additional conditionals can cascade (triggered by the vars just set)
+6. Player takes their first action in the scene (counter increments to 1)
+
+**Best practice:** Use scene initialization to establish the "contract" for how the scene should work - lock in the essential state that the rest of the scene depends on.
 
 ## Scene System (Optional)
 

@@ -254,17 +254,63 @@
           ]
         }
       },
+      "conditionals": {
+        "enter_confrontation_secret": {
+          "when": {
+            "location": "secret_passage"
+          },
+          "then": {
+            "scene_change": {
+              "to": "confrontation",
+              "reason": "entered via secret passage"
+            }
+          }
+        },
+        "enter_confrontation_crypt": {
+          "when": {
+            "location": "crypt_entrance"
+          },
+          "then": {
+            "scene_change": {
+              "to": "confrontation",
+              "reason": "entered via crypt entrance"
+            }
+          }
+        }
+      },
       "contingency_prompts": [],
       "contingency_rules": [
         "When the player has the crypt key and blessed wooden stake, the crypt entrance becomes accessible.",
         "If the crypt key and blessed wooden stake are both in inventory, the crypt entrance becomes accessible.",
         "Combining silver dagger, holy water, and garlic essence creates a 'consecrated silver blade' in inventory.",
-        "When the player enters the secret passage or crypt entrance with proper equipment, the scene changes to 'confrontation'.",
-        "If the player has the proper equipment and enters the secret passage or crypt entrance, the scene changes to 'confrontation'."
+        "When the player enters the secret passage or crypt entrance with proper equipment, the scene changes to 'confrontation'."
       ]
     },
     "confrontation": {
       "story": "The player has reached Dracula's sanctum and must face the vampire lord in final combat. Dawn is breaking, and Dracula's power is at its peak.",
+      "conditionals": {
+        "enter_sanctum": {
+          "when": {
+            "scene_turn_counter": 0
+          },
+          "then": {
+            "user_location": "draculas_sanctum",
+            "set_vars": {
+              "entered_sanctum": "true"
+            }
+          }
+        },
+        "dracula_rises": {
+          "when": {
+            "vars": {
+              "entered_sanctum": "true"
+            }
+          },
+          "then": {
+            "prompt": "STORY EVENT: As you descend into the sanctum, the black coffin's lid slowly creaks open. Count Dracula rises, his eyes blazing with unholy power. 'So, another foolish mortal dares challenge me in my own domain,' he hisses, his voice echoing through the chamber."
+          }
+        }
+      },
       "locations": {
         "draculas_sanctum": {
           "name": "Dracula's Sanctum",
