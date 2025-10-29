@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
-	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
 const (
@@ -49,13 +49,13 @@ type LLMService interface {
 	// ChatStream generates a streaming chat response using the LLM
 	ChatStream(ctx context.Context, messages []chat.ChatMessage) (<-chan StreamChunk, error)
 
-	DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error)
+	DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, string, error)
 }
 
 // parseDeltaUpdateResponse parses an LLM response text into a DeltaUpdate struct.
 // It handles various response formats including markdown code blocks, mixed content,
 // and other common artifacts that LLMs might include in their JSON responses.
-func parseDeltaUpdateResponse(responseText string) (*state.GameStateDelta, error) {
+func parseDeltaUpdateResponse(responseText string) (*conditionals.GameStateDelta, error) {
 	if responseText == "" {
 		return nil, nil
 	}
@@ -108,7 +108,7 @@ func parseDeltaUpdateResponse(responseText string) (*state.GameStateDelta, error
 	mTxt = strings.Join(cleanLines, "\n")
 	mTxt = strings.TrimSpace(mTxt)
 
-	var metaUpdate state.GameStateDelta
+	var metaUpdate conditionals.GameStateDelta
 	if err := json.Unmarshal([]byte(mTxt), &metaUpdate); err != nil {
 		return nil, fmt.Errorf("failed to parse gamestate delta. Original response: %q, Cleaned text: %q, Error: %w", originalText, mTxt, err)
 	}

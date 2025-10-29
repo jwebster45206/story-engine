@@ -180,7 +180,7 @@
           "when": {
             "vars": {"shipwright_hired": "true"}
           },
-          "then": {"scene": "british_docks"}
+          "then": {"scene_change": {"to": "british_docks", "reason": "conditional"}}
         }
       }
     },
@@ -257,7 +257,7 @@
           "when": {
             "vars": {"shipwright_paid_in_full": "true"}
           },
-          "then": {"scene": "calypsos_map"}
+          "then": {"scene_change": {"to": "calypsos_map", "reason": "conditional"}}
         }
       }
     },

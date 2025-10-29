@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
-	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
 const (
@@ -472,7 +472,7 @@ func (a *AnthropicService) getDeltaUpdateTool() AnthropicTool {
 }
 
 // DeltaUpdate processes a gamestate delta request using Anthropic Claude
-func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*state.GameStateDelta, string, error) {
+func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, string, error) {
 	// Determine which model to use for DeltaUpdate
 	modelToUse := a.modelName
 	if a.backendModelName != "" {

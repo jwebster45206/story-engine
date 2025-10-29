@@ -88,7 +88,7 @@ func TestScene_UnmarshalConditionalPrompt(t *testing.T) {
 							"vars": {"quest_complete": "true"}
 						},
 						"then": {
-							"scene": "next_scene"
+							"scene_change": {"to": "next_scene", "reason": "conditional"}
 						}
 					}
 				}
@@ -99,8 +99,11 @@ func TestScene_UnmarshalConditionalPrompt(t *testing.T) {
 				if cond.Then.Prompt != nil {
 					t.Error("Expected prompt to be nil")
 				}
-				if cond.Then.Scene != "next_scene" {
-					t.Errorf("Expected scene 'next_scene', got %q", cond.Then.Scene)
+				if cond.Then.SceneChange == nil {
+					t.Fatal("Expected SceneChange to be non-nil")
+				}
+				if cond.Then.SceneChange.To != "next_scene" {
+					t.Errorf("Expected scene 'next_scene', got %q", cond.Then.SceneChange.To)
 				}
 			},
 		},

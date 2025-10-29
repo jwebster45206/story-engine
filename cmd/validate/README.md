@@ -48,8 +48,10 @@ All IDs must be lowercase snake_case:
 
 ### Conditional Structure
 - **Non-empty conditions** - Ensures `when` clauses have at least one condition
+- **Non-empty actions** - Ensures `then` clauses have at least one action (scene_change, game_ended, or prompt)
 - **Variable names** - Validates that variable names in `vars` are lowercase snake_case
 - **Location references** - Checks that location references use proper ID format
+- **Scene references** - Validates that scene_change.to references use proper ID format
 
 ## Exit Codes
 
