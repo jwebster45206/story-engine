@@ -81,10 +81,12 @@ func (dw *DeltaWorker) ApplyVars() {
 	}
 }
 
-// ApplyConditionalOverrides evaluates conditionals and overrides delta fields based on results
+// MergeConditionals evaluates conditionals once and merges triggered conditionals into the delta
 // Also handles prompt-based actions (story events, etc.) by queuing them
 // Returns a map of triggered conditional IDs to their conditionals for logging purposes
-func (dw *DeltaWorker) ApplyConditionalOverrides() map[string]scenario.Conditional {
+// Note: This only evaluates conditionals ONCE. For cascading conditionals, the caller should
+// call this method repeatedly after applying the delta to game state.
+func (dw *DeltaWorker) MergeConditionals() map[string]scenario.Conditional {
 	if dw.scenario == nil {
 		return nil
 	}
@@ -94,13 +96,14 @@ func (dw *DeltaWorker) ApplyConditionalOverrides() map[string]scenario.Condition
 		return nil
 	}
 
-	// Process conditional actions and override delta
+	triggered := make(map[string]scenario.Conditional)
 	for conditionalID, conditional := range triggeredConditionals {
-		// Merge conditional.Then (GameStateDelta) into the existing delta
+		triggered[conditionalID] = conditional
+		// Merge into the existing delta
 		dw.mergeDelta(&conditional.Then, conditionalID)
 	}
 
-	return triggeredConditionals
+	return triggered
 }
 
 // mergeDelta merges a conditional's delta into the worker's delta, with special handling for prompts

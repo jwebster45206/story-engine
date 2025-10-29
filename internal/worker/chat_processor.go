@@ -326,34 +326,14 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 	// Apply vars first (before evaluating conditionals)
 	worker.ApplyVars()
 
-	// Evaluate conditionals and override delta based on results
-	triggeredConditionals := worker.ApplyConditionalOverrides()
-
-	// Log triggered conditionals
-	if len(triggeredConditionals) > 0 {
-		for conditionalID, conditional := range triggeredConditionals {
-			if conditional.Then.SceneChange != nil && conditional.Then.SceneChange.To != "" {
-				p.logger.Info("Conditional scene change", "game_state_id", latestGS.ID.String(), "conditional_id", conditionalID, "to_scene", conditional.Then.SceneChange.To, "reason", conditional.Then.SceneChange.Reason)
-			}
-			if conditional.Then.GameEnded != nil {
-				p.logger.Info("Conditional game ended", "game_state_id", latestGS.ID.String(), "conditional_id", conditionalID, "ended", *conditional.Then.GameEnded)
-			}
-			if conditional.Then.Prompt != nil {
-				previewLen := 50
-				prompt := *conditional.Then.Prompt
-				if len(prompt) < previewLen {
-					previewLen = len(prompt)
-				}
-				p.logger.Info("Conditional prompt triggered", "game_state_id", latestGS.ID.String(), "conditional_id", conditionalID, "prompt_preview", prompt[:previewLen]+"...")
-			}
-		}
-	}
-
-	// Apply the final delta to the game state
+	// Apply the delta from the LLM reducer to the game state
 	if err := worker.Apply(); err != nil {
-		p.logger.Error("Failed to apply delta", "error", err, "game_state_id", latestGS.ID.String())
+		p.logger.Error("Failed to apply initial delta", "error", err, "game_state_id", latestGS.ID.String())
 		return
 	}
+
+	// Now recursively evaluate and apply conditionals until none trigger
+	p.applyConditionalsCascade(worker, latestGS.ID)
 
 	// Save the updated game state
 	if err := p.storage.SaveGameState(metaCtx, latestGS.ID, latestGS); err != nil {
@@ -367,6 +347,87 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 		"duration_s", time.Since(start).Seconds(),
 		"backend_model", backendModel,
 	)
+}
+
+// applyConditionalsCascade recursively evaluates and applies conditionals until none trigger
+func (p *ChatProcessor) applyConditionalsCascade(worker *state.DeltaWorker, gameStateID uuid.UUID) {
+	const maxConditionalIterations = 10
+	allTriggeredConditionals := make(map[string]bool) // Track all triggered conditional IDs
+
+	for iteration := range maxConditionalIterations {
+		// Evaluate conditionals based on current game state
+		triggeredConditionals := worker.MergeConditionals()
+
+		if len(triggeredConditionals) == 0 {
+			// No new conditionals triggered, we're done
+			break
+		}
+
+		// Check if we've seen any of these before (shouldn't happen, but safety check)
+		foundNew := false
+		for conditionalID := range triggeredConditionals {
+			if !allTriggeredConditionals[conditionalID] {
+				allTriggeredConditionals[conditionalID] = true
+				foundNew = true
+			}
+		}
+
+		if !foundNew {
+			// All conditionals were already triggered, avoid infinite loop
+			p.logger.Warn("Conditionals re-triggered, stopping to avoid loop",
+				"game_state_id", gameStateID.String(),
+				"iteration", iteration)
+			break
+		}
+
+		// Apply vars from conditionals before applying other changes
+		worker.ApplyVars()
+
+		// Apply the conditional delta to game state
+		if err := worker.Apply(); err != nil {
+			p.logger.Error("Failed to apply conditional delta",
+				"error", err,
+				"game_state_id", gameStateID.String(),
+				"iteration", iteration)
+			return
+		}
+
+		// Log triggered conditionals
+		for conditionalID, conditional := range triggeredConditionals {
+			if conditional.Then.SceneChange != nil && conditional.Then.SceneChange.To != "" {
+				p.logger.Info("Conditional scene change",
+					"game_state_id", gameStateID.String(),
+					"conditional_id", conditionalID,
+					"to_scene", conditional.Then.SceneChange.To,
+					"iteration", iteration)
+			}
+			if conditional.Then.GameEnded != nil {
+				p.logger.Info("Conditional game ended",
+					"game_state_id", gameStateID.String(),
+					"conditional_id", conditionalID,
+					"ended", *conditional.Then.GameEnded,
+					"iteration", iteration)
+			}
+			if conditional.Then.Prompt != nil {
+				previewLen := 50
+				prompt := *conditional.Then.Prompt
+				if len(prompt) < previewLen {
+					previewLen = len(prompt)
+				}
+				p.logger.Info("Conditional prompt triggered",
+					"game_state_id", gameStateID.String(),
+					"conditional_id", conditionalID,
+					"prompt_preview", prompt[:previewLen]+"...",
+					"iteration", iteration)
+			}
+		}
+
+		if iteration == maxConditionalIterations-1 {
+			p.logger.Warn("Max conditional iterations reached",
+				"game_state_id", gameStateID.String(),
+				"iterations", maxConditionalIterations)
+		}
+	}
 }
 
 // GetGameState loads a game state by ID
