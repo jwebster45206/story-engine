@@ -100,6 +100,11 @@ func (gs *GameState) GetContingencyPrompts(s *scenario.Scenario) []string {
 		prompts = append(prompts, scenario.FilterContingencyPrompts(npc.ContingencyPrompts, gs)...)
 	}
 
+	// Location-level contingency prompts
+	if location, ok := gs.WorldLocations[gs.Location]; ok {
+		prompts = append(prompts, scenario.FilterContingencyPrompts(location.ContingencyPrompts, gs)...)
+	}
+
 	return prompts
 }
 

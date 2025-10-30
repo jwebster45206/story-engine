@@ -1,0 +1,79 @@
+{
+  "name": "Pirate Location Contingency Prompts Test",
+  "scenario": "pirate.json",
+  "seed_game_state": {
+    "scenario": "pirate.json",
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "You stand on the docks of Tortuga, the salty sea air filling your lungs. The bustling port town is alive with activity. Your ship, the Black Pearl, needs repairs before you can set sail again."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "ask about secrets at tortuga docks",
+      "user_prompt": "Is there anything hidden or secret around the docks?",
+      "expect": {
+        "user_location": "tortuga"
+      },
+      "response_not_contains": [
+        "hidden compartment",
+        "Calypso stores"
+      ]
+    },
+    {
+      "name": "go to sleepy mermaid",
+      "user_prompt": "I go south to the Sleepy Mermaid tavern.",
+      "expect": {
+        "user_location": "sleepy_mermaid"
+      }
+    },
+    {
+      "name": "ask about tavern secrets",
+      "user_prompt": "I look around the tavern carefully. Are there any hidden features in this place?",
+      "expect": {
+        "user_location": "sleepy_mermaid"
+      },
+      "response_contains": [
+        "hidden",
+        "compartment"
+      ]
+    },
+    {
+      "name": "leave tavern and go to ship",
+      "user_prompt": "I leave the tavern and head to the Black Pearl.",
+      "expect": {
+        "user_location": "black_pearl"
+      }
+    },
+    {
+      "name": "verify tavern secret not mentioned at ship",
+      "user_prompt": "What do I know about hidden compartments?",
+      "expect": {
+        "user_location": "black_pearl"
+      },
+      "response_not_contains": [
+        "bar"
+      ]
+    },
+    {
+      "name": "go to captains cabin",
+      "user_prompt": "I enter my cabin.",
+      "expect": {
+        "user_location": "captains_cabin"
+      }
+    },
+    {
+      "name": "ask about cabin significance",
+      "user_prompt": "What makes this cabin special to me?",
+      "expect": {
+        "user_location": "captains_cabin"
+      },
+      "response_contains": [
+        "treasure",
+        "sanctuary"
+      ]
+    }
+  ]
+}

@@ -145,6 +145,59 @@ Use **lowercase snake_case** for location keys (e.g., `"black_pearl"`, `"captain
 - **blocked_exits**: Inaccessible exits with explanation why
 - **items**: Objects available for pickup in this location
 - **important**: Whether the location should always appear in gamestate prompts (generally should be omitted/false)
+- **contingency_prompts**: Location-specific narrative hints shown only when the player is at this location
+
+### Location Contingency Prompts
+
+Locations can have their own contingency prompts that provide context-specific information to the AI narrator. These prompts are **only included when the player is currently at that location**, making them perfect for location-specific secrets, atmosphere, or narrative hints.
+
+```json
+"locations": {
+  "sleepy_mermaid": {
+    "name": "Sleepy Mermaid",
+    "description": "A rowdy tavern filled with pirates.",
+    "exits": {
+      "north": "tortuga"
+    },
+    "contingency_prompts": [
+      "Behind the bar, there is a hidden compartment where Calypso stores valuable items and secrets."
+    ]
+  },
+  "captains_cabin": {
+    "name": "Captain's Cabin",
+    "description": "Your personal quarters on the ship.",
+    "exits": {
+      "cabin door": "black_pearl"
+    },
+    "contingency_prompts": [
+      "The cabin contains your personal collection of treasure and maps - this is your private sanctuary.",
+      {
+        "prompt": "A secret drawer in your desk contains emergency supplies.",
+        "when": {
+          "vars": {
+            "searched_desk": "true"
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+**Location contingency prompts support the same conditional format as other contingency prompts:**
+- Simple strings (always shown when at location)
+- Objects with `prompt` and `when` fields for conditional display
+
+**Use location contingency prompts for:**
+- **Hidden features or secrets** only visible/relevant at that location
+- **Atmosphere and mood** specific to the location
+- **Location-specific knowledge** the AI should have (but not necessarily reveal immediately)
+- **Environmental clues** that help guide the player
+- **Safety information** like "This is a dangerous area with traps"
+
+**When the player is at the location**, these prompts are added to the system context. **When the player is elsewhere**, they are completely omitted. This creates genuine location-specific knowledge that the AI only has when appropriate.
+
+**Example use case:** A tavern has a secret escape hatch. The location's contingency prompt tells the AI about it, but only when the player is in the tavern. When the player is elsewhere, the AI has no knowledge of this secret, making the discovery feel more authentic.
 
 ## NPCs (Non-Player Characters)
 

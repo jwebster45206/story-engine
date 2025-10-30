@@ -79,14 +79,20 @@ func (v *ScenarioValidator) validateScenario(s *scenario.Scenario, filename stri
 	// Validate opening_scene ID
 	v.validateIDFormat("opening_scene", s.OpeningScene)
 
-	// Validate location IDs
-	for locationID := range s.Locations {
+	// Validate location IDs and their contingency prompts
+	for locationID, location := range s.Locations {
 		v.validateIDFormat("location ID", locationID)
+		for _, cp := range location.ContingencyPrompts {
+			v.validateContingencyPrompt(&cp)
+		}
 	}
 
-	// Validate NPC IDs
-	for npcID := range s.NPCs {
+	// Validate NPC IDs and their contingency prompts
+	for npcID, npc := range s.NPCs {
 		v.validateIDFormat("NPC ID", npcID)
+		for _, cp := range npc.ContingencyPrompts {
+			v.validateContingencyPrompt(&cp)
+		}
 	}
 
 	// Validate scene IDs and their contents
@@ -101,14 +107,20 @@ func (v *ScenarioValidator) validateScenario(s *scenario.Scenario, filename stri
 }
 
 func (v *ScenarioValidator) validateScene(scene *scenario.Scene, sceneID string) {
-	// Validate location IDs within the scene
-	for locationID := range scene.Locations {
+	// Validate location IDs and their contingency prompts within the scene
+	for locationID, location := range scene.Locations {
 		v.validateIDFormat("scene location ID", locationID)
+		for _, cp := range location.ContingencyPrompts {
+			v.validateContingencyPrompt(&cp)
+		}
 	}
 
-	// Validate NPC IDs within the scene
-	for npcID := range scene.NPCs {
+	// Validate NPC IDs and their contingency prompts within the scene
+	for npcID, npc := range scene.NPCs {
 		v.validateIDFormat("scene NPC ID", npcID)
+		for _, cp := range npc.ContingencyPrompts {
+			v.validateContingencyPrompt(&cp)
+		}
 	}
 
 	// Validate conditional keys (map keys are the conditional IDs)
