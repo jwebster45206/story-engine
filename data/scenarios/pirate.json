@@ -41,6 +41,9 @@
         "bag of gems",
         "map of the Caribbean",
         "letter from Calypso"
+      ],
+      "contingency_prompts": [
+        "The cabin contains your personal collection of treasure and maps - this is your private sanctuary."
       ]
     },
     "sleepy_mermaid": {
@@ -49,7 +52,10 @@
       "exits": {
         "north": "tortuga",
         "back door": "tortuga_market"
-      }
+      },
+      "contingency_prompts": [
+        "Behind the bar, there is a hidden compartment where Calypso stores valuable items and secrets."
+      ]
     },
     "tortuga_market": {
       "name": "Tortuga Market",
@@ -207,6 +213,10 @@
             "wanted poster with a handsome scoundrel's face",
             "chest of 510 gold doubloons",
             "british naval uniform"
+          ],
+          "contingency_prompts": [
+            "British soldiers patrol regularly - you need to blend in or move quickly.",
+            "The guards are trained to spot pirates and will arrest anyone acting suspiciously."
           ]
         },
         "sleepy_mermaid": {
