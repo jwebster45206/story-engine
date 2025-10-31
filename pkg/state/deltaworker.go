@@ -319,6 +319,10 @@ func (dw *DeltaWorker) Apply() error {
 	// Ensure that items are singletons
 	dw.gs.NormalizeItems()
 
+	// Sync locations for NPCs that are following other actors
+	// This MUST be last to ensure we sync to final locations after all other changes
+	dw.syncFollowingNPCs()
+
 	return nil
 }
 
@@ -614,4 +618,60 @@ func toSnakeCase(s string) string {
 		prevUnderscore = false
 	}
 	return out.String()
+}
+
+// syncFollowingNPCs updates locations of NPCs that are following other actors
+// This runs AFTER all other delta operations complete to ensure location changes are processed first
+func (dw *DeltaWorker) syncFollowingNPCs() {
+	for npcKey, npc := range dw.gs.NPCs {
+		if npc.Following == "" {
+			continue // Not following anyone
+		}
+
+		var targetLocation string
+
+		if npc.Following == "pc" {
+			// Following the player character
+			targetLocation = dw.gs.Location
+		} else {
+			// Following another NPC
+			followedNPC, exists := dw.gs.NPCs[npc.Following]
+			if !exists {
+				// Try case-insensitive match
+				for _, n := range dw.gs.NPCs {
+					if strings.ToLower(n.Name) == strings.ToLower(npc.Following) {
+						followedNPC = n
+						exists = true
+						break
+					}
+				}
+			}
+
+			if !exists {
+				if dw.logger != nil {
+					dw.logger.Warn("NPC following target not found",
+						"npc", npcKey,
+						"following", npc.Following)
+				}
+				continue
+			}
+
+			targetLocation = followedNPC.Location
+		}
+
+		// Update NPC location if it differs from target
+		if npc.Location != targetLocation {
+			oldLocation := npc.Location
+			npc.Location = targetLocation
+			dw.gs.NPCs[npcKey] = npc
+
+			if dw.logger != nil {
+				dw.logger.Info("NPC location synced (following)",
+					"npc", npcKey,
+					"from", oldLocation,
+					"to", targetLocation,
+					"following", npc.Following)
+			}
+		}
+	}
 }

@@ -1,0 +1,70 @@
+{
+    "name": "Pirate NPC Following Test",
+    "scenario": "x.pirate_following_test.json",
+    "seed_game_state": {
+        "scenario": "x.pirate_following_test.json",
+        "scene_name": "shipwright",
+        "user_location": "tortuga",
+        "turn_counter": 1,
+        "scene_turn_counter": 1,
+        "npcs": {
+            "gibbs": {
+                "name": "Gibbs",
+                "type": "first mate",
+                "disposition": "loyal and wise",
+                "description": "Your trusted first mate who has sailed with you through countless adventures.",
+                "location": "tortuga",
+                "following": "pc",
+                "items": ["spyglass"]
+            },
+            "calypso": {
+                "name": "Calypso",
+                "type": "bartender",
+                "disposition": "friendly but mysterious",
+                "description": "A bartender known for her enchanting stories.",
+                "location": "sleepy_mermaid"
+            }
+        },
+        "chat_history": [
+            {
+                "role": "assistant",
+                "content": "You stand in the bustling port of Tortuga with your loyal first mate Gibbs at your side. The Black Pearl awaits repairs, but first you may wish to explore the town."
+            }
+        ]
+    },
+    "steps": [
+        {
+            "name": "Go to pearl with Gibbs",
+            "user_prompt": "I walk east to the Black Pearl.",
+            "expect": {
+                "user_location": "black_pearl",
+                "npc_locations": {
+                    "gibbs": "black_pearl",
+                    "calypso": "sleepy_mermaid"
+                }
+            }
+        },
+        {
+            "name": "Back to Tortuga with Gibbs",
+            "user_prompt": "I head back west to Tortuga.",
+            "expect": {
+                "user_location": "tortuga",
+                "npc_locations": {
+                    "gibbs": "tortuga",
+                    "calypso": "sleepy_mermaid"
+                }
+            }
+        },
+        {
+            "name": "Sleepy Mermaid with Gibbs",
+            "user_prompt": "I enter the Sleepy Mermaid tavern, dramatically. ",
+            "expect": {
+                "user_location": "sleepy_mermaid",
+                "npc_locations": {
+                    "gibbs": "sleepy_mermaid",
+                    "calypso": "sleepy_mermaid"
+                }
+            }
+        }
+    ]
+}

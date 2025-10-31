@@ -247,6 +247,57 @@ Both will work correctly.
 - **description**: Physical appearance and notable characteristics
 - **location**: Current location of the NPC (use location ID)
 - **items**: Objects this NPC possesses
+- **following**: (Optional) Who this NPC follows - see "NPC Following" section below
+
+### NPC Following
+
+NPCs can automatically follow the player or other NPCs by setting the `following` field. When an NPC is following someone, their location is **automatically synced** each turn at the deterministic layer - the LLM does not need to manage this.
+
+**Following Field Values:**
+- `"pc"` - NPC follows the player character
+- `"<npc_id>"` - NPC follows another NPC (using the NPC's ID or display name)
+- `""` or omitted - NPC does not follow anyone
+
+**Example:**
+```json
+"npcs": {
+  "gibbs": {
+    "name": "Gibbs",
+    "type": "first mate",
+    "disposition": "loyal and protective",
+    "description": "Your trusted first mate who has sailed with you for years.",
+    "location": "tortuga",
+    "following": "pc"
+  },
+  "companion": {
+    "name": "Companion",
+    "type": "sailor",
+    "disposition": "eager but inexperienced",
+    "description": "A young sailor learning the ropes.",
+    "location": "ship",
+    "following": "gibbs"
+  }
+}
+```
+
+**How Following Works:**
+1. The following sync happens **after** all other operations each turn (location changes, NPC movements, item operations, etc.)
+2. NPCs can form **chains** - if Companion follows Gibbs, and Gibbs follows the player, Companion will end up at the player's location
+3. Matching is **case-insensitive** for NPC names
+4. If the target is not found (invalid NPC ID or "pc"), the NPC stays at their current location
+5. Following sync is logged to help with debugging
+
+**When to Use Following:**
+- **Companion NPCs** that should always travel with the player
+- **Bodyguards or escorts** protecting a specific NPC
+- **Groups of NPCs** that move together (one follows the player, others follow that NPC)
+- **Pet or creature companions** that stick with the player
+
+**Important Notes:**
+- The `following` field is a **deterministic mechanism**, not a suggestion. Following NPCs will **always** sync to their target's location each turn.
+- The LLM should **not** attempt to move following NPCs manually - the engine handles this automatically.
+- Following takes precedence over any location changes the LLM might suggest for that NPC.
+- NPCs can stop following by using a contingency rule to clear the field: `"When the companion leaves the party, set companion's following field to empty."`
 
 ## Contingency System
 

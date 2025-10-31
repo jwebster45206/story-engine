@@ -104,6 +104,9 @@ func (v *ScenarioValidator) validateScenario(s *scenario.Scenario, filename stri
 	for _, cp := range s.ContingencyPrompts {
 		v.validateContingencyPrompt(&cp)
 	}
+
+	// Validate NPC following field references
+	v.validateFollowingReferences(s)
 }
 
 func (v *ScenarioValidator) validateScene(scene *scenario.Scene, sceneID string) {
@@ -214,6 +217,45 @@ func (v *ScenarioValidator) validateIDFormat(fieldName, id string) {
 
 func (v *ScenarioValidator) addError(msg string) {
 	v.errors = append(v.errors, "  - "+msg)
+}
+
+// validateFollowingReferences checks that NPC 'following' fields reference valid targets
+func (v *ScenarioValidator) validateFollowingReferences(s *scenario.Scenario) {
+	// Collect all NPC IDs and names from scenario level
+	allNPCs := make(map[string]string) // map[id]name
+	for npcID, npc := range s.NPCs {
+		allNPCs[npcID] = npc.Name
+	}
+	for _, scene := range s.Scenes {
+		for npcID, npc := range scene.NPCs {
+			allNPCs[npcID] = npc.Name
+		}
+	}
+
+	for npcID, npc := range s.NPCs {
+		v.validateNPCFollowing(npcID, npc.Following, allNPCs)
+	}
+	for sceneID, scene := range s.Scenes {
+		for npcID, npc := range scene.NPCs {
+			v.validateNPCFollowing(fmt.Sprintf("%s (scene: %s)", npcID, sceneID), npc.Following, allNPCs)
+		}
+	}
+}
+
+func (v *ScenarioValidator) validateNPCFollowing(npcContext string, following string, allNPCs map[string]string) {
+	if following == "" || strings.ToLower(following) == "pc" {
+		return
+	}
+	if !isValidID(following) {
+		v.addError(fmt.Sprintf("NPC '%s' has invalid 'following' field '%s' - must be a valid NPC ID/name or 'pc'", npcContext, following))
+		return
+	}
+	for npcID, npcName := range allNPCs {
+		if npcID == following || npcName == following {
+			return // Valid reference found
+		}
+	}
+	v.addError(fmt.Sprintf("NPC '%s' has invalid 'following' field '%s' - must be 'pc' or a valid NPC ID/name", npcContext, following))
 }
 
 var (
