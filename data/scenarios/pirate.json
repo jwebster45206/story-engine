@@ -254,7 +254,8 @@
         "If the player has previously paid the shipwright 500 gold, the scene changes to 'calypsos_map'.",
         "When the player has returned to the Black Pearl and paid the shipwright 500 gold, set the variable \"shipwright_paid_in_full\" to \"true\".",
         "If the player is caught stealing at the British Docks without proper disguise, they are captured and the game ends with imprisonment.",
-        "If the player attacks British guards directly, the player is overwhelmed and captured and the game ends with imprisonment."
+        "If the player attacks British guards directly, the player is overwhelmed and captured and the game ends with imprisonment.",
+        "When Davey agrees to help the player or follow the player, set the variable \"davey_recruited\" to \"true\"."
       ],
       "vars": {
         "disguise_acquired": "false",
