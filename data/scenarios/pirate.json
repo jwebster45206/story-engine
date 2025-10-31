@@ -260,7 +260,8 @@
         "disguise_acquired": "false",
         "docks_accessed": "false",
         "gold_acquired": "false",
-        "shipwright_paid_in_full": "false"
+        "shipwright_paid_in_full": "false",
+        "davey_recruited": "false"
       },
       "conditionals": {
         "british_docks_to_calypsos_map": {
@@ -268,6 +269,19 @@
             "vars": {"shipwright_paid_in_full": "true"}
           },
           "then": {"scene_change": {"to": "calypsos_map", "reason": "conditional"}}
+        },
+        "davey_follows_player": {
+          "when": {
+            "vars": {"davey_recruited": "true"}
+          },
+          "then": {
+            "npc_events": [
+              {
+                "npc_id": "davey",
+                "set_following": "pc"
+              }
+            ]
+          }
         }
       }
     },

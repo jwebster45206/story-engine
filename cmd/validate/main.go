@@ -166,7 +166,26 @@ func (v *ScenarioValidator) validateConditional(conditional *scenario.Conditiona
 	if len(conditional.Then.ItemEvents) > 0 {
 		actionCount++
 	}
-	if len(conditional.Then.NPCMovements) > 0 {
+	if len(conditional.Then.NPCEvents) > 0 {
+		for _, npcEvent := range conditional.Then.NPCEvents {
+			// Validate NPC ID format
+			if npcEvent.NPCID != "" {
+				v.validateIDFormat("npc_event npc_id", npcEvent.NPCID)
+			}
+
+			// Validate location if set
+			if npcEvent.SetLocation != nil && *npcEvent.SetLocation != "" {
+				v.validateIDFormat("npc_event set_location", *npcEvent.SetLocation)
+			}
+
+			// Validate following if set
+			if npcEvent.SetFollowing != nil {
+				following := *npcEvent.SetFollowing
+				if following != "" && following != "pc" {
+					v.validateIDFormat("npc_event set_following", following)
+				}
+			}
+		}
 		actionCount++
 	}
 	if conditional.Then.UserLocation != "" {
