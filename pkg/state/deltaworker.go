@@ -146,9 +146,9 @@ func (dw *DeltaWorker) mergeDelta(conditionalDelta *conditionals.GameStateDelta,
 		dw.delta.ItemEvents = append(dw.delta.ItemEvents, conditionalDelta.ItemEvents...)
 	}
 
-	// Merge NPC movements
-	if len(conditionalDelta.NPCMovements) > 0 {
-		dw.delta.NPCMovements = append(dw.delta.NPCMovements, conditionalDelta.NPCMovements...)
+	// Merge NPC events
+	if len(conditionalDelta.NPCEvents) > 0 {
+		dw.delta.NPCEvents = append(dw.delta.NPCEvents, conditionalDelta.NPCEvents...)
 	}
 
 	// Handle prompt - any prompt in a conditional is treated as a story event
@@ -306,9 +306,9 @@ func (dw *DeltaWorker) Apply() error {
 		}
 	}
 
-	// Handle NPC movements
-	for _, npcMovement := range dw.delta.NPCMovements {
-		dw.handleNPCMovement(npcMovement)
+	// Handle NPC events
+	for _, npcEvent := range dw.delta.NPCEvents {
+		dw.handleNPCEvent(npcEvent)
 	}
 
 	// Handle Game End
@@ -411,12 +411,9 @@ func (dw *DeltaWorker) handleUseItem(itemEvent itemEvent) {
 	}
 }
 
-// handleNPCMovement updates an NPC's location
-func (dw *DeltaWorker) handleNPCMovement(movement conditionals.NPCMovement) {
-	// Normalize the NPC identifier
-	npcKey := strings.ToLower(strings.TrimSpace(movement.NPCID))
-
-	// Try to find the NPC in game state by key first
+// handleNPCEvent processes an NPC state change event
+func (dw *DeltaWorker) handleNPCEvent(event conditionals.NPCEvent) {
+	npcKey := strings.ToLower(strings.TrimSpace(event.NPCID))
 	npc, npcExists := dw.gs.NPCs[npcKey]
 	if !npcExists {
 		// Try matching by NPC name
@@ -432,46 +429,87 @@ func (dw *DeltaWorker) handleNPCMovement(movement conditionals.NPCMovement) {
 
 	if !npcExists {
 		if dw.logger != nil {
-			dw.logger.Warn("NPC not found for movement",
-				"npc_id", movement.NPCID,
-				"to_location", movement.ToLocation)
+			dw.logger.Warn("NPC not found for event",
+				"npc_id", event.NPCID)
 		}
 		return
 	}
 
-	// Normalize and verify the destination location exists
-	locationKey := strings.ToLower(strings.TrimSpace(movement.ToLocation))
-	_, locationExists := dw.gs.WorldLocations[locationKey]
-	if !locationExists {
-		// Try matching by location name
-		for key, loc := range dw.gs.WorldLocations {
-			if strings.ToLower(loc.Name) == locationKey {
-				locationKey = key
-				locationExists = true
-				break
+	modified := false
+
+	// Handle location change
+	if event.SetLocation != nil {
+		locationKey := strings.ToLower(strings.TrimSpace(*event.SetLocation))
+		_, locationExists := dw.gs.WorldLocations[locationKey]
+
+		if !locationExists {
+			// Try matching by location name
+			for key, loc := range dw.gs.WorldLocations {
+				if strings.ToLower(loc.Name) == locationKey {
+					locationKey = key
+					locationExists = true
+					break
+				}
 			}
 		}
-	}
 
-	if !locationExists {
-		if dw.logger != nil {
-			dw.logger.Warn("Location not found for NPC movement",
-				"npc_id", movement.NPCID,
-				"to_location", movement.ToLocation)
+		if locationExists {
+			oldLocation := npc.Location
+			npc.Location = locationKey
+			modified = true
+
+			if dw.logger != nil {
+				dw.logger.Info("NPC location changed",
+					"npc", npcKey,
+					"from", oldLocation,
+					"to", locationKey)
+			}
+		} else if dw.logger != nil {
+			dw.logger.Warn("Location not found for NPC event",
+				"npc_id", event.NPCID,
+				"set_location", *event.SetLocation)
 		}
-		return
 	}
 
-	// Update the NPC's location in game state
-	oldLocation := npc.Location
-	npc.Location = locationKey
-	dw.gs.NPCs[npcKey] = npc
+	// Handle following attribute
+	if event.SetFollowing != nil {
+		following := strings.TrimSpace(*event.SetFollowing)
 
-	if dw.logger != nil {
-		dw.logger.Info("NPC moved",
-			"npc", npcKey,
-			"from", oldLocation,
-			"to", locationKey)
+		// Validate following target
+		if following != "" && following != "pc" {
+			// Should be a valid NPC ID
+			_, exists := dw.gs.NPCs[following]
+			if !exists {
+				// Try case-insensitive match
+				found := false
+				for key, n := range dw.gs.NPCs {
+					if strings.EqualFold(n.Name, following) {
+						following = key
+						found = true
+						break
+					}
+				}
+				if !found && dw.logger != nil {
+					dw.logger.Warn("Following target not found",
+						"npc", npcKey,
+						"following", following)
+				}
+			}
+		}
+
+		npc.Following = following
+		modified = true
+
+		if dw.logger != nil {
+			dw.logger.Info("NPC following changed",
+				"npc", npcKey,
+				"following", following)
+		}
+	}
+
+	// Save changes
+	if modified {
+		dw.gs.NPCs[npcKey] = npc
 	}
 }
 
