@@ -639,7 +639,7 @@ func (dw *DeltaWorker) syncFollowingNPCs() {
 			if !exists {
 				// Try case-insensitive match
 				for _, n := range dw.gs.NPCs {
-					if strings.ToLower(n.Name) == strings.ToLower(npc.Following) {
+					if strings.EqualFold(n.Name, npc.Following) {
 						followedNPC = n
 						exists = true
 						break
