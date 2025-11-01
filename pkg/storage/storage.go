@@ -34,4 +34,9 @@ type Storage interface {
 	// Use actor.NewPCFromSpec to build the full PC from the returned spec
 	GetPCSpec(ctx context.Context, pcID string) (*actor.PCSpec, error)
 	ListPCs(ctx context.Context) ([]string, error)
+
+	// Monster operations (filesystem-backed, returns Monster template)
+	// Use actor.NewMonster to create instances from the template
+	GetMonster(ctx context.Context, templateID string) (*actor.Monster, error)
+	ListMonsters(ctx context.Context) (map[string]string, error) // map[name]templateID
 }

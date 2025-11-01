@@ -1,0 +1,13 @@
+{
+  "id": "giant_rat",
+  "name": "Giant Rat",
+  "description": "A filthy, red-eyed rodent the size of a dog. Its matted fur is crawling with fleas, and its yellow teeth drip with disease.",
+  "ac": 8,
+  "hp": 4,
+  "max_hp": 4,
+  "combat_modifiers": {
+    "bite": 2
+  },
+  "items": ["rat_pelt"],
+  "drop_items_on_defeat": true
+}

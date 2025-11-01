@@ -1,0 +1,22 @@
+{
+  "id": "goblin",
+  "name": "Goblin",
+  "description": "A small, green-skinned humanoid with pointed ears and sharp teeth. It wears tattered leather armor and clutches a rusty dagger.",
+  "ac": 15,
+  "hp": 7,
+  "max_hp": 7,
+  "attributes": {
+    "strength": 8,
+    "dexterity": 14,
+    "constitution": 10,
+    "intelligence": 10,
+    "wisdom": 8,
+    "charisma": 8
+  },
+  "combat_modifiers": {
+    "scimitar": 4,
+    "shortbow": 4
+  },
+  "items": ["dagger", "gold_coin"],
+  "drop_items_on_defeat": true
+}
