@@ -1,0 +1,22 @@
+{
+  "id": "skeleton",
+  "name": "Skeleton",
+  "description": "An animated pile of bones, held together by dark magic. Its empty eye sockets glow with an eerie blue light.",
+  "ac": 13,
+  "hp": 13,
+  "max_hp": 13,
+  "attributes": {
+    "strength": 10,
+    "dexterity": 14,
+    "constitution": 15,
+    "intelligence": 6,
+    "wisdom": 8,
+    "charisma": 5
+  },
+  "combat_modifiers": {
+    "shortsword": 4,
+    "shortbow": 4
+  },
+  "items": ["old_bones", "rusty_sword"],
+  "drop_items_on_defeat": true
+}

@@ -18,6 +18,7 @@ type MockStorage struct {
 	scenarios  map[string]*scenario.Scenario
 	narrators  map[string]*scenario.Narrator
 	pcSpecs    map[string]*actor.PCSpec
+	monsters   map[string]*actor.Monster
 	pingError  error
 }
 
@@ -31,6 +32,7 @@ func NewMockStorage() *MockStorage {
 		scenarios:  make(map[string]*scenario.Scenario),
 		narrators:  make(map[string]*scenario.Narrator),
 		pcSpecs:    make(map[string]*actor.PCSpec),
+		monsters:   make(map[string]*actor.Monster),
 	}
 }
 
@@ -190,4 +192,35 @@ func (m *MockStorage) AddPCSpec(pcID string, spec *actor.PCSpec) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.pcSpecs[pcID] = spec
+}
+
+// GetMonster mocks getting a monster template by ID
+func (m *MockStorage) GetMonster(ctx context.Context, templateID string) (*actor.Monster, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	monster, exists := m.monsters[templateID]
+	if !exists {
+		return nil, errors.New("monster template not found")
+	}
+	return monster, nil
+}
+
+// ListMonsters mocks listing monsters
+func (m *MockStorage) ListMonsters(ctx context.Context) (map[string]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	result := make(map[string]string)
+	for templateID, monster := range m.monsters {
+		result[monster.Name] = templateID
+	}
+	return result, nil
+}
+
+// AddMonster adds a monster template to the mock storage (for testing)
+func (m *MockStorage) AddMonster(templateID string, monster *actor.Monster) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.monsters[templateID] = monster
 }

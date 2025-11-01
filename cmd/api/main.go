@@ -121,6 +121,10 @@ func main() {
 	mux.Handle("/v1/narrators", narratorHandler)
 	mux.Handle("/v1/narrators/", narratorHandler)
 
+	monsterHandler := handlers.NewMonsterHandler(log, storageService)
+	mux.Handle("/v1/monsters", monsterHandler)
+	mux.Handle("/v1/monsters/", monsterHandler)
+
 	handler := middleware.Logger(mux)
 	server := &http.Server{
 		Addr:        ":" + cfg.Port,
