@@ -1,0 +1,64 @@
+{
+  "name": "Pirate NPC Events Test",
+  "scenario": "pirate.json",
+  "seed_game_state": {
+    "scenario": "pirate.json",
+    "scene": "british_docks",
+    "location": "sleepy_mermaid",
+    "vars": {
+      "ship_repair_ledger_acquired": "true",
+      "shipwright_hired": "true",
+      "davey_recruited": "false"
+    },
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "Calypso smiles warmly as you finish paying the shipwright. 'Well done, Captain! Your ship will be seaworthy soon. But if you're planning anything dangerous, you might want to seek out old Davey in Tortuga. He's a skilled pirate who knows his way around the British docks.'"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "look for davey",
+      "user_prompt": "I head to Tortuga to look for Davey.",
+      "expect": {
+        "user_location": "tortuga",
+        "npcs": {
+          "davey": {
+            "location": "tortuga",
+            "following": ""
+          }
+        }
+      }
+    },
+    {
+      "name": "recruit davey - following should activate via conditional",
+      "user_prompt": "I approach Davey and say, 'Davey, old friend! I need your help infiltrating the British docks. There's a fair bit of coin in it for you if you're interested.'",
+      "expect": {
+        "user_location": "tortuga",
+        "vars": {
+          "davey_recruited": "true"
+        },
+        "npcs": {
+          "davey": {
+            "location": "tortuga",
+            "following": "pc"
+          }
+        }
+      }
+    },
+    {
+      "name": "move to black pearl - davey should follow",
+      "user_prompt": "I head to the Black Pearl.",
+      "expect": {
+        "user_location": "black_pearl",
+        "npcs": {
+          "davey": {
+            "location": "black_pearl",
+            "following": "pc"
+          }
+        }
+      }
+    }
+  ]
+}

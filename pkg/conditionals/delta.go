@@ -23,10 +23,7 @@ type GameStateDelta struct {
 		Consumed *bool `json:"consumed,omitempty"`
 	} `json:"item_events,omitempty"`
 
-	// TODO: Replace NPCMovements with more general NPCEvents structure
-	// to track NPC state changes more generally. Also add a "following" field to
-	// NPC struct to track if NPC is following another actor.
-	NPCMovements []NPCMovement `json:"npc_movements,omitempty"`
+	NPCEvents []NPCEvent `json:"npc_events,omitempty"`
 
 	// TODO: Maybe add LocationEvents structure to track stateful elements of locations:
 	// such as exits being blocked/unblocked, conditions changing, etc.
@@ -36,8 +33,9 @@ type GameStateDelta struct {
 	Prompt    *string           `json:"prompt,omitempty"` // Narrative prompt to inject (use "STORY EVENT: " prefix for story events)
 }
 
-// NPCMovement represents an NPC changing location
-type NPCMovement struct {
-	NPCID      string `json:"npc_id"`
-	ToLocation string `json:"to_location"`
+// NPCEvent represents a change to an NPC's state
+type NPCEvent struct {
+	NPCID        string  `json:"npc_id"`
+	SetLocation  *string `json:"set_location,omitempty"`  // Set NPC to specific location
+	SetFollowing *string `json:"set_following,omitempty"` // Set following target ("pc", npc_id, or "" to clear).
 }

@@ -919,6 +919,57 @@ The `then` clause now uses an object structure to specify different types of act
 }
 ```
 
+**NPC Events (Location Changes):**
+```json
+"then": {
+  "npc_events": [
+    {
+      "npc_id": "guard",
+      "set_location": "throne_room"
+    }
+  ]
+}
+```
+
+**NPC Events (Following Behavior - Conditionals Only):**
+```json
+"then": {
+  "npc_events": [
+    {
+      "npc_id": "loyal_companion",
+      "set_following": "pc"
+    }
+  ]
+}
+```
+
+**Combined location and following:**
+```json
+"then": {
+  "npc_events": [
+    {
+      "npc_id": "gibbs",
+      "set_location": "black_pearl",
+      "set_following": "pc"
+    }
+  ]
+}
+```
+
+**Stop following (set to empty string):**
+```json
+"then": {
+  "npc_events": [
+    {
+      "npc_id": "gibbs",
+      "set_following": ""
+    }
+  ]
+}
+```
+
+**Important**: The LLM reducer can only emit `set_location` in `npc_events`. The `set_following` field is only available in conditional rules defined in scenario JSON.
+
 **Multiple conditions (all must be true):**
 ```json
 "conditionals": {

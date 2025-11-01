@@ -440,7 +440,7 @@ func (a *AnthropicService) getDeltaUpdateTool() AnthropicTool {
 						"required": []string{"item", "action"},
 					},
 				},
-				"npc_movements": map[string]any{
+				"npc_events": map[string]any{
 					"type": "array",
 					"items": map[string]any{
 						"type":                 "object",
@@ -449,11 +449,11 @@ func (a *AnthropicService) getDeltaUpdateTool() AnthropicTool {
 							"npc_id": map[string]any{
 								"type": "string",
 							},
-							"to_location": map[string]any{
+							"set_location": map[string]any{
 								"type": "string",
 							},
 						},
-						"required": []string{"npc_id", "to_location"},
+						"required": []string{"npc_id"},
 					},
 				},
 				"set_vars": map[string]any{
@@ -466,7 +466,7 @@ func (a *AnthropicService) getDeltaUpdateTool() AnthropicTool {
 					"type": "boolean",
 				},
 			},
-			"required": []string{"user_location", "scene_change", "item_events", "npc_movements", "game_ended"},
+			"required": []string{"user_location", "scene_change", "item_events", "npc_events", "set_vars", "game_ended"},
 		},
 	}
 }

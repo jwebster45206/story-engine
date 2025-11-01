@@ -67,7 +67,7 @@ OUTPUT SCHEMA (strict)
 - item_events: array of { item, action, from?, to?, consumed?, evidence? } (always required, may be empty)
   • action ∈ {"acquire","give","drop","move","use"}
   • from/to.type ∈ {"player","npc","location"}; include name when type ≠ "player"
-- npc_movements: array of { npc_id, to_location } (always required, may be empty)
+- npc_events: array of { npc_id, set_location } (always required, may be empty)
 - set_vars: object (always required, may be empty)
 - game_ended: boolean (always required) 
 
@@ -91,21 +91,21 @@ ITEMS
   • use: player uses an item they hold; set consumed=true only if narrative says so.
 - Use canonical item IDs from the scenario/state.
 
-NPC MOVEMENTS
+NPC EVENTS
 - Track NPC location changes when narrative explicitly indicates movement.
   • When an NPC follows the player to a new location
   • When an NPC is described as moving, leaving, or going somewhere
   • When an NPC is explicitly told to go somewhere and complies
-- Format: {"npc_id": "gibbs", "to_location": "sleepy_mermaid"}
+- Format: {"npc_id": "gibbs", "set_location": "sleepy_mermaid"}
 - Use canonical NPC IDs and location IDs from the scenario/state
 - DO NOT track movements when:
   • NPCs are merely mentioned or thought about
   • Describing past events or speculation
   • NPC is described as being "somewhere" without active movement
 - Examples:
-  • "Gibbs follows you into the tavern." + user_location="sleepy_mermaid" → npc_movements:[{npc_id:"gibbs", to_location:"sleepy_mermaid"}]
-  • "You tell Calypso to meet you at the docks. She nods and heads out." + docks="port_royal_docks" → npc_movements:[{npc_id:"calypso", to_location:"port_royal_docks"}]
-  • "You think about Gibbs back at the ship." → npc_movements:[] (no movement, just mention)
+  • "Gibbs follows you into the tavern." + user_location="sleepy_mermaid" → npc_events:[{npc_id:"gibbs", set_location:"sleepy_mermaid"}]
+  • "You tell Calypso to meet you at the docks. She nods and heads out." + docks="port_royal_docks" → npc_events:[{npc_id:"calypso", set_location:"port_royal_docks"}]
+  • "You think about Gibbs back at the ship." → npc_events:[] (no movement, just mention)
 
 SCENES
 - If a rule triggers a change in scene name, it is VERY IMPORTANT to include 'scene_change {to, reason}'.
