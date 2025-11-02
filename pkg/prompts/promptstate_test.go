@@ -285,3 +285,57 @@ func TestPromptState_ToString_NPCWithoutDisposition(t *testing.T) {
 		t.Error("Should not have empty parentheses for NPC without disposition")
 	}
 }
+
+func TestPromptState_ToString_WithMonsters(t *testing.T) {
+	ps := &PromptState{
+		Location: "dungeon",
+		WorldLocations: map[string]scenario.Location{
+			"dungeon": {
+				Name:        "Dark Dungeon",
+				Description: "A dank underground chamber.",
+			},
+		},
+		Monsters: map[string]actor.Monster{
+			"rat1": {
+				ID:          "rat1",
+				Name:        "Giant Rat",
+				Description: "A filthy, red-eyed rodent the size of a dog.",
+				AC:          12,
+				HP:          9,
+				MaxHP:       9,
+				Location:    "dungeon",
+			},
+			"skeleton1": {
+				ID:          "skeleton1",
+				Name:        "Skeleton Warrior",
+				Description: "An animated skeleton wielding a rusty sword.",
+				AC:          13,
+				HP:          15,
+				MaxHP:       20,
+				Location:    "dungeon",
+			},
+		},
+	}
+
+	result := ps.ToString()
+
+	// Check that MONSTERS section exists
+	if !strings.Contains(result, "MONSTERS:") {
+		t.Error("Missing MONSTERS section")
+	}
+
+	// Check for monster details
+	if !strings.Contains(result, "Giant Rat (AC: 12, HP: 9/9)") {
+		t.Error("Missing Giant Rat with stats")
+	}
+	if !strings.Contains(result, "A filthy, red-eyed rodent the size of a dog.") {
+		t.Error("Missing Giant Rat description")
+	}
+
+	if !strings.Contains(result, "Skeleton Warrior (AC: 13, HP: 15/20)") {
+		t.Error("Missing Skeleton Warrior with stats")
+	}
+	if !strings.Contains(result, "An animated skeleton wielding a rusty sword.") {
+		t.Error("Missing Skeleton Warrior description")
+	}
+}

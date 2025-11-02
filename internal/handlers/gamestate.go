@@ -410,7 +410,6 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 					continue
 				}
 
-				// Ensure the monster definition has required fields set
 				monster.ID = instanceID
 				monster.Location = locName
 
