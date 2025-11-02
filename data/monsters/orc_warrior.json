@@ -1,0 +1,22 @@
+{
+  "template_id": "orc_warrior",
+  "name": "Orc Warrior",
+  "description": "A hulking orc clad in crude iron armor, brandishing a notched battleaxe. Battle scars crisscross its green skin.",
+  "ac": 13,
+  "hp": 15,
+  "max_hp": 15,
+  "attributes": {
+    "strength": 16,
+    "dexterity": 12,
+    "constitution": 16,
+    "intelligence": 7,
+    "wisdom": 11,
+    "charisma": 10
+  },
+  "combat_modifiers": {
+    "greataxe": 5,
+    "javelin": 5
+  },
+  "items": ["rusty greataxe"],
+  "drop_items_on_defeat": true
+}
