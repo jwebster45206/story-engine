@@ -1,0 +1,13 @@
+{
+  "id": "rat",
+  "name": "Rat",
+  "description": "A mangy rat with beady eyes and sharp teeth.",
+  "ac": 1,
+  "hp": 1,
+  "max_hp": 1,
+  "combat_modifiers": {
+    "bite": 0
+  },
+  "items": [],
+  "drop_items_on_defeat": false
+}

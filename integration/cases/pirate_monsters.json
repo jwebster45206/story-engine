@@ -1,0 +1,50 @@
+{
+  "name": "Pirate Monster System Integration Test",
+  "scenario": "pirate.json",
+  "seed_game_state": {
+    "scenario": "pirate.json",
+    "scene_name": "shipwright",
+    "user_location": "tortuga",
+    "turn_counter": 1,
+    "scene_turn_counter": 1,
+    "user_inventory": ["cutlass", "spyglass"],
+    "vars": {
+      "ship_repair_ledger_acquired": "false",
+      "shipwright_hired": "false",
+      "rat_attacked": "false"
+    },
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "You are the captain of The Black Pearl, one of the most feared pirate ships in the Caribbean. You stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your ship needs repairs before you can set sail again."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Enter Sleepy Mermaid tavern",
+      "user_prompt": "I go south to the Sleepy Mermaid.",
+      "expect": {
+        "user_location": "sleepy_mermaid",
+        "turn_counter": 2
+      },
+      "expect_not_in_narrative": ["giant rat"]
+    },{
+      "name": "Verify no monsters in tavern",
+      "user_prompt": "I look around the tavern.",
+      "expect": {
+        "user_location": "sleepy_mermaid",
+        "turn_counter": 3
+      },
+      "expect_not_in_narrative": ["giant rat"]
+    },{
+      "name": "Descend to cellar",
+      "user_prompt": "I go down the cellar stairs.",
+      "expect": {
+        "user_location": "sleepy_mermaid_cellar",
+        "turn_counter": 4
+      },
+      "expect_in_narrative": ["giant rat"]
+    }
+  ]
+}

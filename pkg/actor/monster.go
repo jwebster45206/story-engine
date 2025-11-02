@@ -5,15 +5,15 @@ import "maps"
 // Monster represents a creature or enemy in the game world.
 // Monsters are spawned from external JSON templates and managed by GameState.
 type Monster struct {
-	ID          string `json:"id"`
+	ID          string `json:"id,omitempty"`
 	TemplateID  string `json:"template_id,omitempty"` // Reference to template in data/monsters/ (used in scenarios)
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Location    string `json:"location"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Location    string `json:"location,omitempty"`
 
-	AC    int `json:"ac"`
-	HP    int `json:"hp"`
-	MaxHP int `json:"max_hp"`
+	AC    int `json:"ac,omitempty"`
+	HP    int `json:"hp,omitempty"`
+	MaxHP int `json:"max_hp,omitempty"`
 
 	Attributes map[string]int `json:"attributes,omitempty"`       // Flexible key-value attributes (e.g., "strength": 16)
 	CombatMods map[string]int `json:"combat_modifiers,omitempty"` // Combat modifiers (e.g., "bite": 5)
