@@ -266,3 +266,52 @@ func (gs *GameState) GetTurnCounter() int {
 func (gs *GameState) GetUserLocation() string {
 	return gs.Location
 }
+
+// SpawnMonster creates a new monster instance from a template and places it at the specified location.
+// The instanceID must be unique within the game state.
+func (gs *GameState) SpawnMonster(instanceID string, template *actor.Monster, location string) *actor.Monster {
+	loc, ok := gs.WorldLocations[location]
+	if !ok {
+		return nil // Location doesn't exist
+	}
+
+	if loc.Monsters == nil {
+		loc.Monsters = make(map[string]*actor.Monster)
+	}
+
+	m := actor.NewMonster(instanceID, template, location)
+	loc.Monsters[instanceID] = m
+	gs.WorldLocations[location] = loc
+	return m
+}
+
+// DespawnMonster removes a monster instance from the game state.
+// If the monster has DropItemsOnDefeat enabled, its items are transferred to its location.
+func (gs *GameState) DespawnMonster(instanceID string) {
+	// Search all locations for the monster
+	for locName, loc := range gs.WorldLocations {
+		if m, ok := loc.Monsters[instanceID]; ok {
+			// Drop items to location if enabled
+			if m.DropItemsOnDefeat && len(m.Items) > 0 {
+				loc.Items = append(loc.Items, m.Items...)
+			}
+
+			// Remove from location's monster map
+			delete(loc.Monsters, instanceID)
+			gs.WorldLocations[locName] = loc
+			return
+		}
+	}
+}
+
+// EvaluateDefeats checks all active monsters and despawns any that are defeated (HP <= 0).
+// This should be called after any action that could change monster HP.
+func (gs *GameState) EvaluateDefeats() {
+	for _, loc := range gs.WorldLocations {
+		for id, m := range loc.Monsters {
+			if m.IsDefeated() {
+				gs.DespawnMonster(id)
+			}
+		}
+	}
+}
