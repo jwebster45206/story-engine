@@ -222,8 +222,7 @@
                 "template": "giant_rat",
                 "location": "black_pearl"
               }
-            ],
-            "prompt": "STORY EVENT: As the shipwright begins his work, he disturbs a nest. A massive rat, the size of a dog, scurries out from the cargo hold and hisses at the intruders on the deck!"
+            ]           
           }
         },
         "giant_rat_flees": {
