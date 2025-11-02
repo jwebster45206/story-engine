@@ -1,16 +1,19 @@
 package actor
 
+import "maps"
+
 // Monster represents a creature or enemy in the game world.
 // Monsters are spawned from external JSON templates and managed by GameState.
 type Monster struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Location    string `json:"location"`
+	ID          string `json:"id,omitempty"`
+	TemplateID  string `json:"template_id,omitempty"` // Reference to template in data/monsters/ (used in scenarios)
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Location    string `json:"location,omitempty"`
 
-	AC    int `json:"ac"`
-	HP    int `json:"hp"`
-	MaxHP int `json:"max_hp"`
+	AC    int `json:"ac,omitempty"`
+	HP    int `json:"hp,omitempty"`
+	MaxHP int `json:"max_hp,omitempty"`
 
 	Attributes map[string]int `json:"attributes,omitempty"`       // Flexible key-value attributes (e.g., "strength": 16)
 	CombatMods map[string]int `json:"combat_modifiers,omitempty"` // Combat modifiers (e.g., "bite": 5)
@@ -19,35 +22,64 @@ type Monster struct {
 	DropItemsOnDefeat bool `json:"drop_items_on_defeat,omitempty"`
 }
 
-// NewMonster creates a new Monster instance from a template.
-// The id parameter is the unique instance ID (e.g., "giant_rat_1").
-// The base parameter is the template monster loaded from JSON.
-// The location parameter is where the monster spawns.
-func NewMonster(id string, base *Monster, location string) *Monster {
-	if base == nil {
+// NewMonster creates a new Monster instance from a template with optional overrides.
+// The template parameter is the base template monster loaded from JSON (required).
+// The overrides parameter contains the monster definition from the scenario, which must include:
+//   - ID: unique instance identifier
+//   - Location: where the monster spawns
+//
+// And may include any other fields to override template values.
+//
+// The function builds the monster by:
+// 1. Starting with the template as the base
+// 2. Applying any non-zero/non-empty fields from overrides
+// 3. Using ID and Location from overrides
+func NewMonster(template *Monster, overrides *Monster) *Monster {
+	if template == nil || overrides == nil {
 		return nil
 	}
 
-	// Shallow copy of the template
-	m := *base
-	m.ID = id
-	m.Location = location
+	// Set the instance ID and location from overrides (required fields)
+	m := *template
+	m.ID = overrides.ID
+	m.Location = overrides.Location
 
-	// Initialize HP from MaxHP if not already set
+	if overrides.Name != "" {
+		m.Name = overrides.Name
+	}
+	if overrides.Description != "" {
+		m.Description = overrides.Description
+	}
+	if overrides.AC != 0 {
+		m.AC = overrides.AC
+	}
+	if overrides.HP != 0 {
+		m.HP = overrides.HP
+	}
+	if overrides.MaxHP != 0 {
+		m.MaxHP = overrides.MaxHP
+	}
+	if len(overrides.Attributes) > 0 {
+		if m.Attributes == nil {
+			m.Attributes = make(map[string]int)
+		}
+		maps.Copy(m.Attributes, overrides.Attributes)
+	}
+	if len(overrides.CombatMods) > 0 {
+		if m.CombatMods == nil {
+			m.CombatMods = make(map[string]int)
+		}
+		maps.Copy(m.CombatMods, overrides.CombatMods)
+	}
+	if len(overrides.Items) > 0 {
+		m.Items = overrides.Items
+	}
+	if overrides.DropItemsOnDefeat {
+		m.DropItemsOnDefeat = true
+	}
 	if m.MaxHP > 0 && m.HP == 0 {
 		m.HP = m.MaxHP
 	}
-
-	// Ensure HP is non-negative
-	if m.HP < 0 {
-		m.HP = 0
-	}
-
-	// Ensure AC is non-negative
-	if m.AC < 0 {
-		m.AC = 0
-	}
-
 	return &m
 }
 

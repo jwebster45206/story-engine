@@ -51,11 +51,31 @@
       "description": "A rowdy inn filled with pirates and rumors of treasure. Calypso serves drinks and shares tales of the sea. The shipwright sits at a corner table, sketching designs for ship repairs and scowling. ",
       "exits": {
         "north": "tortuga",
-        "back door": "tortuga_market"
+        "back door": "tortuga_market",
+        "cellar stairs": "sleepy_mermaid_cellar"
       },
       "contingency_prompts": [
         "Behind the bar, there is a hidden compartment where Calypso stores valuable items and secrets."
       ]
+    },
+    "sleepy_mermaid_cellar": {
+      "name": "Sleepy Mermaid Cellar",
+      "description": "A dank, dark cellar beneath the tavern. Barrels of rum and rotting crates line the walls. The scurrying of rats echoes in the darkness.",
+      "exits": {
+        "stairs up": "sleepy_mermaid"
+      },
+      "items": ["old barrel", "moldy cheese"],
+      "monsters": {
+        "rat_1": {
+          "template_id": "rat"
+        },
+        "rat_2": {
+          "template_id": "rat"
+        },
+        "giant_rat_1": {
+          "template_id": "giant_rat"
+        }
+      }
     },
     "tortuga_market": {
       "name": "Tortuga Market",
@@ -175,11 +195,13 @@
         "When the shipwright agrees to start repairs, set the variable \"shipwright_hired\" to \"true\".",
         "Reading the ship repair ledger adds it to inventory and sets the variable \"ship_repair_ledger_acquired\" to \"true\". Observing that it is on the ship does not.",
         "Showing the ship repair ledger to the shipwright removes it from the player's inventory.",
-        "If the Black Pearl leaves Tortuga in disrepair, the ship sinks and the game ends."
+        "If the Black Pearl leaves Tortuga in disrepair, the ship sinks and the game ends.",
+        "When the player attacks or harms the giant rat on the ship, set the variable \"rat_attacked\" to \"true\"."
       ],
       "vars": {
         "ship_repair_ledger_acquired": "false",
-        "shipwright_hired": "false"
+        "shipwright_hired": "false",
+        "rat_attacked": "false"
       },
       "conditionals": {
         "hire_shipwright_transition": {
@@ -187,6 +209,35 @@
             "vars": {"shipwright_hired": "true"}
           },
           "then": {"scene_change": {"to": "british_docks", "reason": "conditional"}}
+        },
+        "giant_rat_appears": {
+          "when": {
+            "vars": {"shipwright_hired": "true"}
+          },
+          "then": {
+            "monster_events": [
+              {
+                "action": "spawn",
+                "instance_id": "ship_rat",
+                "template": "giant_rat",
+                "location": "black_pearl"
+              }
+            ]           
+          }
+        },
+        "giant_rat_flees": {
+          "when": {
+            "vars": {"rat_attacked": "true"}
+          },
+          "then": {
+            "monster_events": [
+              {
+                "action": "despawn",
+                "instance_id": "ship_rat"
+              }
+            ],
+            "prompt": "STORY EVENT: The giant rat, wounded and frightened, leaps over the side of the ship and disappears into the murky waters of the harbor."
+          }
         }
       }
     },

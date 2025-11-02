@@ -199,6 +199,144 @@ Locations can have their own contingency prompts that provide context-specific i
 
 **Example use case:** A tavern has a secret escape hatch. The location's contingency prompt tells the AI about it, but only when the player is in the tavern. When the player is elsewhere, the AI has no knowledge of this secret, making the discovery feel more authentic.
 
+## Monsters (Optional)
+
+Monsters add danger and combat encounters to your scenarios. The monster system (v1) focuses on **lifecycle management** rather than full tactical combat, allowing monsters to spawn, despawn, and engage in narrative combat.
+
+### Pre-placing Monsters in Locations
+
+Define monsters that exist when the scene loads:
+
+```json
+"locations": {
+  "dark_cellar": {
+    "name": "Dark Cellar",
+    "description": "A dank cellar beneath the tavern. The scurrying of rats echoes in the darkness.",
+    "exits": {
+      "stairs up": "tavern"
+    },
+    "monsters": {
+      "rat_1": {
+        "template_id": "rat"
+      },
+      "rat_2": {
+        "template_id": "rat"
+      },
+      "boss_rat": {
+        "template_id": "giant_rat"
+      }
+    }
+  }
+}
+```
+
+### Conditional Monster Spawning
+
+Spawn or despawn monsters based on game events:
+
+```json
+"conditionals": {
+  "rat_appears": {
+    "when": {
+      "vars": {"shipwright_hired": "true"}
+    },
+    "then": {
+      "monster_events": [
+        {
+          "action": "spawn",
+          "instance_id": "ship_rat",
+          "template": "giant_rat",
+          "location": "black_pearl"
+        }
+      ],
+      "prompt": "STORY EVENT: A massive rat scurries out from the cargo hold!"
+    }
+  },
+  "rat_flees": {
+    "when": {
+      "vars": {"rat_attacked": "true"}
+    },
+    "then": {
+      "monster_events": [
+        {
+          "action": "despawn",
+          "instance_id": "ship_rat"
+        }
+      ],
+      "prompt": "STORY EVENT: The wounded rat leaps overboard and disappears into the harbor."
+    }
+  }
+}
+```
+
+### Monster Event Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `action` | string | Yes | Either `"spawn"` or `"despawn"` |
+| `instance_id` | string | Yes | Unique ID for this monster instance |
+| `template` | string | Spawn only | Template ID from `data/monsters/` |
+| `location` | string | Spawn only | Location key where monster appears |
+| `name` | string | No | Override template name |
+| `description` | string | No | Override template description |
+| `ac` | integer | No | Override armor class |
+| `hp` | integer | No | Override hit points |
+| `max_hp` | integer | No | Override max hit points |
+| `items` | array | No | Override carried items |
+
+### How Monsters Appear
+
+Monsters are **location-filtered** — they only appear in the LLM prompt when the player is in the same location. The prompt shows:
+
+```
+MONSTERS:
+- Giant Rat (AC: 12, HP: 7/7): A massive rat, the size of a dog, with matted fur and yellowed teeth.
+```
+
+The narrator is instructed to:
+- Mention monsters naturally in descriptions
+- Handle combat outcomes based on HP/AC
+- NOT allow players to invent new monsters
+
+### Creating Monster Templates
+
+Monster templates are JSON files in `data/monsters/`. See `data/monsters/README.md` for complete details on creating monsters, including:
+- Template structure and required fields
+- Combat stats guidelines (AC, HP)
+- Naming conventions
+- Testing and validation
+
+**Example template (`data/monsters/giant_rat.json`):**
+```json
+{
+  "template_id": "giant_rat",
+  "name": "Giant Rat",
+  "description": "A massive rat, the size of a large dog, with matted fur and yellowed teeth.",
+  "ac": 12,
+  "hp": 7,
+  "max_hp": 7,
+  "attributes": {
+    "strength": 10,
+    "dexterity": 15,
+    "constitution": 12
+  },
+  "combat_modifiers": {
+    "bite": 3
+  },
+  "items": [],
+  "drop_items_on_defeat": false
+}
+```
+
+### Best Practices for Monsters
+
+- **Use sparingly**: Monsters should enhance the story, not overwhelm it
+- **Combine with story events**: Use conditional prompts to make monster appearances dramatic
+- **Set clear conditions**: Define when/why monsters spawn and despawn
+- **Track with variables**: Use vars like `"monster_defeated"` to trigger consequences
+- **Balance difficulty**: Match monster AC/HP to player capabilities and story tone
+- **Location-appropriate**: Place monsters where they make narrative sense
+
 ## NPCs (Non-Player Characters)
 
 NPCs bring the world to life and drive story interactions:

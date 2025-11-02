@@ -20,43 +20,50 @@
   "steps": [
     {
       "name": "look for davey",
-      "user_prompt": "I head to Tortuga to look for Davey.",
+      "user_prompt": "I head to Tortuga Market to look for Davey.",
       "expect": {
-        "user_location": "tortuga",
-        "npcs": {
-          "davey": {
-            "location": "tortuga",
-            "following": ""
-          }
+        "location": "tortuga_market",
+        "npc_locations": {
+          "davey": "tortuga_market"
         }
       }
     },
     {
       "name": "recruit davey - following should activate via conditional",
-      "user_prompt": "I approach Davey and say, 'Davey, old friend! I need your help infiltrating the British docks. There's a fair bit of coin in it for you if you're interested.'",
+      "user_prompt": "I approach Davey and say, 'Davey, old friend! I need your help. Will you follow me?'",
       "expect": {
-        "user_location": "tortuga",
+        "location": "tortuga_market",
+        "npc_locations": {
+          "davey": "tortuga_market"
+        }
+      },
         "vars": {
           "davey_recruited": "true"
+        }
+    },
+    {
+      "name": "move to tortuga",
+      "user_prompt": "I return to Tortuga.",
+      "expect": {
+        "location": "tortuga",
+        "npc_locations": {
+          "davey": "tortuga"
         },
-        "npcs": {
-          "davey": {
-            "location": "tortuga",
-            "following": "pc"
-          }
+        "vars": {
+          "davey_recruited": "true"
         }
       }
     },
     {
-      "name": "move to black pearl - davey should follow",
-      "user_prompt": "I head to the Black Pearl.",
+      "name": "move to black pearl",
+      "user_prompt": "I board the Black Pearl.",
       "expect": {
-        "user_location": "black_pearl",
-        "npcs": {
-          "davey": {
-            "location": "black_pearl",
-            "following": "pc"
-          }
+        "location": "black_pearl",
+        "npc_locations": {
+          "davey": "black_pearl"
+        },
+        "vars": {
+          "davey_recruited": "true"
         }
       }
     }

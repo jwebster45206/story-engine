@@ -266,3 +266,60 @@ func (gs *GameState) GetTurnCounter() int {
 func (gs *GameState) GetUserLocation() string {
 	return gs.Location
 }
+
+// SpawnMonster creates a new monster instance from a template.
+func (gs *GameState) SpawnMonster(template *actor.Monster, monsterDef *actor.Monster) *actor.Monster {
+	if monsterDef == nil || template == nil {
+		return nil
+	}
+
+	location := monsterDef.Location
+	loc, ok := gs.WorldLocations[location]
+	if !ok {
+		return nil // Location doesn't exist
+	}
+
+	if loc.Monsters == nil {
+		loc.Monsters = make(map[string]*actor.Monster)
+	}
+
+	// Create monster from template with scenario overrides
+	m := actor.NewMonster(template, monsterDef)
+	if m == nil {
+		return nil
+	}
+
+	loc.Monsters[monsterDef.ID] = m
+	gs.WorldLocations[location] = loc
+	return m
+}
+
+// DespawnMonster removes a monster instance from the game state.
+// If the monster has DropItemsOnDefeat enabled, its items are transferred to its location.
+func (gs *GameState) DespawnMonster(instanceID string) {
+	for locName, loc := range gs.WorldLocations {
+		if m, ok := loc.Monsters[instanceID]; ok {
+			// Drop items to location if enabled
+			if m.DropItemsOnDefeat && len(m.Items) > 0 {
+				loc.Items = append(loc.Items, m.Items...)
+			}
+
+			// Remove from location's monster map
+			delete(loc.Monsters, instanceID)
+			gs.WorldLocations[locName] = loc
+			return
+		}
+	}
+}
+
+// EvaluateDefeats checks all active monsters and despawns any that are defeated (HP <= 0).
+// This should be called after any action that could change monster HP.
+// func (gs *GameState) EvaluateDefeats() {
+// 	for _, loc := range gs.WorldLocations {
+// 		for id, m := range loc.Monsters {
+// 			if m.IsDefeated() {
+// 				gs.DespawnMonster(id)
+// 			}
+// 		}
+// 	}
+// }

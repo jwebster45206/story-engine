@@ -434,6 +434,78 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /v1/monsters:
+    get:
+      summary: List monsters
+      description: Get a list of all available monster templates
+      operationId: listMonsters
+      tags:
+        - Monsters
+      responses:
+        '200':
+          description: List of monster templates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  monsters:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: Map of monster names to template IDs
+                    example:
+                      "Giant Rat": "giant_rat"
+                      "Skeleton Warrior": "skeleton"
+                      "Dire Wolf": "dire_wolf"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/monsters/{id}:
+    get:
+      summary: Get monster template
+      description: Retrieve a specific monster template by ID
+      operationId: getMonster
+      tags:
+        - Monsters
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Monster template ID (e.g., "giant_rat")
+          schema:
+            type: string
+            example: "giant_rat"
+      responses:
+        '200':
+          description: Monster template retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monster'
+        '400':
+          description: Invalid monster ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Monster template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     HealthResponse:
@@ -766,6 +838,18 @@ components:
           items:
             type: string
           description: Items available at this location
+        monsters:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Monster'
+          description: Active monster instances at this location (instance ID -> Monster)
+          example:
+            rat_1:
+              id: "rat_1"
+              name: "Giant Rat"
+              ac: 12
+              hp: 9
+              max_hp: 9
 
     NPC:
       type: object
@@ -971,6 +1055,70 @@ components:
           type: string
           description: Narrator description
 
+    Monster:
+      type: object
+      required:
+        - id
+        - name
+        - ac
+        - hp
+        - max_hp
+      properties:
+        id:
+          type: string
+          description: Monster template ID
+          example: "giant_rat"
+        name:
+          type: string
+          description: Monster name
+          example: "Giant Rat"
+        description:
+          type: string
+          description: Monster description
+          example: "A filthy, red-eyed rodent the size of a dog."
+        location:
+          type: string
+          description: Current location (only present in monster instances, not templates)
+          example: "cellar"
+        ac:
+          type: integer
+          description: Armor class
+          example: 12
+        hp:
+          type: integer
+          description: Current hit points
+          example: 9
+        max_hp:
+          type: integer
+          description: Maximum hit points
+          example: 9
+        attributes:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Monster attributes (e.g., strength, dexterity, constitution)
+          example:
+            strength: 7
+            dexterity: 15
+            constitution: 11
+        combat_modifiers:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Combat-related modifiers (e.g., attack bonuses)
+          example:
+            bite: 4
+        items:
+          type: array
+          items:
+            type: string
+          description: Items the monster carries
+          example: ["rat_pelt"]
+        drop_items_on_defeat:
+          type: boolean
+          description: Whether items should be dropped to the location when the monster is defeated
+          example: true
+
     ErrorResponse:
       type: object
       required:
@@ -994,3 +1142,5 @@ tags:
     description: Player character management
   - name: Narrators
     description: AI narrator configurations
+  - name: Monsters
+    description: Monster templates and creatures

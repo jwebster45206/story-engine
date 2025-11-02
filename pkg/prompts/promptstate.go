@@ -9,12 +9,12 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
-// PromptState is a reduced game state for LLM prompts.
-// For user-facing prompts, only core world state is included.
-// For background processing, Vars are also populated.
+// PromptState is a compact, location-scoped view of the game state
+// for LLM context. For background processing, Vars are also populated.
 type PromptState struct {
 	SceneName        string                       `json:"scene_name,omitempty"`         // Current scene name
 	NPCs             map[string]actor.NPC         `json:"npcs,omitempty"`               // Map of key NPCs
+	Monsters         map[string]actor.Monster     `json:"monsters,omitempty"`           // Monsters at current location
 	WorldLocations   map[string]scenario.Location `json:"locations,omitempty"`          // Current locations in the game world
 	Location         string                       `json:"user_location,omitempty"`      // User's current location
 	Inventory        []string                     `json:"user_inventory,omitempty"`     // Inventory items
@@ -33,8 +33,19 @@ func ToPromptState(gs *state.GameState) *PromptState {
 		}
 	}
 
+	// Filter Monsters: only include those in the current location
+	filteredMonsters := make(map[string]actor.Monster)
+	if currentLoc, ok := gs.WorldLocations[gs.Location]; ok {
+		for id, monster := range currentLoc.Monsters {
+			if monster != nil {
+				filteredMonsters[id] = *monster
+			}
+		}
+	}
+
 	return &PromptState{
 		NPCs:           filteredNPCs,
+		Monsters:       filteredMonsters,
 		WorldLocations: filterLocations(gs.WorldLocations, gs.Location),
 		Location:       gs.Location,
 		Inventory:      gs.Inventory,
@@ -77,9 +88,20 @@ func ToBackgroundPromptState(gs *state.GameState) *PromptState {
 		}
 	}
 
+	// Filter Monsters: only include those in the current location
+	filteredMonsters := make(map[string]actor.Monster)
+	if currentLoc, ok := gs.WorldLocations[gs.Location]; ok {
+		for id, monster := range currentLoc.Monsters {
+			if monster != nil {
+				filteredMonsters[id] = *monster
+			}
+		}
+	}
+
 	return &PromptState{
 		SceneName:        gs.SceneName,
 		NPCs:             filteredNPCs,
+		Monsters:         filteredMonsters,
 		WorldLocations:   filterLocations(gs.WorldLocations, gs.Location),
 		Location:         gs.Location,
 		Inventory:        gs.Inventory,
@@ -206,6 +228,19 @@ func (ps *PromptState) ToString() string {
 
 			if len(npc.Items) > 0 {
 				sb.WriteString(fmt.Sprintf("; Items: %s\n", strings.Join(npc.Items, ", ")))
+			}
+			sb.WriteString("\n")
+		}
+	}
+
+	// Monsters
+	if len(ps.Monsters) > 0 {
+		sb.WriteString("\nMONSTERS:")
+		for _, monster := range ps.Monsters {
+			sb.WriteString(fmt.Sprintf("\n%s (AC: %d, HP: %d/%d)",
+				monster.Name, monster.AC, monster.HP, monster.MaxHP))
+			if monster.Description != "" {
+				sb.WriteString(fmt.Sprintf(": %s", monster.Description))
 			}
 			sb.WriteString("\n")
 		}

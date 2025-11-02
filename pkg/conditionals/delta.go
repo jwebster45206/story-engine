@@ -25,12 +25,42 @@ type GameStateDelta struct {
 
 	NPCEvents []NPCEvent `json:"npc_events,omitempty"`
 
-	// TODO: Maybe add LocationEvents structure to track stateful elements of locations:
+	MonsterEvents []MonsterEvent `json:"monster_events,omitempty"`
+
+	// TODO: Add LocationEvents structure to track stateful elements of locations:
 	// such as exits being blocked/unblocked, conditions changing, etc.
 
 	SetVars   map[string]string `json:"set_vars,omitempty"`
 	GameEnded *bool             `json:"game_ended,omitempty"`
 	Prompt    *string           `json:"prompt,omitempty"` // Narrative prompt to inject (use "STORY EVENT: " prefix for story events)
+}
+
+type MonsterEventAction string
+
+const (
+	MonsterEventSpawn   MonsterEventAction = "spawn"
+	MonsterEventDespawn MonsterEventAction = "despawn"
+)
+
+// MonsterEvent represents a change to a monster's state (spawn or despawn)
+type MonsterEvent struct {
+	Action     MonsterEventAction `json:"action"`      // enum "spawn" | "despawn"
+	InstanceID string             `json:"instance_id"` // Unique ID for this monster instance
+
+	// Required for spawn
+	Template string `json:"template,omitempty"` // Template ID to load from data/monsters/
+	Location string `json:"location,omitempty"` // Location key where monster should spawn
+
+	// Optional overrides for spawn (override template values)
+	Name              string         `json:"name,omitempty"`
+	Description       string         `json:"description,omitempty"`
+	AC                int            `json:"ac,omitempty"`
+	HP                int            `json:"hp,omitempty"`
+	MaxHP             int            `json:"max_hp,omitempty"`
+	Attributes        map[string]int `json:"attributes,omitempty"`
+	CombatMods        map[string]int `json:"combat_modifiers,omitempty"`
+	Items             []string       `json:"items,omitempty"`
+	DropItemsOnDefeat *bool          `json:"drop_items_on_defeat,omitempty"`
 }
 
 // NPCEvent represents a change to an NPC's state

@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
@@ -82,6 +83,7 @@ func (v *ScenarioValidator) validateScenario(s *scenario.Scenario, filename stri
 	// Validate location IDs and their contingency prompts
 	for locationID, location := range s.Locations {
 		v.validateIDFormat("location ID", locationID)
+		v.validateLocationMonsters(location.Monsters, locationID, "scenario")
 		for _, cp := range location.ContingencyPrompts {
 			v.validateContingencyPrompt(&cp)
 		}
@@ -113,6 +115,7 @@ func (v *ScenarioValidator) validateScene(scene *scenario.Scene, sceneID string)
 	// Validate location IDs and their contingency prompts within the scene
 	for locationID, location := range scene.Locations {
 		v.validateIDFormat("scene location ID", locationID)
+		v.validateLocationMonsters(location.Monsters, locationID, fmt.Sprintf("scene %s", sceneID))
 		for _, cp := range location.ContingencyPrompts {
 			v.validateContingencyPrompt(&cp)
 		}
@@ -185,6 +188,12 @@ func (v *ScenarioValidator) validateConditional(conditional *scenario.Conditiona
 					v.validateIDFormat("npc_event set_following", following)
 				}
 			}
+		}
+		actionCount++
+	}
+	if len(conditional.Then.MonsterEvents) > 0 {
+		for i, monsterEvent := range conditional.Then.MonsterEvents {
+			v.validateMonsterEvent(&monsterEvent, fmt.Sprintf("conditional %s in scene %s, monster_event %d", conditionalKey, sceneID, i))
 		}
 		actionCount++
 	}
@@ -295,4 +304,71 @@ func isValidScenarioFilename(name string) bool {
 	// Allow 'x.' prefix for experimental scenarios
 	name = strings.TrimPrefix(name, "x.")
 	return validFilenameRegex.MatchString(name)
+}
+
+// validateLocationMonsters validates monsters in a location
+func (v *ScenarioValidator) validateLocationMonsters(monsters map[string]*actor.Monster, locationID string, context string) {
+	for instanceID, monster := range monsters {
+		// Validate instance ID format
+		v.validateIDFormat(fmt.Sprintf("monster instance ID in location %s (%s)", locationID, context), instanceID)
+
+		// Validate required fields
+		if monster.TemplateID == "" {
+			v.addError(fmt.Sprintf("monster '%s' in location %s (%s) is missing required field 'template_id'", instanceID, locationID, context))
+		} else {
+			// Validate template ID format
+			v.validateIDFormat(fmt.Sprintf("monster template_id for instance %s in location %s", instanceID, locationID), monster.TemplateID)
+		}
+
+		// Warn if ID doesn't match instance ID (optional consistency check)
+		if monster.ID != "" && monster.ID != instanceID {
+			v.addError(fmt.Sprintf("monster '%s' in location %s (%s) has mismatched ID field '%s' - should match instance ID or be omitted", instanceID, locationID, context, monster.ID))
+		}
+
+		// Warn if Location field is set (it will be set automatically from map placement)
+		if monster.Location != "" && monster.Location != locationID {
+			v.addError(fmt.Sprintf("monster '%s' in location %s (%s) has location field set to '%s' - this will be overridden by the map location", instanceID, locationID, context, monster.Location))
+		}
+	}
+}
+
+// validateMonsterEvent validates a monster event in a conditional
+func (v *ScenarioValidator) validateMonsterEvent(event *conditionals.MonsterEvent, context string) {
+	// Validate action
+	if event.Action != "spawn" && event.Action != "despawn" {
+		v.addError(fmt.Sprintf("%s has invalid action '%s' - must be 'spawn' or 'despawn'", context, event.Action))
+		return
+	}
+
+	// Validate instance ID
+	if event.InstanceID == "" {
+		v.addError(fmt.Sprintf("%s is missing required field 'instance_id'", context))
+	} else {
+		v.validateIDFormat(fmt.Sprintf("monster instance_id in %s", context), event.InstanceID)
+	}
+
+	// For spawn actions, validate required fields
+	if event.Action == "spawn" {
+		if event.Template == "" {
+			v.addError(fmt.Sprintf("%s with action 'spawn' is missing required field 'template'", context))
+		} else {
+			v.validateIDFormat(fmt.Sprintf("monster template in %s", context), event.Template)
+		}
+
+		if event.Location == "" {
+			v.addError(fmt.Sprintf("%s with action 'spawn' is missing required field 'location'", context))
+		} else {
+			v.validateIDFormat(fmt.Sprintf("monster location in %s", context), event.Location)
+		}
+	}
+
+	// For despawn actions, template and location should not be set
+	if event.Action == "despawn" {
+		if event.Template != "" {
+			v.addError(fmt.Sprintf("%s with action 'despawn' should not have 'template' field set", context))
+		}
+		if event.Location != "" {
+			v.addError(fmt.Sprintf("%s with action 'despawn' should not have 'location' field set", context))
+		}
+	}
 }

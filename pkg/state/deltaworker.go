@@ -10,10 +10,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/queue"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
+
+// MonsterStorage is the interface for loading monster templates
+type MonsterStorage interface {
+	GetMonster(ctx context.Context, templateID string) (*actor.Monster, error)
+}
 
 // itemEvent is a type alias for the ItemEvents struct to avoid repetition
 type itemEvent = struct {
@@ -38,6 +44,7 @@ type DeltaWorker struct {
 	scenario *scenario.Scenario
 	logger   *slog.Logger
 	queue    ChatQueue
+	storage  MonsterStorage
 	ctx      context.Context
 }
 
@@ -56,6 +63,13 @@ func NewDeltaWorker(gs *GameState, delta *conditionals.GameStateDelta, scen *sce
 // Returns the DeltaWorker for method chaining
 func (dw *DeltaWorker) WithQueue(queue ChatQueue) *DeltaWorker {
 	dw.queue = queue
+	return dw
+}
+
+// WithStorage sets the storage service
+// Returns the DeltaWorker for method chaining
+func (dw *DeltaWorker) WithStorage(storage MonsterStorage) *DeltaWorker {
+	dw.storage = storage
 	return dw
 }
 
@@ -149,6 +163,11 @@ func (dw *DeltaWorker) mergeDelta(conditionalDelta *conditionals.GameStateDelta,
 	// Merge NPC events
 	if len(conditionalDelta.NPCEvents) > 0 {
 		dw.delta.NPCEvents = append(dw.delta.NPCEvents, conditionalDelta.NPCEvents...)
+	}
+
+	// Merge monster events
+	if len(conditionalDelta.MonsterEvents) > 0 {
+		dw.delta.MonsterEvents = append(dw.delta.MonsterEvents, conditionalDelta.MonsterEvents...)
 	}
 
 	// Handle prompt - any prompt in a conditional is treated as a story event
@@ -310,6 +329,15 @@ func (dw *DeltaWorker) Apply() error {
 	for _, npcEvent := range dw.delta.NPCEvents {
 		dw.handleNPCEvent(npcEvent)
 	}
+
+	// Handle Monster events
+	for _, monsterEvent := range dw.delta.MonsterEvents {
+		dw.handleMonsterEvent(monsterEvent)
+	}
+
+	// TODO: Evaluate monster defeats (auto-despawn defeated monsters)
+	// This runs after all delta operations to catch any HP changes
+	// dw.gs.EvaluateDefeats()
 
 	// Handle Game End
 	if dw.delta.GameEnded != nil && *dw.delta.GameEnded {
@@ -511,6 +539,127 @@ func (dw *DeltaWorker) handleNPCEvent(event conditionals.NPCEvent) {
 	if modified {
 		dw.gs.NPCs[npcKey] = npc
 	}
+}
+
+// handleMonsterEvent processes a monster event (spawn or despawn)
+func (dw *DeltaWorker) handleMonsterEvent(event conditionals.MonsterEvent) {
+	switch event.Action {
+	case conditionals.MonsterEventSpawn:
+		dw.handleMonsterSpawn(event)
+	case conditionals.MonsterEventDespawn:
+		dw.handleMonsterDespawn(event)
+	default:
+		dw.logger.Warn("Unknown monster event action",
+			"action", event.Action,
+			"instance_id", event.InstanceID)
+	}
+}
+
+// handleMonsterSpawn loads a monster template and spawns an instance
+func (dw *DeltaWorker) handleMonsterSpawn(event conditionals.MonsterEvent) {
+	// Validate storage is available
+	if dw.storage == nil {
+		dw.logger.Error("Cannot spawn monster: storage not configured")
+		return
+	}
+
+	// Normalize location key
+	locationKey := strings.ToLower(strings.TrimSpace(event.Location))
+	_, locationExists := dw.gs.WorldLocations[locationKey]
+
+	if !locationExists {
+		// Try matching by location name
+		for key, loc := range dw.gs.WorldLocations {
+			if strings.ToLower(loc.Name) == locationKey {
+				locationKey = key
+				locationExists = true
+				break
+			}
+		}
+	}
+
+	if !locationExists {
+		dw.logger.Warn("Cannot spawn monster: location not found",
+			"instance_id", event.InstanceID,
+			"location", event.Location)
+		return
+	}
+
+	// Load monster template from storage
+	template, err := dw.storage.GetMonster(dw.ctx, event.Template)
+	if err != nil {
+		dw.logger.Error("Failed to load monster template",
+			"instance_id", event.InstanceID,
+			"template", event.Template,
+			"error", err)
+		return
+	}
+
+	// Build monster definition from event (contains ID, location, and any overrides)
+	monsterDef := &actor.Monster{
+		ID:         event.InstanceID,
+		TemplateID: event.Template,
+		Location:   locationKey,
+	}
+
+	if event.Name != "" {
+		monsterDef.Name = event.Name
+	}
+	if event.Description != "" {
+		monsterDef.Description = event.Description
+	}
+	if event.AC != 0 {
+		monsterDef.AC = event.AC
+	}
+	if event.HP != 0 {
+		monsterDef.HP = event.HP
+	}
+	if event.MaxHP != 0 {
+		monsterDef.MaxHP = event.MaxHP
+	}
+	if len(event.Attributes) > 0 {
+		monsterDef.Attributes = event.Attributes
+	}
+	if len(event.CombatMods) > 0 {
+		monsterDef.CombatMods = event.CombatMods
+	}
+	if len(event.Items) > 0 {
+		monsterDef.Items = event.Items
+	}
+	if event.DropItemsOnDefeat != nil {
+		monsterDef.DropItemsOnDefeat = *event.DropItemsOnDefeat
+	}
+
+	// Spawn the monster using GameState method
+	monster := dw.gs.SpawnMonster(template, monsterDef)
+
+	if dw.logger != nil {
+		dw.logger.Info("Monster spawned",
+			"instance_id", event.InstanceID,
+			"template", event.Template,
+			"location", locationKey,
+			"name", monster.Name)
+	}
+}
+
+// handleMonsterDespawn removes a monster instance from the game
+func (dw *DeltaWorker) handleMonsterDespawn(event conditionals.MonsterEvent) {
+	// Check if monster exists before despawning
+	var exists bool
+	for _, loc := range dw.gs.WorldLocations {
+		if _, found := loc.Monsters[event.InstanceID]; found {
+			exists = true
+			break
+		}
+	}
+
+	if !exists {
+		dw.logger.Warn("Cannot despawn monster: instance not found", "instance_id", event.InstanceID)
+		return
+	}
+
+	dw.gs.DespawnMonster(event.InstanceID)
+	dw.logger.Info("Monster despawned", "instance_id", event.InstanceID)
 }
 
 // removeItemFromSource removes an item from the specified source

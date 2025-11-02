@@ -440,43 +440,42 @@ Include monster name, AC, HP (current/max), and description. Filter to only show
 - [x] Create `pkg/actor/monster.go`
 - [x] Implement struct, `NewMonster`, `TakeDamage`, `Heal`, `IsDefeated`, `MoveTo`
 
-**Step 2 — State Layer**
-- [ ] Extend `GameState` with `Monsters` map
-- [ ] Implement `SpawnMonster`, `DespawnMonster`, `EvaluateDefeats`
-- [ ] Ensure reducer calls `EvaluateDefeats()` each turn
+**Step 2 — Storage Layer**
+- [x] Create `data/monsters/` directory for external monster JSON templates
+- [x] Add `GetMonster(ctx, templateID)` method to Storage interface and RedisStorage implementation
+- [x] Add `ListMonsters(ctx)` method to Storage interface and RedisStorage implementation
+- [x] Create sample monster templates (e.g., `giant_rat.json`, `skeleton.json`)
 
-**Step 3 — Storage Layer**
-- [ ] Create `data/monsters/` directory for external monster JSON templates
-- [ ] Add `GetMonster(ctx, templateID)` method to Storage interface and RedisStorage implementation
-- [ ] Add `ListMonsters(ctx)` method to Storage interface and RedisStorage implementation
-- [ ] Create sample monster templates (e.g., `giant_rat.json`, `skeleton.json`)
+**Step 3 — State Layer**
+- [x] Extend `GameState` with `Monsters` map
+- [x] Implement `SpawnMonster`, `DespawnMonster`, `EvaluateDefeats`
+- [x] Ensure reducer calls `EvaluateDefeats()` each turn
 
 **Step 4 — Scenario Loading**
-- [ ] Update `pkg/scenario/location.go` to include `Monsters map[string]string` field
-- [ ] In `internal/handlers/gamestate.go`, after initializing NPCs and locations, iterate through `WorldLocations`
-- [ ] For each location's `monsters` map, load templates and spawn instances using `storage.GetMonster()` and `gs.SpawnMonster()`
+- [x] Update `pkg/scenario/location.go` to include `Monsters map[string]string` field
+- [x] In `internal/handlers/gamestate.go`, after initializing NPCs and locations, iterate through `WorldLocations`
+- [x] For each location's `monsters` map, load templates and spawn instances using `storage.GetMonster()` and `gs.SpawnMonster()`
 
 **Step 5 — Conditional Reducer (DeltaWorker)**
-- [ ] Extend conditional `then` actions to handle `spawn` and `despawn`
-- [ ] For spawn: Load template via storage, call `gs.SpawnMonster(instanceID, template, location)`
-- [ ] For despawn: Call `gs.DespawnMonster(instanceID)`
+- [x] Extend conditional `then` actions to handle `spawn` and `despawn`
+- [x] For spawn: Load template via storage, call `gs.SpawnMonster(instanceID, template, location)`
+- [x] For despawn: Call `gs.DespawnMonster(instanceID)`
 
 **Step 6 — Prompt Builder**
-- [ ] Update `pkg/prompts/promptstate.go` to include `Monsters` field
-- [ ] Filter monsters by location in `ToPromptState()` (similar to NPCs)
-- [ ] Update `ToString()` method to include MONSTERS section
-- [ ] Add narrator guidance not to invent monsters
+- [x] Update `pkg/prompts/promptstate.go` to include `Monsters` field
+- [x] Filter monsters by location in `ToPromptState()` (similar to NPCs)
+- [x] Update `ToString()` method to include MONSTERS section
+- [x] Add narrator guidance not to invent monsters
 
 **Step 7 — API Handlers**
-- [ ] Create `internal/handlers/monsters.go` with `GetMonsters` and `GetMonster` handlers
-- [ ] Wire up routes in API server
+- [x] Create `internal/handlers/monsters.go` with `GetMonsters` and `GetMonster` handlers
+- [x] Wire up routes in API server
 
 **Step 8 — OpenAPI**
-- [ ] Add Monster template schema to `/docs/openapi.yaml`
-- [ ] Add MonsterInstance schema
-- [ ] Update Location schema with `monsters` map
-- [ ] Update conditionals schema with `spawn`/`despawn` actions
-- [ ] Add `/v1/monsters` and `/v1/monsters/{id}` endpoints
+- [x] Add Monster template schema to `/docs/openapi.yaml`
+- [x] Update Location schema with `monsters` map
+- [x] Add `/v1/monsters` and `/v1/monsters/{id}` endpoints
+- [ ] Update conditionals schema with `spawn`/`despawn` actions (conditionals not yet in OpenAPI spec)
 
 ---
 
@@ -516,7 +515,6 @@ Location suggestions:
 
 Location suggestions:
 - `internal/handlers/chat_monster_integration_test.go`
-- `cmd/console/e2e_monster_flow_test.go` (if console is testable)
 
 **End-to-end scenario flow**
 1. Load scenario with a pre-placed monster → verify:  

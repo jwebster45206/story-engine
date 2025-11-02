@@ -143,11 +143,5 @@ func (b *Broadcaster) publishToGame(ctx context.Context, gameID uuid.UUID, event
 		return fmt.Errorf("failed to publish event: %w", err)
 	}
 
-	b.logger.Debug("Event published",
-		"channel", channel,
-		"event_type", event.Type,
-		"request_id", event.RequestID,
-	)
-
 	return nil
 }

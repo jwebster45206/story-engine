@@ -321,6 +321,7 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 	// Use DeltaWorker to handle all delta application logic
 	worker := state.NewDeltaWorker(latestGS, delta, s, p.logger).
 		WithQueue(p.chatQueue).
+		WithStorage(p.storage).
 		WithContext(metaCtx)
 
 	// Apply vars first (before evaluating conditionals)

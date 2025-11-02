@@ -9,7 +9,8 @@ Features are geared towards a closed-world / on-rails style of D&D adventure.
 - **Location & Map System** - Confines the gameworld to a defined set of locations with movement rules. 
 - **Item & Inventory Management** - Player can acquire, drop, give and use items.
 - **Player Character System** - Players take the roles of 5e-compatible PC's. PCs are decoupled from scenarios.
-- **NPC System** - Story-scoped NPCs with planned mutable properties. Mutable properties aren't well fleshed out or tested yet. 
+- **NPC System** - Story-scoped NPCs with planned mutable properties. Mutable properties aren't well fleshed out or tested yet.
+- **Monster System (v1)** - Lifecycle-scoped "monsters" for templated enemy creatures
 - **Variables** - Simple vars for tracking story progression. It's relatively easy for an LLM to track these, so they can be combined with conditional logic for powerful game control. 
 - **Story Events** - Ability to inject story events into the chat flow.
 
@@ -182,4 +183,5 @@ API_BASE_URL=http://localhost:3000 go run cmd/console/*.go
 - **Scenario Creation**: See [data/scenarios/README.md](data/scenarios/README.md) for complete guide on writing scenarios
 - **Player Characters**: See [data/pcs/README.md](data/pcs/README.md) for creating and customizing player characters
 - **Narrators**: See [data/narrators/README.md](data/narrators/README.md) for creating custom narrator personalities
+- **Monsters**: See [data/monsters/README.md](data/monsters/README.md) for creating monster templates and integrating them into scenarios
 - **Console Client**: See [cmd/console/README.md](cmd/console/README.md) for gameplay client documentation
