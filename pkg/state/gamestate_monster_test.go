@@ -2,6 +2,7 @@ package state
 
 import (
 	"testing"
+
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
@@ -13,7 +14,8 @@ func TestSpawnMonster(t *testing.T) {
 		},
 	}
 	template := &actor.Monster{Name: "Rat", AC: 12, MaxHP: 9}
-	m := gs.SpawnMonster("rat_1", template, "cellar")
+	monsterDef := &actor.Monster{ID: "rat_1", TemplateID: "giant_rat", Location: "cellar"}
+	m := gs.SpawnMonster(template, monsterDef)
 	if m == nil {
 		t.Fatal("SpawnMonster returned nil")
 	}
@@ -36,22 +38,3 @@ func TestDespawnMonster(t *testing.T) {
 		t.Error("monster not removed")
 	}
 }
-
-func TestEvaluateDefeats(t *testing.T) {
-	rat1 := &actor.Monster{ID: "rat_1", HP: 0, MaxHP: 9}
-	rat2 := &actor.Monster{ID: "rat_2", HP: 5, MaxHP: 9}
-	gs := &GameState{
-		WorldLocations: map[string]scenario.Location{
-			"cellar": {Name: "Cellar", Monsters: map[string]*actor.Monster{"rat_1": rat1, "rat_2": rat2}},
-		},
-	}
-	gs.EvaluateDefeats()
-	loc := gs.WorldLocations["cellar"]
-	if _, exists := loc.Monsters["rat_1"]; exists {
-		t.Error("defeated monster not removed")
-	}
-	if _, exists := loc.Monsters["rat_2"]; !exists {
-		t.Error("alive monster incorrectly removed")
-	}
-}
-

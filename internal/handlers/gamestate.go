@@ -394,6 +394,40 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	// Load monster templates for any pre-placed monsters
+	// Iterate through all locations and populate monsters that only have template_id set
+	for locName, loc := range gs.WorldLocations {
+		if loc.Monsters == nil {
+			continue
+		}
+		for instanceID, monster := range loc.Monsters {
+			// If monster has a template_id, load the full template
+			if monster.TemplateID != "" {
+				template, err := h.storage.GetMonster(r.Context(), monster.TemplateID)
+				if err != nil {
+					h.logger.Warn("Failed to load monster template, skipping", "instance_id", instanceID, "template_id", monster.TemplateID, "location", locName, "error", err)
+					delete(loc.Monsters, instanceID)
+					continue
+				}
+
+				// Ensure the monster definition has required fields set
+				monster.ID = instanceID
+				monster.Location = locName
+
+				// Spawn the monster using the template and scenario definition (which may contain overrides)
+				spawnedMonster := gs.SpawnMonster(template, monster)
+				if spawnedMonster == nil {
+					h.logger.Warn("Failed to spawn monster", "instance_id", instanceID, "template_id", monster.TemplateID, "location", locName)
+					delete(loc.Monsters, instanceID)
+				} else {
+					h.logger.Debug("Spawned monster from template", "instance_id", instanceID, "template_id", monster.TemplateID, "name", spawnedMonster.Name, "location", locName)
+				}
+			}
+		}
+		// Update the location in game state
+		gs.WorldLocations[locName] = loc
+	}
+
 	if err := h.storage.SaveGameState(r.Context(), gs.ID, gs); err != nil {
 		h.logger.Error("Failed to save new game state", "error", err, "id", gs.ID.String())
 		w.WriteHeader(http.StatusInternalServerError)
