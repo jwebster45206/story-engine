@@ -1,0 +1,10 @@
+{
+  "template_id": "dire_wolf",
+  "name": "Dire Wolf",
+  "description": "A massive wolf with dark matted fur, yellowed fangs, and burning eyes. This creature is larger than a pony and radiates primal savagery.",
+  "ac": 14,
+  "max_hp": 22,
+  "items": [],
+  "combat_notes": "Fast and aggressive predator. Powerful bite attack. Pack tactics make them deadly in groups - they often attack in coordinated rushes.",
+  "drop_items_on_defeat": false
+}

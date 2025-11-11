@@ -1,0 +1,13 @@
+{
+  "template_id": "giant_bat",
+  "name": "Giant Bat",
+  "description": "A massive bat with leathery wings spread wide, large enough to be dangerous to humans. Its screeching fills the air as it swoops through the darkness with deadly precision.",
+  "ac": 14,
+  "hp": 8,
+  "max_hp": 8,
+  "combat_modifiers": {
+    "bite": 2
+  },
+  "items": [],
+  "drop_items_on_defeat": false
+}

@@ -1,0 +1,10 @@
+{
+  "template_id": "zombie",
+  "name": "Zombie",
+  "description": "A shambling corpse with rotting flesh hanging from exposed bones. Its vacant eyes show no hint of the person it once was. It moves with slow, inexorable purpose.",
+  "ac": 8,
+  "max_hp": 16,
+  "items": [],
+  "combat_notes": "Slow but relentless. Single clumsy attack per round. Low armor class makes them easy to hit, but they're numerous and wear down defenders through attrition. Immune to mind-affecting effects.",
+  "drop_items_on_defeat": false
+}

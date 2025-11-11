@@ -1,0 +1,121 @@
+{
+  "name": "Mistamere Opening Scene - Full Tutorial",
+  "description": "Tests the complete opening sequence: NPCs following player, carrion crawler encounter and defeat, kobold combat, and transition to dungeon level one",
+  "scenario": "mistamere.json",
+  "seed_game_state": {
+    "scene_name": "entrance",
+    "user_location": "outer_ruins",
+    "scene_turn_counter": 2,
+    "user_inventory": [],
+    "vars": {
+      "carrion_crawler_defeated": "false",
+      "kobolds_defeated": "false",
+      "kobolds_fled": "false",
+      "entered_castle": "false"
+    },
+    "chat_history": [
+      {
+        "role": "user",
+        "content": "I approach the ruined castle with my companions."
+      },
+      {
+        "role": "assistant",
+        "content": "You stand before the crumbling outer walls of Castle Mistamere. The jagged stones rise fifty feet high, and a fallen door lies on the ground nearby. Ragnar, the wiry thief, scans the area with keen eyes while Eilonwy, the faithful cleric, grips her quarterstaff. A gateway stands blocked in the center, but a ten-foot hole in the wall to your left offers an alternate entrance."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Verify NPCs are present and following",
+      "user_prompt": "I look at my companions.",
+      "expect": {
+        "scene_name": "entrance",
+        "user_location": "outer_ruins",
+        "scene_turn_counter": 3,
+        "npc_locations": {
+          "ragnar": "outer_ruins"
+        },
+        "response_contains": ["ragnar"]
+      }
+    },
+    {
+      "name": "Approach fallen door - carrion crawler warning",
+      "user_prompt": "I carefully approach the fallen door and examine it.",
+      "expect": {
+        "scene_name": "entrance",
+        "user_location": "outer_ruins",
+        "scene_turn_counter": 4,
+        "npc_locations": {
+          "ragnar": "outer_ruins"
+        },
+        "vars": {
+          "carrion_crawler_defeated": "false"
+        },
+        "response_contains": ["movement", "door"]
+      }
+    },
+    {
+      "name": "Combat carrion crawler",
+      "user_prompt": "I attack the creature with my sword while Ragnar assists!",
+      "expect": {
+        "scene_name": "entrance",
+        "user_location": "outer_ruins",
+        "scene_turn_counter": 5,
+        "npc_locations": {
+          "ragnar": "outer_ruins"
+        },
+        "response_contains": ["carrion crawler", "tentacle"]
+      }
+    },
+    {
+      "name": "Defeat carrion crawler",
+      "user_prompt": "We strike the carrion crawler down with our combined attacks!",
+      "expect": {
+        "scene_name": "entrance",
+        "user_location": "outer_ruins",
+        "scene_turn_counter": 6,
+        "npc_locations": {
+          "ragnar": "outer_ruins"
+        },
+        "vars": {
+          "carrion_crawler_defeated": "true"
+        }
+      }
+    },
+    {
+      "name": "Carrion crawler combat event",
+      "user_prompt": "WAIT_FOR_STORY_EVENT",
+      "expect": {
+        "scene_turn_counter": 7
+      }
+    },
+    {
+      "name": "Search beneath door for treasure",
+      "user_prompt": "I move the carrion crawler's body and look beneath the door.",
+      "expect": {
+        "scene_name": "entrance",
+        "user_location": "outer_ruins",
+        "scene_turn_counter": 8,
+        "npc_locations": {
+          "ragnar": "outer_ruins"
+        },
+        "vars": {
+          "carrion_crawler_defeated": "true"
+        },
+        "response_contains": ["treasure"]
+      }
+    },
+    {
+      "name": "Enter courtyard through hole",
+      "user_prompt": "I head through the hole in the wall into the courtyard.",
+      "expect": {
+        "scene_name": "entrance",
+        "user_location": "courtyard",
+        "scene_turn_counter": 9,
+        "npc_locations": {
+          "ragnar": "courtyard"
+        }
+      }
+    }
+  ]
+}

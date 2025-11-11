@@ -1,0 +1,515 @@
+{
+  "name": "The Village of Barovia",
+  "narrator_id": "poe",
+  "default_pc": "van_helsing",
+  "story": "A mysterious summons draws you into the cursed land of Barovia, where an ancient evil holds the people in thrall. The mists have claimed this valley, and escape may prove impossible. Your quest begins in a humble tavern, but the shadows of Castle Ravenloft loom over all.",
+  "opening_prompt": "You find yourself in a humble country tavern on a cold autumn evening. Outside, fog drapes everything in a clammy grasp, but inside the fire blazes warm and the ale flows freely.\n\n%s\n\nThe tumbling voices of country folk fill the air. This seems like just another dull stop on your adventures - until the door swings open and a gypsy messenger strides in, his eyes seeking you out with unnerving purpose.",
+  
+  "scenes": {
+    "old_inn": {
+      "story": "A gypsy messenger delivers a desperate plea from the Burgomaster of Barovia. His adopted daughter Ireena has been afflicted by a terrible evil, and he begs for aid. The letter promises wealth and speaks of great need.",
+      
+      "locations": {
+        "tavern_interior": {
+          "name": "Inside the Tavern",
+          "description": "A warm, hearty tavern filled with the smell of roasted meat and fresh bread. A fire crackles in the stone hearth. Country folk huddle at tables, speaking in low voices. The barkeeper tends his taps with mechanical precision.",
+          "exits": {
+            "outside": "tavern_yard"
+          },
+          "items": []
+        },
+        
+        "tavern_yard": {
+          "name": "Tavern Yard",
+          "description": "The yard outside the tavern is shrouded in thick fog. Damp cobblestones glisten in the lamplight. The cold penetrates to your bones.",
+          "exits": {
+            "inside": "tavern_interior",
+            "west": "svalich_woods_approach"
+          },
+          "items": []
+        },
+        
+        "svalich_woods_approach": {
+          "name": "Edge of Svalich Woods",
+          "description": "The western road leads into the forbidding Svalich Woods. Towering trees loom ahead, their tops lost in heavy mist. An unnatural silence hangs over the forest path.",
+          "exits": {},
+          "blocked_exits": {
+            "east": "You can return to the tavern yard, but something tells you that once you enter the woods, there may be no turning back.",
+            "west": "The path into the woods beckons. You sense this is a journey that will change everything."
+          },
+          "items": []
+        }
+      },
+      
+      "npcs": {
+        "gypsy_messenger": {
+          "name": "The Gypsy Messenger",
+          "type": "Vistani messenger",
+          "disposition": "Mysterious and purposeful. He speaks with an accent and delivers his message with dramatic flair. He will not answer questions about his master or Barovia - only urges you to come at first light.",
+          "description": "A man in brightly colored clothes, with a wide-brimmed hat hanging askew over shadowed eyes. His boots are heavy and his movements confident. He carries himself with the bearing of one who knows secrets.",
+          "location": "tavern_interior",
+          "items": ["sealed_letter", "heavy_purse"]
+        },
+        
+        "barkeeper": {
+          "name": "The Barkeeper",
+          "type": "Tavern keeper",
+          "disposition": "Wary and taciturn. Serves drinks but doesn't engage in conversation beyond taking orders.",
+          "description": "A middle-aged man with a weathered face and cautious eyes. He wipes glasses with mechanical precision.",
+          "location": "tavern_interior",
+          "items": []
+        }
+      },
+      
+      "vars": {
+        "letter_received": "false",
+        "entered_woods": "false"
+      },
+      
+      "contingency_prompts": [
+        "The gypsy messenger appears dramatically shortly after the player enters the tavern. He walks directly to the player's table without hesitation, as if he knew exactly who to find.",
+        "When the gypsy delivers his message, he says: 'I have been sent to you to deliver this message! If you be creatures of honor, you will come to my master's aid at first light. It is not advisable to travel the Svalich woods at night!' Then he drops the sealed letter on the table and announces: 'Take the west road from here some five hours march down through the Svalich woods. There you will find my master in Barovia.'",
+        "After delivering the letter, the gypsy strides to the bar and says loudly: 'Fill the glasses, one and all. Their throats are obviously parched.' He drops his heavy purse on the bar, then leaves without another word.",
+        "The sealed letter is addressed to the player in beautiful flowing script. The seal is an unfamiliar crest. The letter is dated yesterday but the ink is still not dry.",
+        "When the player opens the letter, it reads: 'Hail to thee of might and valor: I, a lowly servant of the township of Barovia, send honor to thee. We plead for thy so desperately needed assistance within our community. The love of my life, Ireena Kolyana, has been afflicted by an evil so deadly that even the good people of our town cannot protect her. She languishes from her wound and I would have her saved from this menace. There is much wealth in this community. I offer all that might be had to thee and thy fellows if thou shalt but answer my desperate plea. Come quickly for her time is at hand! All that I have shall be thine! Kolyan Indirovich, Burgomaster'",
+        "The other tavern patrons fall silent when the gypsy enters, watching with wary eyes. After he leaves, they slowly resume their conversations in subdued tones.",
+        "If the player asks the barkeeper or other patrons about Barovia or the woods, they shake their heads and refuse to speak of it, looking fearful."
+      ],
+      
+      "contingency_rules": [
+        "When the gypsy messenger delivers the letter to the player, set letter_received to true.",
+        "When the player takes the west road from the tavern yard OR enters the Svalich Woods, set entered_woods to true and the scene changes to village_approach."
+      ],
+      
+      "conditionals": {
+        "enter_woods": {
+          "when": {
+            "vars": {
+              "entered_woods": "true"
+            }
+          },
+          "then": {
+            "scene_change": {
+              "to": "village_approach",
+              "reason": "conditional"
+            }
+          }
+        }
+      }
+    },
+    
+    "village_approach": {
+      "story": "The journey through the Svalich Woods is harrowing. Towering trees block out the sky, and the undergrowth presses in from all sides. The woods are silent as a grave, yet they exude menace. You will find evidence of tragedy and face deadly danger before reaching the village.",
+      
+      "locations": {
+        "svalich_woods": {
+          "name": "Svalich Woods",
+          "description": "Towering trees whose tops are lost in heavy gray mist block out all save a death-gray light. The tree trunks almost touch. The thick, damp undergrowth presses in on you, making it impossible to see far ahead. The woods have the silence of a forgotten grave, yet exude the feeling of an unsounded scream.",
+          "exits": {
+            "forward": "village_square"
+          },
+          "blocked_exits": {
+            "back": "The mists have closed behind you. There is no path back the way you came. You can only press forward."
+          },
+          "items": []
+        },
+        
+        "village_square": {
+          "name": "Village Square",
+          "description": "Tall shapes loom out of the dense fog. The muddy ground gives way to slick, wet cobblestones. The dwellings of Barovia stand like silent sentinels. The windows of each house stare out from pools of black nothingness. No sound cuts the silence except for a single mournful sobbing that echoes from somewhere in the distance.",
+          "exits": {
+            "mercantile": "bildraths_mercantile",
+            "tavern": "blood_on_vine",
+            "townhouse": "mad_marys_house",
+            "mansion": "burgomasters_mansion",
+            "church": "village_church"
+          },
+          "items": []
+        },
+        
+        "bildraths_mercantile": {
+          "name": "Bildrath's Mercantile",
+          "description": "Sparse light spills from behind drawn heavy curtains. A sign over the door creaks on its hinges, proclaiming this 'Bildrath's Mercantile.' Inside, the building is about 70 feet long by 40 feet wide. Shelves line the walls, stocked with basic goods.",
+          "exits": {
+            "out": "village_square"
+          },
+          "items": [],
+          "contingency_prompts": [
+            "Bildrath stands behind the counter. He is a hard-bargaining merchant who will sell basic supplies, but everything is ten times the normal price. He never bargains or haggles.",
+            "If the player gives Bildrath any trouble or refuses to pay his prices, Bildrath calls for Parriwimple, his stock boy and nephew.",
+            "Parriwimple is massively strong - his muscles ripple beneath his leather tunic. He is simple-minded but completely loyal to his uncle. If called, he will intimidate troublemakers into compliance or forcibly remove them from the shop.",
+            "Bildrath says things like: 'If you want it badly enough, you'll pay for it. You certainly won't be taking your business elsewhere in Barovia.'"
+          ]
+        },
+        
+        "blood_on_vine": {
+          "name": "Blood on the Vine Tavern",
+          "description": "A single shaft of light thrusts into the square like a solid pillar in the heavy fog. Above the gaping doorway, a sign hangs precariously askew. The sign originally read 'Blood of the Vine,' but the 'F' has been scratched over with an 'N.' Inside, the once-fine tavern has grown shoddy over the years. A blazing fire in the hearth gives scant warmth. The silence is broken only by the occasional sip of watery wine.",
+          "exits": {
+            "out": "village_square"
+          },
+          "items": [],
+          "contingency_prompts": [
+            "Arik the barkeeper stands behind the bar, mindlessly cleaning glasses. When they're all clean, he starts over. If spoken to, he takes drink orders in a dull, hollow voice, then returns to cleaning glasses. He ignores all questions.",
+            "Three Vistani gypsies sit at a table near the door. They own the tavern and see to it that all customers pay their bills. They are otherwise disinterested in visitors.",
+            "Ismark the Lesser sits in the corner, sipping wine. He has fair features and an earnest expression. He is the son of the Burgomaster and speaks common speech well.",
+            "If the player shows Ismark the letter they received, he confirms his father did try to send a warning. However, Ismark recognizes that THIS letter is not in his father's handwriting. The letter the player received was forged by someone else.",
+            "Ismark will offer to take the player to the Burgomaster's home. He is tight-lipped about most subjects, but will speak about his adopted sister Ireena and about Strahd.",
+            "Ismark knows: Strahd is a vampire who has ruled this land for over 400 years. For some unknown reason, Strahd is attracted to Ireena more than anything else. The Burgomaster has been dead for over 10 days. The great holy symbol that protected the house was stolen, leaving Ireena unprotected."
+          ]
+        },
+        
+        "mad_marys_house": {
+          "name": "Mad Mary's Townhouse",
+          "description": "A moaning sob flows through the still gray streets, coloring your thoughts with sadness. The sounds flow from a dark two-story townhouse. The house is boarded up and barricaded from the inside.",
+          "exits": {
+            "out": "village_square"
+          },
+          "items": [],
+          "contingency_prompts": [
+            "If the player manages to get inside, they find Mad Mary sitting in the middle of the floor of an upstairs bedroom. She is lost in sorrow and barely recognizes anyone's presence.",
+            "Mary hid her beloved daughter Gertruda in this house for the girl's entire life. Recently, Gertruda broke out and has not been seen since. Mary fears the worst.",
+            "Mad Mary can barely speak through her grief. She rocks back and forth, occasionally whispering her daughter's name."
+          ]
+        },
+        
+        "burgomasters_mansion": {
+          "name": "The Burgomaster's Mansion",
+          "description": "A weary-looking mansion squats behind a rusting iron fence. The iron gates are twisted and torn - the right gate lies cast aside while the left swings crazily in the wind, creating a stuttering squeal. Weeds choke the grounds and press with menace upon the house itself. Against the walls, the growth has been trodden under to form a path all about the domain. Heavy claw markings have stripped the once-beautiful finish of the walls. Great black blottings tell of fires that have assailed the structure. Not a pane of glass stands in any window - all windows are barred with heavy planking, each plank marked with stains of evil omen.",
+          "exits": {
+            "out": "village_square"
+          },
+          "items": [],
+          "contingency_prompts": [
+            "Ireena Kolyana is inside and will not open the heavily barred door unless absolutely convinced visitors are of no allegiance to Count Strahd. If Ismark is with the party, she opens the door immediately.",
+            "Inside, the house is well furnished but shows considerable wear. The windows are boarded up and holy symbols hang in every room. The stench is horrible.",
+            "The Burgomaster lies dead in a side drawing room, surrounded by candles burning in his honor. He has been dead for nearly 10 days. No one from the town has been brave enough to help Ismark take him for burial.",
+            "Ireena Kolyana is a sweet but troubled young woman. She has a strong will and is no helpless victim - she will aid the party as best she can.",
+            "Ireena has been bitten twice by the vampire and can no longer be protected here. The town people are afraid of her and avoid her. The party is her only hope.",
+            "Ireena tells the party: Each night, wolves and terrible creatures attack the house. The Burgomaster's heart could not stand the constant assault and he died naturally. Strangely, since his death, the wolves have not attacked.",
+            "Ireena does not remember her early past. She doesn't know how she came to Barovia or where she came from. The Burgomaster adopted her when she was found at the edge of the Svalich Woods as a young girl.",
+            "Ireena will accompany the party if they promise to protect her. She seeks sanctuary somewhere safe from Strahd's reach."
+          ]
+        },
+        
+        "village_church": {
+          "name": "The Village Church",
+          "description": "Atop a slight rise stands a gray, sagging edifice of stone and wood. This church has weathered the assaults of evil for centuries and is worn and weary. The bell tower hangs to one side, its sweet tone long silenced. Flickering light shines through holes burned through the roof shingles. The rafters strain feebly against their load. Inside, the church is a shambles - overturned and broken benches litter the dusty floor.",
+          "exits": {
+            "out": "village_square",
+            "cemetery": "cemetery"
+          },
+          "items": [],
+          "contingency_prompts": [
+            "Father Donavich kneels at a claw-scarred altar at the far end of the church. He has been praying and chanting throughout the night. His voice is hoarse and weak.",
+            "The priest knows: Only nightly prayers have kept the church a place of holy sanctuary in Barovia. There is a book in the library of Castle Ravenloft that might help destroy Strahd - the vampire kept meticulous notes on all he did. Ireena Kolyana was found at the edge of the Svalich Woods as a child with no memory of her past. The old Burgomaster adopted her and loved her dearly.",
+            "Father Donavich is exhausted but steadfast. He will offer what aid he can, including prayers and blessings.",
+            "If the player asks about the sounds from below the church, Donavich becomes deeply pained and reluctant to speak. His son Doru is trapped in the undercroft - turned into a vampire spawn. Donavich has been unable to destroy him or set him free."
+          ]
+        },
+        
+        "cemetery": {
+          "name": "The Cemetery",
+          "description": "A quiet graveyard stretches behind the church. Weathered headstones lean at odd angles. The ground is overgrown with dead grass. An oppressive sadness hangs over this place.",
+          "exits": {
+            "church": "village_church"
+          },
+          "items": [],
+          "contingency_prompts": [
+            "If the player is here at night, ghostly spirits rise from the graveyard and march up the road toward Castle Ravenloft. These spirits have no interest in the living and cannot be hit, damaged, or turned. They will not communicate. They are the spirits of previous adventurers who died trying to destroy Strahd, doomed to repeat their failed quest each night."
+          ]
+        }
+      },
+      
+      "npcs": {
+        "bildrath": {
+          "name": "Bildrath Cantemir",
+          "type": "Merchant",
+          "disposition": "Hard-bargaining and mercenary. Refuses to haggle. Serves himself above all. Will not offer sanctuary.",
+          "description": "A Barovian merchant with a stern expression and calculating eyes. He trades with the gypsies and anyone else unlucky enough to need supplies in this cursed land.",
+          "location": "bildraths_mercantile",
+          "items": []
+        },
+        
+        "parriwimple": {
+          "name": "Parriwimple",
+          "type": "Stock boy",
+          "disposition": "Simple-minded but extremely strong. Completely loyal to his uncle Bildrath. Will follow any order Bildrath gives.",
+          "description": "A massively muscled young man with a simple expression. His leather tunic strains against his powerful frame. He is dedicated to his uncle.",
+          "location": "bildraths_mercantile",
+          "items": []
+        },
+        
+        "arik": {
+          "name": "Arik",
+          "type": "Barkeeper",
+          "disposition": "Hollow and detached. Serves drinks mechanically. Ignores all questions and conversation.",
+          "description": "A barkeeper with vacant eyes who endlessly cleans glasses in the same mechanical pattern. He seems barely present.",
+          "location": "blood_on_vine",
+          "items": []
+        },
+        
+        "vistani_1": {
+          "name": "Vistani Guard",
+          "type": "Gypsy tavern owner",
+          "disposition": "Polite but firm. Ensures all customers pay their bills. Otherwise disinterested in outsiders.",
+          "description": "One of three Vistani gypsies who own the Blood on the Vine tavern. They wear colorful clothes and watch the room carefully.",
+          "location": "blood_on_vine",
+          "items": []
+        },
+        
+        "ismark": {
+          "name": "Ismark the Lesser",
+          "type": "Son of the Burgomaster",
+          "disposition": "Honorable and protective. Tight-lipped about most things but will speak about Ireena and Strahd. Desperate to save his sister.",
+          "description": "A fair-featured young man with an earnest expression and weary eyes. He wears simple but well-maintained clothing and carries a longsword.",
+          "location": "blood_on_vine",
+          "items": []
+        },
+        
+        "mad_mary": {
+          "name": "Mad Mary",
+          "type": "Grief-stricken mother",
+          "disposition": "Lost in sorrow. Barely recognizes anyone. Whispers her daughter's name.",
+          "description": "A middle-aged woman in tattered clothes, rocking back and forth in anguish. Her eyes are red from endless weeping.",
+          "location": "mad_marys_house",
+          "items": []
+        },
+        
+        "ireena": {
+          "name": "Ireena Kolyana",
+          "type": "Adopted daughter of the Burgomaster",
+          "disposition": "Sweet but troubled. Strong-willed and capable. Will aid the party if they protect her. Seeks sanctuary from Strahd.",
+          "description": "A young woman with dark hair and striking features. She bears two vampire bite marks on her neck. Despite her fear, she carries herself with dignity and courage.",
+          "location": "burgomasters_mansion",
+          "items": []
+        },
+        
+        "donavich": {
+          "name": "Father Donavich",
+          "type": "Village priest",
+          "disposition": "Exhausted but steadfast. Maintains the sanctity of the church through constant prayer. Deeply pained by his son's fate.",
+          "description": "An aging priest with a hoarse voice and weary eyes. He kneels at the altar, surrounded by candles and holy symbols.",
+          "location": "village_church",
+          "items": []
+        }
+      },
+      
+      "vars": {
+        "found_dead_messenger": "false",
+        "wolves_defeated": "false",
+        "met_ismark": "false",
+        "met_ireena": "false",
+        "agreed_to_help_ireena": "false",
+        "spoke_with_donavich": "false",
+        "ready_for_road": "false"
+      },
+      
+      "contingency_prompts": [
+        "The atmosphere in Barovia is oppressive and fearful. The villagers huddle in their homes and do not answer knocks. If someone does crack a door, they tell strangers to go away.",
+        "Most shops in the village are permanently closed, looted and ruined. Claw marks cover the walls. There is no treasure to be found in abandoned buildings.",
+        "The sobbing heard throughout the village comes from Mad Mary's townhouse.",
+        "Ismark is the key to gaining Ireena's trust. Without him, she will be extremely reluctant to open the door.",
+        "When exploring, emphasize the decay, fear, and oppression that permeates everything. This is a land under the thrall of an ancient evil."
+      ],
+      
+      "contingency_rules": [
+        "Three turns after entering the Svalich Woods, the player finds a dead villager in the underbrush. He holds a crumpled envelope in his hand. His clothes are torn and raked with claw marks. Large wolf paw prints are pressed into the clay around the body. He has been dead several days.",
+        "When the player finds the dead messenger, set found_dead_messenger to true and add 'second_letter' to inventory.",
+        "The second letter is dated one week ago, sealed with a large 'B'. It reads: 'Hail thee of might and valor: I, the Burgomaster of Barovia send you honor - with despair. My adopted daughter, the fair Ireena, has been these past nights bitten by a creature calling its race vampyr. For over 400 years he has drained this land of the life-blood of its people. Now, my dear Ireena languishes and dies from an unholy wound caused by this vile beast. Yet I fear, too, that the creature has some more cunning plan in mind. He has become too powerful to be fought any longer. So I say to you, give us up for dead and encircle this land with the symbols of good. Let holy men call upon their power that the evil one may be contained within the walls of weeping Barovia. Leave our sorrows to our graves, and save the world from this evil fate of ours. There is much wealth entrapped in this community. Return for your reward after we are all departed for a better life. Kolyan Indirovich, Burgomaster'",
+        "During the journey through the woods (after finding the body), the player encounters a pack of 5 dire wolves. These wolves attack viciously.",
+        "When the player defeats the wolves OR escapes the wolves, set wolves_defeated to true.",
+        "When the player speaks with Ismark at the Blood on the Vine tavern, set met_ismark to true.",
+        "When the player meets Ireena at the Burgomaster's mansion, set met_ireena to true.",
+        "When the player agrees to help and protect Ireena, set agreed_to_help_ireena to true.",
+        "When the player speaks with Father Donavich about Strahd or Ravenloft, set spoke_with_donavich to true.",
+        "When the player has met Ireena, agreed to help her, and is ready to seek the Vistani camp, set ready_for_road to true and the scene changes to vistani_camp."
+      ],
+      
+      "conditionals": {
+        "init_scene": {
+          "when": {
+            "scene_turn_counter": 0
+          },
+          "then": {
+            "user_location": "svalich_woods"
+          }
+        },
+        "wolves_story_event": {
+          "when": {
+            "location": "svalich_woods",
+            "scene_turn_counter": 4
+          },
+          "then": {
+            "prompt": "STORY EVENT: Suddenly, the undergrowth erupts with snarling fury! Five massive dire wolves burst from the shadows, their eyes gleaming with predatory hunger! Their matted fur bristles as they circle, teeth bared, blocking any path forward. These are no ordinary wolves - they are enormous, savage, and clearly hunting you!",
+            "monster_events": [
+              {
+                "action": "spawn",
+                "instance_id": "wolf_1",
+                "template": "dire_wolf",
+                "location": "svalich_woods"
+              },
+              {
+                "action": "spawn",
+                "instance_id": "wolf_2",
+                "template": "dire_wolf",
+                "location": "svalich_woods"
+              },
+              {
+                "action": "spawn",
+                "instance_id": "wolf_3",
+                "template": "dire_wolf",
+                "location": "svalich_woods"
+              },
+              {
+                "action": "spawn",
+                "instance_id": "wolf_4",
+                "template": "dire_wolf",
+                "location": "svalich_woods"
+              },
+              {
+                "action": "spawn",
+                "instance_id": "wolf_5",
+                "template": "dire_wolf",
+                "location": "svalich_woods"
+              }
+            ]
+          }
+        },
+        
+        "proceed_to_camp": {
+          "when": {
+            "vars": {
+              "ready_for_road": "true"
+            }
+          },
+          "then": {
+            "scene_change": {
+              "to": "vistani_camp",
+              "reason": "conditional"
+            }
+          }
+        }
+      }
+    },
+    
+    "vistani_camp": {
+      "story": "Following Ismark's directions (or your own instincts), you make your way through the woods to find the Vistani encampment at Tser Pool. These mysterious gypsies may hold answers - and the legendary Madam Eva is said to see all futures.",
+      
+      "locations": {
+        "road_junction": {
+          "name": "Road Junction",
+          "description": "Suddenly, the road splits into the forbidding Svalich woods. The northern fork slants slightly upward while the southern fork slants downward. Dense fog obscures your vision. A cold autumn wind whistles down the northern lane, cutting icily through your clothing. Dead brown leaves rush about in spirals.",
+          "exits": {
+            "north": "tser_pool_camp"
+          },
+          "blocked_exits": {
+            "south": "The southern fork is completely blocked by impenetrable mists. You cannot pass.",
+            "back": "The mists have shifted behind you. The path to the village is lost in the fog."
+          },
+          "items": []
+        },
+        
+        "tser_pool_camp": {
+          "name": "Tser Pool Encampment",
+          "description": "The canopy of mist and branches overhead suddenly gives way to black clouds boiling far above. There is a clearing here, with dry brittle grass rustling in the biting wind. On the far side of the clearing, several colorful wagons are parked on the banks of a dark pool. The mournful strains of an accordion mix with the moaning of the wind. Several brightly clad figures surround a large roaring fire.",
+          "exits": {
+            "fire": "campfire",
+            "tent": "madam_evas_tent"
+          },
+          "items": [],
+          "contingency_prompts": [
+            "Four Vistani gypsies stand and sit around the fire, singing and playing music. If the player approaches, they are greeted warmly and invited to join the singing.",
+            "After a few moments by the fire, one of the gypsies speaks: 'It was fated that you would visit this humble camp. Madam Eva foretold your coming. She awaits you.' He gestures toward a large tent.",
+            "The Vistani will not attack unless provoked with hostility or insult. They are neutral but cautious."
+          ]
+        },
+        
+        "campfire": {
+          "name": "Campfire",
+          "description": "A large fire roars in the center of the camp, casting dancing shadows across the colorful wagons. The Vistani sit on logs and cushions, playing accordion and singing haunting melodies. The warmth is welcome after the chill of the woods.",
+          "exits": {
+            "camp": "tser_pool_camp"
+          },
+          "items": []
+        },
+        
+        "madam_evas_tent": {
+          "name": "Madam Eva's Tent",
+          "description": "Within the tent, all is dimly illuminated in pools of red light. A small low table stands across from the doorway, covered in a black velvet cloth. Glints of light flash from a crystal ball on the table as a hunched figure peers into its depths.",
+          "exits": {
+            "out": "tser_pool_camp"
+          },
+          "items": [],
+          "contingency_prompts": [
+            "Madam Eva is an ancient Vistani woman with cunning eyes that see far more than they should. She speaks in a voice that crackles like dry weeds, with a tone that soars and falls like the wind.",
+            "When the player enters, Madam Eva cackles: 'At last you have arrived!' She speaks the player's name and makes references to their past deeds, things she should not know.",
+            "Madam Eva offers to read the player's fortune using ancient cards. She says: 'Your fate is tied to this land now. The cards will show what must come to pass.'",
+            "If the player agrees to the fortune reading, Madam Eva performs an elaborate card reading with cryptic pronouncements about artifacts, allies, and the location of Strahd's final confrontation. She speaks in riddles but her readings are always true.",
+            "Madam Eva is neutral and serves Strahd only when it benefits her and her troupe. She never gives aid directly but her fortunes guide those brave enough to seek them.",
+            "After the fortune reading, Madam Eva says: 'You have what you came for. Your path is set. Go now and meet your destiny in the shadows of Ravenloft.'"
+          ]
+        }
+      },
+      
+      "npcs": {
+        "vistani_guard_1": {
+          "name": "Vistani Musician",
+          "type": "Gypsy",
+          "disposition": "Friendly and welcoming to visitors. Will fight if the camp is threatened.",
+          "description": "A Vistani man in colorful clothes playing an accordion by the fire. He nods and smiles at newcomers.",
+          "location": "tser_pool_camp",
+          "items": []
+        },
+        
+        "vistani_guard_2": {
+          "name": "Vistani Dancer",
+          "type": "Gypsy",
+          "disposition": "Friendly and welcoming to visitors. Will fight if the camp is threatened.",
+          "description": "A Vistani woman in flowing scarves who sways to the music. Her eyes watch visitors carefully.",
+          "location": "tser_pool_camp",
+          "items": []
+        },
+        
+        "madam_eva": {
+          "name": "Madam Eva",
+          "type": "Vistani Oracle",
+          "disposition": "Cunning and neutral. Serves Strahd when beneficial but answers to no one. Sees the past and future with unnerving clarity.",
+          "description": "An ancient woman hunched over a crystal ball. Her weathered face bears countless wrinkles, but her eyes are sharp and knowing. She wears layers of shawls and jewelry that clink softly.",
+          "location": "madam_evas_tent",
+          "items": ["tarot_deck", "crystal_ball"]
+        }
+      },
+      
+      "vars": {
+        "fortune_told": "false",
+        "ready_to_depart": "false"
+      },
+      
+      "contingency_prompts": [
+        "The Vistani are mysterious but not hostile unless provoked. They know much but speak little.",
+        "Madam Eva's fortune reading is the culmination of this journey. Her words will guide what comes next.",
+        "After the fortune is told, the player's immediate quest in Barovia village is complete. They have met Ireena, learned of Strahd, and received guidance from Madam Eva."
+      ],
+      
+      "contingency_rules": [
+        "When Madam Eva completes the fortune reading, set fortune_told to true.",
+        "When the player has received the fortune and is ready to depart the camp OR leave the tent, set ready_to_depart to true and the game ends."
+      ],
+      
+      "conditionals": {
+        "game_complete": {
+          "when": {
+            "vars": {
+              "fortune_told": "true",
+              "ready_to_depart": "true"
+            }
+          },
+          "then": {
+            "game_ended": true
+          }
+        }
+      }
+    }
+  }
+}

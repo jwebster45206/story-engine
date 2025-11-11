@@ -1,0 +1,544 @@
+{
+  "name": "Castle Mistamere",
+  "opening_location": "outer_ruins",
+  "opening_scene": "entrance",
+  "story": "Many years ago, this part of the Realm of Man was ruled by a magic-user named Gygar, a man of great and mysterious powers. He ruled the lands from his mighty castle Mistamere, located at the foot of the mountains to the north. Gygar died after a long and peaceful rule, but no successor was named. Over the years, the unclaimed castle fell into ruins. Now, centuries later, the outline of the broken towers can still be seen from the town, ever beckoning to seekers of danger, fame and fortune.",
+  "opening_prompt": "You have gathered around a dinner table in the Gold Dragon Inn, in the center of town, to discuss your plans. The Inn is busy, filled with ruddy-faced townsfolk and other adventurers, who are eating, drinking, laughing, and having a splendid time.\n\nYou have all heard the tales told by others, tales of monsters lurking within the ruins and guarding rich treasures. None of you have been there, but after an evening of discussion, you decide to try your luck in the castle ruin, and plan to meet at dawn for the short journey.\n\nOne special note: the town rulers have offered a reward of 1,000 gp for the capture of Bargle, the renegade magic-user! The death of Aleena, a well-known cleric, was the 'last straw.' They want to stop this danger once and for all, so keep your eyes open!\n\nIt's morning, and you're off to the castle. It lies only 3 miles from town, just a healthy walk past a local farmer's fields. As you follow the dirt road past the farm, you greet the workers tending the crops. It's a lovely summer's day, and all seems peaceful. The land owner himself sits atop a wagon, watching his men, and chats with you before you continue onward.\n\nAfter bidding him a good day, you continue toward the ruin. As you approach, you see that the walls are jagged and full of small holes, and a few large stone blocks have tumbled to the earth, laying scattered around the ruins. A gateway in the center of the front wall stands empty, and the massive outer doors now lay rotting nearby. This gateway seems to be the easiest entrance through the wall. A 10' wide gaping hole is in the wall off to your left, and could be another entrance. You do not see any other entrances; the rest of the wall is crumbling, but few wide holes have opened. This outer area has no other interesting features. A sheer cliff, the face of a mountain, rises at the north edge of the ruins.",
+  
+  "vars": {
+    "carrion_crawler_defeated": "false",
+    "kobolds_defeated": "false",
+    "kobolds_fled": "false",
+    "kobold_prisoner_taken": "false",
+    "hidden_treasure_revealed": "false"
+  },
+  
+  "contingency_rules": [
+    "When the carrion crawler is defeated or killed, set carrion_crawler_defeated to true.",
+    "When all kobolds in the courtyard are defeated, set kobolds_defeated to true.",
+    "When kobolds are reduced to 3 or fewer and flee, set kobolds_fled to true.",
+    "When a kobold is captured and questioned, set kobold_prisoner_taken to true.",
+    "When a kobold prisoner reveals the location of the hidden treasure, set hidden_treasure_revealed to true."
+  ],
+  
+  "npcs": {
+    "ragnar": {
+      "name": "Ragnar",
+      "type": "Thief",
+      "disposition": "pragmatic and cynical",
+      "description": "A wiry 2nd-level thief in his late twenties with weathered features and sharp, observant gray eyes that constantly scan for danger. He wears dark leather garb—not armor—that allows him to move silently. His black hair is tied back in a practical knot, and a faint scar runs along his left jawline from a trap that nearly killed him years ago. Ragnar carries a shortbow slung across his back and fights two-handed with a dagger in his left and a shortsword in his right, moving with the fluid grace of an experienced rogue. He speaks in a low, measured voice and has a habit of testing doors and floors before crossing. His keen eyes miss nothing—every shadow, every loose stone, every telltale wire. Despite his cautious nature, he's fiercely loyal to those who've earned his trust.",
+      "location": "outer_ruins",
+      "items": ["shortbow", "arrows", "dagger", "shortsword", "thieves' tools"],
+      "following": "pc"
+    },
+    "eilonwy": {
+      "name": "Eilonwy",
+      "type": "Cleric",
+      "disposition": "pious and compassionate",
+      "description": "A faithful 2nd-level cleric in her early thirties with warm brown eyes that radiate compassion and determination. Her auburn hair is braided back and tucked beneath a simple white coif. She wears well-maintained chainmail that bears the sun symbol of her deity etched into the breastplate, and carries a sturdy oak quarterstaff worn smooth from years of use. A silver holy symbol hangs from a leather cord around her neck, glinting when she invokes her deity's power. Eilonwy is more of a spellcaster than a melee combatant—her true strength lies in healing wounds and turning undead with divine authority. She speaks with gentle conviction, offering words of encouragement to her companions, but her voice becomes commanding and fearless when confronting the forces of darkness. She carries a small pouch of healing herbs at her belt and keeps a prayer book tucked in her pack. Despite her peaceful demeanor, she will not hesitate to defend the innocent with both faith and force.",
+      "location": "outer_ruins",
+      "items": ["quarterstaff", "holy symbol", "healing herbs"],
+      "following": "pc"
+    }
+  },
+  
+  "locations": {
+    "outer_ruins": {
+      "name": "Outer Ruins",
+      "description": "The path through the rubble passes a fallen door lying on the ground. Large stone blocks from the crumbling outer wall are scattered about. The wall is about 50 feet high and very shaky - any climbing might pull blocks loose. The main gateway stands 40 feet wide, but inner doors now block it. A 10-foot wide gaping hole in the wall to the left offers an alternate entrance.",
+      "exits": {
+        "gateway": "gateway_blocked",
+        "hole": "courtyard"
+      },
+      "items": [],
+      "monsters": {
+        "door_crawler": {
+          "template_id": "carrion_crawler",
+          "name": "Carrion Crawler",
+          "description": "A large worm-like monster with eight long tentacles in a circle around its mouth, emerging from under the fallen door.",
+          "hp": 10,
+          "max_hp": 10
+        }
+      },
+      "contingency_prompts": [
+        {
+          "prompt": "As the player approaches the fallen door, they should notice slight movement beneath it - there's something hiding under the door!",
+          "when": {
+            "vars": {
+              "carrion_crawler_defeated": "false"
+            }
+          }
+        },
+        {
+          "prompt": "The carrion crawler will attack with all 8 tentacles. Each successful hit causes paralysis unless the victim makes a saving throw. Paralyzed victims recover in 30 minutes.",
+          "when": {
+            "vars": {
+              "carrion_crawler_defeated": "false"
+            }
+          }
+        },
+        {
+          "prompt": "After defeating the carrion crawler and moving its body, treasure is visible in the hole beneath: 1,000 copper pieces, 1,000 silver pieces, two garnets worth 100 gp each, and a small rotted leather bag containing 15 cp and a brass key. A kobold skeleton lies at the bottom.",
+          "when": {
+            "vars": {
+              "carrion_crawler_defeated": "true"
+            }
+          }
+        },
+        {
+          "prompt": "The fallen door has been searched and the carrion crawler defeated. The treasure has been found beneath it.",
+          "when": {
+            "vars": {
+              "carrion_crawler_defeated": "true"
+            }
+          }
+        }
+      ]
+    },
+    
+    "gateway_blocked": {
+      "name": "Blocked Gateway",
+      "description": "The main gateway is blocked by a pair of heavy inner doors. They appear locked and cannot be forced open from this side. The kobolds inside are holding them shut.",
+      "exits": {
+        "back": "outer_ruins"
+      },
+      "items": [],
+      "contingency_prompts": [
+        "The doors cannot be opened. The player must use the hole in the wall instead."
+      ]
+    },
+    
+    "courtyard": {
+      "name": "Courtyard",
+      "description": "You see a large courtyard inside the wall, and the remains of a castle. The castle ruin is old and cracked, but not as badly as the outer wall. Only one story of the castle still stands; the upper parts have crumbled, and the rubble is scattered throughout the courtyard. The outer wall is 10 feet thick. A pathway leads through the rubble, starting at the gateway and leading 90 feet north to a pair of doors in the middle of the south wall of the castle ruin. Those doors are 20 feet wide. The castle wall extends 80 feet to each side of the doors, east and west. Boulders provide cover throughout the courtyard.",
+      "exits": {
+        "castle_entrance": "great_hall",
+        "back": "outer_ruins"
+      },
+      "items": [],
+      "monsters": {
+        "guard_kobold_1": {
+          "template_id": "kobold",
+          "hp": 4,
+          "max_hp": 4
+        },
+        "guard_kobold_2": {
+          "template_id": "kobold",
+          "hp": 4,
+          "max_hp": 4
+        },
+        "guard_kobold_3": {
+          "template_id": "kobold",
+          "hp": 4,
+          "max_hp": 4
+        },
+        "guard_kobold_4": {
+          "template_id": "kobold",
+          "hp": 4,
+          "max_hp": 4
+        },
+        "guard_kobold_5": {
+          "template_id": "kobold",
+          "hp": 4,
+          "max_hp": 4
+        },
+        "guard_kobold_6": {
+          "template_id": "kobold",
+          "hp": 4,
+          "max_hp": 4
+        },
+        "guard_kobold_7": {
+          "template_id": "kobold",
+          "hp": 4,
+          "max_hp": 4
+        },
+        "guard_kobold_8": {
+          "template_id": "kobold",
+          "hp": 4,
+          "max_hp": 4
+        },
+        "guard_kobold_9": {
+          "template_id": "kobold",
+          "hp": 4,
+          "max_hp": 4
+        },
+        "guard_kobold_10": {
+          "template_id": "kobold",
+          "hp": 4,
+          "max_hp": 4
+        }
+      },
+      "contingency_prompts": [
+        {
+          "prompt": "The kobolds are guards hiding in the shadow of the wall, avoiding open sunlight. They are armed with short bows, arrows, and short swords. Each has 2 quivers of arrows (40 total).",
+          "when": {
+            "vars": {
+              "kobolds_defeated": "false",
+              "kobolds_fled": "false"
+            }
+          }
+        },
+        {
+          "prompt": "Kobolds use hit-and-run tactics, firing from behind cover. When firing at targets under cover, attacks are much harder (-4 penalty). Players can also use boulders for cover.",
+          "when": {
+            "vars": {
+              "kobolds_defeated": "false",
+              "kobolds_fled": "false"
+            }
+          }
+        },
+        {
+          "prompt": "The range from the hole to the kobolds is 110 feet (long range for short bows, medium for long bows).",
+          "when": {
+            "vars": {
+              "kobolds_defeated": "false",
+              "kobolds_fled": "false"
+            }
+          }
+        },
+        {
+          "prompt": "If the kobolds are reduced to 3 or fewer, they will panic and try to flee toward the castle doors. They are slow and can be caught by unarmored characters.",
+          "when": {
+            "vars": {
+              "kobolds_defeated": "false",
+              "kobolds_fled": "false"
+            }
+          }
+        },
+        {
+          "prompt": "The remaining kobolds have fled toward the castle doors in panic! They can be caught by unarmored characters if pursued quickly.",
+          "when": {
+            "vars": {
+              "kobolds_fled": "true",
+              "kobolds_defeated": "false"
+            }
+          }
+        },
+        {
+          "prompt": "Each defeated kobold carries a small leather bag with 3-18 copper pieces.",
+          "when": {
+            "vars": {
+              "kobolds_defeated": "true"
+            }
+          }
+        },
+        {
+          "prompt": "If one or more kobolds are kept prisoner with ropes, they can be questioned. A prisoner will offer to show treasure in exchange for freedom: a small iron box buried under rubble by the east tower contains 100 gp and a black onyx gem worth 50 gp.",
+          "when": {
+            "vars": {
+              "kobold_prisoner_taken": "true",
+              "hidden_treasure_revealed": "false"
+            }
+          }
+        },
+        {
+          "prompt": "The kobold prisoner has revealed the location of hidden treasure: a small iron box buried under rubble by the east tower. It can be dug up to find 100 gp and a black onyx gem worth 50 gp.",
+          "when": {
+            "vars": {
+              "hidden_treasure_revealed": "true"
+            }
+          }
+        },
+        {
+          "prompt": "The courtyard is quiet now. The kobold guards have been dealt with, and their scattered arrows and equipment litter the ground.",
+          "when": {
+            "vars": {
+              "kobolds_defeated": "true"
+            }
+          }
+        }
+      ]
+    },
+    
+    "great_hall": {
+      "name": "Great Hall",
+      "description": "This large 30' x 60' room has five doors: two in the east wall, two in the west wall, and one in the middle of the south wall. A large marble fireplace sits in the middle of the north wall. A long wood table, 10' wide and 40' long, fills the center of the room. It is surrounded by 12 plain wooden chairs, 5 on each side and one on each end. The room is filled with sunlight from the southern entrance, but the side rooms remain dark.",
+      "exits": {
+        "west_hall": "west_hall",
+        "east_hallway": "hallway",
+        "south": "courtyard"
+      },
+      "items": [],
+      "contingency_prompts": [
+        "This room contains no treasure or encounters, but serves as the central hub of the dungeon.",
+        "Players should note which light sources they are using (torches, lanterns, etc.) as the side rooms are dark."
+      ]
+    },
+    
+    "west_hall": {
+      "name": "West Hall",
+      "description": "This 30' x 30' room has doorways in the east and west walls. It contains the remains of 3 chairs and 2 small tables. A fireplace is in the middle of the north wall. The chimney appears to be clogged with old timbers.",
+      "exits": {
+        "east": "great_hall"
+      },
+      "items": ["silver teaspoon", "silver teaspoon", "silver teaspoon", "bag of dried peas"],
+      "monsters": {
+        "giant_bat_chimney": {
+          "template_id": "giant_bat",
+          "name": "Giant Bat",
+          "description": "A massive bat with leathery wings spread wide, disturbed from its roost in the chimney.",
+          "hp": 8,
+          "max_hp": 8
+        }
+      },
+      "contingency_prompts": [
+        "If the player searches carefully, they find 3 old silver teaspoons worth 10 sp each and a small bag of dried-up peas.",
+        "If the player searches the chimney, a shower of rubble comes down and a giant bat flies out with a terrible screech!",
+        "The bag of peas is important - a single pea can be used to awaken someone from the magical sleep curse in the cursed bedroom."
+      ]
+    },
+    
+    "hallway": {
+      "name": "Hallway",
+      "description": "This 30' x 20' area has doorways (without doors) in the east and west walls. Normal wooden doors are in the north and south walls. The room contains some trash but nothing of interest.",
+      "exits": {
+        "west": "great_hall",
+        "east": "east_hall",
+        "north": "cursed_bedroom",
+        "south": "helpful_bedroom"
+      },
+      "items": []
+    },
+    
+    "east_hall": {
+      "name": "East Hall",
+      "description": "This 30' x 30' room has empty doorways in the east and west walls, and the doors are missing. A fireplace is in the north wall, and the room contains the remains of 4 chairs and one small table. The chimney is filled with old fallen timbers.",
+      "exits": {
+        "west": "hallway"
+      },
+      "items": ["feather pillow"],
+      "contingency_prompts": [
+        "If the player searches the room, they find an old pillow stuffed with feathers.",
+        "There is one loose brick inside the chimney of the fireplace, but the chimney is filled with dangerous fallen timbers.",
+        "If a character searches the chimney, some timbers fall causing 2-5 points of damage (1 point if they make a Saving Throw vs. Wands).",
+        "Behind the loose brick is a finely made silver dagger worth 75 gp. It is not magical but well-crafted.",
+        "The feather from the pillow is important - it can be used to tickle someone on the helpful bed, causing it to sneeze."
+      ]
+    },
+    
+    "cursed_bedroom": {
+      "name": "Cursed Bedroom",
+      "description": "This room is 30' x 40', with two empty doorways in the west wall and one in the east wall. The doors are missing. A large fireplace is in the south wall. This area was once a fine bedroom, but its once-rich furnishings — the canopy bed, plush chairs, tables and rugs — are now tattered, moldy, and worthless. Somehow, the moldy bed looks very comfortable.",
+      "exits": {
+        "west": "hallway"
+      },
+      "items": [],
+      "contingency_prompts": [
+        "The first two characters to enter the room must make a Saving Throw vs. Spells or be compelled to lie down on the bed and fall into magical sleep!",
+        "Victims of the magical sleep may sleep for years, but will not age nor need food or drink.",
+        "A victim can be awakened by: (1) A Dispel Magic spell (available in town for a price), (2) A normal pea placed under the mattress (causes immediate awakening but leaves a sore back with -2 to hit rolls until rest), or (3) Being placed on the helpful bed in the southern bedroom.",
+        "Tickling the victim with a feather has no effect while on this bed."
+      ]
+    },
+    
+    "helpful_bedroom": {
+      "name": "Helpful Bedroom",
+      "description": "This room looks exactly the same as the northern bedroom, with two doorways in the east wall and one to the west. This 30' x 40' room contains a canopy bed, plush chairs, tables and rugs, all tattered and moldy. However, this bed has a different magical property.",
+      "exits": {
+        "north": "hallway"
+      },
+      "items": [],
+      "contingency_prompts": [
+        "This bed is completely harmless and even helpful. If a sleeping victim of the cursed bed is placed on this bed, they will wake in 3 minutes, completely unharmed and refreshed.",
+        "If a victim is tickled while on this bed (with a feather, for example), the entire bed will magically sneeze! This causes the mold in the room to fly into the air.",
+        "Everyone in the room when the bed sneezes must make a Saving Throw vs. Spells or start sneezing themselves for 4 rounds, unable to do anything else!",
+        "The sneezing attracts any nearby monsters (such as zombies from room 35) who will arrive 1 round after the sneezing starts."
+      ]
+    },
+    
+    "zombie_room": {
+      "name": "Zombie Chamber",
+      "description": "This 30' x 20' room has doorways in the south and east walls. The room is filled with debris and rubble. Standing motionless in the darkness are three humanoid figures - zombies, their flesh rotting and eyes vacant.",
+      "exits": {
+        "south": "great_hall",
+        "east": "stairs_down"
+      },
+      "items": [],
+      "monsters": {
+        "zombie_1": {
+          "template_id": "zombie",
+          "hp": 8,
+          "max_hp": 8
+        },
+        "zombie_2": {
+          "template_id": "zombie",
+          "hp": 8,
+          "max_hp": 8
+        },
+        "zombie_3": {
+          "template_id": "zombie",
+          "hp": 8,
+          "max_hp": 8
+        }
+      },
+      "contingency_prompts": [
+        "The zombies attack anyone who enters. They are undead and mindless, fighting until destroyed.",
+        "Eilonwy can attempt to Turn the undead with her holy symbol. If successful, the zombies will flee to the stairs or back toward this room.",
+        "Zombies are slow but tough. They take multiple hits to destroy."
+      ]
+    },
+    
+    "stairs_down": {
+      "name": "Stairs to Level Two",
+      "description": "This 20' x 30' room has doorways in the north and west walls, but no doors. A stairway leads down into darkness, descending to Dungeon Level Two. Trash and rubble is scattered about the floor, but nothing of value or interest remains.",
+      "exits": {
+        "west": "zombie_room",
+        "down": "level_two_entrance"
+      },
+      "items": [],
+      "contingency_prompts": [
+        "The stairs descend into deep darkness. This is the passage to Dungeon Level Two, where greater dangers await.",
+        "If zombies were Turned, they may have fled here."
+      ]
+    },
+    
+    "level_two_entrance": {
+      "name": "Dungeon Level Two",
+      "description": "The stairs open into a vast network of chambers carved deep into the mountain. The air is cold and stale. This is the domain of Bargle the renegade magic-user, and far more dangerous than the level above.",
+      "exits": {
+        "up": "stairs_down"
+      },
+      "items": [],
+      "contingency_prompts": [
+        "This is the end of the current adventure. Deeper levels await future exploration."
+      ]
+    }
+  },
+  
+  "scenes": {
+    "entrance": {
+      "story": "You approach the ruins of Castle Mistamere. This tutorial area will introduce you to basic combat and dungeon exploration.",
+      "vars": {
+        "carrion_crawler_defeated": "false",
+        "kobolds_defeated": "false",
+        "entered_castle": "false"
+      },
+      "contingency_prompts": [
+        "This is a warm-up sequence. The carrion crawler should be relatively easy to defeat, teaching basic combat.",
+        "The kobold encounter demonstrates tactical combat with missile fire, cover, and morale.",
+        "Encourage the player to search areas, check for traps, and think tactically.",
+        "Ragnar can help spot traps and hidden treasures. Eilonwy can heal and turn undead."
+      ],
+      "contingency_rules": [
+        "When the carrion crawler is defeated, set carrion_crawler_defeated to true.",
+        "When all kobolds in the courtyard are defeated or flee, set kobolds_defeated to true.",
+        "When the player enters the great hall through the castle entrance, set entered_castle to true and the scene changes to dungeon_level_one."
+      ],
+      "conditionals": {
+        "crawler_defeated_treasure": {
+          "when": {
+            "vars": {
+              "carrion_crawler_defeated": "true"
+            }
+          },
+          "then": {
+            "prompt": "STORY EVENT: With the carrion crawler's body pulled aside, you can clearly see a pile of coins at the bottom of the hole, about 8 feet down! The glint of treasure catches your eye - copper and silver coins, and the sparkle of gems. A kobold skeleton lies at the bottom, mostly covered by the treasure."
+          }
+        },
+        "enter_castle": {
+          "when": {
+            "vars": {
+              "entered_castle": "true"
+            }
+          },
+          "then": {
+            "scene_change": {
+              "to": "dungeon_level_one",
+              "reason": "conditional"
+            }
+          }
+        }
+      }
+    },
+    
+    "dungeon_level_one": {
+      "story": "You have entered the castle proper. This is the main dungeon level, filled with rooms, treasures, monsters, and mysteries. Explore carefully and watch for traps.",
+      "vars": {
+        "bat_encountered": "false",
+        "chimney_searched": "false",
+        "cursed_bed_triggered": "false",
+        "helpful_bed_sneezed": "false",
+        "zombies_defeated": "false",
+        "reached_stairs": "false"
+      },
+      "contingency_prompts": [
+        "This is the main dungeon level. Encourage careful exploration and searching.",
+        "The magical beds are a puzzle: the cursed bed traps victims, and the helpful bed cures them. A pea under the mattress also works.",
+        "The chimney encounters can be dangerous - the east hall chimney has falling timbers, the west hall has a giant bat.",
+        "Track light sources - torches, lanterns, etc. The dungeon is dark except where sunlight reaches.",
+        "Ragnar should help find traps and hidden treasures. Eilonwy can heal wounds and turn undead."
+      ],
+      "contingency_rules": [
+        "When the player searches the chimney in the west hall, the giant bat emerges and a story event triggers.",
+        "When the giant bat is wounded (below half HP), it flees through doorways and lands in a safe location.",
+        "When someone lies on the cursed bed, set cursed_bed_triggered to true.",
+        "When the helpful bed sneezes (tickled with a feather), set helpful_bed_sneezed to true.",
+        "When all zombies are defeated or turned, set zombies_defeated to true.",
+        "When the player descends the stairs to level two, set reached_stairs to true and the scene changes to level_two."
+      ],
+      "conditionals": {
+        "bat_emerges_event": {
+          "when": {
+            "location": "west_hall",
+            "scene_turn_counter": 1
+          },
+          "then": {
+            "prompt": "STORY EVENT: You look up the chimney, poking around to see if anything of value might be hidden there. Suddenly, a shower of rubble comes down on you, and a LARGE DARK SHAPE comes flying out with a terrible SCREECH! A giant bat with leathery wings spread wide emerges from the chimney! Among the fallen rubble, you spot a gleam - an onyx gem worth 50 gp has fallen loose."
+          }
+        },
+        "cursed_bed_warning": {
+          "when": {
+            "location": "cursed_bedroom",
+            "scene_turn_counter": 1
+          },
+          "then": {
+            "prompt": "STORY EVENT: As you enter the bedroom, the moldy bed looks strangely INVITING... almost irresistibly comfortable. Something magical stirs in the air around it, compelling you to rest."
+          }
+        },
+        "zombie_encounter": {
+          "when": {
+            "location": "zombie_room",
+            "scene_turn_counter": 1
+          },
+          "then": {
+            "prompt": "STORY EVENT: Three ZOMBIES stand in the darkness, their rotting flesh reeking of death! Their vacant eyes turn toward you, and they shamble forward with grasping hands. The undead have risen!"
+          }
+        },
+        "descend_to_level_two": {
+          "when": {
+            "vars": {
+              "reached_stairs": "true"
+            }
+          },
+          "then": {
+            "scene_change": {
+              "to": "level_two",
+              "reason": "conditional"
+            }
+          }
+        }
+      }
+    },
+    
+    "level_two": {
+      "story": "You have descended to Dungeon Level Two, the deeper chambers where Bargle the renegade magic-user makes his lair. This area is far more dangerous than the level above.",
+      "vars": {},
+      "contingency_prompts": [
+        "This is the end of the current adventure scenario. Deeper levels are left for future development."
+      ],
+      "contingency_rules": [
+        "When the player enters this scene, the game ends."
+      ],
+      "conditionals": {
+        "game_end": {
+          "when": {
+            "scene_turn_counter": 0
+          },
+          "then": {
+            "game_ended": true
+          }
+        }
+      }
+    }
+  }
+}

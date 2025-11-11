@@ -1,0 +1,31 @@
+{
+  "pc_id": "generic_adventurer",
+  "name": "the Adventurer",
+  "pronouns": "they/them",
+  "description": "You are a seasoned adventurer, skilled in combat and accustomed to facing danger. You've traveled far and faced many challenges, but the mists of Barovia may prove to be your greatest test yet.",
+  "background": "A professional adventurer with experience in various quests and battles. Competent, brave, and resourceful.",
+  "stats": {
+    "strength": 14,
+    "dexterity": 13,
+    "constitution": 14,
+    "intelligence": 12,
+    "wisdom": 13,
+    "charisma": 11
+  },
+  "class": "Fighter",
+  "level": 3,
+  "equipment": [
+    "longsword",
+    "shield",
+    "chain mail",
+    "backpack with basic supplies",
+    "rope",
+    "torches",
+    "rations"
+  ],
+  "abilities": [
+    "Skilled in melee combat",
+    "Experienced in dungeon exploration",
+    "Basic survival skills"
+  ]
+}

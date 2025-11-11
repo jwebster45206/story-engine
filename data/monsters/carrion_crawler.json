@@ -1,0 +1,13 @@
+{
+  "template_id": "carrion_crawler",
+  "name": "Carrion Crawler",
+  "description": "A large worm-like monster with eight long tentacles in a circle around its mouth. It seeks out dead flesh to consume, and its tentacles can paralyze victims with their touch.",
+  "ac": 13,
+  "hp": 10,
+  "max_hp": 10,
+  "combat_modifiers": {
+    "tentacle": 3
+  },
+  "items": [],
+  "drop_items_on_defeat": false
+}

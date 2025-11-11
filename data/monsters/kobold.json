@@ -1,0 +1,14 @@
+{
+  "template_id": "kobold",
+  "name": "Kobold",
+  "description": "A short, dog-headed humanoid creature that acts much like goblins. Kobolds are weak individually but often attack in groups, using hit-and-run tactics with bows and swords.",
+  "ac": 13,
+  "hp": 3,
+  "max_hp": 3,
+  "combat_modifiers": {
+    "short_sword": 0,
+    "short_bow": 0
+  },
+  "items": ["kobold_coin_pouch"],
+  "drop_items_on_defeat": true
+}

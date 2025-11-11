@@ -1,0 +1,10 @@
+{
+  "template_id": "ghoul",
+  "name": "Ghoul",
+  "description": "A feral undead creature with elongated claws and teeth. Its skin is stretched tight over bones, and its eyes gleam with unholy hunger. The stench of the grave follows it.",
+  "ac": 12,
+  "max_hp": 18,
+  "items": [],
+  "combat_notes": "Attacks with paralyzing claws and bite - three attacks per round. A successful claw or bite attack can paralyze the victim, leaving them helpless. Particularly dangerous in confined spaces where escape is difficult.",
+  "drop_items_on_defeat": false
+}
