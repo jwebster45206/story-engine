@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -646,6 +647,10 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.textarea.Reset()
 			return m, nil
 
+		case tea.KeyCtrlE:
+			// Export chat history to markdown
+			return m.handleExport()
+
 		case tea.KeyEnter:
 			if m.loading || m.isStreaming {
 				return m, nil
@@ -1014,6 +1019,109 @@ func (m ConsoleUI) handleCommand(input string) (tea.Model, tea.Cmd) {
 
 	m.textarea.Reset()
 	return m, nil
+}
+
+func (m ConsoleUI) handleExport() (ConsoleUI, tea.Cmd) {
+	if m.gameState == nil {
+		// Show error in chat if no game state exists
+		errMsg := "Cannot export: no active game session"
+		currentContent := m.chatViewport.View()
+		m.chatViewport.SetContent(currentContent + "\n" + errorStyle.Render("Error: "+errMsg))
+		m.chatViewport.GotoBottom()
+		return m, nil
+	}
+
+	// Generate filename: {scene_name}_{pc_name}_{timestamp}.md
+	sceneName := sanitizeFilename(m.gameState.SceneName)
+	if sceneName == "" {
+		sceneName = "unknown_scene"
+	}
+
+	pcName := "unknown_pc"
+	if m.gameState.PC != nil && m.gameState.PC.Spec.Name != "" {
+		pcName = sanitizeFilename(m.gameState.PC.Spec.Name)
+	}
+
+	timestamp := time.Now().Format("20060102_150405")
+	filename := fmt.Sprintf("%s_%s_%s.md", sceneName, pcName, timestamp)
+
+	// Generate markdown content
+	var content strings.Builder
+
+	// Get scenario title from display name
+	scenarioTitle := m.scenarioDisplayName()
+	if scenarioTitle == "" {
+		scenarioTitle = strings.TrimSuffix(m.gameState.Scenario, ".json")
+	}
+
+	// Get character name for bolding
+	charName := ""
+	if m.gameState.PC != nil && m.gameState.PC.Spec.Name != "" {
+		charName = m.gameState.PC.Spec.Name
+	}
+
+	// Header with metadata
+	content.WriteString(fmt.Sprintf("# %s\n\n", scenarioTitle))
+	if charName != "" {
+		content.WriteString(fmt.Sprintf("**Character:** %s\n\n", charName))
+	}
+	content.WriteString(fmt.Sprintf("**Model:** %s\n\n", m.gameState.ModelName))
+	content.WriteString(fmt.Sprintf("**Turn Count:** %d\n\n", m.gameState.TurnCounter))
+	content.WriteString(fmt.Sprintf("**Exported:** %s\n\n", time.Now().Format("2006-01-02 15:04:05")))
+	content.WriteString("---\n\n")
+
+	// Chat history
+	for _, msg := range m.gameState.ChatHistory {
+		switch msg.Role {
+		case "user":
+			// Bold character name if it appears at the start
+			msgContent := msg.Content
+			if charName != "" && strings.HasPrefix(msgContent, charName+":") {
+				msgContent = "**" + charName + ":**" + msgContent[len(charName)+1:]
+			}
+			// Bold character name occurrences within the message
+			if charName != "" {
+				msgContent = strings.ReplaceAll(msgContent, charName+":", "**"+charName+":**")
+			}
+			fmt.Fprintf(&content, "%s\n\n", msgContent)
+		case "assistant":
+			// Bold narrator prefix
+			fmt.Fprintf(&content, "**Narrator:** %s\n\n", msg.Content)
+		case "system":
+			fmt.Fprintf(&content, "_System: %s_\n\n", msg.Content)
+		}
+	}
+
+	// Write file to current working directory
+	err := os.WriteFile(filename, []byte(content.String()), 0644)
+	if err != nil {
+		// Show error in chat
+		errMsg := fmt.Sprintf("Failed to export: %v", err)
+		currentContent := m.chatViewport.View()
+		m.chatViewport.SetContent(currentContent + "\n" + errorStyle.Render("Error: "+errMsg))
+		m.chatViewport.GotoBottom()
+		return m, nil
+	}
+
+	// Show success message in chat
+	successMsg := fmt.Sprintf("Chat history exported to: %s", filename)
+	currentContent := m.chatViewport.View()
+	m.chatViewport.SetContent(currentContent + "\n" + narratorStyle.Render("✓ "+successMsg))
+	m.chatViewport.GotoBottom()
+
+	return m, nil
+}
+
+// sanitizeFilename removes or replaces characters that are invalid in filenames
+func sanitizeFilename(s string) string {
+	// Replace spaces with underscores
+	s = strings.ReplaceAll(s, " ", "_")
+	// Remove common problematic characters
+	invalidChars := []string{"/", "\\", ":", "*", "?", "\"", "<", ">", "|"}
+	for _, char := range invalidChars {
+		s = strings.ReplaceAll(s, char, "")
+	}
+	return strings.ToLower(s)
 }
 
 func (m ConsoleUI) sendChatMessage(message string) tea.Cmd {
