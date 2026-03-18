@@ -64,3 +64,15 @@ The console client uses a split-pane layout:
 3. AI processes the message within the scenario context
 4. Response is formatted and displayed in the chat panel
 5. Game state is automatically refreshed
+
+### Keyboard Shortcuts
+
+- **Ctrl+C** or **Esc**: Quit the application
+- **Ctrl+N**: Start a new game (resets to scenario selection)
+- **Ctrl+E**: Export chat history to markdown file
+- **Ctrl+Y**: Copy game state ID to clipboard
+- **Ctrl+Z**: Clear the text input field
+- **Enter**: Send message
+- **Arrow Keys**: Scroll through chat history
+- **PgUp/PgDown**: Scroll chat viewport by page
+- **Home/End**: Jump to top/bottom of chat

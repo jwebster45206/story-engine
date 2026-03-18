@@ -142,7 +142,8 @@ Create a JSON configuration file with your service settings:
   "log_level": "debug",
   "llm_provider": "anthropic",
   "anthropic_api_key": "sk-ant-api03-...",
-  "model_name": "claude-sonnet-4-20250514",
+  "model_name": "claude-sonnet-4-6",
+  "backend_model_name": "claude-haiku-4-5",
   "redis_url": "localhost:6379"
 }
 ```
