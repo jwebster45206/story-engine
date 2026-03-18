@@ -459,6 +459,7 @@ func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollin
 	content.WriteString(metaStyle.Render("Commands:") + "\n")
 	content.WriteString("• Ctrl+C: Quit\n")
 	content.WriteString("• Ctrl+N: New Game\n")
+	content.WriteString("• Ctrl+E: Export Chat\n")
 	content.WriteString("• Ctrl+Z: Clear Text\n")
 	content.WriteString("• Enter: Send\n")
 
