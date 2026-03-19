@@ -1066,6 +1066,13 @@ func (m ConsoleUI) handleExport() (ConsoleUI, tea.Cmd) {
 	timestamp := time.Now().Format("20060102_150405")
 	filename := fmt.Sprintf("%s_%s_%s.md", sceneName, pcName, timestamp)
 
+	// Resolve export directory: prefer ./data/exports/, fall back to working dir
+	exportDir := "./data/exports"
+	if info, err := os.Stat(exportDir); err != nil || !info.IsDir() {
+		exportDir = "."
+	}
+	filepath := exportDir + "/" + filename
+
 	// Generate markdown content
 	var content strings.Builder
 
@@ -1095,13 +1102,12 @@ func (m ConsoleUI) handleExport() (ConsoleUI, tea.Cmd) {
 	for _, msg := range m.gameState.ChatHistory {
 		switch msg.Role {
 		case "user":
-			// Bold character name if it appears at the start
+			// Bold character name: prefix takes priority; ReplaceAll only runs if prefix didn't match
+			// (avoids double-bolding when charName: appears at the start)
 			msgContent := msg.Content
 			if charName != "" && strings.HasPrefix(msgContent, charName+":") {
 				msgContent = "**" + charName + ":**" + msgContent[len(charName)+1:]
-			}
-			// Bold character name occurrences within the message
-			if charName != "" {
+			} else if charName != "" {
 				msgContent = strings.ReplaceAll(msgContent, charName+":", "**"+charName+":**")
 			}
 			fmt.Fprintf(&content, "%s\n\n", msgContent)
@@ -1113,8 +1119,8 @@ func (m ConsoleUI) handleExport() (ConsoleUI, tea.Cmd) {
 		}
 	}
 
-	// Write file to current working directory
-	err := os.WriteFile(filename, []byte(content.String()), 0644)
+	// Write file
+	err := os.WriteFile(filepath, []byte(content.String()), 0644)
 	if err != nil {
 		// Show error in chat
 		errMsg := fmt.Sprintf("Failed to export: %v", err)
@@ -1125,7 +1131,7 @@ func (m ConsoleUI) handleExport() (ConsoleUI, tea.Cmd) {
 	}
 
 	// Show success message in chat
-	successMsg := fmt.Sprintf("Chat history exported to: %s", filename)
+	successMsg := fmt.Sprintf("Chat history exported to: %s", filepath)
 	currentContent := m.chatViewport.View()
 	m.chatViewport.SetContent(currentContent + "\n" + narratorStyle.Render("✓ "+successMsg))
 	m.chatViewport.GotoBottom()
@@ -1152,6 +1158,13 @@ func (m ConsoleUI) handleSave() (ConsoleUI, tea.Cmd) {
 	timestamp := time.Now().Format("20060102_150405")
 	filename := fmt.Sprintf("%s_%s_%s.json", scenarioSlug, pcName, timestamp)
 
+	// Resolve save directory: prefer ./data/saves/, fall back to working dir
+	saveDir := "./data/saves"
+	if info, err := os.Stat(saveDir); err != nil || !info.IsDir() {
+		saveDir = "."
+	}
+	filepath := saveDir + "/" + filename
+
 	// Marshal game state as indented JSON
 	data, err := json.MarshalIndent(m.gameState, "", "  ")
 	if err != nil {
@@ -1162,8 +1175,8 @@ func (m ConsoleUI) handleSave() (ConsoleUI, tea.Cmd) {
 		return m, nil
 	}
 
-	// Write file to current working directory
-	if err := os.WriteFile(filename, data, 0644); err != nil {
+	// Write file
+	if err := os.WriteFile(filepath, data, 0644); err != nil {
 		errMsg := fmt.Sprintf("Failed to save: %v", err)
 		currentContent := m.chatViewport.View()
 		m.chatViewport.SetContent(currentContent + "\n" + errorStyle.Render("Error: "+errMsg))
@@ -1172,7 +1185,7 @@ func (m ConsoleUI) handleSave() (ConsoleUI, tea.Cmd) {
 	}
 
 	// Show success message in chat
-	successMsg := fmt.Sprintf("Game state saved to: %s", filename)
+	successMsg := fmt.Sprintf("Game state saved to: %s", filepath)
 	currentContent := m.chatViewport.View()
 	m.chatViewport.SetContent(currentContent + "\n" + narratorStyle.Render("✓ "+successMsg))
 	m.chatViewport.GotoBottom()
