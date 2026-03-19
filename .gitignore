@@ -33,6 +33,12 @@ config.docker.json
 config*.json
 !config.template.json
 
+# Console save files
+data/saves/*.json
+
+# Console export files
+data/exports/*.md
+
 # Editor/IDE
 .idea/
 .vscode/
