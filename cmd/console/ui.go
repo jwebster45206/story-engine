@@ -454,7 +454,7 @@ func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollin
 		content.WriteString("None\n\n")
 	} else {
 		for i := range gs.Inventory {
-			content.WriteString(fmt.Sprintf("• %s\n", gs.Inventory[i]))
+			fmt.Fprintf(&content, "• %s\n", gs.Inventory[i])
 		}
 	}
 
@@ -1028,7 +1028,7 @@ func (m ConsoleUI) handleCommand(input string) (tea.Model, tea.Cmd) {
 			varsText.WriteString("No variables are set.\n")
 		} else {
 			for k, v := range m.gameState.Vars {
-				varsText.WriteString(fmt.Sprintf("• %s = %v\n", k, v))
+				fmt.Fprintf(&varsText, "• %s = %v\n", k, v)
 			}
 		}
 		varsText.WriteString("\n")
@@ -1089,13 +1089,13 @@ func (m ConsoleUI) handleExport() (ConsoleUI, tea.Cmd) {
 	}
 
 	// Header with metadata
-	content.WriteString(fmt.Sprintf("# %s\n\n", scenarioTitle))
+	fmt.Fprintf(&content, "# %s\n\n", scenarioTitle)
 	if charName != "" {
-		content.WriteString(fmt.Sprintf("**Character:** %s\n\n", charName))
+		fmt.Fprintf(&content, "**Character:** %s\n\n", charName)
 	}
-	content.WriteString(fmt.Sprintf("**Model:** %s\n\n", m.gameState.ModelName))
-	content.WriteString(fmt.Sprintf("**Turn Count:** %d\n\n", m.gameState.TurnCounter))
-	content.WriteString(fmt.Sprintf("**Exported:** %s\n\n", time.Now().Format("2006-01-02 15:04:05")))
+	fmt.Fprintf(&content, "**Model:** %s\n\n", m.gameState.ModelName)
+	fmt.Fprintf(&content, "**Turn Count:** %d\n\n", m.gameState.TurnCounter)
+	fmt.Fprintf(&content, "**Exported:** %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
 	content.WriteString("---\n\n")
 
 	// Chat history

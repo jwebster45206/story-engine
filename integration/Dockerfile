@@ -1,5 +1,5 @@
 # Multi-stage build for integration tests
-FROM golang:1.22-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 # Install dependencies for health checks and SSL
 RUN apk add --no-cache curl ca-certificates
@@ -15,7 +15,7 @@ COPY . .
 # Build the test binary (but don't run tests yet)
 RUN go build -o /dev/null ./cmd/api/...
 
-FROM golang:1.22-alpine
+FROM golang:1.26-alpine
 
 RUN apk add --no-cache curl ca-certificates
 WORKDIR /app

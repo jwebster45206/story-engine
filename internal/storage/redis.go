@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/jwebster45206/story-engine/pkg/storage"
+	"github.com/redis/go-redis/v9"
 )
 
 // RedisStorage implements the Storage interface using Redis for gamestate

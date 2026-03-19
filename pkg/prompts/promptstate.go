@@ -158,7 +158,7 @@ func (ps *PromptState) ToString() string {
 	if currentLoc, ok := ps.WorldLocations[ps.Location]; ok {
 		sb.WriteString(currentLoc.Name)
 		if currentLoc.Description != "" {
-			sb.WriteString(fmt.Sprintf(": %s", currentLoc.Description))
+			fmt.Fprintf(&sb, ": %s", currentLoc.Description)
 		}
 		sb.WriteString("\n")
 		if len(currentLoc.Items) > 0 {
@@ -175,9 +175,9 @@ func (ps *PromptState) ToString() string {
 					blockedReason = reason
 				}
 				if destLoc, ok := ps.WorldLocations[locationID]; ok {
-					sb.WriteString(fmt.Sprintf("- %s leads to %s", direction, destLoc.Name))
+					fmt.Fprintf(&sb, "- %s leads to %s", direction, destLoc.Name)
 					if blockedReason != "" {
-						sb.WriteString(fmt.Sprintf(" but is blocked (%s)", blockedReason))
+						fmt.Fprintf(&sb, " but is blocked (%s)", blockedReason)
 					}
 					sb.WriteString("\n")
 					continue
@@ -187,12 +187,12 @@ func (ps *PromptState) ToString() string {
 			// Also include blocked exits that don't have a defined exit
 			for direction, reason := range currentLoc.BlockedExits {
 				if _, ok := currentLoc.Exits[direction]; !ok {
-					sb.WriteString(fmt.Sprintf("- %s is blocked (%s)\n", direction, reason))
+					fmt.Fprintf(&sb, "- %s is blocked (%s)\n", direction, reason)
 				}
 			}
 		}
 	} else {
-		sb.WriteString(fmt.Sprintf("Unknown location: %s\n", ps.Location))
+		fmt.Fprintf(&sb, "Unknown location: %s\n", ps.Location)
 	}
 
 	// Other Locations (adjacent or important)
@@ -205,9 +205,9 @@ func (ps *PromptState) ToString() string {
 	if len(otherLocations) > 0 {
 		sb.WriteString("\nNEARBY LOCATIONS:")
 		for _, loc := range otherLocations {
-			sb.WriteString(fmt.Sprintf("\n%s", loc.Name))
+			fmt.Fprintf(&sb, "\n%s", loc.Name)
 			if loc.Description != "" {
-				sb.WriteString(fmt.Sprintf(": %s", loc.Description))
+				fmt.Fprintf(&sb, ": %s", loc.Description)
 			}
 			sb.WriteString("\n")
 		}
@@ -217,17 +217,17 @@ func (ps *PromptState) ToString() string {
 	if len(ps.NPCs) > 0 {
 		sb.WriteString("\nNPCs:")
 		for _, npc := range ps.NPCs {
-			sb.WriteString(fmt.Sprintf("\n%s", npc.Name))
+			fmt.Fprintf(&sb, "\n%s", npc.Name)
 			if npc.Disposition != "" {
-				sb.WriteString(fmt.Sprintf(" (%s)", npc.Disposition))
+				fmt.Fprintf(&sb, " (%s)", npc.Disposition)
 			}
 
 			if npc.Description != "" {
-				sb.WriteString(fmt.Sprintf(": %s", npc.Description))
+				fmt.Fprintf(&sb, ": %s", npc.Description)
 			}
 
 			if len(npc.Items) > 0 {
-				sb.WriteString(fmt.Sprintf("; Items: %s\n", strings.Join(npc.Items, ", ")))
+				fmt.Fprintf(&sb, "; Items: %s\n", strings.Join(npc.Items, ", "))
 			}
 			sb.WriteString("\n")
 		}
@@ -237,10 +237,10 @@ func (ps *PromptState) ToString() string {
 	if len(ps.Monsters) > 0 {
 		sb.WriteString("\nMONSTERS:")
 		for _, monster := range ps.Monsters {
-			sb.WriteString(fmt.Sprintf("\n%s (AC: %d, HP: %d/%d)",
-				monster.Name, monster.AC, monster.HP, monster.MaxHP))
+			fmt.Fprintf(&sb, "\n%s (AC: %d, HP: %d/%d)",
+				monster.Name, monster.AC, monster.HP, monster.MaxHP)
 			if monster.Description != "" {
-				sb.WriteString(fmt.Sprintf(": %s", monster.Description))
+				fmt.Fprintf(&sb, ": %s", monster.Description)
 			}
 			sb.WriteString("\n")
 		}

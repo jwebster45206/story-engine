@@ -99,7 +99,7 @@ func (b *Builder) addSystemPrompt() error {
 	if len(contingencyPrompts) > 0 {
 		sb.WriteString("\n\nSome important storytelling guidelines:\n\n")
 		for i, prompt := range contingencyPrompts {
-			sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, prompt))
+			fmt.Fprintf(&sb, "%d. %s\n", i+1, prompt)
 		}
 	}
 

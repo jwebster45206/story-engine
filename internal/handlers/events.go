@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/services/events"
+	"github.com/redis/go-redis/v9"
 )
 
 // EventsHandler handles Server-Sent Events (SSE) for real-time game updates

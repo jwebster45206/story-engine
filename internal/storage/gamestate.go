@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/redis/go-redis/v9"
 )
 
 // GameState operations (Redis-backed)

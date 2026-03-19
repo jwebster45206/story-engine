@@ -108,7 +108,7 @@ GameState is a storytelling session, including conversation history and session 
 - **Chat History**: Complete conversation log between user and AI agent
 - **Serialization**: JSON-based storage format for persistence and retrieval
 
-Game states are created at session start and maintained throughout the storytelling experience. Future enhancements may include location tracking, inventory systems, and game flags.
+Game states are created at session start and maintained throughout the storytelling experience.
 
 ## API Reference
 

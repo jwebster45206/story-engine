@@ -9,13 +9,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/internal/logger"
 	"github.com/jwebster45206/story-engine/internal/services"
 	"github.com/jwebster45206/story-engine/internal/services/queue"
 	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/internal/worker"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
