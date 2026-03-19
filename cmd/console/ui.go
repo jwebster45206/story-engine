@@ -376,9 +376,10 @@ func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 	ta.BlurredStyle.Base = ta.BlurredStyle.Base.Foreground(tealColor)
 
 	chatVp := viewport.New(50, 20)
-	chatVp.MouseWheelEnabled = false // enabling causes text to jump around
+	chatVp.MouseWheelEnabled = false // mouse scroll handled manually below
 
 	metaVp := viewport.New(20, 20)
+	metaVp.MouseWheelEnabled = false // sidebar is locked at top
 
 	return ConsoleUI{
 		config:            cfg,
@@ -726,6 +727,25 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case tea.MouseMsg:
+		// Route mouse scroll wheel to the chat viewport only; sidebar is intentionally locked.
+		switch msg.Button {
+		case tea.MouseButtonWheelUp:
+			m.chatViewport.LineUp(3)
+			if !m.chatViewport.AtBottom() {
+				m.userPinned = true
+			}
+		case tea.MouseButtonWheelDown:
+			prevAtBottom := m.chatViewport.AtBottom()
+			m.chatViewport.LineDown(3)
+			if !prevAtBottom && m.chatViewport.AtBottom() {
+				m.userPinned = false
+			}
+		}
+		// Pass mouse events to textarea (handles click-to-focus etc.) but NOT to metaViewport.
+		m.textarea, tiCmd = m.textarea.Update(msg)
+		return m, tiCmd
+
 	case chatErrorMsg:
 		m.loading = false
 		m.err = msg.err
@@ -963,8 +983,10 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Update components for non-mouse events (textarea & metadata). Chat viewport already handled for key scroll above.
+	// Mouse events are handled above and return early, so metaViewport.Update is never called for them.
 	m.textarea, tiCmd = m.textarea.Update(msg)
 	m.metaViewport, mvCmd = m.metaViewport.Update(msg)
+	m.metaViewport.YOffset = 0 // keep sidebar locked at top
 	return m, tea.Batch(tiCmd, vpCmd, mvCmd)
 }
 
