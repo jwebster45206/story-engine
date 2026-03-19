@@ -131,12 +131,18 @@ func (w *Worker) processNextRequest() error {
 func (w *Worker) acquireGameLock(gameStateID uuid.UUID) (bool, error) {
 	lockKey := fmt.Sprintf("game-lock:%s", gameStateID.String())
 
-	result, err := w.redisClient.SetNX(w.ctx, lockKey, w.id, 30*time.Second).Result()
+	result, err := w.redisClient.SetArgs(w.ctx, lockKey, w.id, redis.SetArgs{
+		TTL:  30 * time.Second,
+		Mode: "NX",
+	}).Result()
 	if err != nil {
+		if err == redis.Nil {
+			return false, nil // Key already exists — lock held by another worker
+		}
 		return false, err
 	}
 
-	return result, nil
+	return result == "OK", nil
 }
 
 // releaseGameLock releases the lock for a game
