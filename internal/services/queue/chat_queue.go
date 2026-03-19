@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/pkg/queue"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/redis/go-redis/v9"
 )
 
 // ChatQueue manages a queue of chat messages and story events for games
