@@ -731,13 +731,13 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Route mouse scroll wheel to the chat viewport only; sidebar is intentionally locked.
 		switch msg.Button {
 		case tea.MouseButtonWheelUp:
-			m.chatViewport.LineUp(3)
+			m.chatViewport.ScrollUp(3)
 			if !m.chatViewport.AtBottom() {
 				m.userPinned = true
 			}
 		case tea.MouseButtonWheelDown:
 			prevAtBottom := m.chatViewport.AtBottom()
-			m.chatViewport.LineDown(3)
+			m.chatViewport.ScrollDown(3)
 			if !prevAtBottom && m.chatViewport.AtBottom() {
 				m.userPinned = false
 			}
