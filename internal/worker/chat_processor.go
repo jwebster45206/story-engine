@@ -23,10 +23,11 @@ const PromptHistoryLimit = 6
 // ChatProcessor handles the core chat processing logic
 // It's used by both the HTTP handler (synchronously) and the worker (asynchronously)
 type ChatProcessor struct {
-	storage    storage.Storage
-	llmService services.LLMService
-	chatQueue  state.ChatQueue
-	logger     *slog.Logger
+	storage      storage.Storage
+	llmService   services.LLMService
+	chatQueue    state.ChatQueue
+	logger       *slog.Logger
+	historyLimit int
 
 	// For background gamestate delta cancellation
 	metaCancelMu sync.Mutex
@@ -39,13 +40,18 @@ func NewChatProcessor(
 	llmService services.LLMService,
 	chatQueue state.ChatQueue,
 	logger *slog.Logger,
+	historyLimit int,
 ) *ChatProcessor {
+	if historyLimit <= 0 {
+		historyLimit = PromptHistoryLimit
+	}
 	return &ChatProcessor{
-		storage:    storage,
-		llmService: llmService,
-		chatQueue:  chatQueue,
-		logger:     logger,
-		metaCancel: make(map[uuid.UUID]context.CancelFunc),
+		storage:      storage,
+		llmService:   llmService,
+		chatQueue:    chatQueue,
+		logger:       logger,
+		historyLimit: historyLimit,
+		metaCancel:   make(map[uuid.UUID]context.CancelFunc),
 	}
 }
 
@@ -73,7 +79,7 @@ func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatReq
 		WithGameState(gs).
 		WithScenario(loadedScenario).
 		WithUserMessage(req.Message, chat.ChatRoleUser).
-		WithHistoryLimit(PromptHistoryLimit).
+		WithHistoryLimit(p.historyLimit).
 		Build()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build chat messages: %w", err)
@@ -154,7 +160,7 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 		WithGameState(gs).
 		WithScenario(loadedScenario).
 		WithUserMessage(req.Message, chat.ChatRoleUser).
-		WithHistoryLimit(PromptHistoryLimit).
+		WithHistoryLimit(p.historyLimit).
 		Build()
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to build chat messages: %w", err)

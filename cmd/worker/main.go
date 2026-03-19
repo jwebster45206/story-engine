@@ -89,7 +89,7 @@ func main() {
 	log.Info("LLM service initialized successfully", "model", cfg.ModelName)
 
 	// Create ChatProcessor
-	processor := worker.NewChatProcessor(storageService, llmService, chatQueue, log)
+	processor := worker.NewChatProcessor(storageService, llmService, chatQueue, log, cfg.ChatHistoryLimit)
 	log.Info("Chat processor initialized successfully")
 
 	// Create a separate Redis client for worker locking
