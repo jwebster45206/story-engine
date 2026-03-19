@@ -244,7 +244,7 @@ func BuildPrompt(pc *PC) string {
 	sb.WriteString("REMEMBER: In this game, the user is controlling: ")
 	sb.WriteString(pc.Spec.Name)
 	if pc.Spec.Pronouns != "" {
-		sb.WriteString(fmt.Sprintf(" (%s)", pc.Spec.Pronouns))
+		fmt.Fprintf(&sb, " (%s)", pc.Spec.Pronouns)
 	}
 	if pc.Spec.Level > 0 || pc.Spec.Class != "" || pc.Spec.Race != "" {
 		summaryParts := []string{}
