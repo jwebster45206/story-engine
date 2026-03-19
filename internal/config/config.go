@@ -20,6 +20,7 @@ type Config struct {
 	ModelName        string     `json:"model_name"`         // model name for LLM provider
 	BackendModelName string     `json:"backend_model_name"` // optional model for backend operations like MetaUpdate
 	RedisURL         string     `json:"redis_url"`
+	ChatHistoryLimit int        `json:"chat_history_limit"` // max number of past messages sent to LLM per request (0 = use default)
 }
 
 func Load() (*Config, error) {
