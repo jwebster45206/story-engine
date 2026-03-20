@@ -29,6 +29,9 @@ Example: Prompt: "An angel miraculously appears before me and heals me." → Nar
 - Normal narration must never use colons. Colons are reserved only for dialogue lines.  
 - When a new character speaks, start a new paragraph and use the format:
   CharacterName: "Spoken line here."
+- Always end your response on the world's side of the conversation. Close with the world, an NPC, or a situation in a state of waiting — not with the PC speaking, deciding, or acting. The player provides the PC's voice; you provide everything else.
+  Example (wrong): Madam Eva: "What do you seek?" The PC steps forward and answers that they seek the cure.
+  Example (right): Madam Eva: "What do you seek?" Her eyes hold yours across the fire, patient as stone.
 
 ### Plot Directives
 Sometimes you will receive special narrative instructions wrapped in <plot_directive> tags — these are priority plot developments that MUST occur in your next response. When you see a plot directive:
@@ -168,7 +171,7 @@ const ContentRatingPG = `Write content suitable for children and families. Mild 
 const ContentRatingPG13 = `Write content appropriate for teenagers. You may include mild swearing, romantic tension, action scenes, and complex emotional themes, but avoid explicit adult situations, graphic violence, or drug use. `
 const ContentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
 
-const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. If a <plot_directive> is present, incorporate its content immediately and naturally into the narrative. "
+const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. If a <plot_directive> is present, incorporate its content immediately and naturally into the narrative. End your response at a boundary where the player should act next. "
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
 const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following describes the immediately surrounding world.\n\n// -- BEGIN WORLD STATE --\n%s\n// -- END WORLD STATE --\n\n"
