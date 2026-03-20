@@ -359,13 +359,13 @@ func (r *Runner) executeStep(ctx context.Context, gameStateID uuid.UUID, step Te
 
 		assertedStoryEvent := afterChatState.ChatHistory[len(afterChatState.ChatHistory)-2]
 		assertedResponse := afterChatState.ChatHistory[len(afterChatState.ChatHistory)-1]
-		if assertedStoryEvent.Role != "user" || !strings.HasPrefix(assertedStoryEvent.Content, scenario.StoryEventPrefix) {
-			result.Error = fmt.Errorf("unexpected chat message while waiting for story event: %+v", assertedStoryEvent)
+		if assertedStoryEvent.Role != "user" || !strings.HasPrefix(assertedStoryEvent.Content, scenario.PlotDirectiveOpen) {
+			result.Error = fmt.Errorf("unexpected chat message while waiting for plot directive: %+v", assertedStoryEvent)
 			result.Duration = time.Since(start)
 			return result
 		}
 
-		result.StoryEventText = strings.TrimPrefix(assertedStoryEvent.Content, scenario.StoryEventPrefix)
+		result.StoryEventText = strings.TrimPrefix(strings.TrimSuffix(assertedStoryEvent.Content, scenario.PlotDirectiveClose), scenario.PlotDirectiveOpen)
 		result.ResponseText = assertedResponse.Content
 		result.IsStoryEventWait = true
 

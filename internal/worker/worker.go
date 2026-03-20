@@ -195,7 +195,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			userMessage = chat.FormatWithPCName(req.Message, gs.PC.Spec.Name)
 		}
 	case queuePkg.RequestTypeStoryEvent:
-		userMessage = fmt.Sprintf("%s%s", scenario.StoryEventPrefix, req.EventPrompt)
+		userMessage = scenario.FormatPlotDirective(req.EventPrompt)
 	default:
 		userMessage = ""
 	}
@@ -297,9 +297,9 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		}
 
 	case queuePkg.RequestTypeStoryEvent:
-		// Format story event as a user message with STORY EVENT prefix
+		// Format story event as a user message wrapped in <plot_directive> XML tags
 		// (Anthropic doesn't allow system messages in chat history)
-		storyEventMessage := fmt.Sprintf("%s%s", scenario.StoryEventPrefix, req.EventPrompt)
+		storyEventMessage := scenario.FormatPlotDirective(req.EventPrompt)
 
 		// Convert to chat request
 		chatReq := chat.ChatRequest{
