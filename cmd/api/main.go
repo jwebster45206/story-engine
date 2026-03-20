@@ -125,6 +125,9 @@ func main() {
 	mux.Handle("/v1/monsters", monsterHandler)
 	mux.Handle("/v1/monsters/", monsterHandler)
 
+	imagePromptHandler := handlers.NewImagePromptHandler(storageService, llmService, log)
+	mux.Handle("/v1/image-prompt", imagePromptHandler)
+
 	handler := middleware.Logger(mux)
 	server := &http.Server{
 		Addr:        ":" + cfg.Port,

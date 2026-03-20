@@ -53,6 +53,25 @@ func (cr *ChatRequest) Validate() error {
 	return nil
 }
 
+// ImagePromptRequest is the request body for POST /v1/image-prompt.
+type ImagePromptRequest struct {
+	GameStateID uuid.UUID `json:"gamestate_id"`
+}
+
+// Validate checks that the request contains a valid GameStateID.
+func (r *ImagePromptRequest) Validate() error {
+	if r.GameStateID == uuid.Nil {
+		return fmt.Errorf("gamestate_id is required")
+	}
+	return nil
+}
+
+// ImagePromptResponse is the response body for POST /v1/image-prompt.
+type ImagePromptResponse struct {
+	GameStateID uuid.UUID `json:"gamestate_id"`
+	Prompt      string    `json:"prompt"`
+}
+
 // FormatWithPCName prefixes the message with the PC's name unless it already has a speaker prefix
 // Returns the formatted message
 func FormatWithPCName(message, pcName string) string {
