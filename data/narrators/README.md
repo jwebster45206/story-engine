@@ -59,6 +59,21 @@ Players can override the scenario's default narrator when creating a game sessio
 - Be specific about tone, writing style, and the narrator's personality
 - Keep each prompt short and actionable
 
+### Output Length and Structure
+
+Every narrator **must** include a prompt that defines its output length and structure. The system prompt provides a soft default ("1 to 3 short paragraphs of 1 to 3 sentences each"), but narrators are responsible for overriding or reinforcing that default to match their voice.
+
+Guidelines:
+- **Always include a length prompt** as the last item in the `prompts` array
+- Specify both paragraph count and sentences-per-paragraph
+- Match the constraint to the narrator's voice — punchy narrators should be shorter, lyrical ones can use the full range
+- Add a brief, in-character justification to reinforce compliance (e.g., "Density over length — make every sentence earn its place.")
+- Without this prompt, prosey narrators tend to over-write and hit the token limit
+
+Example length prompts:
+- `"Respond in 1 to 3 paragraphs. Each paragraph may contain at most 3 sentences. Density over length — make every sentence earn its place."` (Poe)
+- `"Respond in 1 to 2 paragraphs of 1 to 3 sentences each. Say it once and let it sting."` (Noir)
+
 ## Examples
 
 ### Minimal Narrator
@@ -69,7 +84,8 @@ Players can override the scenario's default narrator when creating a game sessio
   "description": "Basic, no-frills storytelling",
   "prompts": [
     "Use clear, simple language.",
-    "Focus on facts and actions."
+    "Focus on facts and actions.",
+    "Respond in 1 to 3 paragraphs of 1 to 3 sentences each."
   ]
 }
 ```
@@ -84,7 +100,8 @@ Players can override the scenario's default narrator when creating a game sessio
     "Speak in the style of William Shakespeare.",
     "Use dramatic language with poetic flourishes.",
     "Occasionally include 'thee', 'thou', and archaic expressions.",
-    "Make references to fate, fortune, and the stars."
+    "Make references to fate, fortune, and the stars.",
+    "Respond in 1 to 3 paragraphs of 1 to 3 sentences each. The stage is small — fill it with thunder, not with length."
   ]
 }
 ```

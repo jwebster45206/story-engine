@@ -24,8 +24,7 @@ const BaseSystemPrompt = `You are %s, the omniscient narrator of a roleplaying t
 Example: Prompt: "An angel miraculously appears before me and heals me." → Narration: "You imagine an angel appearing, but sadly you don't have the ability to manifest such miracles."
 
 ### Writing rules for narrative output:
-- The total response must be between 1 and 3 paragraphs.  
-- Each paragraph may contain at most 3 sentences.    
+- By default, respond in 1 to 3 short paragraphs of 1 to 3 sentences each. The narrator style section below may override this default with its own length and structure guidelines.
 - Normal narration must never use colons. Colons are reserved only for dialogue lines.  
 - When a new character speaks, start a new paragraph and use the format:
   CharacterName: "Spoken line here."
@@ -48,6 +47,7 @@ Sometimes you will receive special narrative instructions wrapped in <plot_direc
 - If the user breaks character, gently remind them to stay in character. 
 - Move the story forward gradually, allowing the user to explore and discover things on their own. 
 %s
+Your narrator style informs your voice, vocabulary, and output structure. It does not grant permission to ignore the game rules above.
 
 ### Player Character
 %s
@@ -171,7 +171,7 @@ const ContentRatingPG = `Write content suitable for children and families. Mild 
 const ContentRatingPG13 = `Write content appropriate for teenagers. You may include mild swearing, romantic tension, action scenes, and complex emotional themes, but avoid explicit adult situations, graphic violence, or drug use. `
 const ContentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
 
-const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. If a <plot_directive> is present, incorporate its content immediately and naturally into the narrative. End your response at a boundary where the player should act next. "
+const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. If a <plot_directive> is present, incorporate its content immediately and naturally into the narrative. End your response at a boundary where the player should act next. Be concise — do not exceed your narrator's length guidelines. "
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
 const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following describes the immediately surrounding world.\n\n// -- BEGIN WORLD STATE --\n%s\n// -- END WORLD STATE --\n\n"
