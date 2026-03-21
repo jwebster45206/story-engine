@@ -42,7 +42,6 @@
           "type": "rival archaeologist",
           "disposition": "competitive",
           "description": "A brilliant but ruthless colleague who seems to know more about this expedition than he should.",
-          "important": true,
           "location": "cairo_hotel",
           "items": [
             "expedition permit"
@@ -53,7 +52,6 @@
           "type": "informant",
           "disposition": "nervous",
           "description": "A hooded figure who sent the original telegram. Their identity remains hidden behind shadows.",
-          "important": true,
           "location": "cairo_hotel",
           "items": [
             "coded message"
@@ -64,7 +62,6 @@
           "type": "antiquities dealer",
           "disposition": "mysterious",
           "description": "A enigmatic trader who deals in both legal artifacts and forbidden knowledge. She speaks in riddles.",
-          "important": true,
           "location": "local_market",
           "items": [
             "ancient amulet",
@@ -136,7 +133,6 @@
           "type": "guide",
           "disposition": "cautious",
           "description": "A weathered Bedouin guide with knowledge of the desert's hidden secrets. His eyes hold ancient wisdom.",
-          "important": true,
           "location": "desert_camp",
           "items": [
             "desert map",
@@ -148,7 +144,6 @@
           "type": "rival archaeologist",
           "disposition": "competitive",
           "description": "A brilliant but ruthless colleague who seems to know more about this expedition than he should. He's become more aggressive since recent successes.",
-          "important": true,
           "location": "cairo_hotel",
           "items": [
             "rival expedition notes"
@@ -159,7 +154,6 @@
           "type": "antiquities dealer",
           "disposition": "mysterious",
           "description": "A enigmatic trader who deals in both legal artifacts and forbidden knowledge. She speaks in riddles.",
-          "important": false,
           "location": "local_market",
           "items": [
             "protective charms"
@@ -241,7 +235,6 @@
           "type": "guide",
           "disposition": "cautious",
           "description": "A weathered Bedouin guide with knowledge of the desert's hidden secrets. He warns of the temple's dangers.",
-          "important": true,
           "location": "hidden_temple",
           "items": [
             "temple key"
@@ -252,7 +245,6 @@
           "type": "rival archaeologist",
           "disposition": "desperate",
           "description": "A brilliant but ruthless colleague who has followed the expedition to the temple. His true intentions are now revealed.",
-          "important": true,
           "location": "desert_camp",
           "items": [
             "stolen artifacts"
@@ -263,7 +255,6 @@
           "type": "temple spirit",
           "disposition": "testing",
           "description": "A mystical presence that protects the temple's secrets. It speaks in ancient riddles and tests worthiness.",
-          "important": true,
           "location": "underground_chamber",
           "items": []
         }

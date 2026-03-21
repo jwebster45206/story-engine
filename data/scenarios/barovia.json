@@ -330,7 +330,6 @@
           "type": "vistani_seer",
           "disposition": "amused_and_merciless",
           "description": "Tarokka cards flash like ravens’ wings. She knows your questions and some answers.",
-          "important": true,
           "location": "tser_pool_camp",
           "items": [
             "tarokka_deck"
@@ -375,7 +374,6 @@
           "type": "night_hag",
           "disposition": "sweetly_predatory",
           "description": "Her smile is all pastry and punishment.",
-          "important": true,
           "location": "old_bonegrinder",
           "items": [
             "dream_pastry"

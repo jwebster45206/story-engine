@@ -211,7 +211,6 @@
           "type": "servant",
           "disposition": "more lucid and helpful",
           "description": "Renfield seems more coherent now, as if your presence has partially broken Dracula's hold over him. He speaks more clearly about the master's weaknesses.",
-          "important": true,
           "location": "dining_hall",
           "items": [
             "crypt key",
