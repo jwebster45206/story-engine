@@ -285,7 +285,6 @@
           "type": "pirate",
           "disposition": "friendly",
           "description": "A grizzled old pirate with a wooden leg. Fellow captain and sometimes ally.",
-          "important": false,
           "location": "tortuga_market",
           "items": [],
           "contingency_prompts": [
@@ -367,7 +366,6 @@
           "type": "bartender",
           "disposition": "teasing and tricky",
           "description": "A bartender at the Sleepy Mermaid, known for her enchanting stories and elusive nature. She has a special treasure map for the player.",
-          "important": true,
           "location": "sleepy_mermaid",
           "items": [
             "treasure map",

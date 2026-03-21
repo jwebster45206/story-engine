@@ -223,7 +223,7 @@ func TestScenario_EvaluateConditionals_WithPrompt(t *testing.T) {
 		expected []string // Expected conditional keys
 	}{
 		{
-			name: "conditional with story event prompt",
+			name: "conditional with plot directive prompt",
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"castle": {
@@ -247,7 +247,7 @@ func TestScenario_EvaluateConditionals_WithPrompt(t *testing.T) {
 			expected: []string{"dracula_appears"},
 		},
 		{
-			name: "conditional with regular prompt (no STORY EVENT prefix)",
+			name: "conditional with regular prompt (no plot directive prefix)",
 			scenario: &Scenario{
 				Scenes: map[string]Scene{
 					"castle": {

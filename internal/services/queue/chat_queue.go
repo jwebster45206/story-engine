@@ -90,13 +90,13 @@ func (seq *ChatQueue) GetFormattedEvents(ctx context.Context, gameStateID uuid.U
 		return "", nil
 	}
 
-	// Format events similar to GameState.GetStoryEvents()
+	// Format events wrapped in <plot_directive> XML tags for LLM consumption
 	var formatted string
 	for i, event := range events {
 		if i == 0 {
-			formatted = scenario.StoryEventPrefix + event
+			formatted = scenario.FormatPlotDirective(event)
 		} else {
-			formatted += "\n\nSTORY EVENT: " + event
+			formatted += "\n\n" + scenario.FormatPlotDirective(event)
 		}
 	}
 	return formatted, nil

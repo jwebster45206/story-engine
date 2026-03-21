@@ -1,5 +1,7 @@
 {
   "name": "Reliable Classic Narrator",
   "description": "A straightforward omniscient narrator for classic adventures",
-  "prompts": []
+  "prompts": [
+    "Respond in 1 to 3 paragraphs of 1 to 3 sentences each."
+  ]
 }
