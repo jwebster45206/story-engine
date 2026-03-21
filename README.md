@@ -179,10 +179,13 @@ go run cmd/console/*.go
 API_BASE_URL=http://localhost:3000 go run cmd/console/*.go
 ```
 
-## Documentation
+## Writing Guides
 
-- **Scenario Creation**: See [data/scenarios/README.md](data/scenarios/README.md) for complete guide on writing scenarios
-- **Player Characters**: See [data/pcs/README.md](data/pcs/README.md) for creating and customizing player characters
-- **Narrators**: See [data/narrators/README.md](data/narrators/README.md) for creating custom narrator personalities
-- **Monsters**: See [data/monsters/README.md](data/monsters/README.md) for creating monster templates and integrating them into scenarios
-- **Console Client**: See [cmd/console/README.md](cmd/console/README.md) for gameplay client documentation
+- **Scenario Creation**: [docs/guide-for-scenarios.md](docs/guide-for-scenarios.md) — complete guide on writing scenarios
+- **Player Characters**: [docs/guide-for-pcs.md](docs/guide-for-pcs.md) — creating and customizing player characters
+- **Narrators**: [docs/guide-for-narrators.md](docs/guide-for-narrators.md) — creating custom narrator personalities
+- **Monsters**: [docs/guide-for-monsters.md](docs/guide-for-monsters.md) — creating monster templates and integrating them into scenarios
+
+### Other Docs
+- **API Reference**: [docs/openapi.yaml](docs/openapi.yaml) — full REST API reference
+- **Console Client**: [cmd/console/README.md](cmd/console/README.md) — gameplay client documentation
