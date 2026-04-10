@@ -1,0 +1,445 @@
+{
+  "name": "Castaway Island",
+  "story": "A missing WWII pilot washes up on a remote Pacific island where pirates, smugglers, local navigators, and a small Nazi detachment all circle a place that does not behave like a normal island. The player explores, improvises, builds a shared haven from wreckage and ruins, and slowly learns to navigate these strange surroundings.",
+  "rating": "PG-13",
+  "narrator_id": "noir",
+  "default_pc": "owen_delaney",
+  "opening_scene": "beachhead",
+  "opening_prompt": "You wake to surf, smoke, and cooling metal. Your aircraft is broken across the sand behind you, the jungle is too quiet ahead of you, and the Pacific looks much too innocent for whatever happened in the sky.",
+  "opening_location": "crash_beach",
+  "opening_inventory": [
+    "flight jacket",
+    "pocketknife",
+    "dog tags",
+    "notebook",
+    "pencil stub",
+    "lighter",
+    "aviator sunglasses",
+    "blurry photo"
+  ],
+  "locations": {
+    "crash_beach": {
+      "name": "Crash Beach",
+      "description": "A bright strip of sand littered with torn aluminum, scorched canvas, and the bones of your plane. The surf is gentle, the heat is rising, and the jungle line feels one step too close.",
+      "exits": {
+        "jungle trail": "palm_rise",
+        "north beach": "driftwood_hangar"
+      },
+      "items": [
+        "bent radio coil",
+        "canteen",
+        "flare pistol",
+        "salvage canvas"
+      ],
+      "contingency_prompts": [
+        "The wreck still offers practical salvage, but the player should not find every useful thing at once.",
+        {
+          "prompt": "If the player lingers here after first contact, mention fresh footprints near the wreck that do not match the player's boots.",
+          "when": {
+            "vars": {
+              "met_evie": "true"
+            }
+          }
+        }
+      ]
+    },
+    "palm_rise": {
+      "name": "Palm Rise",
+      "description": "A scrubby rise above the beach with palms, low volcanic stone, and enough breeze to carry smoke or song farther than it should.",
+      "exits": {
+        "down to beach": "crash_beach",
+        "east path": "reef_market",
+        "old steps": "mist_forest"
+      },
+      "items": [
+        "young coconuts"
+      ],
+      "contingency_prompts": [
+        "This is a good place for sightings, rumors, and first glimpses of sails or smoke."
+      ]
+    },
+    "driftwood_hangar": {
+      "name": "The Driftwood Hangar",
+      "description": "A ruined prewar seaplane mooring with a cracked slipway, a half standing hangar, and just enough dry space to imagine civilization. Salt, rot, and possibility live here together.",
+      "exits": {
+        "south beach": "crash_beach",
+        "dock path": "reef_market",
+        "back stairs": "storytree_grove"
+      },
+      "items": [
+        "rusted winch",
+        "broken lantern",
+        "coil of rope"
+      ],
+      "contingency_prompts": [
+        "Describe small visible improvements as the base becomes more secure. Think patched roof, swept floor, better cooking fire, repaired dock planks.",
+        {
+          "prompt": "When home_base is secure, the hangar should feel like a scrappy social hub instead of a ruin.",
+          "when": {
+            "vars": {
+              "home_base": "secure"
+            }
+          }
+        }
+      ]
+    },
+    "reef_market": {
+      "name": "Reef Market Shore",
+      "description": "A tideline trading ground where boats nose in on the right tide and news travels faster than oars. Fish, gossip, and sharp eyes are all on display.",
+      "exits": {
+        "west path": "palm_rise",
+        "hangar path": "driftwood_hangar",
+        "canoe channel": "bone_reef"
+      },
+      "items": [
+        "woven basket",
+        "dried fruit"
+      ],
+      "contingency_prompts": [
+        "Use this location for rumors, barter, and faction temperature checks.",
+        "The Reef Confederacy is courteous but observant here, and every favor implies future reciprocity."
+      ]
+    },
+    "mist_forest": {
+      "name": "Mist Forest",
+      "description": "A cool upland forest of mossy stone, wet leaves, and drifting fog where paths seem to rethink themselves while you walk them.",
+      "exits": {
+        "old steps": "palm_rise",
+        "ridge trail": "volcano_steps",
+        "narrow way": "storytree_grove"
+      },
+      "items": [
+        "orchid bloom",
+        "fresh water gourd"
+      ],
+      "contingency_prompts": [
+        "Early on, the strange behavior of this place should feel like bad navigation or odd weather.",
+        {
+          "prompt": "When magic_reveal is pattern, mention repeated landmarks, delayed echoes, or birds that answer human whistles too neatly.",
+          "when": {
+            "vars": {
+              "magic_reveal": "pattern"
+            }
+          }
+        }
+      ]
+    },
+    "storytree_grove": {
+      "name": "Storytree Grove",
+      "description": "A grove of old trees marked with careful carvings, old offerings, and the kind of silence that feels maintained. It is clearly important to somebody and not yours to blunder through.",
+      "exits": {
+        "hangar stairs": "driftwood_hangar",
+        "narrow way": "mist_forest",
+        "reef cut": "black_lagoon"
+      },
+      "items": [],
+      "blocked_exits": {
+        "inner grove": "Protocol bars the way until someone of the Confederacy grants permission."
+      },
+      "contingency_prompts": [
+        "Respect and consent matter here. Local guidance should frame access, not mystical chosen one logic.",
+        {
+          "prompt": "If the player has gained local trust, suggest that Hina Vai or Tama Roa may grant limited access with terms.",
+          "when": {
+            "vars": {
+              "confederacy_trust": "earned"
+            }
+          }
+        }
+      ]
+    },
+    "bone_reef": {
+      "name": "Bone Reef",
+      "description": "A maze of coral teeth, wreck timbers, and clear water that can look harmless until it suddenly does not. Safe passage here is a skill, not an entitlement.",
+      "exits": {
+        "canoe channel": "reef_market",
+        "smuggler cut": "scarlet_cove",
+        "lagoon edge": "black_lagoon"
+      },
+      "items": [
+        "signal mirror",
+        "broken crate"
+      ],
+      "contingency_prompts": [
+        "This is a dangerous navigation space where local expertise matters.",
+        "A pirate route and a sacred route may overlap without being the same thing."
+      ]
+    },
+    "black_lagoon": {
+      "name": "Black Lagoon",
+      "description": "A sheltered pool of dark volcanic sand and glassy water that reflects the sky a touch too faithfully. It is beautiful in a way that encourages bad decisions.",
+      "exits": {
+        "reef edge": "bone_reef",
+        "grove cut": "storytree_grove",
+        "cave mouth": "wreck_field"
+      },
+      "items": [
+        "sealed bottle",
+        "small anchor"
+      ],
+      "contingency_prompts": [
+        "This location is ideal for romance beats, eerie calm, and discoveries that look accidental until they repeat."
+      ]
+    },
+    "scarlet_cove": {
+      "name": "Scarlet Cove",
+      "description": "A hidden cove of fuel drums, tarps, bad manners, and tidy criminal logistics. It smells like engine oil, cheap rum, and plans that involve lying.",
+      "exits": {
+        "smuggler cut": "bone_reef",
+        "cliff path": "nazi_camp"
+      },
+      "items": [
+        "fuel drum",
+        "contraband crate"
+      ],
+      "contingency_prompts": [
+        "Captain Sloane should be dangerous, funny, and plausibly useful all at once."
+      ]
+    },
+    "nazi_camp": {
+      "name": "Schattenkreis Camp",
+      "description": "A concealed field camp of radios, crates, and disciplined unease. Even the men pretending to be in control look like the island has been correcting them.",
+      "exits": {
+        "cliff path": "scarlet_cove",
+        "survey trail": "volcano_steps"
+      },
+      "items": [
+        "field radio",
+        "survey notes",
+        "locked case"
+      ],
+      "contingency_prompts": [
+        "The Nazi detachment is a clear threat. Never glamorize them.",
+        "Dr. Keller is driven by fear, ambition, and certainty that the island contains a device that can alter chance."
+      ]
+    },
+    "volcano_steps": {
+      "name": "Volcano Steps",
+      "description": "Basalt terraces climb toward warm air and magnetic stone. Watches, compasses, and certainties all behave poorly here.",
+      "exits": {
+        "ridge trail": "mist_forest",
+        "survey trail": "nazi_camp",
+        "far ledge": "far_out_islet"
+      },
+      "items": [
+        "magnetic stone",
+        "spent flare"
+      ],
+      "contingency_prompts": [
+        "This is where deniable oddness becomes harder to deny."
+      ]
+    },
+    "wreck_field": {
+      "name": "Wreck Field",
+      "description": "A shallow graveyard of airframes, crates, and boats from more eras than makes sense. The sea has been collecting stories here.",
+      "exits": {
+        "cave mouth": "black_lagoon"
+      },
+      "items": [
+        "twisted propeller blade",
+        "waterproof satchel"
+      ],
+      "contingency_prompts": [
+        "Use this location for memory clues, odd discoveries, and hard questions about who else the island has taken."
+      ]
+    },
+    "far_out_islet": {
+      "name": "Far Out Islet",
+      "description": "A small basalt islet that feels half present even when you stand on it. The wind changes without warning and the horizon never looks quite the same twice.",
+      "exits": {
+        "far ledge": "volcano_steps"
+      },
+      "items": [
+        "smooth white stone"
+      ],
+      "contingency_prompts": [
+        "When the player reaches this place, the island can become unmistakably intentional without explaining itself."
+      ]
+    }
+  },
+  "npcs": {
+    "evie_hart": {
+      "name": "Evelyn Hart",
+      "type": "castaway",
+      "disposition": "wry, guarded, and more helpful than she wants to admit",
+      "description": "A clever castaway with a dry mouth, a good aim, and the look of someone who got used to danger before it got used to her.",
+      "location": "crash_beach",
+      "following": "pc",
+      "important": true,
+      "items": [
+        "pistol",
+        "medical kit",
+        "tin cup"
+      ]
+    },
+    "tama_roa": {
+      "name": "Tama Roa",
+      "type": "navigator",
+      "disposition": "practical, observant, and patient only up to a point",
+      "description": "A young navigator of the Reef Confederacy who reads swells, birds, and people with the same steady attention.",
+      "location": "reef_market",
+      "items": [
+        "steering paddle",
+        "shell map"
+      ]
+    },
+    "hina_vai": {
+      "name": "Hina Vai",
+      "type": "protocol keeper",
+      "disposition": "calm, exacting, and impossible to rush",
+      "description": "A respected elder of the Confederacy who keeps boundaries, permissions, and old obligations in order.",
+      "location": "storytree_grove",
+      "items": [
+        "carved staff"
+      ]
+    },
+    "captain_sloane": {
+      "name": "Captain Maribel Sloane",
+      "type": "smuggler captain",
+      "disposition": "amused, predatory, and always doing math behind the smile",
+      "description": "A polished pirate captain who treats flirtation like a business tactic and business like a duel.",
+      "location": "scarlet_cove",
+      "items": [
+        "silver lighter",
+        "saber",
+        "ship manifest"
+      ]
+    },
+    "dr_keller": {
+      "name": "Dr. Rudolf Keller",
+      "type": "occult researcher",
+      "disposition": "tense, arrogant, and fraying at the edges",
+      "description": "A Nazi researcher convinced the island hides a mechanism that can bend navigation and probability.",
+      "location": "nazi_camp",
+      "items": [
+        "field notebook",
+        "map case",
+        "pocket watch"
+      ]
+    },
+    "irene_quick": {
+      "name": "Irene Quick",
+      "type": "salvager",
+      "disposition": "chatty, opportunistic, and surprisingly useful",
+      "description": "A nimble local scavenger who always seems to arrive where junk becomes treasure and trouble becomes gossip.",
+      "location": "driftwood_hangar",
+      "items": [
+        "tool roll",
+        "crowbar",
+        "nails"
+      ]
+    }
+  },
+  "scenes": {
+    "beachhead": {
+      "story": "The player has just survived the crash and knows almost nothing. The immediate goals are water, salvage, first shelter, and first contact. The island should feel strange but still deniable.",
+      "conditionals": {
+        "beachhead_init": {
+          "when": {
+            "scene_turn_counter": 0
+          },
+          "then": {
+            "prompt": "STORY EVENT: Heat rises from the broken plane, surf whispers over the sand, and something in the jungle laughs once and then goes quiet."
+          }
+        },
+        "to_hub": {
+          "when": {
+            "vars": {
+              "met_evie": "true",
+              "home_base": "started"
+            }
+          },
+          "then": {
+            "scene_change": {
+              "to": "driftwood_hub",
+              "reason": "conditional"
+            }
+          }
+        }
+      },
+      "contingency_prompts": [
+        "Keep the player focused on immediate survival and first impressions.",
+        "Evie should arrive as the first strong personality in the scenario and feel competent, teasing, and a little suspicious.",
+        "Weirdness should read as luck, exhaustion, or bad bearings, not confirmed magic."
+      ],
+      "contingency_rules": [
+        "When the player meaningfully speaks with Evelyn Hart, set met_evie to true.",
+        "When the player chooses the Driftwood Hangar as shelter OR begins cleaning, patching, or provisioning it, set home_base to started.",
+        "If the player finds fresh water, note that survival is no longer the only urgent problem."
+      ]
+    },
+    "driftwood_hub": {
+      "story": "The Driftwood Hangar becomes the center of play. The player can repair, trade, flirt, bargain, and follow leads to reefs, groves, camps, and coves. This is the broad sandbox scene.",
+      "locations": {
+        "driftwood_hangar": {
+          "description": "The old hangar is still ramshackle, but now it has the outline of a home. Someone has swept, someone has patched, and the place is starting to collect chairs, tools, and opinions.",
+          "items": [
+            "rusted winch",
+            "broken lantern",
+            "coil of rope",
+            "rain barrel",
+            "camp stove"
+          ]
+        }
+      },
+      "conditionals": {
+        "hub_init": {
+          "when": {
+            "scene_turn_counter": 0
+          },
+          "then": {
+            "prompt": "STORY EVENT: By the time the hangar begins to look livable, people have already started treating it like a place where news, favors, and trouble can be exchanged."
+          }
+        },
+        "to_trickster": {
+          "when": {
+            "vars": {
+              "magic_reveal": "pattern",
+              "home_base": "secure"
+            }
+          },
+          "then": {
+            "scene_change": {
+              "to": "trickster_deeps",
+              "reason": "conditional"
+            }
+          }
+        }
+      },
+      "contingency_prompts": [
+        "Offer a loose menu of travel, repairs, trade, social scenes, and reckless plans.",
+        "Captain Sloane, Tama Roa, Irene Quick, and Keller should all be able to generate jobs, rumors, and complications.",
+        "Let Evie travel with the player and keep the slow burn alive through banter, interrupted honesty, and small gestures."
+      ],
+      "contingency_rules": [
+        "When the player wins practical support from the Reef Confederacy, set confederacy_trust to earned.",
+        "When the player repairs the roof, secures fresh water, or organizes regular supplies at the hangar, set home_base to secure.",
+        "When the player witnesses a repeated impossible pattern, a path loop, or an object returning where it should not be, set magic_reveal to pattern."
+      ]
+    },
+    "trickster_deeps": {
+      "story": "The island is now plainly arranging coincidences and pushing truths to the surface. The sandbox stays open, but locations like Wreck Field and Far Out Islet can force bigger choices about trust, settlement, and what kind of future the player is building.",
+      "locations": {
+        "far_out_islet": {
+          "description": "The islet feels like a stage waiting for actors to stop lying. Sound travels strangely, the horizon moves when no one is looking, and every decision feels louder out here.",
+          "items": [
+            "smooth white stone",
+            "washed crate fragment"
+          ]
+        }
+      }
+    }
+  },
+  "contingency_prompts": [
+    "Favor exploration and location based variety over heavy bookkeeping.",
+    "The player should always have a few concrete verbs available such as travel, search, repair, trade, ask, follow, rest, or make a reckless plan.",
+    "Use flirtation lightly outside the Evie arc. Other chemistry should stay episodic and not turn into sticky romance state.",
+    "Only Evelyn Hart is important. Do not implicitly elevate other NPCs into always present companions."
+  ],
+  "contingency_rules": [
+    "If Evelyn Hart formally parts ways with the player, clear evie_hart following.",
+    "If Evelyn Hart chooses to stay with the player after a dangerous mission, set evie_hart following to pc.",
+    "If the player gives supplies, useful salvage, or protection to the Reef Confederacy, that can improve confederacy_trust.",
+    "If the player violates a protected boundary after a direct warning, confederacy_trust can worsen and local help becomes harder to secure."
+  ]
+}
