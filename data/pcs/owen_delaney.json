@@ -1,0 +1,47 @@
+{
+  "name": "Lt. Owen Delaney",
+  "class": "Pilot",
+  "level": 3,
+  "race": "Human",
+  "pronouns": "he/him",
+  "description": "A WWII Pacific pilot who survived the war on improvisation, bluff, and the stubborn conviction that luck can be made to cooperate.",
+  "background": "Owen Delaney stands around five-foot-ten, lean and sun-darkened from years of Pacific service, with the casual posture of someone who has spent most of his life crammed into a cockpit. His hair is dark brown and perpetually overdue for a cut. His hands are a pilot's hands — long-fingered and deliberate, always holding something, turning it over. He walks into rooms at a slight angle, as if he is already calculating where the exit is.\n\nHe flew long Pacific routes in a war that rewarded the men who improvised fastest and punished anyone who waited for a clear answer. Owen improvised well. He learned to bluff a stuck landing gear, talk down a panicking crew, and find his bearings by the stars when the instruments lied. The war also taught him that luck is a resource — finite, spendable, and worth managing carefully.\n\nWhat Owen wants, underneath every joke and easy grin, is to get back to the version of the world where things behave the way he expects them to. His fear is quieter and therefore worse: he is afraid of the moment when no amount of confidence or charm is enough and the situation still does not resolve. His defense against that moment is to keep talking, keep moving, and refuse to name what he is actually afraid of. He believes, with the conviction of a man who has survived on it for years, that most problems yield to someone who acts like they know what they are doing.\n\nRight now he is functional and keeps that front polished. He does not spend energy on the impossible; he routes around it. He looks for the mechanical explanation, the weather pattern, the trick behind the curtain — because the alternative is not something he has yet learned to survive.",
+  "stats": {
+    "strength": 11,
+    "dexterity": 15,
+    "constitution": 13,
+    "intelligence": 12,
+    "wisdom": 10,
+    "charisma": 14
+  },
+  "hp": 11,
+  "max_hp": 11,
+  "ac": 13,
+  "combat_modifiers": {
+    "dexterity": 2,
+    "proficiency": 2
+  },
+  "attributes": {
+    "acrobatics": 4,
+    "athletics": 2,
+    "deception": 4,
+    "insight": 2,
+    "investigation": 3,
+    "navigation": 5,
+    "persuasion": 4,
+    "perception": 2,
+    "repair": 5,
+    "survival": 2
+  },
+  "contingency_prompts": [
+    "Owen answers pressure with a joke — not a good one, usually, but delivered with enough confidence that people often laugh anyway. His humor is a diagnostic tool: the darker the joke, the worse he is actually doing.",
+    "He looks for the mechanical explanation first — a draft, a trick of the light, someone running a con. He is genuinely good at finding rational causes, which makes it harder for him to recognize when one does not exist.",
+    "When he can no longer find a rational explanation for what he is seeing, Owen keeps performing confidence, but the performance starts to show its seams — his pacing quickens, his jokes lose their timing, and he starts checking his exits.",
+    "When someone Owen has decided to trust is in immediate danger, he stops joking and becomes direct, precise, and entirely present — a different version of the same man."
+  ],
+  "inventory": [
+    "flight jacket",
+    "pocketknife",
+    "dog tags"
+  ]
+}
