@@ -303,8 +303,8 @@ func (v *VeniceService) getDeltaUpdateResponseFormat() *VeniceResponseFormat {
 }
 
 // Chat generates a chat response using Venice AI
-func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
-	content, err := v.chatCompletion(ctx, messages, v.modelName, DefaultTemperature, nil)
+func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error) {
+	content, err := v.chatCompletion(ctx, messages, v.modelName, temperature, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -315,11 +315,11 @@ func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage) (
 }
 
 // ChatStream generates a streaming chat response using Venice AI
-func (v *VeniceService) ChatStream(ctx context.Context, messages []chat.ChatMessage) (<-chan StreamChunk, error) {
+func (v *VeniceService) ChatStream(ctx context.Context, messages []chat.ChatMessage, temperature float64) (<-chan StreamChunk, error) {
 	reqBody := VeniceChatRequest{
 		Model:       v.modelName,
 		Messages:    messages,
-		Temperature: DefaultTemperature,
+		Temperature: temperature,
 		MaxTokens:   DefaultMaxTokens,
 		Stream:      true,
 		VeniceParameters: VeniceParameters{

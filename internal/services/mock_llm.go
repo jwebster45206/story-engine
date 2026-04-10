@@ -105,7 +105,7 @@ func (m *MockLLMAPI) InitModel(ctx context.Context, modelName string) error {
 }
 
 // Chat mocks response generation
-func (m *MockLLMAPI) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+func (m *MockLLMAPI) Chat(ctx context.Context, messages []chat.ChatMessage, _ float64) (*chat.ChatResponse, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -136,7 +136,7 @@ func (m *MockLLMAPI) Chat(ctx context.Context, messages []chat.ChatMessage) (*ch
 }
 
 // ChatStream mocks streaming response generation
-func (m *MockLLMAPI) ChatStream(ctx context.Context, messages []chat.ChatMessage) (<-chan StreamChunk, error) {
+func (m *MockLLMAPI) ChatStream(ctx context.Context, messages []chat.ChatMessage, _ float64) (<-chan StreamChunk, error) {
 	return nil, fmt.Errorf("streaming not implemented for mock LLM")
 }
 

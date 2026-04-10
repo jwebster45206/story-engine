@@ -558,3 +558,75 @@ func TestGetNPC_NilNPCs(t *testing.T) {
 		t.Errorf("Expected empty key when not found, got %q", key)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Temperature field tests
+// ---------------------------------------------------------------------------
+
+func TestScenario_TemperatureField(t *testing.T) {
+	t.Run("scenario temperature round-trips through JSON", func(t *testing.T) {
+		temp := 0.9
+		s := Scenario{Temperature: &temp}
+		data, err := json.Marshal(s)
+		if err != nil {
+			t.Fatalf("marshal error: %v", err)
+		}
+		var got Scenario
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Fatalf("unmarshal error: %v", err)
+		}
+		if got.Temperature == nil {
+			t.Fatal("expected Temperature to be set after round-trip, got nil")
+		}
+		if *got.Temperature != temp {
+			t.Errorf("expected temperature %f, got %f", temp, *got.Temperature)
+		}
+	})
+
+	t.Run("nil temperature omitted from JSON", func(t *testing.T) {
+		s := Scenario{Name: "no temp"}
+		data, err := json.Marshal(s)
+		if err != nil {
+			t.Fatalf("marshal error: %v", err)
+		}
+		var m map[string]json.RawMessage
+		if err := json.Unmarshal(data, &m); err != nil {
+			t.Fatalf("unmarshal error: %v", err)
+		}
+		if _, ok := m["temperature"]; ok {
+			t.Error("expected temperature key to be absent when nil")
+		}
+	})
+}
+
+func TestScene_TemperatureField(t *testing.T) {
+	t.Run("scene temperature unmarshals from JSON", func(t *testing.T) {
+		const raw = `{"story":"test","temperature":0.4}`
+		var scene Scene
+		if err := json.Unmarshal([]byte(raw), &scene); err != nil {
+			t.Fatalf("unmarshal error: %v", err)
+		}
+		if scene.Temperature == nil {
+			t.Fatal("expected Temperature to be set, got nil")
+		}
+		const want = 0.4
+		if *scene.Temperature != want {
+			t.Errorf("expected temperature %f, got %f", want, *scene.Temperature)
+		}
+	})
+
+	t.Run("nil temperature omitted from JSON", func(t *testing.T) {
+		scene := Scene{Story: "no temp"}
+		data, err := json.Marshal(scene)
+		if err != nil {
+			t.Fatalf("marshal error: %v", err)
+		}
+		var m map[string]json.RawMessage
+		if err := json.Unmarshal(data, &m); err != nil {
+			t.Fatalf("unmarshal error: %v", err)
+		}
+		if _, ok := m["temperature"]; ok {
+			t.Error("expected temperature key to be absent when nil")
+		}
+	})
+}

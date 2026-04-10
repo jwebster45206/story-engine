@@ -11,6 +11,7 @@ Every scenario must include these top-level fields:
   "name": "Scenario Title",
   "story": "Brief description of the scenario premise",
   "rating": "PG-13",
+  "temperature": 0.6,
   "narrator_id": "vincent_price",
   "default_pc": "pirate_captain",
   "opening_scene": "scene_id",
@@ -86,6 +87,33 @@ Scenarios can specify a narrator to define the storytelling voice and style. Nar
 **If no narrator is specified**, the story uses a standard omniscient narrator voice.
 
 **Creating custom narrators:** See `data/narrators/README.md` for details on creating your own narrator personalities.
+
+## Temperature (Optional)
+
+The `temperature` field controls how creative versus predictable the narrator's responses are. It can be set at the scenario level and overridden per scene.
+
+- **Lower values** (e.g., `0.2`–`0.5`): More predictable, focused responses — better for puzzle scenes, mystery plots, and keeping the story on rails.
+- **Higher values** (e.g., `0.7`–`1.0`): More varied, creative responses — better for open exploration, character-driven moments, and atmospheric description.
+- **Default**: `0.6` when not specified at either level.
+
+A scene-level `temperature` overrides the scenario-level value for that scene only. Scenes without a `temperature` field inherit the scenario-level value. If neither is set, the system default (`0.6`) is used.
+
+```json
+{
+  "name": "Mystery at Blackwood Manor",
+  "temperature": 0.4,
+  "scenes": {
+    "investigation": {
+      "story": "The player examines the crime scene.",
+      "temperature": 0.3
+    },
+    "haunted_ballroom": {
+      "story": "The player explores the eerie ballroom.",
+      "temperature": 0.8
+    }
+  }
+}
+```
 
 ## Writing Voice and Perspective
 
@@ -1267,6 +1295,7 @@ The scene system helps keep complex stories on track by defining story phases. A
 "scenes": {
   "shipwright": {
     "story": "The player's ship badly needs repairs...",
+    "temperature": 0.5,
     "locations": { /* scene-specific location overrides */ },
     "npcs": { /* scene-specific NPC overrides */ },
     "contingency_prompts": [ /* scene-specific narrative guidance */ ],
