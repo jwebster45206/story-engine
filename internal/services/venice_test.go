@@ -80,7 +80,7 @@ func TestVeniceService_ChatStream(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/event-stream")
 			w.WriteHeader(http.StatusOK)
-			
+
 			// Send streaming chunks
 			responses := []string{
 				`data: {"id":"test-1","object":"chat.completion.chunk","created":1234567890,"model":"test-model","choices":[{"index":0,"delta":{"content":"Hello"}}]}`,
@@ -88,39 +88,39 @@ func TestVeniceService_ChatStream(t *testing.T) {
 				`data: {"id":"test-1","object":"chat.completion.chunk","created":1234567890,"model":"test-model","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`,
 				`data: [DONE]`,
 			}
-			
+
 			for _, resp := range responses {
 				_, _ = w.Write([]byte(resp + "\n"))
 				w.(http.Flusher).Flush()
 			}
 		}))
 		defer server.Close()
-		
+
 		// Create service with custom HTTP client pointing to mock server
 		service := NewVeniceService("test-key", "test-model", "test-model")
 		service.httpClient = server.Client()
-		
+
 		// For now, let's test the error case to verify the interface works
 		// In a real implementation, we'd make the base URL configurable for testing
 		messages := []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "Hello"}}
-		stream, err := service.ChatStream(context.Background(), messages)
-		
+		stream, err := service.ChatStream(context.Background(), messages, DefaultTemperature)
+
 		assert.Nil(t, stream)
 		assert.Error(t, err)
 		// Should be either a connection error or auth error since we're hitting the real Venice API with fake creds
-		assert.True(t, 
-			strings.Contains(err.Error(), "failed to send request") || 
-			strings.Contains(err.Error(), "API request failed with status"),
+		assert.True(t,
+			strings.Contains(err.Error(), "failed to send request") ||
+				strings.Contains(err.Error(), "API request failed with status"),
 			"Expected connection or API error, got: %s", err.Error())
 	})
-	
+
 	t.Run("streaming response parsing", func(t *testing.T) {
 		// Test the streaming response structures
 		streamData := `{"id":"test-1","object":"chat.completion.chunk","created":1234567890,"model":"test-model","choices":[{"index":0,"delta":{"content":"Hello world"},"finish_reason":null}]}`
-		
+
 		var streamResp VeniceStreamResponse
 		err := json.Unmarshal([]byte(streamData), &streamResp)
-		
+
 		require.NoError(t, err)
 		assert.Equal(t, "test-1", streamResp.ID)
 		assert.Equal(t, "chat.completion.chunk", streamResp.Object)
@@ -129,13 +129,13 @@ func TestVeniceService_ChatStream(t *testing.T) {
 		assert.Equal(t, "Hello world", streamResp.Choices[0].Delta.Content)
 		assert.Nil(t, streamResp.Choices[0].FinishReason)
 	})
-	
+
 	t.Run("streaming response with finish reason", func(t *testing.T) {
 		streamData := `{"id":"test-1","object":"chat.completion.chunk","created":1234567890,"model":"test-model","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`
-		
+
 		var streamResp VeniceStreamResponse
 		err := json.Unmarshal([]byte(streamData), &streamResp)
-		
+
 		require.NoError(t, err)
 		assert.Equal(t, "test-1", streamResp.ID)
 		assert.Len(t, streamResp.Choices, 1)
@@ -143,13 +143,13 @@ func TestVeniceService_ChatStream(t *testing.T) {
 		require.NotNil(t, streamResp.Choices[0].FinishReason)
 		assert.Equal(t, "stop", *streamResp.Choices[0].FinishReason)
 	})
-	
+
 	t.Run("streaming response with error", func(t *testing.T) {
 		streamData := `{"id":"test-1","object":"error","error":{"message":"Invalid API key","type":"authentication_error","code":"invalid_api_key"}}`
-		
+
 		var streamResp VeniceStreamResponse
 		err := json.Unmarshal([]byte(streamData), &streamResp)
-		
+
 		require.NoError(t, err)
 		assert.Equal(t, "test-1", streamResp.ID)
 		require.NotNil(t, streamResp.Error)

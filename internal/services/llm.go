@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DefaultTemperature = 0.7
+	DefaultTemperature = 0.6
 	DefaultMaxTokens   = 512
 	BackendMaxTokens   = 512
 )
@@ -44,10 +44,10 @@ type LLMService interface {
 	InitModel(ctx context.Context, modelName string) error
 
 	// Chat generates a chat response using the LLM
-	Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error)
+	Chat(ctx context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error)
 
 	// ChatStream generates a streaming chat response using the LLM
-	ChatStream(ctx context.Context, messages []chat.ChatMessage) (<-chan StreamChunk, error)
+	ChatStream(ctx context.Context, messages []chat.ChatMessage, temperature float64) (<-chan StreamChunk, error)
 
 	DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, string, error)
 }

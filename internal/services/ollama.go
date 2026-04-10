@@ -60,21 +60,22 @@ func (s *OllamaService) InitModel(ctx context.Context, modelName string) error {
 }
 
 // Chat generates a chat response using the Ollama API (non-streaming)
-func (s *OllamaService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
-	return s.GetChatResponse(ctx, messages)
+func (s *OllamaService) Chat(ctx context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error) {
+	return s.GetChatResponse(ctx, messages, temperature)
 }
 
 // ChatStream generates a streaming chat response using the Ollama API
-func (s *OllamaService) ChatStream(ctx context.Context, messages []chat.ChatMessage) (<-chan StreamChunk, error) {
+func (s *OllamaService) ChatStream(ctx context.Context, messages []chat.ChatMessage, temperature float64) (<-chan StreamChunk, error) {
 	return nil, fmt.Errorf("streaming not implemented for Ollama")
 }
 
 // GetChatResponse generates a chat response using the Ollama API
-func (s *OllamaService) GetChatResponse(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+func (s *OllamaService) GetChatResponse(ctx context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error) {
 	reqBody := map[string]interface{}{
-		"model":    s.modelName,
-		"messages": messages,
-		"stream":   false,
+		"model":       s.modelName,
+		"messages":    messages,
+		"stream":      false,
+		"temperature": temperature,
 	}
 
 	jsonBody, err := json.Marshal(reqBody)

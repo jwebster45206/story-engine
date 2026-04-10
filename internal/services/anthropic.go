@@ -233,8 +233,8 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 	return responseText, nil
 }
 
-func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
-	content, err := a.chatCompletion(ctx, messages, a.modelName, DefaultTemperature, nil)
+func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error) {
+	content, err := a.chatCompletion(ctx, messages, a.modelName, temperature, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -245,11 +245,11 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 }
 
 // ChatStream generates a streaming chat response using Anthropic
-func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatMessage) (<-chan StreamChunk, error) {
+func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatMessage, temperature float64) (<-chan StreamChunk, error) {
 	// Extract system messages and convert to Anthropic format
 	systemPrompt, conversationMessages := a.splitChatMessages(messages)
 
-	temp := DefaultTemperature
+	temp := temperature
 	anthropicReq := AnthropicChatRequest{
 		Model:       a.modelName,
 		MaxTokens:   DefaultMaxTokens,

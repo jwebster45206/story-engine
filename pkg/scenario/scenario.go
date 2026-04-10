@@ -15,6 +15,7 @@ type Scenario struct {
 	Rating           string               `json:"rating,omitempty"`            // Content rating of the scenario
 	NarratorID       string               `json:"narrator_id,omitempty"`       // Default narrator for this scenario
 	DefaultPC        string               `json:"default_pc,omitempty"`        // Default PC for this scenario
+	Temperature      *float64             `json:"temperature,omitempty"`       // LLM temperature (0.0–1.0); lower = on-rails, higher = creative
 	Locations        map[string]Location  `json:"locations,omitempty"`         // Map of location names to Location objects
 	Inventory        []string             `json:"inventory,omitempty"`         // Potential inventory items throughout the scenario
 	NPCs             map[string]actor.NPC `json:"npcs,omitempty"`              // Map of NPC names to their data

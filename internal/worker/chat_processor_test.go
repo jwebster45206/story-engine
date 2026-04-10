@@ -165,14 +165,16 @@ func TestApplyConditionalsCascade_TwoIterations(t *testing.T) {
 // stubLLMService captures the messages slice passed to Chat() and no-ops everything else.
 type stubLLMService struct {
 	capturedMessages []chat.ChatMessage
+	capturedTemp     float64
 }
 
 func (s *stubLLMService) InitModel(_ context.Context, _ string) error { return nil }
-func (s *stubLLMService) Chat(_ context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
+func (s *stubLLMService) Chat(_ context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error) {
 	s.capturedMessages = messages
+	s.capturedTemp = temperature
 	return &chat.ChatResponse{Message: "ok"}, nil
 }
-func (s *stubLLMService) ChatStream(_ context.Context, _ []chat.ChatMessage) (<-chan services.StreamChunk, error) {
+func (s *stubLLMService) ChatStream(_ context.Context, _ []chat.ChatMessage, _ float64) (<-chan services.StreamChunk, error) {
 	return nil, nil
 }
 func (s *stubLLMService) DeltaUpdate(_ context.Context, _ []chat.ChatMessage) (*conditionals.GameStateDelta, string, error) {
@@ -284,7 +286,7 @@ func TestProcessChatRequest_HistoryLimitRespected(t *testing.T) {
 // TestProcessChatRequest_HistoryLimitZeroUsesDefault verifies that a zero limit
 // falls back to PromptHistoryLimit.
 func TestProcessChatRequest_HistoryLimitZeroUsesDefault(t *testing.T) {
-	const historyInState = 20 // more than the default limit of 6
+	const historyInState = 20 // more than the default limit of 16
 
 	processor, llm, req := newTestSetup(historyInState, 0) // 0 → default
 
@@ -297,5 +299,139 @@ func TestProcessChatRequest_HistoryLimitZeroUsesDefault(t *testing.T) {
 	got := countNonSystem(llm.capturedMessages)
 	if got != want {
 		t.Errorf("expected %d non-system messages sent to LLM (default limit %d + current user), got %d", want, PromptHistoryLimit, got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// resolveTemperature unit tests
+// ---------------------------------------------------------------------------
+
+func TestResolveTemperature_DefaultFallback(t *testing.T) {
+	gs := &state.GameState{}
+	s := &scenario.Scenario{}
+	temp := resolveTemperature(gs, s)
+	if temp != services.DefaultTemperature {
+		t.Errorf("expected default temperature %f, got %f", services.DefaultTemperature, temp)
+	}
+}
+
+func TestResolveTemperature_ScenarioLevel(t *testing.T) {
+	want := 0.9
+	gs := &state.GameState{}
+	s := &scenario.Scenario{Temperature: &want}
+	temp := resolveTemperature(gs, s)
+	if temp != want {
+		t.Errorf("expected scenario temperature %f, got %f", want, temp)
+	}
+}
+
+func TestResolveTemperature_SceneOverridesScenario(t *testing.T) {
+	scenarioTemp := 0.9
+	sceneTemp := 0.3
+	gs := &state.GameState{SceneName: "act1"}
+	s := &scenario.Scenario{
+		Temperature: &scenarioTemp,
+		Scenes: map[string]scenario.Scene{
+			"act1": {Story: "Act 1", Temperature: &sceneTemp},
+		},
+	}
+	temp := resolveTemperature(gs, s)
+	if temp != sceneTemp {
+		t.Errorf("expected scene temperature %f, got %f", sceneTemp, temp)
+	}
+}
+
+func TestResolveTemperature_ScenarioUsedWhenSceneHasNoTemp(t *testing.T) {
+	scenarioTemp := 0.9
+	gs := &state.GameState{SceneName: "act1"}
+	s := &scenario.Scenario{
+		Temperature: &scenarioTemp,
+		Scenes: map[string]scenario.Scene{
+			"act1": {Story: "Act 1"},
+		},
+	}
+	temp := resolveTemperature(gs, s)
+	if temp != scenarioTemp {
+		t.Errorf("expected scenario temperature %f, got %f", scenarioTemp, temp)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Temperature integration tests (verifies processor passes correct temp to LLM)
+// ---------------------------------------------------------------------------
+
+func TestProcessChatRequest_UsesDefaultTemperature(t *testing.T) {
+	processor, llm, req := newTestSetup(2, 10)
+	_, err := processor.ProcessChatRequest(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ProcessChatRequest returned error: %v", err)
+	}
+	if llm.capturedTemp != services.DefaultTemperature {
+		t.Errorf("expected default temperature %f, got %f", services.DefaultTemperature, llm.capturedTemp)
+	}
+}
+
+func TestProcessChatRequest_UsesScenarioTemperature(t *testing.T) {
+	gsID := uuid.New()
+	wantTemp := 0.9
+	gs := &state.GameState{
+		ID:          gsID,
+		Scenario:    "test.json",
+		ChatHistory: makeHistory(2),
+		IsEnded:     true,
+		Vars:        make(map[string]string),
+	}
+	sc := &scenario.Scenario{
+		Name:        "Test",
+		Story:       "A test story",
+		Rating:      scenario.RatingPG,
+		Temperature: &wantTemp,
+	}
+	llm := &stubLLMService{}
+	stor := &stubStorage{gs: gs, sc: sc}
+	processor := NewChatProcessor(stor, llm, nil, slog.Default(), 10)
+	req := chat.ChatRequest{GameStateID: gsID, Message: "hello"}
+
+	_, err := processor.ProcessChatRequest(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ProcessChatRequest returned error: %v", err)
+	}
+	if llm.capturedTemp != wantTemp {
+		t.Errorf("expected scenario temperature %f, got %f", wantTemp, llm.capturedTemp)
+	}
+}
+
+func TestProcessChatRequest_UsesSceneTemperature(t *testing.T) {
+	gsID := uuid.New()
+	scenarioTemp := 0.9
+	sceneTemp := 0.3
+	gs := &state.GameState{
+		ID:          gsID,
+		Scenario:    "test.json",
+		SceneName:   "act1",
+		ChatHistory: makeHistory(2),
+		IsEnded:     true,
+		Vars:        make(map[string]string),
+	}
+	sc := &scenario.Scenario{
+		Name:        "Test",
+		Story:       "A test story",
+		Rating:      scenario.RatingPG,
+		Temperature: &scenarioTemp,
+		Scenes: map[string]scenario.Scene{
+			"act1": {Story: "Act 1", Temperature: &sceneTemp},
+		},
+	}
+	llm := &stubLLMService{}
+	stor := &stubStorage{gs: gs, sc: sc}
+	processor := NewChatProcessor(stor, llm, nil, slog.Default(), 10)
+	req := chat.ChatRequest{GameStateID: gsID, Message: "hello"}
+
+	_, err := processor.ProcessChatRequest(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ProcessChatRequest returned error: %v", err)
+	}
+	if llm.capturedTemp != sceneTemp {
+		t.Errorf("expected scene temperature %f, got %f", sceneTemp, llm.capturedTemp)
 	}
 }
