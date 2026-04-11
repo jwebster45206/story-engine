@@ -216,6 +216,12 @@ func (s *stubStorage) GetMonster(_ context.Context, _ string) (*actor.Monster, e
 func (s *stubStorage) ListMonsters(_ context.Context) (map[string]string, error) {
 	return nil, nil
 }
+func (s *stubStorage) GetNPC(_ context.Context, _ string) (*actor.NPC, error) {
+	return nil, nil
+}
+func (s *stubStorage) ListNPCs(_ context.Context) (map[string]string, error) {
+	return nil, nil
+}
 
 // makeHistory returns n alternating user/assistant ChatMessages.
 func makeHistory(n int) []chat.ChatMessage {
