@@ -206,8 +206,8 @@ func (ps *PromptState) ToString() string {
 		sb.WriteString("\nNEARBY LOCATIONS:")
 		for _, loc := range otherLocations {
 			fmt.Fprintf(&sb, "\n%s", loc.Name)
-			if loc.Description != "" {
-				fmt.Fprintf(&sb, ": %s", loc.Description)
+			if loc.Preview != "" {
+				fmt.Fprintf(&sb, ": %s", loc.Preview)
 			}
 			sb.WriteString("\n")
 		}

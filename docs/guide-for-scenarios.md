@@ -132,6 +132,7 @@ Locations define the game world geography:
   "tortuga": {
     "name": "Tortuga",
     "description": "A bustling pirate port filled with taverns, traders, and trouble.",
+    "preview": "A notorious pirate port.",
     "exits": {
       "east": "black_pearl",
       "south": "sleepy_mermaid",
@@ -172,6 +173,7 @@ Use **lowercase snake_case** for location keys (e.g., `"black_pearl"`, `"captain
 - **exits**: Available movement options (direction: destination)
 - **blocked_exits**: Inaccessible exits with explanation why
 - **items**: Objects available for pickup in this location
+- **preview**: A short (1-sentence) summary shown to the narrator when this location appears as a nearby/adjacent location. Prevents full description from bleeding into other locations. If omitted, only the location name is shown.
 - **important**: Whether the location should always appear in gamestate prompts (generally should be omitted/false)
 - **contingency_prompts**: Location-specific narrative hints shown only when the player is at this location
 

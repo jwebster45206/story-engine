@@ -9,6 +9,7 @@
     "tortuga": {
       "name": "Tortuga",
       "description": "A bustling pirate port filled with taverns, traders, and trouble.",
+      "preview": "A notorious pirate port.",
       "exits": {
         "east": "black_pearl",
         "south": "sleepy_mermaid",
@@ -21,6 +22,7 @@
     "black_pearl": {
       "name": "Black Pearl",
       "description": "The player's ship, moored at the docks, ready for the next voyage. ",
+      "preview": "The player's legendary pirate ship.",
       "exits": {
         "west": "tortuga",
         "cabin door": "captains_cabin",
@@ -34,6 +36,7 @@
     "captains_cabin": {
       "name": "Captain's Cabin",
       "description": "The player's personal quarters on the ship, filled with maps and treasures.",
+      "preview": "The captain's private quarters aboard the Pearl.",
       "exits": {
         "cabin door": "black_pearl"
       },
@@ -50,6 +53,7 @@
     "sleepy_mermaid": {
       "name": "Sleepy Mermaid",
       "description": "A rowdy inn filled with pirates and rumors of treasure. Calypso serves drinks and shares tales of the sea. The shipwright sits at a corner table, sketching designs for ship repairs and scowling. ",
+      "preview": "A rowdy tavern on the south side of Tortuga.",
       "exits": {
         "north": "tortuga",
         "back door": "tortuga_market",
@@ -62,6 +66,7 @@
     "sleepy_mermaid_cellar": {
       "name": "Sleepy Mermaid Cellar",
       "description": "A dank, dark cellar beneath the tavern. Barrels of rum and rotting crates line the walls. The scurrying of rats echoes in the darkness.",
+      "preview": "The cellar beneath the Sleepy Mermaid.",
       "exits": {
         "stairs up": "sleepy_mermaid"
       },
@@ -81,6 +86,7 @@
     "tortuga_market": {
       "name": "Tortuga Market",
       "description": "A bustling market filled with merchants, pirates, and rare goods. The air is thick with the scent of spices and the sound of haggling.",
+      "preview": "An open-air market for goods and gossip.",
       "exits": {
         "main street": "tortuga",
         "Sleepy Mermaid back door": "sleepy_mermaid"
@@ -93,6 +99,7 @@
     "open_sea": {
       "name": "Open Sea",
       "description": "The vast and treacherous waters of the Caribbean, certain death for an unrepaired ship.",
+      "preview": "The open Caribbean.",
       "blocked_exits": {
         "tortuga": "Once it departs, the Pearl is deteriorating too quickly to return to port."
       }
@@ -245,6 +252,7 @@
         "tortuga": {
           "name": "Tortuga",
           "description": "A bustling pirate port filled with taverns, traders, and trouble.",
+          "preview": "A notorious pirate port.",
           "exits": {
             "east": "black_pearl",
             "south": "sleepy_mermaid",
@@ -255,6 +263,7 @@
         "british_docks": {
           "name": "British Docks",
           "description": "A heavily guarded area where British ships are docked.",
+          "preview": "Heavily guarded British naval territory.",
           "exits": {
             "south": "tortuga"
           },
@@ -271,6 +280,7 @@
         "sleepy_mermaid": {
           "name": "Sleepy Mermaid",
           "description": "A rowdy inn, empty but for a few patrons. Calypso is trying to close up for the night.",
+          "preview": "A rowdy tavern on the south side of Tortuga.",
           "exits": {
             "north": "tortuga",
             "back door": "tortuga_market"
@@ -332,6 +342,7 @@
         "tortuga": {
           "name": "Tortuga",
           "description": "A bustling pirate port, closed down for the night. Shadows flicker in the alleys. ",
+          "preview": "A notorious pirate port, shuttered for the night.",
           "exits": {
             "east": "black_pearl",
             "south": "sleepy_mermaid"
@@ -344,6 +355,7 @@
         "sleepy_mermaid": {
           "name": "Sleepy Mermaid",
           "description": "A rowdy inn, empty but for a few patrons. Calypso is trying to close up for the night.",
+          "preview": "A rowdy tavern on the south side of Tortuga.",
           "exits": {
             "north": "tortuga",
             "back door": "tortuga_market"

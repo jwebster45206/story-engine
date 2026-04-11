@@ -22,6 +22,7 @@ func TestPromptState_ToString_BasicLocation(t *testing.T) {
 			"street": {
 				Name:        "Harbor Street",
 				Description: "A busy cobblestone street near the docks.",
+				Preview:     "A busy street near the docks.",
 			},
 		},
 	}
@@ -47,8 +48,8 @@ func TestPromptState_ToString_BasicLocation(t *testing.T) {
 	if !strings.Contains(result, "NEARBY LOCATIONS:") {
 		t.Error("Missing NEARBY LOCATIONS section")
 	}
-	if !strings.Contains(result, "Harbor Street: A busy cobblestone street near the docks.") {
-		t.Error("Missing nearby location")
+	if !strings.Contains(result, "Harbor Street: A busy street near the docks.") {
+		t.Error("Missing nearby location preview")
 	}
 }
 
@@ -183,6 +184,7 @@ func TestPromptState_ToString_Comprehensive(t *testing.T) {
 			"hold": {
 				Name:        "Ship's Hold",
 				Description: "Dark and musty cargo area.",
+				Preview:     "The cargo hold below decks.",
 			},
 		},
 		NPCs: map[string]actor.NPC{
@@ -220,8 +222,8 @@ func TestPromptState_ToString_Comprehensive(t *testing.T) {
 	if !strings.Contains(result, "NEARBY LOCATIONS:") {
 		t.Error("Missing NEARBY LOCATIONS section")
 	}
-	if !strings.Contains(result, "Ship's Hold: Dark and musty cargo area.") {
-		t.Error("Missing nearby location")
+	if !strings.Contains(result, "Ship's Hold: The cargo hold below decks.") {
+		t.Error("Missing nearby location preview")
 	}
 	if !strings.Contains(result, "NPCs (") {
 		t.Error("Missing NPCs section")
@@ -337,5 +339,34 @@ func TestPromptState_ToString_WithMonsters(t *testing.T) {
 	}
 	if !strings.Contains(result, "An animated skeleton wielding a rusty sword.") {
 		t.Error("Missing Skeleton Warrior description")
+	}
+}
+
+func TestPromptState_ToString_NearbyLocationNoPreview(t *testing.T) {
+	ps := &PromptState{
+		Location: "tavern",
+		WorldLocations: map[string]scenario.Location{
+			"tavern": {
+				Name:        "The Rusty Anchor",
+				Description: "A dimly lit tavern.",
+				Exits: map[string]string{
+					"north": "street",
+				},
+			},
+			"street": {
+				Name:        "Harbor Street",
+				Description: "A busy cobblestone street near the docks.",
+			},
+		},
+	}
+
+	result := ps.ToString()
+
+	// Should show name only, NOT the full description
+	if !strings.Contains(result, "Harbor Street\n") {
+		t.Error("Expected nearby location name only when no preview")
+	}
+	if strings.Contains(result, "A busy cobblestone street near the docks.") {
+		t.Error("Full description should NOT appear for nearby location without preview")
 	}
 }
