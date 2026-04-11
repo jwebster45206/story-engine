@@ -215,7 +215,7 @@ func (ps *PromptState) ToString() string {
 
 	// NPCs
 	if len(ps.NPCs) > 0 {
-		sb.WriteString("\nNPCs:")
+		sb.WriteString("\nNPCs (only these characters exist in this world — do not invent others):")
 		for _, npc := range ps.NPCs {
 			fmt.Fprintf(&sb, "\n%s", npc.Name)
 			if npc.Disposition != "" {
