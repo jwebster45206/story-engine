@@ -98,17 +98,14 @@
     }
   },
   "npcs": {
+    "guard_captain": {
+      "template_id": "guard_captain",
+      "location": "tortuga",
+      "disposition": "hostile to pirates"
+    },
     "gibbs": {
-      "name": "Gibbs",
-      "type": "pirate",
-      "disposition": "loyal",
-      "description": "The player's loyal first mate with a keen sense of duty.",
-      "location": "black_pearl",
-      "items": [],
-      "contingency_prompts": [
-        "Gibbs is always ready with practical advice about the ship and crew.",
-        "Gibbs speaks with nautical slang and occasionally refers to superstitions."
-      ]
+      "template_id": "pirate_gibbs",
+      "location": "black_pearl"
     },
     "calypso": {
       "name": "Calypso",
@@ -281,16 +278,8 @@
       },
       "npcs": {
         "davey": {
-          "name": "Davey",
-          "type": "pirate",
-          "disposition": "friendly",
-          "description": "A grizzled old pirate with a wooden leg. Fellow captain and sometimes ally.",
-          "location": "tortuga_market",
-          "items": [],
-          "contingency_prompts": [
-            "Davey tells tall tales of his adventures on the high seas.",
-            "Davey occasionally complains about his wooden leg aching before storms."
-          ]
+          "template_id": "pirate_davey",
+          "location": "tortuga_market"
         }
       },
       "contingency_prompts": [

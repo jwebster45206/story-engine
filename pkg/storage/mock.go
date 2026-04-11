@@ -19,6 +19,7 @@ type MockStorage struct {
 	narrators  map[string]*scenario.Narrator
 	pcSpecs    map[string]*actor.PCSpec
 	monsters   map[string]*actor.Monster
+	npcs       map[string]*actor.NPC
 	pingError  error
 }
 
@@ -33,6 +34,7 @@ func NewMockStorage() *MockStorage {
 		narrators:  make(map[string]*scenario.Narrator),
 		pcSpecs:    make(map[string]*actor.PCSpec),
 		monsters:   make(map[string]*actor.Monster),
+		npcs:       make(map[string]*actor.NPC),
 	}
 }
 
@@ -223,4 +225,35 @@ func (m *MockStorage) AddMonster(templateID string, monster *actor.Monster) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.monsters[templateID] = monster
+}
+
+// GetNPC mocks getting an NPC template by ID
+func (m *MockStorage) GetNPC(ctx context.Context, templateID string) (*actor.NPC, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	npc, exists := m.npcs[templateID]
+	if !exists {
+		return nil, errors.New("npc template not found")
+	}
+	return npc, nil
+}
+
+// ListNPCs mocks listing NPC templates
+func (m *MockStorage) ListNPCs(ctx context.Context) (map[string]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	result := make(map[string]string)
+	for templateID, npc := range m.npcs {
+		result[npc.Name] = templateID
+	}
+	return result, nil
+}
+
+// AddNPC adds an NPC template to the mock storage (for testing)
+func (m *MockStorage) AddNPC(templateID string, npc *actor.NPC) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.npcs[templateID] = npc
 }

@@ -394,6 +394,28 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	// Resolve NPC templates: for any NPC in gs.NPCs that has a TemplateID set,
+	// load the standalone NPC JSON from data/npcs/ and merge with the inline
+	// definition (which may supply overrides like location or disposition).
+	// This runs after LoadScene so that scene-level NPCs with TemplateIDs are also resolved.
+	for npcKey, npc := range gs.NPCs {
+		if npc.TemplateID == "" {
+			continue // fully inline NPC, nothing to do
+		}
+		template, err := h.storage.GetNPC(r.Context(), npc.TemplateID)
+		if err != nil {
+			h.logger.Warn("Failed to load NPC template, keeping inline definition", "npc_key", npcKey, "template_id", npc.TemplateID, "error", err)
+			continue
+		}
+		merged := actor.NewNPCFromTemplate(template, &npc)
+		if merged == nil {
+			h.logger.Warn("Failed to merge NPC template, keeping inline definition", "npc_key", npcKey, "template_id", npc.TemplateID)
+			continue
+		}
+		gs.NPCs[npcKey] = *merged
+		h.logger.Debug("Loaded NPC from template", "npc_key", npcKey, "template_id", npc.TemplateID, "name", merged.Name)
+	}
+
 	// Load monster templates for any pre-placed monsters
 	// Iterate through all locations and populate monsters that only have template_id set
 	for locName, loc := range gs.WorldLocations {

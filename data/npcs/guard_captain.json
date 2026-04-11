@@ -1,0 +1,25 @@
+{
+  "name": "Guard Captain",
+  "type": "guard",
+  "disposition": "authoritative",
+  "description": "The captain of the city guard — disciplined, dangerous, and incorruptible. She has served for twenty years and lost nothing of her edge.",
+  "items": ["longsword", "badge of office"],
+  "ac": 16,
+  "hp": 45,
+  "max_hp": 45,
+  "attributes": {
+    "strength": 16,
+    "dexterity": 12,
+    "constitution": 14,
+    "intelligence": 10,
+    "wisdom": 13,
+    "charisma": 12
+  },
+  "combat_modifiers": {
+    "longsword": 5
+  },
+  "contingency_prompts": [
+    "The Guard Captain is vigilant and enforces the law without hesitation.",
+    "If threatened or attacked, the Guard Captain calls for reinforcements and does not back down."
+  ]
+}

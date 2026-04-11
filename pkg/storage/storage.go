@@ -39,4 +39,9 @@ type Storage interface {
 	// Use actor.NewMonster to create instances from the template
 	GetMonster(ctx context.Context, templateID string) (*actor.Monster, error)
 	ListMonsters(ctx context.Context) (map[string]string, error) // map[name]templateID
+
+	// NPC operations (filesystem-backed, returns NPC template from data/npcs/)
+	// Use actor.NewNPCFromTemplate to merge template with scenario overrides
+	GetNPC(ctx context.Context, templateID string) (*actor.NPC, error)
+	ListNPCs(ctx context.Context) (map[string]string, error) // map[name]templateID
 }

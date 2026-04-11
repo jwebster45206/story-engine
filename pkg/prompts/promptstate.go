@@ -222,6 +222,11 @@ func (ps *PromptState) ToString() string {
 				fmt.Fprintf(&sb, " (%s)", npc.Disposition)
 			}
 
+			// Show actor stats for standalone NPCs that have them
+			if npc.AC > 0 || npc.HP > 0 || npc.MaxHP > 0 {
+				fmt.Fprintf(&sb, " [AC: %d, HP: %d/%d]", npc.AC, npc.HP, npc.MaxHP)
+			}
+
 			if npc.Description != "" {
 				fmt.Fprintf(&sb, ": %s", npc.Description)
 			}
