@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DefaultTemperature = 0.6
+	DefaultTemperature = 0.4
 	DefaultMaxTokens   = 512
 	BackendMaxTokens   = 512
 )

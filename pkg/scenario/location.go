@@ -9,6 +9,7 @@ import (
 type Location struct {
 	Name               string                           `json:"name"`                          // Also the key in the map.
 	Description        string                           `json:"description,omitempty"`         // Scene description
+	Preview            string                           `json:"preview,omitempty"`             // Short summary shown for adjacent locations (prevents description bleed)
 	Exits              map[string]string                `json:"exits,omitempty"`               // Direction → Location Key
 	BlockedExits       map[string]string                `json:"blocked_exits,omitempty"`       // Direction → Reason for blocking
 	Items              []string                         `json:"items,omitempty"`               // Items that can be found in this location
