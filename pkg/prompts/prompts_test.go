@@ -115,7 +115,7 @@ CURRENT LOCATION:
 Tortuga: A bustling pirate port
 Exits:
 
-NPCs:
+NPCs (only these characters exist in this world — do not invent others):
 Shipwright (gruff)
 
 USER'S INVENTORY: 

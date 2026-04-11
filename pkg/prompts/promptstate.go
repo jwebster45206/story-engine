@@ -215,11 +215,16 @@ func (ps *PromptState) ToString() string {
 
 	// NPCs
 	if len(ps.NPCs) > 0 {
-		sb.WriteString("\nNPCs:")
+		sb.WriteString("\nNPCs (only these characters exist in this world — do not invent others):")
 		for _, npc := range ps.NPCs {
 			fmt.Fprintf(&sb, "\n%s", npc.Name)
 			if npc.Disposition != "" {
 				fmt.Fprintf(&sb, " (%s)", npc.Disposition)
+			}
+
+			// Show actor stats for standalone NPCs that have them
+			if npc.AC > 0 || npc.HP > 0 || npc.MaxHP > 0 {
+				fmt.Fprintf(&sb, " [AC: %d, HP: %d/%d]", npc.AC, npc.HP, npc.MaxHP)
 			}
 
 			if npc.Description != "" {

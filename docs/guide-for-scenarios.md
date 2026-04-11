@@ -414,6 +414,58 @@ Both will work correctly.
 - **location**: Current location of the NPC (use location ID)
 - **items**: Objects this NPC possesses
 - **following**: (Optional) Who this NPC follows - see "NPC Following" section below
+- **template_id**: (Optional) Load the NPC from a standalone template file - see "Standalone NPC Templates" section below
+
+### Standalone NPC Templates
+
+NPCs can be loaded from reusable JSON files in `data/npcs/` rather than defined entirely inline. This is useful when:
+
+- The same character appears across multiple scenarios
+- An NPC needs **actor properties** (HP, AC, combat stats) for fighting or dramatic stakes
+- You want to keep the scenario file lean
+
+To reference a template, set `template_id` to the filename (without `.json`). Any other inline fields act as **overrides** that replace the corresponding template values for this scenario instance. Only specify what differs; everything else comes from the template.
+
+```json
+"npcs": {
+  "captain": {
+    "template_id": "guard_captain",
+    "location": "city_gate",
+    "disposition": "suspicious"
+  }
+}
+```
+
+At game creation the engine will:
+1. Load `data/npcs/guard_captain.json`
+2. Apply the inline overrides (`location` → `"city_gate"`, `disposition` → `"suspicious"`)
+3. Use the merged NPC for the rest of the session
+
+If the template file is missing the engine logs a warning and falls back to the inline definition.
+
+**Fully inline NPCs are unchanged** — if `template_id` is absent the NPC is used exactly as written.
+
+#### Actor properties
+
+Standalone NPC templates can include optional actor stats. When present, these appear in the LLM prompt alongside monster stats:
+
+```
+NPCs:
+Guard Captain (suspicious) [AC: 16, HP: 45/45]: The captain of the city guard...
+```
+
+Actor fields supported on standalone NPCs (all optional):
+
+| Field | Description |
+|-------|-------------|
+| `ac` | Armor class |
+| `hp` | Current hit points |
+| `max_hp` | Maximum hit points |
+| `attributes` | Key/value stat map (e.g. `{"strength": 16}`) |
+| `combat_modifiers` | Key/value modifier map (e.g. `{"longsword": 5}`) |
+| `drop_items_on_defeat` | Whether items are dropped when HP reaches 0 |
+
+See `data/npcs/README.md` for full template format details and examples.
 
 ### NPC Following
 

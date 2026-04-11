@@ -125,7 +125,7 @@ func TestPromptState_ToString_WithNPCs(t *testing.T) {
 	if !strings.Contains(result, "Town Market") {
 		t.Error("Missing location name")
 	}
-	if !strings.Contains(result, "NPCs:") {
+	if !strings.Contains(result, "NPCs (") {
 		t.Error("Missing NPCs section")
 	}
 	if !strings.Contains(result, "Greedy Merchant (neutral)") {
@@ -223,7 +223,7 @@ func TestPromptState_ToString_Comprehensive(t *testing.T) {
 	if !strings.Contains(result, "Ship's Hold: Dark and musty cargo area.") {
 		t.Error("Missing nearby location")
 	}
-	if !strings.Contains(result, "NPCs:") {
+	if !strings.Contains(result, "NPCs (") {
 		t.Error("Missing NPCs section")
 	}
 	if !strings.Contains(result, "Captain Blackbeard (hostile)") {
@@ -271,7 +271,7 @@ func TestPromptState_ToString_NPCWithoutDisposition(t *testing.T) {
 
 	result := ps.ToString()
 
-	if !strings.Contains(result, "NPCs:") {
+	if !strings.Contains(result, "NPCs (") {
 		t.Error("Missing NPCs section")
 	}
 	if !strings.Contains(result, "Mysterious Stranger") {
