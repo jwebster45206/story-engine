@@ -112,12 +112,23 @@ Ask: if the narrator read only this word, would they know how to handle a conver
 - Write their dialogue rhythm and vocabulary
 - Portray them consistently across turns
 
-**Required elements:**
-- A physical or behavioral detail that makes this character visually distinct
-- A personality marker (how they speak, what they want, what they guard)
-- At most 2–3 sentences — the narrator needs a quick read, not a biography
+**Required elements** (both modes):
+- Physical anchor: a detail that makes this character visually or behaviorally distinct
+- Personality: what they want, guard, or fear; how they treat people
+- Speech marker: accent, vocabulary, rhythm, or a sample phrase
 
-| Weak (reject) | Narrator-ready (accept) |
+**Two description modes — choose before writing:**
+
+**Summarized** (default): One dense paragraph weaving all three elements together. The narrator gets a fast, complete read. Ideal for ambient, supporting, or lightly featured NPCs. Aim for 2–4 sentences.
+
+**Detailed**: Three paragraphs, each dedicated to one element. Use for significant NPCs the narrator will portray across many turns — romance interests, primary antagonists, long-term allies.
+1. Physical traits — age, build, hair, eyes, clothing, scars, notable features
+2. Psychological profile — core desire, fear, behavioral tendencies, how they change under pressure
+3. Speech patterns — accent, vocabulary, sentence rhythm; include 2–3 sample dialogue excerpts
+
+Do not mix modes. A Summarized description should weave all elements into one paragraph. A Detailed description should give each paragraph enough depth to stand alone as narrator guidance.
+
+| Weak (reject) | Summarized (accept) |
 |---|---|
 | `"A merchant who sells things."` | `"A merchant who deals in black-market goods and smells of fish; he grumbles constantly but has what you need."` |
 | `"A mysterious bartender."` | `"A bartender known for her enchanting stories and elusive nature; she speaks with a Haitian accent and a hint of hidden knowledge."` |
@@ -143,9 +154,9 @@ If a description could apply to any NPC of that type, it is not doing its job.
 
 **The test:** Could this description and all `contingency_prompts` (without `when` guards) be read aloud at the very start of the game without being false?
 
-### 4. Contingency Prompts Are Behavior, Not Plot
+### 4. Contingency Prompts Are Behavior, Not Plot, and are for use INLINE only
 
-Each contingency prompt must describe **how the NPC acts** — not what happens next in the story.
+Only use contingency prompts for inline scenario prompting, and never in a template. Each contingency prompt must describe **how the NPC acts** — not what happens next in the story.
 
 | Plot (reject) | Behavior (accept) |
 |---|---|
@@ -165,16 +176,9 @@ Use **conditional prompts** (`when` guards) for state-dependent behavior changes
 ]
 ```
 
-**2–4 prompts is the ideal range.** More than that and the narrator's portrayal becomes inconsistent.
+### 5. `IsImportant` Is Never Set in Sidecar Templates; Use Sparingly in Inline NPCs
 
-### 5. `IsImportant` Is a Rare Flag
-
-Setting `"important": true` causes the NPC to appear in the narrator prompt **even when they are not in the same location as the player**. Only use this for:
-
-- NPCs that are dramatically central and whose absence would confuse the narrator (e.g., a recurring villain)
-- NPCs the player needs to track at all times for gameplay reasons
-
-Never set it for ambient or supporting characters. It increases prompt size every turn.
+Setting `"important": true` causes the NPC to appear in the narrator prompt **even when they are not in the same location as the player**. This leads to NPC bleed. Never set it for ambient or supporting characters. Never set it in a sidecar template.
 
 ---
 
@@ -190,10 +194,23 @@ Engine metadata only — **not narrator-visible**. Use for your own organization
 Injected as `"(disposition)"` in narrator prompt. 1 short phrase. Must be specific enough to guide performance. See Principle 1.
 
 ### `description`
-2–3 sentences. Physical or behavioral anchor + personality + speech marker. No plot. No future tense. See Principle 2.
+The primary character profile injected into every narrator prompt. Choose one mode before writing:
+
+**Summarized** — One paragraph, 2–4 sentences, weaving physical, personality, and speech into a unified quick-read. Use for most NPCs.
+
+**Detailed** — Three paragraphs separated by `\n\n` in the JSON string:
+1. **Physical**: Age, size, build, sex, hair, eyes, clothing, scars or notable features
+2. **Psychology**: Core desire or fear, how they relate to others, how they behave under stress
+3. **Speech**: Accent, vocabulary level, verbal habits; include 2–3 sample dialogue excerpts in quotes
+
+In Detailed mode each paragraph should be 3–5 sentences — enough for the narrator to sustain a voice across many turns.
+
+Write in present tense, third-person. Plain evocative language — the narrator supplies the stylistic filter.
 
 ### `location`
 A valid location key from the scenario. Required for the NPC to appear in location-filtered prompts.
+
+Always OMIT in sidecars.
 
 ### `items`
 Items the NPC possesses. These appear in the narrator prompt. Keep to items the narrator should mention or that the player may acquire. Do not list items for internal tracking only.
@@ -234,7 +251,7 @@ Same as inline, plus:
 
 1. Read every text field.
 2. Check `disposition`: specific or generic? Would an actor know how to perform this?
-3. Check `description`: narrator-ready (physical or behavioral anchor, personality, speech)? Story-bleed-free? ≤3 sentences?
+3. Check `description`: narrator-ready (physical anchor, personality, speech)? Story-bleed-free? Identify the mode — Summarized (1 paragraph, 2–4 sentences) or Detailed (3 paragraphs, 3–5 sentences each) — and flag if it falls short of its own mode's depth requirements.
 4. Check each `contingency_prompt`: behavior or plot? Specific enough to bind narrator output? Does it need a `when` guard?
 5. Check `type`: is narrator-relevant information accidentally buried here instead of in `description`?
 6. Check `IsImportant`: is this flag actually justified?
@@ -249,7 +266,7 @@ Before finalizing any NPC:
 
 - [ ] `disposition` is specific — not a generic adjective
 - [ ] `description` has a physical or behavioral anchor + personality marker
-- [ ] `description` is ≤3 sentences
+- [ ] `description` mode is chosen: Summarized (1 paragraph, 2–4 sentences) or Detailed (3 paragraphs, 3–5 sentences each)
 - [ ] `description` has no plot references or future-tense statements
 - [ ] `type` is not being used to communicate narrator-relevant information
 - [ ] `contingency_prompts` describe behavior, not plot outcomes
