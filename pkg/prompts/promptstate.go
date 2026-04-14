@@ -167,6 +167,16 @@ func (ps *PromptState) ToString() string {
 			sb.WriteString("\n")
 		}
 
+		presentNames := make([]string, 0)
+		for _, npc := range ps.NPCs {
+			if npc.Location == ps.Location {
+				presentNames = append(presentNames, npc.Name)
+			}
+		}
+		if len(presentNames) > 0 {
+			fmt.Fprintf(&sb, "NPCs here: %s\n", strings.Join(presentNames, ", "))
+		}
+
 		if len(currentLoc.Exits) > 0 || len(currentLoc.BlockedExits) > 0 {
 			sb.WriteString("Exits:\n")
 			for direction, locationID := range currentLoc.Exits {
@@ -215,7 +225,7 @@ func (ps *PromptState) ToString() string {
 
 	// NPCs
 	if len(ps.NPCs) > 0 {
-		sb.WriteString("\nNPCs (only these characters exist in this world — do not invent others):")
+		sb.WriteString("\nNPCs:")
 		for _, npc := range ps.NPCs {
 			fmt.Fprintf(&sb, "\n%s", npc.Name)
 			if npc.Disposition != "" {

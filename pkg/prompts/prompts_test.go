@@ -113,9 +113,10 @@ The following describes the immediately surrounding world.
 // -- BEGIN WORLD STATE --
 CURRENT LOCATION:
 Tortuga: A bustling pirate port
+NPCs here: Shipwright
 Exits:
 
-NPCs (only these characters exist in this world — do not invent others):
+NPCs:
 Shipwright (gruff)
 
 USER'S INVENTORY: 
