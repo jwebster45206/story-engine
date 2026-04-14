@@ -145,9 +145,10 @@ type ConsoleUI struct {
 	pendingUserMessages []chat.ChatMessage
 
 	// Streaming state
-	isStreaming         bool   // whether we're currently receiving a streaming response
-	streamingContent    string // accumulated content from streaming chunks
-	streamingMessageIdx int    // index of the message being streamed in ChatHistory
+	isStreaming          bool   // whether we're currently receiving a streaming response
+	streamingContent     string // accumulated content from streaming chunks
+	streamingMessageIdx  int    // index of the message being streamed in ChatHistory
+	streamingStartOffset int    // viewport YOffset when streaming began; used to cap auto-scroll to one screenful
 
 	// SSE event channel for async request updates
 	eventChan <-chan SSEEvent // channel for receiving SSE events from the server
@@ -552,6 +553,14 @@ func (m *ConsoleUI) writeChatContent() {
 	m.chatViewport.SetContent(content.String())
 	if !m.userPinned && wasBottom {
 		m.chatViewport.GotoBottom()
+		// During streaming, cap auto-scroll to one viewport height of new content
+		if m.isStreaming {
+			maxOffset := m.streamingStartOffset + m.chatViewport.Height
+			if m.chatViewport.YOffset > maxOffset {
+				m.chatViewport.SetYOffset(maxOffset)
+				m.userPinned = true
+			}
+		}
 	} else {
 		// Restore previous offset (viewport clamps internally). If pinned, stay pinned; if not at bottom before, preserve context.
 		m.chatViewport.YOffset = prevOffset
@@ -858,9 +867,6 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				// Reformat content to include the new user message
 				m.writeChatContent()
-				if !m.userPinned {
-					m.chatViewport.GotoBottom()
-				}
 			}
 
 		case "chat.chunk":
@@ -871,6 +877,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !m.isStreaming {
 					m.isStreaming = true
 					m.streamingContent = ""
+					m.streamingStartOffset = m.chatViewport.YOffset
 					assistantMessage := chat.ChatMessage{Role: "assistant", Content: ""}
 					m.gameState.ChatHistory = append(m.gameState.ChatHistory, assistantMessage)
 					m.streamingMessageIdx = len(m.gameState.ChatHistory) - 1
@@ -881,16 +888,14 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.streamingMessageIdx < len(m.gameState.ChatHistory) {
 					m.gameState.ChatHistory[m.streamingMessageIdx].Content = m.streamingContent
 				}
-				// Refresh display with new content
+				// Refresh display with new content (writeChatContent handles auto-scroll cap)
 				m.writeChatContent()
-				if !m.userPinned {
-					m.chatViewport.GotoBottom()
-				}
 			}
 
 		case "request.completed":
 			// Streaming complete
 			m.isStreaming = false
+			m.streamingStartOffset = 0
 			m.loading = false
 
 			// Calculate latency
