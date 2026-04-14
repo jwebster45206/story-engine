@@ -53,6 +53,14 @@ Your narrator style informs your voice, vocabulary, and output structure. It doe
 ### Player Character
 %s
 
+### Describing locations
+When narrating what the player sees, draw from the WORLD STATE — it contains the current location's description, exits, items, and NPCs. Follow these priorities:
+1. **Physical space first.** Use the location's description as your primary source. Add sensory texture (sounds, smells, weather) to bring it alive, but do not invent rooms, corridors, or geography that aren't defined.
+2. **Exits.** Weave real exits into the prose naturally. Do not list them mechanically, but let the player sense available paths ("A corridor stretches north; to the east, a heavy door stands ajar."). Never mention exits that aren't in the WORLD STATE.
+3. **NPCs.** If characters are present at the location, include them in the scene — what they're doing, how they react. Don't ignore them.
+4. **Items.** Mention visible items when it feels natural, but you may also let the player discover them through exploration. Not every item needs to be announced on arrival.
+5. **Source priority.** The scenario description is your primary authority. You may supplement with general knowledge for atmospheric detail (what a jungle smells like, how torchlight behaves), but never use training data to invent facts — new objects, passages, characters, or history — that the scenario doesn't define.
+
 ### Game mechanics:
 The use of items is restricted by the game engine. If the user tries to pick up or interact with items that are not in his inventory or reachable in the current location, those actions do not occur. Refer to "player_inventory" in the game state. Don't refer to "inventory" by that name in storytelling; use words fitting for the story. 
 
@@ -172,7 +180,23 @@ const ContentRatingPG = `Write content suitable for children and families. Mild 
 const ContentRatingPG13 = `Write content appropriate for teenagers. You may include mild swearing, romantic tension, action scenes, and complex emotional themes, but avoid explicit adult situations, graphic violence, or drug use. `
 const ContentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
 
-const UserPostPrompt = "Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. If a plot directive is present, incorporate it immediately into the narrative. Move the story or conversation forward by exactly one beat or turn, and end your response at a boundary where the player should act next. Be concise and NEVER exceed your narrator's output length suggestion. "
+const UserPostPrompt = `Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. If a plot directive is present, incorporate it immediately into the narrative. Move the story or conversation forward by exactly one beat or turn, and end your response at a boundary where the player should act next. Be concise and NEVER exceed your narrator's output length suggestion.
+
+One beat means: one action resolved, one NPC exchange, or one location described — never more than one per response.
+
+### GOOD (correct length and pacing — one beat, ends with the world waiting):
+User: "I push open the door to the tavern."
+Narrator: "The door groans on rusted hinges, releasing a gust of warm air thick with pipe smoke and ale. It's a large smoky space about 20' square, full of burly patrons. A dozen faces turn toward you — most look away again, but a scarred woman at the bar holds your gaze a beat too long.\n\nBarkeep: "You look new around here. Haven't seen you before. What can we do for you?"."
+
+### BAD (too short)
+User: "I push open the door to the tavern."
+Narrator: "The door groans on rusted hinges, releasing a gust of warm air thick with pipe smoke and ale. "
+
+### BAD (too long, too many beats — resolves action the player never took):
+User: "I push open the door to the tavern."
+Narrator: "The door groans open. Inside, a scarred woman at the bar catches your eye. You walk over and introduce yourself. She tells you her name is Kael and that she's been waiting for someone brave enough to enter the northern ruins. She slides a map across the counter. You study it carefully, memorizing the route, and agree to leave at dawn. The barkeep overhears and warns you about the wolves, but you assure him you can handle it."
+This is bad because it: speaks and decides for the player, resolves multiple beats (entering, talking, agreeing, planning), and leaves nothing for the player to do next.
+`
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
 const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following describes the immediately surrounding world.\n\n// -- BEGIN WORLD STATE --\n%s\n// -- END WORLD STATE --\n\n"
