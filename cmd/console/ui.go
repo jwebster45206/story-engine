@@ -540,7 +540,9 @@ func (m *ConsoleUI) writeChatContent() {
 				content.WriteString(formattedMsg + "\n\n")
 			}
 		case "user":
-			userMsg := userStyle.Render(wordwrap.String(msg.Content, chatWidth-3))
+			displayContent := strings.ReplaceAll(msg.Content, "<plot_directive>", "")
+			displayContent = strings.ReplaceAll(displayContent, "</plot_directive>", "")
+			userMsg := userStyle.Render(wordwrap.String(strings.TrimSpace(displayContent), chatWidth-3))
 			content.WriteString(userMsg + "\n\n")
 		}
 	}
