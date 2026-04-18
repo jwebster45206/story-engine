@@ -36,7 +36,7 @@ const (
 // This interface is defined by Ollama's API and is used to structure messages
 // sent to the LLM.
 type ChatMessage struct {
-	Role         string `json:"role"`                    // "user", "assistant", "system"
+	Role         string `json:"role"` // "user", "assistant", "system"
 	Content      string `json:"content"`
 	IsStoryEvent bool   `json:"is_story_event,omitempty"` // True if this message is a story event injected by the engine
 }

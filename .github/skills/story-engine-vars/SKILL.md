@@ -44,7 +44,7 @@ Use `"false"` for boolean flags. Use a descriptive string like `"none"` for mult
     "then": {
       "scene_change": { "to": "next_scene", "reason": "conditional" },
       "set_vars": { "flag": "used" },
-      "prompt": "STORY EVENT: ..."
+      "prompt": "..."
     }
   }
 }

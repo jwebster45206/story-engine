@@ -155,7 +155,7 @@ Spawn or remove monsters based on game events:
             "location": "ship_deck"
           }
         ],
-        "prompt": "STORY EVENT: A massive rat scurries out from the cargo hold!"
+        "prompt": "A massive rat scurries out from the cargo hold!"
       }
     },
     "rat_flees": {
@@ -169,7 +169,7 @@ Spawn or remove monsters based on game events:
             "instance_id": "surprise_rat"
           }
         ],
-        "prompt": "STORY EVENT: The wounded rat flees into the darkness."
+        "prompt": "The wounded rat flees into the darkness."
       }
     }
   }

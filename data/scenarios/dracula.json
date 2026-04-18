@@ -180,7 +180,7 @@
             }
           },
           "then": {
-            "prompt": "STORY EVENT: The temperature drops precipitously as a misty dark presence fills the room. Dracula's fangs glisten as he materializes in the candlelight."
+            "prompt": "The temperature drops precipitously as a misty dark presence fills the room. Dracula's fangs glisten as he materializes in the candlelight."
           }
         },
         "lightning_strike": {
@@ -188,7 +188,7 @@
             "scene_turn_counter": 2
           },
           "then": {
-            "prompt": "STORY EVENT: The heavens rumble as a bolt of lightning crashes very near the castle. "
+            "prompt": "The heavens rumble as a bolt of lightning crashes very near the castle. "
           }
         }
       },
@@ -306,7 +306,7 @@
             }
           },
           "then": {
-            "prompt": "STORY EVENT: As you descend into the sanctum, the black coffin's lid slowly creaks open. Count Dracula rises, his eyes blazing with unholy power. 'So, another foolish mortal dares challenge me in my own domain,' he hisses, his voice echoing through the chamber."
+            "prompt": "As you descend into the sanctum, the black coffin's lid slowly creaks open. Count Dracula rises, his eyes blazing with unholy power. 'So, another foolish mortal dares challenge me in my own domain,' he hisses, his voice echoing through the chamber."
           }
         }
       },
