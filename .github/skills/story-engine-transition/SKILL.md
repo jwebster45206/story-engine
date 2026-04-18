@@ -148,7 +148,7 @@ Multiple fields can be combined in one `then` block. All execute together.
 | `scene_change` | `{ "to": "scene_id", "reason": "..." }` | Transition to another scene |
 | `set_vars` | `map[string]string` | Update game vars |
 | `user_location` | `string` | Move the player to a location |
-| `prompt` | `string` | Inject a narrative prompt (prefix with `"STORY EVENT: "`) |
+| `prompt` | `string` | Inject a narrative prompt into the story as a plain user-side message |
 | `game_ended` | `bool` | End the game |
 | `npc_events` | `[]object` | Move NPCs, set following behavior |
 | `monster_events` | `[]object` | Spawn or despawn monsters |
@@ -225,7 +225,7 @@ Scene `confrontation` loads. Three conditionals fire in sequence:
 "dracula_rises": {
   "when": { "vars": { "entered_sanctum": "true" } },
   "then": {
-    "prompt": "STORY EVENT: Count Dracula rises from his coffin, eyes blazing with unholy power."
+    "prompt": "Count Dracula rises from his coffin, eyes blazing with unholy power."
   }
 }
 ```
@@ -365,7 +365,7 @@ Goal: when a scene loads, fire a chain of conditionals in sequence.
    "step_two": {
      "when": { "vars": { "scene_initialized": "true" } },
      "then": {
-       "prompt": "STORY EVENT: Something dramatic happens.",
+       "prompt": "Something dramatic happens.",
        "set_vars": { "drama_happened": "true" }
      }
    }

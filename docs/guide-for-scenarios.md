@@ -279,7 +279,7 @@ Spawn or despawn monsters based on game events:
           "location": "black_pearl"
         }
       ],
-      "prompt": "STORY EVENT: A massive rat scurries out from the cargo hold!"
+      "prompt": "A massive rat scurries out from the cargo hold!"
     }
   },
   "rat_flees": {
@@ -293,7 +293,7 @@ Spawn or despawn monsters based on game events:
           "instance_id": "ship_rat"
         }
       ],
-      "prompt": "STORY EVENT: The wounded rat leaps overboard and disappears into the harbor."
+      "prompt": "The wounded rat leaps overboard and disappears into the harbor."
     }
   }
 }
@@ -702,7 +702,7 @@ Story events are narrative moments that trigger based on game state conditions. 
           }
         },
         "then": {
-          "prompt": "STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with oppressive, supernatural dread."
+          "prompt": "Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with oppressive, supernatural dread."
         }
       },
       "lightning_strike": {
@@ -710,7 +710,7 @@ Story events are narrative moments that trigger based on game state conditions. 
           "scene_turn_counter": 4
         },
         "then": {
-          "prompt": "STORY EVENT: A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet! The air crackles with electricity."
+          "prompt": "A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet! The air crackles with electricity."
         }
       }
     }
@@ -725,26 +725,26 @@ Use **lowercase snake_case** for conditional keys that trigger story events (e.g
 **Each story event conditional has:**
 - **Key**: The conditional ID in snake_case (used as the map key)
 - `when`: Conditional logic determining when the event triggers (see **Conditional Logic** section above)
-- `then.prompt`: The narrative text that will be injected into the story (prefix like "STORY EVENT: " is optional but recommended for clarity)
+- `then.prompt`: The narrative text that will be injected into the story as a plain message
 
 ### How Story Events Work
 
 Story events are **single-occurrence** — once triggered, they never fire again for that game session.
 
 **1. Evaluation (Turn N):**
-When a player submits an action, the engine evaluates all conditionals in the current scene. Any conditionals with prompts starting with `"STORY EVENT: "` whose conditions are met (and haven't previously fired) are queued.
+When a player submits an action, the engine evaluates all conditionals in the current scene. Any conditionals with a `prompt` field whose conditions are met (and haven't previously fired) are queued as story events.
 
 **2. Injection (Turn N+1):**
-On the **next turn**, queued story events are injected into the conversation history as a special assistant/agent message:
+On the **next turn**, queued story events are injected into the conversation history as plain user-side messages:
 
 ```
 User: I examine the grimoire carefully.
 Assistant: [Story event injected here]
-STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger.
+Count Dracula materializes from the shadows, his eyes burning with ancient hunger.
 User: [Current player action]
 ```
 
-The full prompt text (including any prefix like "STORY EVENT: ") is shown to the player. The LLM sees this as a mandatory narrative directive and incorporates it into the response.
+The prompt text is injected verbatim — the narrator LLM sees it as a world event that just happened and continues the story from it.
 
 **3. Tracking:**
 After injection, the story event conditional ID is tracked in game state to prevent re-triggering.
@@ -756,12 +756,12 @@ Story events should contain the full narrative beat you want to occur, and shoul
 
 **❌ Too Vague:**
 ```json
-"prompt": "STORY EVENT: Dracula appears"
+"prompt": "Dracula appears"
 ```
 
 **✅ Descriptive and Chat-Appropriate:**
 ```json
-"prompt": "STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with oppressive, supernatural dread. He speaks: 'Welcome to my domain, mortal.'"
+"prompt": "Count Dracula materializes from the shadows, his eyes burning with ancient hunger. His presence fills the room with oppressive, supernatural dread. He speaks: 'Welcome to my domain, mortal.'"
 ```
 
 **Use Present Tense and Active Voice:**
@@ -769,20 +769,20 @@ Events describe what's happening right now in the story.
 
 **❌ Past or Future Tense:**
 ```json
-"prompt": "STORY EVENT: Lightning will strike the tower" // Future
-"prompt": "STORY EVENT: Lightning struck the tower" // Past
+"prompt": "Lightning will strike the tower" // Future
+"prompt": "Lightning struck the tower" // Past
 ```
 
 **✅ Present Tense:**
 ```json
-"prompt": "STORY EVENT: A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet!"
+"prompt": "A massive LIGHTNING bolt strikes the castle tower! Thunder shakes the very stones beneath your feet!"
 ```
 
 **Include Sensory Details:**
 Good story events engage multiple senses and create atmosphere.
 
 ```json
-"prompt": "STORY EVENT: A swarm of bats erupts from the ceiling, their screeching filling the air! The wind from thousands of wings buffets your face as they circle overhead."
+"prompt": "A swarm of bats erupts from the ceiling, their screeching filling the air! The wind from thousands of wings buffets your face as they circle overhead."
 ```
 
 **Use Emphasis for Impact:**
@@ -797,9 +797,9 @@ CAPITALIZE key words or use punctuation to convey drama and urgency.
 If multiple story events trigger on the same turn, they are all injected together, separated by double newlines:
 
 ```
-STORY EVENT: Count Dracula materializes from the shadows...
+Count Dracula materializes from the shadows...
 
-STORY EVENT: A swarm of bats erupts from the ceiling...
+A swarm of bats erupts from the ceiling...
 ```
 
 The LLM will incorporate both events into its response.
@@ -822,7 +822,7 @@ Here's a scene with story events (via conditional prompts), contingency prompts,
           "vars": {"opened_grimoire": "true"}
         },
         "then": {
-          "prompt": "STORY EVENT: Count Dracula materializes from the shadows, his eyes burning with ancient hunger. \"So, another fool seeks to challenge me.\""
+          "prompt": "Count Dracula materializes from the shadows, his eyes burning with ancient hunger. \"So, another fool seeks to challenge me.\""
         }
       },
       "lightning_strike": {
@@ -830,7 +830,7 @@ Here's a scene with story events (via conditional prompts), contingency prompts,
           "scene_turn_counter": 4
         },
         "then": {
-          "prompt": "STORY EVENT: A MASSIVE lightning bolt strikes the tower! Thunder shakes the castle!"
+          "prompt": "A MASSIVE lightning bolt strikes the tower! Thunder shakes the castle!"
         }
       },
       "victory_transition": {
@@ -889,7 +889,7 @@ It's important to understand when to use each system:
       "vars": {"treasure_revealed": "true"}
     },
     "then": {
-      "prompt": "STORY EVENT: Captain Morgan suddenly draws his pistol and aims it at you! 'I'm sorry, but the treasure means more to me than friendship.'"
+      "prompt": "Captain Morgan suddenly draws his pistol and aims it at you! 'I'm sorry, but the treasure means more to me than friendship.'"
     }
   }
 }
@@ -1128,7 +1128,7 @@ The `then` clause now uses an object structure to specify different types of act
 **Story event (narrative prompt):**
 ```json
 "then": {
-  "prompt": "STORY EVENT: The vault door swings open with a deafening CRACK!"
+  "prompt": "The vault door swings open with a deafening CRACK!"
 }
 ```
 

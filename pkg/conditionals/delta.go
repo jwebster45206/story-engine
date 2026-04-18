@@ -32,7 +32,7 @@ type GameStateDelta struct {
 
 	SetVars   map[string]string `json:"set_vars,omitempty"`
 	GameEnded *bool             `json:"game_ended,omitempty"`
-	Prompt    *string           `json:"prompt,omitempty"` // Narrative prompt to inject (use "STORY EVENT: " prefix for story events)
+	Prompt    *string           `json:"prompt,omitempty"` // Narrative prompt to inject as a story event
 }
 
 type MonsterEventAction string

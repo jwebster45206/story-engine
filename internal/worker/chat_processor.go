@@ -205,7 +205,7 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 
 // UpdateGameStateAfterStream updates game state after streaming is complete
 // This should be called by the handler after consuming the stream
-func (p *ChatProcessor) UpdateGameStateAfterStream(gs *state.GameState, userMessage, responseMessage, storyEventPrompt string) error {
+func (p *ChatProcessor) UpdateGameStateAfterStream(gs *state.GameState, userMessage, responseMessage, storyEventPrompt string, isStoryEvent bool) error {
 	ctx := context.Background()
 
 	// Cancel any in-process gamestate delta for this game state
@@ -218,8 +218,9 @@ func (p *ChatProcessor) UpdateGameStateAfterStream(gs *state.GameState, userMess
 	p.metaCancelMu.Unlock()
 
 	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
-		Role:    chat.ChatRoleUser,
-		Content: userMessage,
+		Role:         chat.ChatRoleUser,
+		Content:      userMessage,
+		IsStoryEvent: isStoryEvent,
 	})
 
 	// Add to game state
