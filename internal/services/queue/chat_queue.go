@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/pkg/queue"
-	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -90,13 +89,13 @@ func (seq *ChatQueue) GetFormattedEvents(ctx context.Context, gameStateID uuid.U
 		return "", nil
 	}
 
-	// Format events wrapped in <plot_directive> XML tags for LLM consumption
+	// Format events as plain text for LLM consumption
 	var formatted string
 	for i, event := range events {
 		if i == 0 {
-			formatted = scenario.FormatPlotDirective(event)
+			formatted = event
 		} else {
-			formatted += "\n\n" + scenario.FormatPlotDirective(event)
+			formatted += "\n\n" + event
 		}
 	}
 	return formatted, nil

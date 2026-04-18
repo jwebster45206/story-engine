@@ -11,7 +11,6 @@ import (
 	"github.com/jwebster45206/story-engine/internal/services/queue"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	queuePkg "github.com/jwebster45206/story-engine/pkg/queue"
-	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -195,7 +194,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			userMessage = chat.FormatWithPCName(req.Message, gs.PC.Spec.Name)
 		}
 	case queuePkg.RequestTypeStoryEvent:
-		userMessage = scenario.FormatPlotDirective(req.EventPrompt)
+		userMessage = req.EventPrompt
 	default:
 		userMessage = ""
 	}
@@ -267,7 +266,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		}
 
 		// Update game state with the full streamed message (using pre-formatted userMessage)
-		if err := w.processor.UpdateGameStateAfterStream(gs, userMessage, fullMessage, storyEventPrompt); err != nil {
+		if err := w.processor.UpdateGameStateAfterStream(gs, userMessage, fullMessage, storyEventPrompt, false); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
@@ -297,9 +296,8 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		}
 
 	case queuePkg.RequestTypeStoryEvent:
-		// Format story event as a user message wrapped in <plot_directive> XML tags
-		// (Anthropic doesn't allow system messages in chat history)
-		storyEventMessage := scenario.FormatPlotDirective(req.EventPrompt)
+		// Format story event as a plain user-role message (system messages are not allowed in chat history)
+		storyEventMessage := req.EventPrompt
 
 		// Convert to chat request
 		chatReq := chat.ChatRequest{
@@ -376,7 +374,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		}
 
 		// Update game state with the full streamed message
-		if err := w.processor.UpdateGameStateAfterStream(gs, storyEventMessage, fullMessage, storyEventPrompt); err != nil {
+		if err := w.processor.UpdateGameStateAfterStream(gs, storyEventMessage, fullMessage, storyEventPrompt, true); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
