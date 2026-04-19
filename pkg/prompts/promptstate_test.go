@@ -48,8 +48,8 @@ func TestPromptState_ToString_BasicLocation(t *testing.T) {
 	if !strings.Contains(result, "NEARBY LOCATIONS:") {
 		t.Error("Missing NEARBY LOCATIONS section")
 	}
-	if !strings.Contains(result, "Harbor Street: A busy street near the docks.") {
-		t.Error("Missing nearby location preview")
+	if !strings.Contains(result, "Harbor Street: A busy cobblestone street near the docks.") {
+		t.Error("Missing nearby location description")
 	}
 }
 
@@ -222,8 +222,8 @@ func TestPromptState_ToString_Comprehensive(t *testing.T) {
 	if !strings.Contains(result, "NEARBY LOCATIONS:") {
 		t.Error("Missing NEARBY LOCATIONS section")
 	}
-	if !strings.Contains(result, "Ship's Hold: The cargo hold below decks.") {
-		t.Error("Missing nearby location preview")
+	if !strings.Contains(result, "Ship's Hold: Dark and musty cargo area.") {
+		t.Error("Missing nearby location description")
 	}
 	if !strings.Contains(result, "NPCs:") {
 		t.Error("Missing NPCs section")
@@ -342,7 +342,7 @@ func TestPromptState_ToString_WithMonsters(t *testing.T) {
 	}
 }
 
-func TestPromptState_ToString_NearbyLocationNoPreview(t *testing.T) {
+func TestPromptState_ToString_NearbyLocationFullDescription(t *testing.T) {
 	ps := &PromptState{
 		Location: "tavern",
 		WorldLocations: map[string]scenario.Location{
@@ -362,11 +362,42 @@ func TestPromptState_ToString_NearbyLocationNoPreview(t *testing.T) {
 
 	result := ps.ToString()
 
-	// Should show name only, NOT the full description
-	if !strings.Contains(result, "Harbor Street\n") {
-		t.Error("Expected nearby location name only when no preview")
+	// Full description should appear
+	if !strings.Contains(result, "Harbor Street: A busy cobblestone street near the docks.") {
+		t.Error("Expected full description for nearby location")
 	}
-	if strings.Contains(result, "A busy cobblestone street near the docks.") {
-		t.Error("Full description should NOT appear for nearby location without preview")
+}
+
+func TestPromptState_ToString_NearbyLocationExits(t *testing.T) {
+	ps := &PromptState{
+		Location: "tavern",
+		WorldLocations: map[string]scenario.Location{
+			"tavern": {
+				Name:        "The Rusty Anchor",
+				Description: "A dimly lit tavern.",
+				Exits: map[string]string{
+					"north": "street",
+				},
+			},
+			"street": {
+				Name:        "Harbor Street",
+				Description: "A cobblestone street near the docks.",
+				Exits: map[string]string{
+					"south": "tavern",       // back to current location — in WorldLocations
+					"east":  "market_plaza", // 2 hops away — not in WorldLocations, should be skipped
+				},
+			},
+		},
+	}
+
+	result := ps.ToString()
+
+	// Exit from nearby location back to a known location should appear
+	if !strings.Contains(result, "- south leads to The Rusty Anchor") {
+		t.Errorf("Missing nearby location exit to current location; got:\n%s", result)
+	}
+	// Exit destination not in WorldLocations (2 hops away) should be silently skipped
+	if strings.Contains(result, "market_plaza") {
+		t.Error("Exit to location outside WorldLocations should not appear")
 	}
 }

@@ -143,6 +143,8 @@ func ApplyPromptStateToGameState(ps *PromptState, gs *state.GameState) {
 //
 // NEARBY LOCATIONS:
 // Great Hall: A grand room with high ceilings and ornate decorations.
+// Exits:
+// - south leads to Castle Hallway
 //
 // NPCs:
 // Guard (neutral): A stern-looking guard in armor.
@@ -206,20 +208,44 @@ func (ps *PromptState) ToString() string {
 	}
 
 	// Other Locations (adjacent or important)
-	otherLocations := make([]scenario.Location, 0)
-	for id, loc := range ps.WorldLocations {
+	otherLocationIDs := make([]string, 0)
+	for id := range ps.WorldLocations {
 		if id != ps.Location {
-			otherLocations = append(otherLocations, loc)
+			otherLocationIDs = append(otherLocationIDs, id)
 		}
 	}
-	if len(otherLocations) > 0 {
+	if len(otherLocationIDs) > 0 {
 		sb.WriteString("\nNEARBY LOCATIONS:")
-		for _, loc := range otherLocations {
+		for _, id := range otherLocationIDs {
+			loc := ps.WorldLocations[id]
 			fmt.Fprintf(&sb, "\n%s", loc.Name)
-			if loc.Preview != "" {
-				fmt.Fprintf(&sb, ": %s", loc.Preview)
+			if loc.Description != "" {
+				fmt.Fprintf(&sb, ": %s", loc.Description)
 			}
 			sb.WriteString("\n")
+			if len(loc.Exits) > 0 || len(loc.BlockedExits) > 0 {
+				sb.WriteString("Exits:\n")
+				for direction, locationID := range loc.Exits {
+					blockedReason := ""
+					if reason, ok := loc.BlockedExits[direction]; ok {
+						blockedReason = reason
+					}
+					if destLoc, ok := ps.WorldLocations[locationID]; ok {
+						fmt.Fprintf(&sb, "- %s leads to %s", direction, destLoc.Name)
+						if blockedReason != "" {
+							fmt.Fprintf(&sb, " but is blocked (%s)", blockedReason)
+						}
+						sb.WriteString("\n")
+						continue
+					}
+					// destination not in WorldLocations (2+ hops away) — skip
+				}
+				for direction, reason := range loc.BlockedExits {
+					if _, ok := loc.Exits[direction]; !ok {
+						fmt.Fprintf(&sb, "- %s is blocked (%s)\n", direction, reason)
+					}
+				}
+			}
 		}
 	}
 
