@@ -125,30 +125,40 @@ func (b *Builder) addHistory() {
 	}
 }
 
-// addUserMessage adds the current user message to the message array.
+// addUserMessage adds the current user message to the message array,
+// with the rules block appended. Base engine rules are always included;
+// if the narrator defines additional rules, they are appended after.
 func (b *Builder) addUserMessage() {
 	if b.userMessage == "" {
 		return
 	}
 
+	allRules := make([]string, len(NarratorRules))
+	copy(allRules, NarratorRules)
+	if b.gs.Narrator != nil && len(b.gs.Narrator.Rules) > 0 {
+		allRules = append(allRules, b.gs.Narrator.Rules...)
+	}
+
+	content := b.userMessage
+	if rulesBlock := FormatRulesBlock(allRules); rulesBlock != "" {
+		content += "\n\n" + rulesBlock
+	}
+
 	b.messages = append(b.messages, chat.ChatMessage{
 		Role:    b.userRole,
-		Content: b.userMessage,
+		Content: content,
 	})
 }
 
-// addFinalPrompt adds game-end or standard reminders.
+// addFinalPrompt adds a game-end system message when the session has ended.
 func (b *Builder) addFinalPrompt() {
-	var finalPrompt string
+	if !b.gs.IsEnded {
+		return
+	}
 
-	if b.gs.IsEnded {
-		// If the game is over, add the end prompt
-		finalPrompt = GameEndSystemPrompt
-		if b.scenario.GameEndPrompt != "" {
-			finalPrompt += "\n\n" + b.scenario.GameEndPrompt
-		}
-	} else {
-		finalPrompt = UserPostPrompt
+	finalPrompt := GameEndSystemPrompt
+	if b.scenario.GameEndPrompt != "" {
+		finalPrompt += "\n\n" + b.scenario.GameEndPrompt
 	}
 
 	b.messages = append(b.messages, chat.ChatMessage{

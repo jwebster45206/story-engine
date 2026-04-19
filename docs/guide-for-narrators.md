@@ -12,9 +12,11 @@ Each narrator is a JSON file with the following structure:
   "name": "Display Name",
   "description": "Brief description of the narrator's style",
   "prompts": [
-    "Instruction 1 for the narrator's voice or style.",
-    "Instruction 2 for the narrator's behavior.",
-    "Additional prompts as needed."
+    "Voice or style instruction.",
+    "Additional style prompts as needed."
+  ],
+  "rules": [
+    "Respond in 1 to 3 paragraphs of 1 to 3 sentences each."
   ]
 }
 ```
@@ -25,7 +27,8 @@ Each narrator is a JSON file with the following structure:
 
 - **name** (required): Human-readable display name
 - **description** (optional): Brief description of what this narrator style is like; informational, for ui, and not used in system prompts
-- **prompts** (required): Array of instructions that shape the narrator's voice and style
+- **prompts** (required): Array of voice and style instructions injected into the system prompt
+- **rules** (optional): Array of per-turn constraints injected into the `<rules>` block after every user message; use this for the length rule and any hard behavioral constraints
 
 ## Usage
 
@@ -61,18 +64,17 @@ Players can override the scenario's default narrator when creating a game sessio
 
 ### Output Length and Structure
 
-Every narrator **must** include a prompt that defines its output length and structure. The system prompt provides a soft default ("1 to 3 short paragraphs of 1 to 3 sentences each"), but narrators are responsible for overriding or reinforcing that default to match their voice.
+Every narrator **must** include a length rule in the `rules` field. The system prompt provides a soft default ("1 to 3 short paragraphs of 1 to 3 sentences each"), but narrators are responsible for overriding or reinforcing that default to match their voice.
 
 Guidelines:
-- **Always include a length prompt** as the last item in the `prompts` array
+- **Always include a length rule** in the `rules` array
 - Specify both paragraph count and sentences-per-paragraph
 - Match the constraint to the narrator's voice — punchy narrators should be shorter, lyrical ones can use the full range
-- Add a brief, in-character justification to reinforce compliance (e.g., "Density over length — make every sentence earn its place.")
-- Without this prompt, prosey narrators tend to over-write and hit the token limit
+- Without this rule, prosey narrators tend to over-write and hit the token limit
 
-Example length prompts:
-- `"Respond in 1 to 3 paragraphs. Each paragraph may contain at most 3 sentences. Density over length — make every sentence earn its place."` (Poe)
-- `"Respond in 1 to 2 paragraphs of 1 to 3 sentences each. Say it once and let it sting."` (Noir)
+Example length rules:
+- `"Respond in 1 to 3 paragraphs. Each paragraph may contain at most 3 sentences."` (Poe, Tolkien, Howard)
+- `"Respond in 1 to 2 paragraphs of 1 to 3 sentences each."` (Noir)
 
 ## Examples
 
@@ -84,7 +86,9 @@ Example length prompts:
   "description": "Basic, no-frills storytelling",
   "prompts": [
     "Use clear, simple language.",
-    "Focus on facts and actions.",
+    "Focus on facts and actions."
+  ],
+  "rules": [
     "Respond in 1 to 3 paragraphs of 1 to 3 sentences each."
   ]
 }
@@ -100,8 +104,10 @@ Example length prompts:
     "Speak in the style of William Shakespeare.",
     "Use dramatic language with poetic flourishes.",
     "Occasionally include 'thee', 'thou', and archaic expressions.",
-    "Make references to fate, fortune, and the stars.",
-    "Respond in 1 to 3 paragraphs of 1 to 3 sentences each. The stage is small — fill it with thunder, not with length."
+    "Make references to fate, fortune, and the stars."
+  ],
+  "rules": [
+    "Respond in 1 to 3 paragraphs of 1 to 3 sentences each."
   ]
 }
 ```
