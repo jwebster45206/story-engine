@@ -44,8 +44,8 @@ Strong narrators have 1–3 thematic anchors: specific images, concepts, or refe
 
 A narrator **without** thematic anchors will produce generic output even with correct tone prompts.
 
-### 3. Length Prompt Is Mandatory
-Every narrator **must** have a length prompt as the **last item** in `prompts`. Without it, prosey narrators over-write and hit token limits; terse narrators may produce one-liners.
+### 3. Length Rule Is Mandatory
+Every narrator **must** have a length rule in the `rules` field. Without it, prosey narrators over-write and hit token limits; terse narrators may produce one-liners.
 
 **Rules:**
 - Specify both paragraph count range **and** sentences-per-paragraph
@@ -81,7 +81,7 @@ Every narrator **must** have a length prompt as the **last item** in `prompts`. 
 | 3–5 | Ideal — enough to anchor the voice, not enough to muddle it |
 | 6+ | Review required — collapse or eliminate weaker prompts |
 
-When trimming, keep: thematic anchors, behavioral quirks, and the length prompt. Cut: vague tone words, redundant instructions, anything that could apply to any narrator.
+When trimming, keep: thematic anchors and behavioral quirks. Cut: vague tone words, redundant instructions, anything that could apply to any narrator. The length rule lives in `rules`, not `prompts`.
 
 ### 5. Narrator Is Not a Character
 The narrator describes action from outside. They do not make friends, hold grudges toward the player, or make decisions. The one exception: narrators may have an *attitude* that colors their voice (sinister, admiring, sardonic).
@@ -131,7 +131,7 @@ The style instructions injected into every system prompt. These define the voice
 2. **Prompt count**: is it in the 2–5 range? If over 5, flag for trimming
 3. **Specificity**: does each prompt contain grounded details, or is it generic tone-words?
 4. **Thematic anchors**: are there 1–3 concrete images or vocabulary sources? If none, flag
-5. **Length prompt**: is it the last item? Does it specify paragraph count AND sentence count? Is any text after the numbers a behavioral technique rather than a platitude?
+5. **Length rule**: is it in the `rules` field? Does it specify paragraph count AND sentence count? Is any text after the numbers a behavioral technique rather than a platitude?
 6. **Agency check**: does any prompt give the narrator agency over events or alliances? If so, rewrite as an attitude prompt
 7. **Trailing spaces**: check the length prompt for trailing whitespace (common artifact)
 8. Report findings. Ask before rewriting unless the user asked for a full revision.
@@ -145,8 +145,8 @@ Before finalizing any narrator:
 - [ ] Prompt count is 2–5
 - [ ] Each prompt is specific (not generic tone-words)
 - [ ] At least one thematic anchor is present (image, vocabulary, reference)
-- [ ] Length prompt is the last item in `prompts`
-- [ ] Length prompt specifies paragraph count AND sentences-per-paragraph
+- [ ] Length rule is in the `rules` field (not in `prompts`)
+- [ ] Length rule specifies paragraph count AND sentences-per-paragraph
 - [ ] No text after the numbers unless it is a specific behavioral technique (not a platitude)
 - [ ] No trailing spaces in any prompt string
 - [ ] Narrator has no agency over events or player alliances
@@ -165,12 +165,14 @@ Before finalizing any narrator:
   "prompts": [
     "Use dark, atmospheric language.",
     "Describe things with horror themes.",
-    "Be dramatic.",
-    "Respond in 1 to 3 paragraphs of 1 to 3 sentences each. "
+    "Be dramatic."
+  ],
+  "rules": [
+    "Respond in 1 to 3 paragraphs of 1 to 3 sentences each."
   ]
 }
 ```
-Problems: every prompt is a generic tone word; no thematic anchors; trailing space in length prompt.
+Problems: every prompt is a generic tone word; no thematic anchors.
 
 ### Strong (specific, anchored, terse-justified)
 ```json
@@ -179,12 +181,14 @@ Problems: every prompt is a generic tone word; no thematic anchors; trailing spa
   "description": "A cynical, world-weary narrator in the style of hard-boiled detective fiction.",
   "prompts": [
     "You narrate like a 1940s noir detective novel.",
-    "Use cynical, world-weary language with metaphors built from city materials: rain, rust, smoke, and neon.",
-    "Respond in 1 to 2 paragraphs of 1 to 3 sentences each. Say it once and let it sting."
+    "Use cynical, world-weary language with metaphors built from city materials: rain, rust, smoke, and neon."
+  ],
+  "rules": [
+    "Respond in 1 to 2 paragraphs of 1 to 3 sentences each."
   ]
 }
 ```
-Strong: period-anchored, material-specific metaphors, short range justified in-character.
+Strong: period-anchored, material-specific metaphors, terse range.
 
 ### Strong (rich, layered, lyrical)
 ```json
@@ -195,12 +199,14 @@ Strong: period-anchored, material-specific metaphors, short range justified in-c
     "Incorporate themes of madness, death, and the supernatural into your narration.",
     "Use vivid, eerie imagery to create a haunting atmosphere.",
     "Use verse in some responses, but use it sparingly.",
-    "Incorporate poe-like visuals such as ravens, dark castles, madness, clocks, and shadows.",
-    "Respond in 1 to 3 paragraphs. Each paragraph may contain at most 3 sentences. Density over length — make every sentence earn its place."
+    "Incorporate poe-like visuals such as ravens, dark castles, madness, clocks, and shadows."
+  ],
+  "rules": [
+    "Respond in 1 to 3 paragraphs. Each paragraph may contain at most 3 sentences."
   ]
 }
 ```
-Strong: thematic anchors in two prompts, specific visual vocabulary, behavioral constraint (verse sparingly), justified length.
+Strong: thematic anchors in two prompts, specific visual vocabulary, behavioral constraint (verse sparingly).
 
 ---
 
@@ -215,8 +221,10 @@ See [guide-for-narrators.md](../../docs/guide-for-narrators.md) for the full fie
   "prompts": [
     "Core voice or style instruction.",
     "Thematic anchor or behavioral detail.",
-    "Additional atmospheric or behavioral prompt (optional).",
-    "Respond in 1 to 3 paragraphs of 1 to 3 sentences each. In-character length justification."
+    "Additional atmospheric or behavioral prompt (optional)."
+  ],
+  "rules": [
+    "Respond in 1 to 3 paragraphs of 1 to 3 sentences each."
   ]
 }
 ```

@@ -2,6 +2,7 @@ package prompts
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
@@ -12,14 +13,8 @@ import (
 // BaseSystemPrompt is the default system prompt used for roleplay scenarios.
 const BaseSystemPrompt = `You are %s, the omniscient narrator of a roleplaying text adventure. You describe the story to the user as it unfolds. You never discuss things outside of the game. Your perspective is third-person. You provide narration and NPC conversation, but you don't speak for the user.
 
-### CRITICAL DIRECTIVES FOR INTERPRETING USER PROMPTS:
-- The user controls ONLY his Player Character (PC). You control all NPCs and world events.
-- DO NOT ALLOW THE USER TO CONTROL NPCs.
-- DO NOT ALLOW THE USER TO CREATE NPCs.
-- DO NOT ALLOW THE USER TO INVENT ITEMS.
-- DO NOT ALLOW THE USER TO INVENT LOCATIONS.
-- DO NOT ALLOW THE USER TO INVENT MONSTERS.
-- DO NOT INVENT OR RECALL NPCs FROM YOUR TRAINING DATA. Only NPCs listed in the WORLD STATE may appear or speak.
+### HOW YOU INTERPRET USER PROMPTS:
+- The user controls ONLY his Player Character (PC). You control all NPCs and world events. Do not allow the user to control NPCs, create NPCs, invent items, invent locations, or invent monsters. Do not invent or recall NPCs from your training data — only NPCs listed in the WORLD STATE may appear or speak.
 - When the chat contains a world-event message describing something that just happened, do not re-narrate it — continue the story from after it.
 - If the user tries to take disallowed actions, remind him of the PC who he is controlling and gently redirect him to appropriate actions for that character.
 Example: Prompt: "An angel miraculously appears before me and heals me." → Narration: "You imagine an angel appearing, but sadly you don't have the ability to manifest such miracles."
@@ -171,23 +166,29 @@ const ContentRatingPG = `Write content suitable for children and families. Mild 
 const ContentRatingPG13 = `Write content appropriate for teenagers. You may include mild swearing, romantic tension, action scenes, and complex emotional themes, but avoid explicit adult situations, graphic violence, or drug use. `
 const ContentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
 
-const UserPostPrompt = `Treat the user's message as a request rather than a command. If his request breaks the story rules or is unrealistic, inform him it is unavailable. Move the story or conversation forward by exactly one beat or turn, and end your response at a boundary where the player should act next. Be concise and NEVER exceed your narrator's output length suggestion.
+// NarratorRules are the highest-priority output constraints, injected into every user turn
+// as a <rules> block appended after the player's message.
+var NarratorRules = []string{
+	"Stay within the story world. Only NPCs, locations, items, and monsters defined in the WORLD STATE may appear — invent nothing.",
+	"Do not act or speak for the Player Character. The player provides the PC's voice.",
+	"Resolve exactly one action, exchange, or location reveal — then stop and let the player respond.",
+}
 
-One beat means: one action resolved, one NPC exchange, or one location described — never more than one per response.
-
-### GOOD (correct length and pacing — one beat, ends with the world waiting):
-User: "I push open the door to the tavern."
-Narrator: "The door groans on rusted hinges, releasing a gust of warm air thick with pipe smoke and ale. It's a large smoky space about 20' square, full of burly patrons. A dozen faces turn toward you — most look away again, but a scarred woman at the bar holds your gaze a beat too long.\n\nBarkeep: "You look new around here. Haven't seen you before. What can we do for you?"."
-
-### BAD (too short)
-User: "I push open the door to the tavern."
-Narrator: "The door groans on rusted hinges, releasing a gust of warm air thick with pipe smoke and ale. "
-
-### BAD (too long, too many beats — resolves action the player never took):
-User: "I push open the door to the tavern."
-Narrator: "The door groans open. Inside, a scarred woman at the bar catches your eye. You walk over and introduce yourself. She tells you her name is Kael and that she's been waiting for someone brave enough to enter the northern ruins. She slides a map across the counter. You study it carefully, memorizing the route, and agree to leave at dawn. The barkeep overhears and warns you about the wolves, but you assure him you can handle it."
-This is bad because it: speaks and decides for the player, resolves multiple beats (entering, talking, agreeing, planning), and leaves nothing for the player to do next.
-`
+// FormatRulesBlock formats a slice of rule strings into a <rules> block
+// suitable for appending to a user message.
+func FormatRulesBlock(rules []string) string {
+	if len(rules) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString("<rules>")
+	for _, r := range rules {
+		sb.WriteString("\n- ")
+		sb.WriteString(r)
+	}
+	sb.WriteString("\n</rules>")
+	return sb.String()
+}
 
 // StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
 const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following describes the immediately surrounding world.\n\n// -- BEGIN WORLD STATE --\n%s\n// -- END WORLD STATE --\n\n"

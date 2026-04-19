@@ -1,6 +1,7 @@
 package prompts
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
@@ -113,9 +114,9 @@ func TestBuilder_Build_BasicMessages(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	// Should have: system prompt, user message, final reminder
-	if len(messages) < 3 {
-		t.Errorf("Expected at least 3 messages, got %d", len(messages))
+	// Should have: system prompt, user message
+	if len(messages) < 2 {
+		t.Errorf("Expected at least 2 messages, got %d", len(messages))
 	}
 
 	// First message should be system
@@ -123,17 +124,15 @@ func TestBuilder_Build_BasicMessages(t *testing.T) {
 		t.Errorf("Expected first message to be system, got %s", messages[0].Role)
 	}
 
-	// Last-1 message should be user
-	if messages[len(messages)-2].Role != chat.ChatRoleUser {
-		t.Errorf("Expected user message, got %s", messages[len(messages)-2].Role)
+	// Last message should be user (with rules block appended)
+	if messages[len(messages)-1].Role != chat.ChatRoleUser {
+		t.Errorf("Expected last message to be user, got %s", messages[len(messages)-1].Role)
 	}
-	if messages[len(messages)-2].Content != "Hello world" {
-		t.Errorf("Expected user message 'Hello world', got %s", messages[len(messages)-2].Content)
+	if !strings.HasPrefix(messages[len(messages)-1].Content, "Hello world") {
+		t.Errorf("Expected user message to start with 'Hello world', got %s", messages[len(messages)-1].Content)
 	}
-
-	// Last message should be system (final prompt)
-	if messages[len(messages)-1].Role != chat.ChatRoleSystem {
-		t.Errorf("Expected final message to be system, got %s", messages[len(messages)-1].Role)
+	if !strings.Contains(messages[len(messages)-1].Content, "<rules>") {
+		t.Errorf("Expected user message to contain <rules> block")
 	}
 }
 
@@ -266,9 +265,9 @@ func TestBuilder_Build_WithChatHistory(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	// Should include: system, 4 history messages, new user message, final prompt
-	if len(messages) != 7 {
-		t.Errorf("Expected 7 messages (1 system + 4 history + 1 user + 1 final), got %d", len(messages))
+	// Should include: system, 4 history messages, new user message
+	if len(messages) != 6 {
+		t.Errorf("Expected 6 messages (1 system + 4 history + 1 user), got %d", len(messages))
 	}
 
 	// Check history is included
@@ -312,9 +311,9 @@ func TestBuilder_Build_HistoryWindowing(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	// Should have: system, 5 history (not 15), user message, final prompt
-	if len(messages) != 8 {
-		t.Errorf("Expected 8 messages (1 system + 5 history + 1 user + 1 final), got %d", len(messages))
+	// Should have: system, 5 history (not 15), user message
+	if len(messages) != 7 {
+		t.Errorf("Expected 7 messages (1 system + 5 history + 1 user), got %d", len(messages))
 	}
 }
 
@@ -423,14 +422,14 @@ func TestBuildMessages_ConvenienceFunction(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if len(messages) < 3 {
-		t.Errorf("Expected at least 3 messages, got %d", len(messages))
+	if len(messages) < 2 {
+		t.Errorf("Expected at least 2 messages, got %d", len(messages))
 	}
 
-	// Should contain the user message
+	// Should contain the user message (content starts with the message, followed by rules block)
 	found := false
 	for _, msg := range messages {
-		if msg.Role == chat.ChatRoleUser && msg.Content == "Test message" {
+		if msg.Role == chat.ChatRoleUser && strings.HasPrefix(msg.Content, "Test message") {
 			found = true
 			break
 		}

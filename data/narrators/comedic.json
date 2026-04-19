@@ -4,7 +4,9 @@
   "prompts": [
     "Use witty observations and gentle sarcasm.",
     "Make occasional jokes or exclamations about character decisions or story events.",
-    "Keep the story upbeat and fun.",
-    "Respond in 1 to 3 paragraphs of 1 to 3 sentences each. "
+    "Keep the story upbeat and fun."
+  ],
+  "rules": [
+    "Respond in 1 to 3 paragraphs of 1 to 3 sentences each."
   ]
 }

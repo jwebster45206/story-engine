@@ -5,7 +5,8 @@ type Narrator struct {
 	ID          string   `json:"id"`                    // Unique identifier (e.g., "vincent_price", "classic", "comedic")
 	Name        string   `json:"name"`                  // Display name
 	Description string   `json:"description,omitempty"` // What this narrator style is like (not used in prompts)
-	Prompts     []string `json:"prompts"`               // The actual narrator instructions
+	Prompts     []string `json:"prompts"`               // Voice and style instructions injected into the system prompt
+	Rules       []string `json:"rules,omitempty"`       // Per-turn constraints injected into the <rules> block after every user message
 }
 
 // GetPromptsAsString returns all narrator prompts joined with newlines and bullet points
