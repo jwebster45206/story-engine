@@ -376,7 +376,7 @@ func TestPromptState_ToString_ExitOrderingIsStable(t *testing.T) {
 	idxNorth := strings.Index(first, "- north ->")
 	idxSouth := strings.Index(first, "- south ->")
 	idxWest := strings.Index(first, "- west ->")
-	if !(idxEast < idxNorth && idxNorth < idxSouth && idxSouth < idxWest) {
+	if idxEast >= idxNorth || idxNorth >= idxSouth || idxSouth >= idxWest {
 		t.Errorf("exits should be sorted alphabetically; got order: east=%d north=%d south=%d west=%d",
 			idxEast, idxNorth, idxSouth, idxWest)
 	}
