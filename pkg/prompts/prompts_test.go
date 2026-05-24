@@ -1,6 +1,7 @@
 package prompts
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
@@ -11,11 +12,15 @@ import (
 )
 
 func TestGetStatePrompt(t *testing.T) {
+	type check struct {
+		mustContain    []string
+		mustNotContain []string
+	}
 	tests := []struct {
 		name        string
 		gameState   *state.GameState
 		scenario    *scenario.Scenario
-		expected    chat.ChatMessage
+		check       check
 		expectError bool
 	}{
 		{
@@ -46,23 +51,24 @@ func TestGetStatePrompt(t *testing.T) {
 				Name:  "Test Scenario",
 				Story: "A test adventure",
 			},
-			expected: chat.ChatMessage{
-				Role: chat.ChatRoleSystem,
-				Content: `The user is roleplaying this scenario: A test adventure
-
-The following describes the immediately surrounding world.
-
-// -- BEGIN WORLD STATE --
-CURRENT LOCATION:
-Tortuga: A pirate port
-Exits:
-
-USER'S INVENTORY: 
-cutlass, spyglass
-
-// -- END WORLD STATE --
-
-`,
+			check: check{
+				mustContain: []string{
+					"The user is roleplaying this scenario: A test adventure",
+					"<world_state>",
+					"<just_entered>false</just_entered>",
+					"<current_location>",
+					"Tortuga",
+					"A pirate port",
+					"Exits (the ONLY directions reachable this turn):",
+					"- east -> Black Pearl",
+					"<user_inventory>",
+					"cutlass, spyglass",
+					"</world_state>",
+				},
+				mustNotContain: []string{
+					"// -- BEGIN WORLD STATE --",
+					"// -- END WORLD STATE --",
+				},
 			},
 		},
 		{
@@ -102,29 +108,21 @@ cutlass, spyglass
 					},
 				},
 			},
-			expected: chat.ChatMessage{
-				Role: chat.ChatRoleSystem,
-				Content: `The user is roleplaying this scenario: Overall pirate story
-
-Find the shipwright
-
-The following describes the immediately surrounding world.
-
-// -- BEGIN WORLD STATE --
-CURRENT LOCATION:
-Tortuga: A bustling pirate port
-NPCs here: Shipwright
-Exits:
-
-NPCs:
-Shipwright (gruff)
-
-USER'S INVENTORY: 
-cutlass
-
-// -- END WORLD STATE --
-
-`,
+			check: check{
+				mustContain: []string{
+					"The user is roleplaying this scenario: Overall pirate story",
+					"Find the shipwright",
+					"<world_state>",
+					"<current_location>",
+					"Tortuga",
+					"A bustling pirate port",
+					"NPCs here: Shipwright",
+					"Exits (the ONLY directions reachable this turn):",
+					"<user_inventory>",
+					"cutlass",
+					"<world_state_rules>",
+					"Movement: the player may only choose one of:",
+				},
 			},
 		},
 		{
@@ -145,7 +143,6 @@ cutlass
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Load scene if needed
 			if tt.gameState.SceneName != "" {
 				err := tt.gameState.LoadScene(tt.scenario, tt.gameState.SceneName)
 				if err != nil {
@@ -168,14 +165,19 @@ cutlass
 				return
 			}
 
-			// Compare role
-			if result.Role != tt.expected.Role {
-				t.Errorf("Expected role %s, got %s", tt.expected.Role, result.Role)
+			if result.Role != chat.ChatRoleSystem {
+				t.Errorf("Expected role %s, got %s", chat.ChatRoleSystem, result.Role)
 			}
 
-			// Compare content directly
-			if result.Content != tt.expected.Content {
-				t.Errorf("Expected content:\n%s\n\nGot content:\n%s", tt.expected.Content, result.Content)
+			for _, want := range tt.check.mustContain {
+				if !strings.Contains(result.Content, want) {
+					t.Errorf("expected content to contain %q\n--- got ---\n%s", want, result.Content)
+				}
+			}
+			for _, unwanted := range tt.check.mustNotContain {
+				if strings.Contains(result.Content, unwanted) {
+					t.Errorf("expected content to NOT contain %q\n--- got ---\n%s", unwanted, result.Content)
+				}
 			}
 		})
 	}

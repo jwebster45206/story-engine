@@ -33,6 +33,13 @@ type GameState struct {
 	ContingencyPrompts []string                     `json:"contingency_prompts,omitempty"`
 	CreatedAt          time.Time                    `json:"created_at" `
 	UpdatedAt          time.Time                    `json:"updated_at" `
+
+	// JustEntered is true on the first turn after a location change.
+	// Transient: set by the delta worker when Apply() changes Location,
+	// cleared on the next Apply() that does not change Location. Not
+	// persisted (json:"-") so storage churn stays bounded; the narrator
+	// sees the signal once and then it resets.
+	JustEntered bool `json:"-"`
 }
 
 func NewGameState(scenarioFileName string, narrator *scenario.Narrator, modelName string) *GameState {

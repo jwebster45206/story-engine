@@ -246,8 +246,17 @@ func (dw *DeltaWorker) queueStoryEvent(conditionalID string, eventText string) {
 // Apply applies the delta to the game state (scene changes, items, location, game end)
 func (dw *DeltaWorker) Apply() error {
 	if dw.delta == nil {
+		// No delta this turn - location cannot have changed.
+		if dw.gs != nil {
+			dw.gs.JustEntered = false
+		}
 		return nil
 	}
+
+	// Capture the pre-Apply location so we can flag JustEntered if it changes.
+	// Scene loads also reset Location to the scene's opening; that case is
+	// also a legitimate "just entered" signal.
+	priorLocation := dw.gs.Location
 
 	// Handle scene change
 	if dw.delta.SceneChange != nil && dw.delta.SceneChange.To != "" &&
@@ -350,6 +359,11 @@ func (dw *DeltaWorker) Apply() error {
 	// Sync locations for NPCs that are following other actors
 	// This MUST be last to ensure we sync to final locations after all other changes
 	dw.syncFollowingNPCs()
+
+	// Flag JustEntered so the narrator knows on the next prompt build that
+	// the player has just arrived. This self-resets on the following Apply()
+	// when no location change occurs.
+	dw.gs.JustEntered = dw.gs.Location != priorLocation
 
 	return nil
 }

@@ -286,11 +286,21 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 		},
 	}
 
-	// Add the narrator response
-	messages = append(messages, chat.ChatMessage{
-		Role:    chat.ChatRoleAgent,
-		Content: responseMessage,
-	})
+	// Add the narrator response followed by a user extraction request.
+	// Some LLM providers (e.g. Venice) reject a conversation whose last message
+	// has role "assistant" when add_generation_prompt is enabled. Appending a
+	// user turn here keeps the message list valid while clearly signalling to
+	// the reducer what it should produce.
+	messages = append(messages,
+		chat.ChatMessage{
+			Role:    chat.ChatRoleAgent,
+			Content: responseMessage,
+		},
+		chat.ChatMessage{
+			Role:    chat.ChatRoleUser,
+			Content: "Extract the game state changes as JSON.",
+		},
+	)
 
 	metaCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
