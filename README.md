@@ -61,6 +61,7 @@ The builder automatically:
 - Loads narrator personality and style from embedded game state
 - Includes player character details and conditional prompts
 - Adds scenario rules and content rating guidelines
+- Assembles **WORLD STATE** from the current location (full description, exits, items, co-located NPCs and monsters), adjacent location previews, and inline movement rules — see [docs/guide-for-scenarios.md](docs/guide-for-scenarios.md#world-state-prompt-format)
 - Manages chat history with proper windowing
 - Injects story events at the appropriate position
 - Appends final reminders or game-end prompts

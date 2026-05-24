@@ -2,6 +2,7 @@ package prompts
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
@@ -22,6 +23,7 @@ type PromptState struct {
 	IsEnded          bool                         `json:"is_ended"`                     // true when the game is over
 	TurnCounter      int                          `json:"turn_counter,omitempty"`       // Total number of successful chat interactions
 	SceneTurnCounter int                          `json:"scene_turn_counter,omitempty"` // Number of successful chat interactions in
+	JustEntered      bool                         `json:"just_entered,omitempty"`       // true on the first turn after a location change
 }
 
 func ToPromptState(gs *state.GameState) *PromptState {
@@ -49,6 +51,7 @@ func ToPromptState(gs *state.GameState) *PromptState {
 		WorldLocations: filterLocations(gs.WorldLocations, gs.Location),
 		Location:       gs.Location,
 		Inventory:      gs.Inventory,
+		JustEntered:    gs.JustEntered,
 		// Vars and counters intentionally excluded for user-facing prompts
 	}
 }
@@ -109,6 +112,7 @@ func ToBackgroundPromptState(gs *state.GameState) *PromptState {
 		IsEnded:          gs.IsEnded,
 		TurnCounter:      gs.TurnCounter,
 		SceneTurnCounter: gs.SceneTurnCounter,
+		JustEntered:      gs.JustEntered,
 		// ContingencyPrompts are handled as separate system messages, not JSON data
 	}
 }
@@ -129,144 +133,323 @@ func ApplyPromptStateToGameState(ps *PromptState, gs *state.GameState) {
 }
 
 // ToString converts the PromptState into a human-readable string format
-// optimized for LLM comprehension. Focuses on clear descriptions over IDs.
+// optimized for LLM comprehension. The output is wrapped in XML-style tags
+// so that location boundaries, adjacency, and movement rules are unambiguous
+// structural elements rather than ambiguous markdown headers.
 //
 // Example output:
-// CURRENT LOCATION:
-// Castle Hallway: A long stone corridor.
-// Items located here: key, map
 //
-// Exits:
-// - north leads to Great Hall
-// - south leads to Dungeon
-// - south is blocked (the door is locked)
+//	<world_state>
+//	<just_entered>true</just_entered>
 //
-// NEARBY LOCATIONS:
-// Great Hall: A grand room with high ceilings and ornate decorations.
+//	<current_location>
+//	Castle Hallway
+//	A long stone corridor.
 //
-// NPCs:
-// Guard (neutral): A stern-looking guard in armor.
-// Items: sword, shield
+//	Items here: key, map
+//	NPCs here: Guard
+//	Monsters here:
+//	- Giant Rat (AC: 12, HP: 7/7): A massive rat the size of a dog.
 //
-// USER'S INVENTORY:
-// torch, rope
+//	Exits (the ONLY directions reachable this turn):
+//	- north -> Great Hall
+//	- south -> Dungeon but is blocked (the door is locked)
+//	</current_location>
+//
+//	<adjacent_previews>
+//	- north: Great Hall - A grand room with high ceilings.
+//	</adjacent_previews>
+//
+//	<npcs_elsewhere>
+//	- Calypso: Sleepy Mermaid
+//	</npcs_elsewhere>
+//
+//	<user_inventory>
+//	torch, rope
+//	</user_inventory>
+//
+//	<world_state_rules>
+//	- Narrate ONLY current_location. Do not narrate inside adjacent locations.
+//	- ...
+//	</world_state_rules>
+//	</world_state>
 func (ps *PromptState) ToString() string {
 	var sb strings.Builder
 
-	// Current Location
-	sb.WriteString("CURRENT LOCATION:\n")
-	if currentLoc, ok := ps.WorldLocations[ps.Location]; ok {
-		sb.WriteString(currentLoc.Name)
-		if currentLoc.Description != "" {
-			fmt.Fprintf(&sb, ": %s", currentLoc.Description)
-		}
-		sb.WriteString("\n")
-		if len(currentLoc.Items) > 0 {
-			sb.WriteString("Items located here: ")
-			sb.WriteString(strings.Join(currentLoc.Items, ", "))
-			sb.WriteString("\n")
-		}
+	sb.WriteString("<world_state>\n")
+	fmt.Fprintf(&sb, "<just_entered>%t</just_entered>\n\n", ps.JustEntered)
 
-		presentNames := make([]string, 0)
-		for _, npc := range ps.NPCs {
-			if npc.Location == ps.Location {
-				presentNames = append(presentNames, npc.Name)
-			}
-		}
-		if len(presentNames) > 0 {
-			fmt.Fprintf(&sb, "NPCs here: %s\n", strings.Join(presentNames, ", "))
-		}
+	currentLoc, hasCurrent := ps.WorldLocations[ps.Location]
+	ps.writeCurrentLocation(&sb, currentLoc, hasCurrent)
+	ps.writeAdjacentPreviews(&sb, currentLoc, hasCurrent)
+	ps.writeNPCsElsewhere(&sb)
+	ps.writeUserInventory(&sb)
+	ps.writeWorldStateRules(&sb, currentLoc, hasCurrent)
 
-		if len(currentLoc.Exits) > 0 || len(currentLoc.BlockedExits) > 0 {
-			sb.WriteString("Exits:\n")
-			for direction, locationID := range currentLoc.Exits {
-				blockedReason := ""
-				if reason, ok := currentLoc.BlockedExits[direction]; ok {
-					blockedReason = reason
-				}
-				if destLoc, ok := ps.WorldLocations[locationID]; ok {
-					fmt.Fprintf(&sb, "- %s leads to %s", direction, destLoc.Name)
-					if blockedReason != "" {
-						fmt.Fprintf(&sb, " but is blocked (%s)", blockedReason)
-					}
-					sb.WriteString("\n")
-					continue
-				}
-				// an undefined locationID is skipped
-			}
-			// Also include blocked exits that don't have a defined exit
-			for direction, reason := range currentLoc.BlockedExits {
-				if _, ok := currentLoc.Exits[direction]; !ok {
-					fmt.Fprintf(&sb, "- %s is blocked (%s)\n", direction, reason)
-				}
-			}
-		}
-	} else {
-		fmt.Fprintf(&sb, "Unknown location: %s\n", ps.Location)
-	}
-
-	// Other Locations (adjacent or important)
-	otherLocations := make([]scenario.Location, 0)
-	for id, loc := range ps.WorldLocations {
-		if id != ps.Location {
-			otherLocations = append(otherLocations, loc)
-		}
-	}
-	if len(otherLocations) > 0 {
-		sb.WriteString("\nNEARBY LOCATIONS:")
-		for _, loc := range otherLocations {
-			fmt.Fprintf(&sb, "\n%s", loc.Name)
-			if loc.Preview != "" {
-				fmt.Fprintf(&sb, ": %s", loc.Preview)
-			}
-			sb.WriteString("\n")
-		}
-	}
-
-	// NPCs
-	if len(ps.NPCs) > 0 {
-		sb.WriteString("\nNPCs:")
-		for _, npc := range ps.NPCs {
-			fmt.Fprintf(&sb, "\n%s", npc.Name)
-			if npc.Disposition != "" {
-				fmt.Fprintf(&sb, " (%s)", npc.Disposition)
-			}
-
-			// Show actor stats for standalone NPCs that have them
-			if npc.AC > 0 || npc.HP > 0 || npc.MaxHP > 0 {
-				fmt.Fprintf(&sb, " [AC: %d, HP: %d/%d]", npc.AC, npc.HP, npc.MaxHP)
-			}
-
-			if npc.Description != "" {
-				fmt.Fprintf(&sb, ": %s", npc.Description)
-			}
-
-			if len(npc.Items) > 0 {
-				fmt.Fprintf(&sb, "; Items: %s\n", strings.Join(npc.Items, ", "))
-			}
-			sb.WriteString("\n")
-		}
-	}
-
-	// Monsters
-	if len(ps.Monsters) > 0 {
-		sb.WriteString("\nMONSTERS:")
-		for _, monster := range ps.Monsters {
-			fmt.Fprintf(&sb, "\n%s (AC: %d, HP: %d/%d)",
-				monster.Name, monster.AC, monster.HP, monster.MaxHP)
-			if monster.Description != "" {
-				fmt.Fprintf(&sb, ": %s", monster.Description)
-			}
-			sb.WriteString("\n")
-		}
-	}
-
-	// User Inventory
-	if len(ps.Inventory) > 0 {
-		sb.WriteString("\nUSER'S INVENTORY: \n")
-		sb.WriteString(strings.Join(ps.Inventory, ", "))
-		sb.WriteString("\n")
-	}
-
+	sb.WriteString("</world_state>\n")
 	return sb.String()
+}
+
+// writeCurrentLocation renders the <current_location> block with name,
+// description, items here, NPCs here, monsters here, and exits.
+func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scenario.Location, hasCurrent bool) {
+	sb.WriteString("<current_location>\n")
+
+	if !hasCurrent {
+		fmt.Fprintf(sb, "Unknown location: %s\n", ps.Location)
+		sb.WriteString("</current_location>\n")
+		return
+	}
+
+	sb.WriteString(currentLoc.Name)
+	sb.WriteString("\n")
+	if currentLoc.Description != "" {
+		sb.WriteString(currentLoc.Description)
+		sb.WriteString("\n")
+	}
+
+	if len(currentLoc.Items) > 0 {
+		fmt.Fprintf(sb, "\nItems here: %s\n", strings.Join(currentLoc.Items, ", "))
+	}
+
+	presentNames := make([]string, 0)
+	for _, npc := range ps.NPCs {
+		if npc.Location == ps.Location {
+			presentNames = append(presentNames, npc.Name)
+		}
+	}
+	sort.Strings(presentNames)
+	if len(presentNames) > 0 {
+		fmt.Fprintf(sb, "NPCs here: %s\n", strings.Join(presentNames, ", "))
+	}
+
+	if len(ps.Monsters) > 0 {
+		monsterIDs := make([]string, 0, len(ps.Monsters))
+		for id := range ps.Monsters {
+			monsterIDs = append(monsterIDs, id)
+		}
+		sort.Strings(monsterIDs)
+		sb.WriteString("Monsters here:\n")
+		for _, id := range monsterIDs {
+			m := ps.Monsters[id]
+			fmt.Fprintf(sb, "- %s (AC: %d, HP: %d/%d)", m.Name, m.AC, m.HP, m.MaxHP)
+			if m.Description != "" {
+				fmt.Fprintf(sb, ": %s", m.Description)
+			}
+			sb.WriteString("\n")
+		}
+	}
+
+	if len(currentLoc.Exits) > 0 || len(currentLoc.BlockedExits) > 0 {
+		sb.WriteString("\nExits (the ONLY directions reachable this turn):\n")
+		dirs := collectExitDirections(currentLoc)
+		for _, dir := range dirs {
+			destKey, hasExit := currentLoc.Exits[dir]
+			blockedReason, isBlocked := currentLoc.BlockedExits[dir]
+
+			switch {
+			case hasExit && isBlocked:
+				destName := ps.locationDisplayName(destKey)
+				fmt.Fprintf(sb, "- %s -> %s but is blocked (%s)\n", dir, destName, blockedReason)
+			case hasExit:
+				destName := ps.locationDisplayName(destKey)
+				fmt.Fprintf(sb, "- %s -> %s\n", dir, destName)
+			case isBlocked:
+				fmt.Fprintf(sb, "- %s is blocked (%s)\n", dir, blockedReason)
+			}
+		}
+	}
+
+	sb.WriteString("</current_location>\n")
+}
+
+// writeAdjacentPreviews renders the <adjacent_previews> block: one line per
+// adjacent (one-hop) location, using only the Preview field. Locations marked
+// IsImportant but not adjacent are listed without a direction prefix.
+func (ps *PromptState) writeAdjacentPreviews(sb *strings.Builder, currentLoc scenario.Location, hasCurrent bool) {
+	if !hasCurrent {
+		return
+	}
+
+	dirForLoc := make(map[string][]string)
+	for d, destKey := range currentLoc.Exits {
+		dirForLoc[destKey] = append(dirForLoc[destKey], d)
+	}
+
+	locKeys := make([]string, 0, len(ps.WorldLocations))
+	for k := range ps.WorldLocations {
+		if k != ps.Location {
+			locKeys = append(locKeys, k)
+		}
+	}
+	sort.Strings(locKeys)
+
+	adjacent := make([]string, 0)
+	elsewhere := make([]string, 0)
+	for _, k := range locKeys {
+		loc := ps.WorldLocations[k]
+		preview := strings.TrimSpace(loc.Preview)
+
+		if dirs, isAdjacent := dirForLoc[k]; isAdjacent {
+			sort.Strings(dirs)
+			dirStr := strings.Join(dirs, "/")
+			if preview != "" {
+				adjacent = append(adjacent, fmt.Sprintf("- %s: %s - %s", dirStr, loc.Name, preview))
+			} else {
+				adjacent = append(adjacent, fmt.Sprintf("- %s: %s", dirStr, loc.Name))
+			}
+		} else {
+			if preview != "" {
+				elsewhere = append(elsewhere, fmt.Sprintf("- %s (elsewhere) - %s", loc.Name, preview))
+			} else {
+				elsewhere = append(elsewhere, fmt.Sprintf("- %s (elsewhere)", loc.Name))
+			}
+		}
+	}
+
+	if len(adjacent) == 0 && len(elsewhere) == 0 {
+		return
+	}
+
+	sb.WriteString("\n<adjacent_previews>\n")
+	for _, e := range adjacent {
+		sb.WriteString(e)
+		sb.WriteString("\n")
+	}
+	for _, e := range elsewhere {
+		sb.WriteString(e)
+		sb.WriteString("\n")
+	}
+	sb.WriteString("</adjacent_previews>\n")
+}
+
+// writeNPCsElsewhere renders the <npcs_elsewhere> block: name + location only,
+// no description. Includes only NPCs whose location differs from the player's.
+// (Filtering in ToPromptState already restricts this to important NPCs.)
+func (ps *PromptState) writeNPCsElsewhere(sb *strings.Builder) {
+	if len(ps.NPCs) == 0 {
+		return
+	}
+
+	npcKeys := make([]string, 0, len(ps.NPCs))
+	for k := range ps.NPCs {
+		npcKeys = append(npcKeys, k)
+	}
+	sort.Strings(npcKeys)
+
+	entries := make([]string, 0)
+	for _, k := range npcKeys {
+		npc := ps.NPCs[k]
+		if npc.Location == ps.Location {
+			continue
+		}
+		locName := ps.locationDisplayName(npc.Location)
+		if locName == "" {
+			locName = "unknown"
+		}
+		entries = append(entries, fmt.Sprintf("- %s: %s", npc.Name, locName))
+	}
+
+	if len(entries) == 0 {
+		return
+	}
+	sb.WriteString("\n<npcs_elsewhere>\n")
+	for _, e := range entries {
+		sb.WriteString(e)
+		sb.WriteString("\n")
+	}
+	sb.WriteString("</npcs_elsewhere>\n")
+}
+
+// writeUserInventory renders the <user_inventory> block.
+func (ps *PromptState) writeUserInventory(sb *strings.Builder) {
+	if len(ps.Inventory) == 0 {
+		return
+	}
+	sb.WriteString("\n<user_inventory>\n")
+	sb.WriteString(strings.Join(ps.Inventory, ", "))
+	sb.WriteString("\n</user_inventory>\n")
+}
+
+// writeWorldStateRules renders the <world_state_rules> block, with the
+// allowed-destinations enumeration rendered literally from the current
+// location's exits.
+func (ps *PromptState) writeWorldStateRules(sb *strings.Builder, currentLoc scenario.Location, hasCurrent bool) {
+	sb.WriteString("\n<world_state_rules>\n")
+	sb.WriteString("- Narrate ONLY current_location. Do not narrate inside adjacent locations.\n")
+	sb.WriteString("- Use the description verbatim or paraphrased. You may add ambient sensory detail (smell, temperature, distant sound). Do NOT introduce doors, alcoves, statues, furniture, mechanisms, NPCs, items, or monsters not listed above.\n")
+	sb.WriteString("- If just_entered is true, give a brief opening description; otherwise do not re-describe the room - continue the action.\n")
+
+	if hasCurrent && len(currentLoc.Exits) > 0 {
+		dirs := make([]string, 0, len(currentLoc.Exits))
+		for d := range currentLoc.Exits {
+			dirs = append(dirs, d)
+		}
+		sort.Strings(dirs)
+
+		options := make([]string, 0, len(dirs))
+		redirects := make([]string, 0, len(dirs))
+		for _, d := range dirs {
+			destName := ps.locationDisplayName(currentLoc.Exits[d])
+			options = append(options, fmt.Sprintf("%s (%s)", d, destName))
+			redirects = append(redirects, fmt.Sprintf("%s to %s", d, destName))
+		}
+
+		fmt.Fprintf(sb,
+			"- Movement: the player may only choose one of: %s. If they try anything else, redirect with: \"You can't go that way. From %s you can go %s.\"\n",
+			strings.Join(options, ", "),
+			currentLoc.Name,
+			joinNatural(redirects),
+		)
+	}
+	sb.WriteString("</world_state_rules>\n")
+}
+
+// locationDisplayName resolves a location key to its display name, falling
+// back to the key itself if the location is not in WorldLocations.
+func (ps *PromptState) locationDisplayName(key string) string {
+	if key == "" {
+		return ""
+	}
+	if loc, ok := ps.WorldLocations[key]; ok && loc.Name != "" {
+		return loc.Name
+	}
+	return key
+}
+
+// collectExitDirections returns a sorted, de-duplicated list of all
+// directions referenced by either Exits or BlockedExits on the given location.
+func collectExitDirections(loc scenario.Location) []string {
+	seen := make(map[string]struct{}, len(loc.Exits)+len(loc.BlockedExits))
+	for d := range loc.Exits {
+		seen[d] = struct{}{}
+	}
+	for d := range loc.BlockedExits {
+		seen[d] = struct{}{}
+	}
+	dirs := make([]string, 0, len(seen))
+	for d := range seen {
+		dirs = append(dirs, d)
+	}
+	sort.Strings(dirs)
+	return dirs
+}
+
+// joinNatural joins items with commas and a final " or ":
+//
+//	[]            -> ""
+//	[a]           -> "a"
+//	[a, b]        -> "a or b"
+//	[a, b, c]     -> "a, b, or c"
+func joinNatural(items []string) string {
+	switch len(items) {
+	case 0:
+		return ""
+	case 1:
+		return items[0]
+	case 2:
+		return items[0] + " or " + items[1]
+	default:
+		return strings.Join(items[:len(items)-1], ", ") + ", or " + items[len(items)-1]
+	}
 }

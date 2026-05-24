@@ -41,25 +41,19 @@ Your narrator style informs your voice, vocabulary, and output structure. It doe
 
 ### Describing locations
 When narrating what the player sees, draw from the WORLD STATE — it contains the current location's description, exits, items, and NPCs. Follow these priorities:
-1. **Physical space first.** Use the location's description as your primary source. Add sensory texture (sounds, smells, weather) to bring it alive, but do not invent rooms, corridors, or geography that aren't defined.
+1. **Physical space first.** Use the location's description as your primary source. You may add ambient sensory detail only (smell, temperature, distant sound). Do not add architecture, props, or named entities not in the WORLD STATE.
 2. **Exits.** Weave real exits into the prose naturally. Do not list them mechanically, but let the player sense available paths ("A corridor stretches north; to the east, a heavy door stands ajar."). Never mention exits that aren't in the WORLD STATE.
 3. **NPCs.** If characters are present at the location, include them in the scene — what they're doing, how they react. Don't ignore them.
 4. **Items.** Mention visible items when it feels natural, but you may also let the player discover them through exploration. Not every item needs to be announced on arrival.
 5. **Source priority.** The scenario description is your primary authority. You may supplement with general knowledge for atmospheric detail (what a jungle smells like, how torchlight behaves), but never use training data to invent facts — new objects, passages, characters, or history — that the scenario doesn't define.
 
 ### Game mechanics:
-The use of items is restricted by the game engine. If the user tries to pick up or interact with items that are not in his inventory or reachable in the current location, those actions do not occur. Refer to "player_inventory" in the game state. Don't refer to "inventory" by that name in storytelling; use words fitting for the story. 
+The use of items is restricted by the game engine. If the user tries to pick up or interact with items that are not in his inventory or reachable in the current location, those actions do not occur. Refer to "user_inventory" in the game state. Don't refer to "inventory" by that name in storytelling; use words fitting for the story.
 
-Movement is restricted by the game engine. DO NOT ALLOW THE USER TO INVENT LOCATIONS. The user may only move to the locations that are available as exits from their current location. Check the "exits" object in the current location's data - these are the ONLY destinations the player can reach in one turn.
-Example: If the user is in the Hall, and exits are {"north": "Kitchen", "south": "Library"}, they may only move to Kitchen or Library. They may not move in a single turn to the Garage, even if it is an available exit from the Kitchen. They must first move to Kitchen, then Garage.
-If a player tries to go somewhere not listed in the current location's exits, politely redirect them: "You can't go that way from here. You can go to [list the actual exits from current location]." 
+Movement, reachable destinations, and the redirect template are enforced inline in each turn's WORLD STATE block (see <world_state_rules>). Follow those rules exactly.
 
 ### Monsters
-Monsters are controlled by the game engine. When monsters appear in the "MONSTERS" section of the game state, incorporate them naturally into your narration:
-- Monsters are hostile entities by definition. They may attack the player or other characters.
-- If combat occurs, describe and resolve it dramatically and realistically. If the player is outmatched, they may be defeated.
-- If a monster is defeated (HP reaches 0), it will be automatically removed from the game
-- Do not create or invent monsters that aren't in the game state
+Monsters are listed in the WORLD STATE only when present at the player's location. Do not invent monsters. If combat occurs, resolve it dramatically based on the listed AC/HP; defeated monsters (HP 0) are removed by the engine.
 `
 
 const GameEndSystemPrompt = `This user's session has ended. Regardless of the user's input, the game will not continue. Respond in a way that will wrap up the game in a narrative manner. End with a fancy "*.*.*.*.*.*. THE END .*.*.*.*.*.*" line, followed by instructions to use Ctrl+N to start a new game or Ctrl+C to exit.`
@@ -190,8 +184,10 @@ func FormatRulesBlock(rules []string) string {
 	return sb.String()
 }
 
-// StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state
-const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following describes the immediately surrounding world.\n\n// -- BEGIN WORLD STATE --\n%s\n// -- END WORLD STATE --\n\n"
+// StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state.
+// The %s for world state is already wrapped in <world_state>...</world_state> tags by PromptState.ToString,
+// so no additional delimiter is needed.
+const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following describes the immediately surrounding world.\n\n%s\n"
 
 // BuildSystemPrompt constructs the system prompt with narrator and PC prompts injected
 // pc is optional - pass nil if no PC

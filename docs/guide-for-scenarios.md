@@ -123,6 +123,65 @@ A scene-level `temperature` overrides the scenario-level value for that scene on
   - Example: "You are the captain of The Black Pearl..."
 - **Narrator personality**: If using a narrator_id, the narrator's voice will automatically influence how the story is told
 
+## WORLD STATE Prompt Format
+
+Each turn, the engine builds a structured **WORLD STATE** block from the player's current location, adjacent rooms, NPCs, monsters, and inventory. This block is injected into the narrator's system prompt. Understanding its shape helps you write locations and NPCs that behave well — especially in dungeon crawls and multi-room maps.
+
+Example (abbreviated):
+
+```
+<world_state>
+<just_entered>false</just_entered>
+
+<current_location>
+Antechamber
+A broad vaulted chamber supported by four massive pillars...
+
+Items here: torch
+NPCs here: Pip Upton
+Monsters here:
+- Skeleton (AC: 13, HP: 13/13): An animated skeleton wielding a rusty sword.
+
+Exits (the ONLY directions reachable this turn):
+- north -> Tomb Entrance
+- east -> Entry Hall
+</current_location>
+
+<adjacent_previews>
+- east: Entry Hall - A wide scarab-carved corridor forming the main artery of the outer tomb.
+- north: Tomb Entrance - The carved stone entrance to the buried tomb.
+</adjacent_previews>
+
+<npcs_elsewhere>
+- Calypso: Sleepy Mermaid
+</npcs_elsewhere>
+
+<world_state_rules>
+- Narrate ONLY current_location. Do not narrate inside adjacent locations.
+- If just_entered is true, give a brief opening description; otherwise do not re-describe the room.
+- Movement: the player may only choose one of: east (Entry Hall), north (Tomb Entrance). ...
+</world_state_rules>
+</world_state>
+```
+
+### What goes where
+
+| Block | Source | Purpose |
+|-------|--------|---------|
+| `<current_location>` | Current room's `description`, `items`, co-located NPC names, monsters, exits | **Primary narration authority** — describe only what is here |
+| `<adjacent_previews>` | Adjacent rooms' `preview` field (one sentence each) | Orientation only — not a license to narrate inside those rooms |
+| `<npcs_elsewhere>` | Important NPCs not at the player's location | Name + location only — no description or items |
+| `<just_entered>` | Engine flag (true on first turn after a location change) | Tells narrator to open a new room briefly vs. continue action |
+| `<world_state_rules>` | Generated from current exits | Inline movement enforcement and anti-invention rules |
+
+### Authoring implications
+
+- **`description`** is shown only while the player is **in** that location. Write the full spatial picture here.
+- **`preview`** is shown for **adjacent** rooms only. Keep it to one spoiler-free sentence. On multi-room maps (especially dungeons), every location should have a `preview`.
+- **Do not put plot-state or NPC presence in `description`** — see Location Fields below. Dynamic content belongs in `contingency_prompts`.
+- On a **movement turn**, the narrator still sees the *old* room as `<current_location>` until the background reducer confirms the move. Adjacent previews plus `<world_state_rules>` prevent the narrator from inventing the destination's interior before the engine updates location.
+- **NPC names** appear in `<current_location>` when co-located; full NPC voice and behavior come from **contingency prompts** (see NPCs section), not from the WORLD STATE block itself.
+
 ## Locations
 
 Locations define the game world geography:
@@ -173,7 +232,7 @@ Use **lowercase snake_case** for location keys (e.g., `"black_pearl"`, `"captain
 - **exits**: Available movement options (direction: destination)
 - **blocked_exits**: Inaccessible exits with explanation why
 - **items**: Objects available for pickup in this location
-- **preview**: A short (1-sentence) summary shown to the narrator when this location appears as a nearby/adjacent location. Prevents full description from bleeding into other locations. If omitted, only the location name is shown.
+- **preview**: A short (1-sentence) summary shown in `<adjacent_previews>` when this location is one exit away from the player (format: `- direction: Name - preview text`). Prevents full `description` from bleeding into other locations. **Strongly recommended for every location on multi-room maps.** If omitted, only the location name is shown.
 - **important**: Whether the location should always appear in gamestate prompts (generally should be omitted/false)
 - **contingency_prompts**: Location-specific narrative hints shown only when the player is at this location
 
@@ -316,10 +375,10 @@ Spawn or despawn monsters based on game events:
 
 ### How Monsters Appear
 
-Monsters are **location-filtered** — they only appear in the LLM prompt when the player is in the same location. The prompt shows:
+Monsters are **location-filtered** — they only appear in WORLD STATE when the player is in the same location. Inside `<current_location>`:
 
 ```
-MONSTERS:
+Monsters here:
 - Giant Rat (AC: 12, HP: 7/7): A massive rat, the size of a dog, with matted fur and yellowed teeth.
 ```
 
@@ -449,12 +508,9 @@ If the template file is missing the engine logs a warning and falls back to the 
 
 #### Actor properties
 
-Standalone NPC templates can include optional actor stats. When present, these appear in the LLM prompt alongside monster stats:
+Co-located NPCs appear in `<current_location>` as names only (`NPCs here: Guard Captain`). Important NPCs elsewhere appear in `<npcs_elsewhere>` as `- Name: Location Name` with no description. NPC voice, disposition, and behavior are driven by **contingency prompts** injected into the system prompt's guidelines section — not by repeating full NPC profiles in WORLD STATE every turn.
 
-```
-NPCs:
-Guard Captain (suspicious) [AC: 16, HP: 45/45]: The captain of the city guard...
-```
+Standalone NPC templates can include optional actor stats for combat. Monster-style stat lines appear when relevant; narrative NPCs rely on contingency prompts for characterization.
 
 Actor fields supported on standalone NPCs (all optional):
 
@@ -518,6 +574,49 @@ NPCs can automatically follow the player or other NPCs by setting the `following
 - The LLM should **not** attempt to move following NPCs manually - the engine handles this automatically.
 - Following takes precedence over any location changes the LLM might suggest for that NPC.
 - NPCs can stop following by using a contingency rule to clear the field: `"When the companion leaves the party, set companion's following field to empty."`
+
+### Companion NPCs (`following: "pc"`)
+
+A companion who follows the player is **co-located every turn**. That means:
+
+1. Their name always appears in `NPCs here:` inside `<current_location>`.
+2. Their **contingency prompts are injected every turn** while they travel with the player.
+3. If you reference a sidecar template (`template_id`) but do not override `contingency_prompts` in the scenario, the template's prompts apply every turn — which can cause repetitive dialogue (e.g. urging the player to leave on every turn in a dungeon crawl).
+
+**Best practices for companions:**
+
+- **Override `contingency_prompts` in the scenario** when using `template_id`. Scenario overrides **replace** the template's prompts entirely — they do not merge.
+- Use **conditional prompts** to gate one-time beats: `scene_turn_counter: 0` at the entrance, `min_scene_turns: 1` for ongoing companion behavior.
+- Include an explicit **anti-repetition rule** for crawl-style scenarios: e.g. `"Do NOT repeat urges to hurry, leave, or stop exploring."`
+- Soften **disposition** and **description** in scenario overrides if the template anchors anxious or cowardly behavior you do not want every turn.
+- Put dungeon-specific guidance in **scene-level** `contingency_prompts`, not in the reusable template.
+
+**Example — companion with gated entrance warning and crawl-safe ongoing prompts:**
+
+```json
+"npcs": {
+  "pip": {
+    "template_id": "pip",
+    "location": "tomb_entrance",
+    "following": "pc",
+    "disposition": "nervous but loyal tomb-robbing partner",
+    "description": "A halfling pickpocket who follows the player into the tomb. Useful for spotting traps; anxious at first but settles into exploration.",
+    "contingency_prompts": [
+      {
+        "prompt": "Pip mutters about the heat and the warnings carved above the arch — one anxious remark, then he falls quiet.",
+        "when": { "scene_turn_counter": 0, "location": "tomb_entrance" }
+      },
+      {
+        "prompt": "Pip is a companion, not a chaperone. Comment on carvings, traps, and odd details. Do NOT repeat urges to hurry, leave, or stop lingering.",
+        "when": { "min_scene_turns": 1 }
+      },
+      "When idle, Pip fidgets with lockpicks or peers at cracks in the stonework."
+    ]
+  }
+}
+```
+
+See `npcs/README.md` in your scenarios data directory for sidecar override rules.
 
 ## Contingency System
 
