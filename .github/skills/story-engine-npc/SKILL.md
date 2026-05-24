@@ -20,15 +20,35 @@ Write and refine NPC definitions for the story-engine. Produces NPCs with specif
 
 ## NPC Struct Reference
 
-### Fields the narrator sees in the world state prompt
+### What the narrator sees in WORLD STATE
+
+Co-located NPCs appear inside `<current_location>` as **names only**:
 
 ```
-Name (disposition) [AC: HP/MaxHP]: Description; Items: item1, item2
+NPCs here: Pip Upton, Guard Captain
 ```
+
+Important NPCs at other locations appear in `<npcs_elsewhere>` as **name + location only** — no description, no items:
+
+```
+<npcs_elsewhere>
+- Calypso: Sleepy Mermaid
+</npcs_elsewhere>
+```
+
+**Voice and behavior** come from `contingency_prompts`, which are injected into the system prompt's guidelines section (not inside the WORLD STATE block). They are included when the player is at the **same location** as the NPC.
 
 **Critical:** `type` is **not** injected into the narrator prompt. It is engine metadata only. Do not rely on it to communicate character information to the narrator.
 
-`contingency_prompts` are injected as separate behavioral hints into the system prompt **only when the player is at the same location as the NPC**. They are never shown to the player.
+### Following companions (`following: "pc"`)
+
+When an NPC follows the player, they are co-located **every turn**. Their contingency prompts therefore fire **every turn**. Generic template prompts (urgency, cowardice, "don't linger") will repeat unless you:
+
+1. Override `contingency_prompts` in the scenario (replaces template prompts entirely)
+2. Use conditional prompts (`scene_turn_counter`, `min_scene_turns`, `location`) to gate one-time beats
+3. Add an explicit anti-repetition rule for crawl-style scenarios
+
+See `docs/guide-for-scenarios.md` → "Companion NPCs" for a full example.
 
 ### Full struct
 
@@ -82,7 +102,7 @@ In the scenario's `npcs` map entry, set `template_id` and provide only the field
 }
 ```
 
-**Overridable**: all string fields, numeric stats, items (replaces entirely), contingency_prompts (replaces entirely).
+**Overridable**: all string fields, numeric stats, items (replaces entirely), **contingency_prompts (replaces entirely — does not merge with template)**.
 
 **Not overridable**: booleans can only be set to `true` — you cannot override a template's `true` to `false`. Attributes and CombatMods merge (add/replace keys; cannot remove a key). If you need to override a boolean to `false` or strip a stat, create a separate template.
 
@@ -106,7 +126,9 @@ Ask: if the narrator read only this word, would they know how to handle a conver
 
 ### 2. Description Must Be Narrator-Ready
 
-`description` is the narrator's only persistent, always-available source of information about who this character is. It must allow the narrator to:
+`description` is stored on the NPC but **does not appear in WORLD STATE** each turn (only the name shows in `NPCs here:`). For companions and featured NPCs, **`contingency_prompts` are the primary lever** for voice and behavior — especially when `following: "pc"`.
+
+Still write a strong `description` — it anchors scenario context and helps authors — and mirror its key traits in contingency prompts so the narrator can:
 
 - Describe the NPC's presence in a room
 - Write their dialogue rhythm and vocabulary
@@ -216,10 +238,10 @@ Always OMIT in sidecars.
 Items the NPC possesses. These appear in the narrator prompt. Keep to items the narrator should mention or that the player may acquire. Do not list items for internal tracking only.
 
 ### `contingency_prompts`
-Behavioral/voice guidance injected only while the player is co-located. See Principle 4. 2–4 prompts ideal. Use `when` guards for state-dependent additions.
+Behavioral/voice guidance injected into the system prompt guidelines while the player is co-located with the NPC. **Primary voice lever** given WORLD STATE shows names only. See Principle 4. 2–4 prompts ideal for static NPCs; use **conditional prompts** for companions (`following: "pc"`) to avoid repeating the same beat every turn. Use `when` guards for state-dependent additions.
 
 ### `following`
-`"pc"` or an NPC key. The engine auto-syncs location — the LLM does not need to move this NPC manually. Do not set for NPCs that should stay put.
+`"pc"` or an NPC key. The engine auto-syncs location — the LLM does not need to move this NPC manually. **Warning:** following NPCs are co-located every turn, so their contingency prompts fire every turn. Override template prompts in the scenario and use conditionals for crawl-safe companion behavior. Do not set for NPCs that should stay put.
 
 ### Actor properties (sidecar only)
 `ac`, `hp`, `max_hp`, `attributes`, `combat_modifiers`, `drop_items_on_defeat` — optional even in sidecar files. Only include if the NPC is intended to be combatable or if stats affect gameplay. When present, they appear in the narrator prompt as `[AC: X, HP: Y/Z]`.

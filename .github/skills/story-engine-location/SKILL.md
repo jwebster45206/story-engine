@@ -33,9 +33,9 @@ type Location struct {
 }
 ```
 
-`Description` is injected into every narrator prompt while the player is at this location. It is permanent and static — it cannot vary based on story state.
+`Description` is injected into `<current_location>` in the narrator prompt while the player is at this location. It is permanent and static — it cannot vary based on story state.
 
-`Preview` is shown to the narrator for **adjacent/nearby** locations — never the current one. If omitted, only the location name appears. This prevents description bleed across the map.
+`Preview` is shown in `<adjacent_previews>` for **one-hop adjacent** locations — never the current one. Format: `- direction: Name - preview text`. If omitted, only the location name appears. This prevents description bleed across the map. **Required for dungeon and multi-room maps** where adjacent rooms appear every turn.
 
 ---
 
@@ -138,7 +138,7 @@ Score each location against:
 
 ### `preview`
 
-1 sentence. A short, spoiler-free summary shown to the narrator when this location is an adjacent/nearby location. It should convey the location's identity without leaking its full atmosphere, items, NPCs, or plot state. If omitted, only the location name is shown to the narrator.
+1 sentence. A short, spoiler-free summary shown in `<adjacent_previews>` when this location is adjacent to the player. The narrator is instructed **not to narrate inside adjacent locations** — preview is for orientation (name + gist), not for painting the full room before the player arrives. If omitted, only the location name is shown.
 
 | Too much (description leaking) | Good preview |
 |---|---|
