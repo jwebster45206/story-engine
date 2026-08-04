@@ -13,6 +13,10 @@ type Config struct {
 	Environment      string     `json:"environment"`
 	LogLevel         slog.Level `json:"-"`
 	LogLevelStr      string     `json:"log_level"`
+	// TODO: Reshape for per-gamestate model selection: per-provider settings
+	// (API keys, model lists, defaults) instead of the flat LLMProvider /
+	// ModelName / BackendModelName triple. That config contract change is the
+	// main blocker for multi-provider sessions.
 	LLMProvider      string     `json:"llm_provider"` // "anthropic" or "venice"
 	OllamaURL        string     `json:"ollama_url"`
 	VeniceAPIKey     string     `json:"venice_api_key"`

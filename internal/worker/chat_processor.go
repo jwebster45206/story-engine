@@ -14,7 +14,6 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/prompts"
-	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
@@ -56,20 +55,6 @@ func NewChatProcessor(
 	}
 }
 
-// resolveTemperature returns the effective LLM temperature for the current game state.
-// Priority: active scene temperature → scenario temperature → services.DefaultTemperature.
-func resolveTemperature(gs *state.GameState, s *scenario.Scenario) float64 {
-	if gs.SceneName != "" {
-		if scene, ok := s.Scenes[gs.SceneName]; ok && scene.Temperature != nil {
-			return *scene.Temperature
-		}
-	}
-	if s.Temperature != nil {
-		return *s.Temperature
-	}
-	return services.DefaultTemperature
-}
-
 // ProcessChatRequest processes a chat request and returns the response
 func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatRequest) (*chat.ChatResponse, error) {
 	// Load game state
@@ -103,7 +88,9 @@ func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatReq
 	chatCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	temperature := resolveTemperature(gs, loadedScenario)
+	temperature := gs.GetTemperature()
+	// TODO: Once model selection is per-gamestate, resolve the LLM service from gs.ModelName
+	// here (and at ChatStream) rather than using the single startup-wired p.llmService.
 	p.logger.Debug("Sending chat request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
 	response, err := p.llmService.Chat(chatCtx, messages, temperature)
 	if err != nil {
@@ -191,7 +178,7 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 
 	// Initialize LLM streaming
 	// Use the context passed in from the worker - it will stay alive while consuming the stream
-	temperature := resolveTemperature(gs, loadedScenario)
+	temperature := gs.GetTemperature()
 	p.logger.Debug("Sending streaming chat request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
 	streamChan, err := p.llmService.ChatStream(ctx, messages, temperature)
 	if err != nil {

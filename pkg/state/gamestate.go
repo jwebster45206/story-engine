@@ -12,12 +12,25 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
+// RulesMode selects the player-latitude ruleset for a game session.
+type RulesMode string
+
+const (
+	RulesStrict  RulesMode = "strict"
+	RulesRelaxed RulesMode = "relaxed"
+)
+
+// DefaultTemperature is the LLM sampling temperature used when none is set on the GameState.
+const DefaultTemperature = 0.6
+
 // GameState stores the current state of the game
 type GameState struct {
 	ID                 uuid.UUID                    `json:"id"`                           // Unique ID per session
 	ModelName          string                       `json:"model_name,omitempty" `        // Name of the large language model driving gameplay
 	Scenario           string                       `json:"scenario,omitempty" `          // Filename of the scenario being played. Ex: "foo_scenario.json"
 	SceneName          string                       `json:"scene_name,omitempty" `        // Current scene name in the scenario, if applicable
+	Rules              RulesMode                    `json:"rules,omitempty"`              // "strict" (default) or "relaxed"
+	Temperature        float64                      `json:"temperature,omitempty"`        // LLM sampling temperature (0.0-1.0); honored by Venice, ignored by Anthropic
 	Narrator           *scenario.Narrator           `json:"narrator,omitempty"`           // Embedded narrator for this game session (loaded once at creation)
 	PC                 *actor.PC                    `json:"pc,omitempty"`                 // Player Character for this game session
 	NPCs               map[string]actor.NPC         `json:"npcs,omitempty" `              // All NPCs in the game world
@@ -47,6 +60,8 @@ func NewGameState(scenarioFileName string, narrator *scenario.Narrator, modelNam
 		ID:                 uuid.New(),
 		ModelName:          modelName,
 		Scenario:           scenarioFileName,
+		Rules:              RulesStrict,
+		Temperature:        DefaultTemperature,
 		Narrator:           narrator, // Embed full narrator object
 		ChatHistory:        make([]chat.ChatMessage, 0),
 		TurnCounter:        0,
@@ -59,6 +74,24 @@ func NewGameState(scenarioFileName string, narrator *scenario.Narrator, modelNam
 		CreatedAt:          time.Now(),
 		UpdatedAt:          time.Now(),
 	}
+}
+
+// GetRules returns the effective rules mode, defaulting to strict for
+// legacy GameStates that predate the field (empty value after Redis deserialize).
+func (gs *GameState) GetRules() RulesMode {
+	if gs.Rules == RulesRelaxed {
+		return RulesRelaxed
+	}
+	return RulesStrict
+}
+
+// GetTemperature returns the effective LLM temperature, defaulting to
+// DefaultTemperature when unset (zero) for legacy GameStates.
+func (gs *GameState) GetTemperature() float64 {
+	if gs.Temperature > 0 {
+		return gs.Temperature
+	}
+	return DefaultTemperature
 }
 
 func (gs *GameState) Validate() error {

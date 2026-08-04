@@ -29,6 +29,21 @@ const (
 	PlaceHolderText = "Type your message here...\nExamples: Look around. Get the key. Talk to the guard."
 )
 
+type playStyle struct {
+	label       string
+	rules       state.RulesMode
+	temperature float64
+}
+
+var playStyles = []playStyle{
+	{"High creativity, relaxed rules", state.RulesRelaxed, 0.8},
+	{"Medium creativity, relaxed rules", state.RulesRelaxed, 0.6},
+	{"Medium creativity, strict rules", state.RulesStrict, 0.6},
+	{"Low creativity, strict rules", state.RulesStrict, 0.4},
+}
+
+const defaultPlayStyleIndex = 2
+
 // smartWrap wraps text at natural break points including spaces, slashes, and dashes
 // func smartWrap(text string, width int) []string {
 // 	if width <= 0 {
@@ -109,6 +124,11 @@ type ConsoleUI struct {
 	loadingPCs           bool
 	selectedScenarioFile string
 	defaultPCID          string // Default PC ID from scenario
+	selectedPCID         string // PC ID chosen before play-style modal
+
+	// Play style selection state
+	showPlayStyleModal bool
+	selectedPlayStyle  int
 
 	// Profanity filter for family-friendly content
 	profanityFilter *textfilter.ProfanityFilter
@@ -391,6 +411,7 @@ func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 		showScenarioModal: true,
 		loadingScenarios:  true,
 		selectedScenario:  0,
+		selectedPlayStyle: defaultPlayStyleIndex,
 		profanityFilter:   textfilter.NewProfanityFilter(),
 	}
 }
@@ -577,12 +598,17 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updatePCModal(msg)
 	}
 
-	// Handle quit modal third
+	// Handle play style modal third
+	if m.showPlayStyleModal {
+		return m.updatePlayStyleModal(msg)
+	}
+
+	// Handle quit modal
 	if m.showQuitModal {
 		return m.updateQuitModal(msg)
 	}
 
-	// Handle new game modal fourth
+	// Handle new game modal
 	if m.showNewGameModal {
 		return m.updateNewGameModal(msg)
 	}
@@ -1271,9 +1297,9 @@ func (m ConsoleUI) loadPCs() tea.Cmd {
 	}
 }
 
-func (m ConsoleUI) createGameStateFromScenario(scenarioFile string, pcID string) tea.Cmd {
+func (m ConsoleUI) createGameStateFromScenario(scenarioFile string, pcID string, rules string, temperature float64) tea.Cmd {
 	return func() tea.Msg {
-		gs, err := createGameState(m.client, m.config.APIBaseURL, scenarioFile, pcID)
+		gs, err := createGameState(m.client, m.config.APIBaseURL, scenarioFile, pcID, rules, temperature)
 		return gameStateCreatedMsg{gs, err}
 	}
 }
@@ -1370,42 +1396,7 @@ func (m ConsoleUI) updatePCModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case gameStateCreatedMsg:
-		// Regardless of outcome, we're no longer in the create-game loading phase
-		m.loading = false
-		if msg.err != nil {
-			m.err = msg.err
-		} else {
-			m.gameState = msg.gameState
-			m.showPCModal = false
-			// Set up viewport dimensions now that we have a game state
-			if m.width > 0 && m.height > 0 {
-				chatWidth := int(float64(m.width)*0.75) - 4
-				metaWidth := m.width - chatWidth - 6
-				m.chatViewport.Width = chatWidth - 2
-				m.chatViewport.Height = m.height - 7
-				m.metaViewport.Width = metaWidth - 2
-				m.metaViewport.Height = m.height - 4
-				m.textarea.SetWidth(chatWidth - 4)
-			}
-			// Use display name instead of raw file name
-			m.chatViewport.SetContent(writeInitialContent(m.gameState, m.scenarioDisplayName(), m.chatViewport.Width-6))
-			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
-			m.textarea.Focus() // Ensure textarea gets focus when modal closes
-			m.ready = true
-
-			// Start SSE listener for this game
-			eventChan := make(chan SSEEvent, 10)
-			m.eventChan = eventChan
-			go func() {
-				ctx := context.Background()
-				// listenToSSE blocks until connection closes or error occurs
-				// When it returns, just close the channel gracefully
-				_ = listenToSSE(ctx, m.client, m.config.APIBaseURL, m.gameState.ID, eventChan)
-				close(eventChan)
-			}()
-			return m, tea.Batch(textarea.Blink, m.consumeSSEEvents(eventChan))
-		}
-		return m, textarea.Blink // Return focus command
+		return m.handleGameStateCreated(msg)
 
 	case tea.KeyMsg:
 		if m.loadingPCs {
@@ -1437,6 +1428,7 @@ func (m ConsoleUI) updatePCModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pcMap = nil
 			m.selectedPC = 0
 			m.defaultPCID = ""
+			m.selectedPCID = ""
 			m.err = nil
 			return m, nil
 		case tea.KeyUp:
@@ -1450,10 +1442,110 @@ func (m ConsoleUI) updatePCModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			if len(m.pcs) > 0 {
 				pcName := m.pcs[m.selectedPC]
-				pcID := m.pcMap[pcName]
-				m.loading = true
-				return m, m.createGameStateFromScenario(m.selectedScenarioFile, pcID)
+				m.selectedPCID = m.pcMap[pcName]
+				m.showPCModal = false
+				m.showPlayStyleModal = true
+				m.selectedPlayStyle = defaultPlayStyleIndex
+				return m, nil
 			}
+		}
+	}
+
+	return m, nil
+}
+
+func (m ConsoleUI) handleGameStateCreated(msg gameStateCreatedMsg) (tea.Model, tea.Cmd) {
+	m.loading = false
+	if msg.err != nil {
+		m.err = msg.err
+		return m, textarea.Blink
+	}
+
+	m.gameState = msg.gameState
+	m.showPlayStyleModal = false
+	m.showPCModal = false
+	// Set up viewport dimensions now that we have a game state
+	if m.width > 0 && m.height > 0 {
+		chatWidth := int(float64(m.width)*0.75) - 4
+		metaWidth := m.width - chatWidth - 6
+		m.chatViewport.Width = chatWidth - 2
+		m.chatViewport.Height = m.height - 7
+		m.metaViewport.Width = metaWidth - 2
+		m.metaViewport.Height = m.height - 4
+		m.textarea.SetWidth(chatWidth - 4)
+	}
+	// Use display name instead of raw file name
+	m.chatViewport.SetContent(writeInitialContent(m.gameState, m.scenarioDisplayName(), m.chatViewport.Width-6))
+	m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
+	m.textarea.Focus() // Ensure textarea gets focus when modal closes
+	m.ready = true
+
+	// Start SSE listener for this game
+	eventChan := make(chan SSEEvent, 10)
+	m.eventChan = eventChan
+	go func() {
+		ctx := context.Background()
+		// listenToSSE blocks until connection closes or error occurs
+		// When it returns, just close the channel gracefully
+		_ = listenToSSE(ctx, m.client, m.config.APIBaseURL, m.gameState.ID, eventChan)
+		close(eventChan)
+	}()
+	return m, tea.Batch(textarea.Blink, m.consumeSSEEvents(eventChan))
+}
+
+func (m ConsoleUI) updatePlayStyleModal(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+	case gameStateCreatedMsg:
+		return m.handleGameStateCreated(msg)
+
+	case tea.KeyMsg:
+		if m.loading {
+			if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyEsc {
+				return m, tea.Quit
+			}
+			return m, nil
+		}
+
+		if m.err != nil {
+			switch msg.Type {
+			case tea.KeyCtrlC:
+				return m, tea.Quit
+			case tea.KeyEsc:
+				m.showQuitModal = true
+				return m, nil
+			}
+			return m, nil
+		}
+
+		switch msg.Type {
+		case tea.KeyCtrlC:
+			return m, tea.Quit
+		case tea.KeyEsc:
+			m.showPlayStyleModal = false
+			m.showPCModal = true
+			m.err = nil
+			return m, nil
+		case tea.KeyUp:
+			if m.selectedPlayStyle > 0 {
+				m.selectedPlayStyle--
+			}
+		case tea.KeyDown:
+			if m.selectedPlayStyle < len(playStyles)-1 {
+				m.selectedPlayStyle++
+			}
+		case tea.KeyEnter:
+			style := playStyles[m.selectedPlayStyle]
+			m.loading = true
+			return m, m.createGameStateFromScenario(
+				m.selectedScenarioFile,
+				m.selectedPCID,
+				string(style.rules),
+				style.temperature,
+			)
 		}
 	}
 
@@ -1544,6 +1636,10 @@ func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
 	m.loadingPCs = false
 	m.selectedScenarioFile = ""
 	m.defaultPCID = ""
+	m.selectedPCID = ""
+	// Reset play style selection state
+	m.showPlayStyleModal = false
+	m.selectedPlayStyle = defaultPlayStyleIndex
 	// Reset polling state
 	m.pollSeq = 0
 	m.activePollSeq = 0
@@ -1682,6 +1778,44 @@ func (m ConsoleUI) renderPCModal() string {
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modal, lipgloss.WithWhitespaceChars(" "))
 }
 
+func (m ConsoleUI) renderPlayStyleModal() string {
+	if m.width == 0 || m.height == 0 {
+		return "Loading..."
+	}
+
+	var content strings.Builder
+
+	if m.err != nil {
+		content.WriteString(modalTitleStyle.Render("Error"))
+		content.WriteString("\n\n")
+		content.WriteString(errorStyle.Render(fmt.Sprintf("Failed to create game: %v", m.err)))
+		content.WriteString("\n\n")
+		content.WriteString("Press Ctrl+C to force quit, Esc to go back")
+	} else if m.loading {
+		content.WriteString(modalTitleStyle.Render("Creating Game..."))
+		content.WriteString("\n\n")
+		content.WriteString(loadingStyle.Render("Setting up your adventure..."))
+	} else {
+		content.WriteString(modalTitleStyle.Render("Select Play Style"))
+		content.WriteString("\n\n")
+
+		for i, style := range playStyles {
+			if i == m.selectedPlayStyle {
+				content.WriteString(modalSelectedItemStyle.Render(fmt.Sprintf("▶ %s", style.label)))
+			} else {
+				content.WriteString(modalItemStyle.Render(fmt.Sprintf("  %s", style.label)))
+			}
+			content.WriteString("\n")
+		}
+
+		content.WriteString("\n")
+		content.WriteString(promptStyle.Render("Use ↑/↓ to navigate, Enter to select, Esc to go back"))
+	}
+
+	modal := modalStyle.Width(60).Render(content.String())
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modal, lipgloss.WithWhitespaceChars(" "))
+}
+
 func (m ConsoleUI) View() string {
 	if m.showScenarioModal {
 		return m.renderScenarioModal()
@@ -1689,6 +1823,10 @@ func (m ConsoleUI) View() string {
 
 	if m.showPCModal {
 		return m.renderPCModal()
+	}
+
+	if m.showPlayStyleModal {
+		return m.renderPlayStyleModal()
 	}
 
 	if m.showQuitModal {

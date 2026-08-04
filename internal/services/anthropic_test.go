@@ -111,13 +111,11 @@ func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 	}
 }
 
-func TestAnthropicChatRequestStructure(t *testing.T) {
-	// Test that the request structure can be marshaled properly
-	temp := 0.7
+func TestAnthropicChatRequestOmitsSamplingParams(t *testing.T) {
+	// Temperature, top_p, and top_k must never appear on the wire (Opus 4.7+ rejects them).
 	req := AnthropicChatRequest{
-		Model:       "claude-3-sonnet-20240229",
-		MaxTokens:   1024,
-		Temperature: &temp,
+		Model:     "claude-opus-4-7",
+		MaxTokens: 1024,
 		Messages: []chat.ChatMessage{
 			{Role: "user", Content: "Hello"},
 		},
@@ -125,9 +123,18 @@ func TestAnthropicChatRequestStructure(t *testing.T) {
 		Stream: false,
 	}
 
-	_, err := json.Marshal(req)
+	data, err := json.Marshal(req)
 	if err != nil {
-		t.Errorf("Failed to marshal request: %v", err)
+		t.Fatalf("Failed to marshal request: %v", err)
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("Failed to unmarshal marshaled request: %v", err)
+	}
+	for _, key := range []string{"temperature", "top_p", "top_k"} {
+		if _, ok := m[key]; ok {
+			t.Errorf("expected %q to be absent from Anthropic request payload", key)
+		}
 	}
 }
 

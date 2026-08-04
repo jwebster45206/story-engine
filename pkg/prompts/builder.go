@@ -77,7 +77,7 @@ func (b *Builder) addSystemPrompt() error {
 	var sb strings.Builder
 
 	// Build system prompt with embedded narrator and PC
-	systemPrompt := BuildSystemPrompt(b.gs.Narrator, b.gs.PC)
+	systemPrompt := BuildSystemPrompt(b.gs.Narrator, b.gs.PC, b.gs.GetRules())
 	sb.WriteString(systemPrompt)
 
 	// Add rating prompt

@@ -68,6 +68,12 @@ func TestGameStateHandler_Create(t *testing.T) {
 	if response.ID == uuid.Nil {
 		t.Error("Expected non-nil game state ID")
 	}
+	if response.Rules != state.RulesStrict {
+		t.Errorf("Expected default rules %q, got %q", state.RulesStrict, response.Rules)
+	}
+	if response.Temperature != state.DefaultTemperature {
+		t.Errorf("Expected default temperature %f, got %f", state.DefaultTemperature, response.Temperature)
+	}
 }
 
 func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
@@ -540,6 +546,81 @@ func TestGameStateHandler_MissingID(t *testing.T) {
 
 			if response.Error == "" {
 				t.Error("Expected error message for missing ID")
+			}
+		})
+	}
+}
+
+func TestGameStateHandler_CreateRulesAndTemperature(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+	mockStorage := storage.NewMockStorage()
+	mockStorage.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:            "Test Scenario",
+		FileName:        "foo_scenario.json",
+		Story:           "A test scenario",
+		OpeningPrompt:   "Welcome!",
+		OpeningLocation: "start",
+		Locations: map[string]scenario.Location{
+			"start": {Name: "start", Description: "Starting location"},
+		},
+	})
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
+
+	tests := []struct {
+		name           string
+		requestBody    string
+		expectedStatus int
+		wantRules      state.RulesMode
+		wantTemp       float64
+	}{
+		{
+			name:           "relaxed rules and custom temperature",
+			requestBody:    `{"scenario":"foo_scenario.json","rules":"relaxed","temperature":0.8}`,
+			expectedStatus: http.StatusCreated,
+			wantRules:      state.RulesRelaxed,
+			wantTemp:       0.8,
+		},
+		{
+			name:           "invalid rules",
+			requestBody:    `{"scenario":"foo_scenario.json","rules":"chaotic"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "temperature too high",
+			requestBody:    `{"scenario":"foo_scenario.json","temperature":1.5}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "temperature too low",
+			requestBody:    `{"scenario":"foo_scenario.json","temperature":-0.1}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/v1/gamestate", strings.NewReader(tt.requestBody))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Fatalf("Expected status %d, got %d. Body: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+			if tt.expectedStatus != http.StatusCreated {
+				return
+			}
+			var response state.GameState
+			if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+				t.Fatalf("Failed to decode response: %v", err)
+			}
+			if response.Rules != tt.wantRules {
+				t.Errorf("Rules = %q, want %q", response.Rules, tt.wantRules)
+			}
+			if response.Temperature != tt.wantTemp {
+				t.Errorf("Temperature = %f, want %f", response.Temperature, tt.wantTemp)
 			}
 		})
 	}

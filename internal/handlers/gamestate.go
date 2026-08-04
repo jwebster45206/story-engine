@@ -122,6 +122,8 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func isCensoredModel(modelName string) bool {
+	// TODO: Once model selection is per-gamestate, validate the *requested* model
+	// from the create request rather than the server's single h.modelName default.
 	modelLower := strings.ToLower(modelName)
 	if strings.Contains(modelLower, "gpt") ||
 		strings.Contains(modelLower, "claude") ||
@@ -138,9 +140,11 @@ func isCensoredModel(modelName string) bool {
 
 // CreateGameStateRequest defines the request body for creating a new game state
 type CreateGameStateRequest struct {
-	Scenario   string `json:"scenario"`              // Required: scenario filename
-	NarratorID string `json:"narrator_id,omitempty"` // Optional: override scenario's narrator
-	PCID       string `json:"pc_id,omitempty"`       // Optional: override scenario's default PC
+	Scenario    string   `json:"scenario"`              // Required: scenario filename
+	NarratorID  string   `json:"narrator_id,omitempty"` // Optional: override scenario's narrator
+	PCID        string   `json:"pc_id,omitempty"`       // Optional: override scenario's default PC
+	Rules       string   `json:"rules,omitempty"`       // Optional: "strict" (default) or "relaxed"
+	Temperature *float64 `json:"temperature,omitempty"` // Optional: 0.0-1.0, default 0.6; honored by Venice, ignored by Anthropic
 }
 
 // normalizeID converts a string to lowercase snake_case for consistent IDs.
@@ -208,6 +212,8 @@ func (req *CreateGameStateRequest) Normalize() {
 
 	req.PCID = normalizeID(req.PCID)
 	req.PCID = stripJSONExtension(req.PCID)
+
+	req.Rules = normalizeID(req.Rules)
 }
 
 func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
@@ -236,6 +242,30 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusBadRequest)
 		response := ErrorResponse{
 			Error: "scenario field is required",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
+		return
+	}
+
+	if req.Rules != "" && req.Rules != string(state.RulesStrict) && req.Rules != string(state.RulesRelaxed) {
+		h.logger.Warn("Invalid rules value", "rules", req.Rules)
+		w.WriteHeader(http.StatusBadRequest)
+		response := ErrorResponse{
+			Error: "rules must be \"strict\" or \"relaxed\"",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			h.logger.Error("Failed to encode error response", "error", err)
+		}
+		return
+	}
+
+	if req.Temperature != nil && (*req.Temperature < 0.0 || *req.Temperature > 1.0) {
+		h.logger.Warn("Invalid temperature value", "temperature", *req.Temperature)
+		w.WriteHeader(http.StatusBadRequest)
+		response := ErrorResponse{
+			Error: "temperature must be between 0.0 and 1.0",
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Failed to encode error response", "error", err)
@@ -291,6 +321,13 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 
 	// Create a new GameState with embedded narrator
 	gs := state.NewGameState(req.Scenario, narrator, h.modelName)
+
+	if req.Rules != "" {
+		gs.Rules = state.RulesMode(req.Rules)
+	}
+	if req.Temperature != nil {
+		gs.Temperature = *req.Temperature
+	}
 
 	// Initialize game state with scenario-level values
 	gs.NPCs = s.NPCs
@@ -552,6 +589,12 @@ func (h *GameStateHandler) handlePatch(w http.ResponseWriter, r *http.Request, g
 	}
 	if patchData.Location != "" {
 		updatedGS.Location = patchData.Location
+	}
+	if patchData.Rules != "" {
+		updatedGS.Rules = patchData.Rules
+	}
+	if patchData.Temperature > 0 {
+		updatedGS.Temperature = patchData.Temperature
 	}
 	if patchData.TurnCounter != 0 {
 		updatedGS.TurnCounter = patchData.TurnCounter

@@ -24,6 +24,7 @@ type PromptState struct {
 	TurnCounter      int                          `json:"turn_counter,omitempty"`       // Total number of successful chat interactions
 	SceneTurnCounter int                          `json:"scene_turn_counter,omitempty"` // Number of successful chat interactions in
 	JustEntered      bool                         `json:"just_entered,omitempty"`       // true on the first turn after a location change
+	Rules            state.RulesMode              `json:"-"`                            // Narrator ruleset; not sent to reducer JSON
 }
 
 func ToPromptState(gs *state.GameState) *PromptState {
@@ -52,6 +53,7 @@ func ToPromptState(gs *state.GameState) *PromptState {
 		Location:       gs.Location,
 		Inventory:      gs.Inventory,
 		JustEntered:    gs.JustEntered,
+		Rules:          gs.GetRules(),
 		// Vars and counters intentionally excluded for user-facing prompts
 	}
 }
@@ -371,14 +373,15 @@ func (ps *PromptState) writeUserInventory(sb *strings.Builder) {
 	sb.WriteString("\n</user_inventory>\n")
 }
 
-// writeWorldStateRules renders the <world_state_rules> block, with the
-// allowed-destinations enumeration rendered literally from the current
-// location's exits.
+// writeWorldStateRules renders the <world_state_rules> block from the
+// active ruleset. Strict mode enumerates allowed destinations with a
+// canned redirect; relaxed mode presents exits as suggestions.
 func (ps *PromptState) writeWorldStateRules(sb *strings.Builder, currentLoc scenario.Location, hasCurrent bool) {
+	rs := GetRuleSet(ps.Rules)
 	sb.WriteString("\n<world_state_rules>\n")
-	sb.WriteString("- Narrate ONLY current_location. Do not narrate inside adjacent locations.\n")
-	sb.WriteString("- Use the description verbatim or paraphrased. You may add ambient sensory detail (smell, temperature, distant sound). Do NOT introduce doors, alcoves, statues, furniture, mechanisms, NPCs, items, or monsters not listed above.\n")
-	sb.WriteString("- If just_entered is true, give a brief opening description; otherwise do not re-describe the room - continue the action.\n")
+	for _, r := range rs.WorldStateRules {
+		fmt.Fprintf(sb, "- %s\n", r)
+	}
 
 	if hasCurrent && len(currentLoc.Exits) > 0 {
 		dirs := make([]string, 0, len(currentLoc.Exits))
@@ -395,12 +398,19 @@ func (ps *PromptState) writeWorldStateRules(sb *strings.Builder, currentLoc scen
 			redirects = append(redirects, fmt.Sprintf("%s to %s", d, destName))
 		}
 
-		fmt.Fprintf(sb,
-			"- Movement: the player may only choose one of: %s. If they try anything else, redirect with: \"You can't go that way. From %s you can go %s.\"\n",
-			strings.Join(options, ", "),
-			currentLoc.Name,
-			joinNatural(redirects),
-		)
+		if rs.EnforceExits {
+			fmt.Fprintf(sb,
+				"- Movement: the player may only choose one of: %s. If they try anything else, redirect with: \"You can't go that way. From %s you can go %s.\"\n",
+				strings.Join(options, ", "),
+				currentLoc.Name,
+				joinNatural(redirects),
+			)
+		} else {
+			fmt.Fprintf(sb,
+				"- Known exits from here: %s. The player may attempt other directions; if they do, carry them there.\n",
+				strings.Join(options, ", "),
+			)
+		}
 	}
 	sb.WriteString("</world_state_rules>\n")
 }

@@ -44,12 +44,9 @@ type AnthropicToolChoice struct {
 type AnthropicChatRequest struct {
 	Model         string               `json:"model"`
 	MaxTokens     int                  `json:"max_tokens"`
-	Temperature   *float64             `json:"temperature,omitempty"`
 	Messages      []chat.ChatMessage   `json:"messages"`
 	System        string               `json:"system,omitempty"`
 	Stream        bool                 `json:"stream,omitempty"`
-	TopP          *float64             `json:"top_p,omitempty"`
-	TopK          *int                 `json:"top_k,omitempty"`
 	StopSequences []string             `json:"stop_sequences,omitempty"`
 	Tools         []AnthropicTool      `json:"tools,omitempty"`
 	ToolChoice    *AnthropicToolChoice `json:"tool_choice,omitempty"`
@@ -106,6 +103,9 @@ type AnthropicChatResponse struct {
 }
 
 func NewAnthropicService(apiKey string, modelName string, backendModelName string, logger *slog.Logger) *AnthropicService {
+	if logger != nil {
+		logger.Debug("Anthropic sampling parameters (temperature, top_p, top_k) are not sent; Opus 4.7+ rejects non-default values")
+	}
 	return &AnthropicService{
 		apiKey:           apiKey,
 		modelName:        modelName,
@@ -140,7 +140,9 @@ func (a *AnthropicService) splitChatMessages(messages []chat.ChatMessage) (strin
 }
 
 // Chat generates a chat response using Anthropic Claude
-// chatCompletion makes a chat completion request to Anthropic with the specified model
+// chatCompletion makes a chat completion request to Anthropic with the specified model.
+// temperature is used only to select DefaultMaxTokens vs BackendMaxTokens; it is never
+// sent to the Anthropic API (sampling params are deprecated on Opus 4.7+).
 func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, tools []AnthropicTool) (string, error) {
 	// Extract system messages and convert to Anthropic format
 	systemPrompt, conversationMessages := a.splitChatMessages(messages)
@@ -150,11 +152,10 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 		maxTokens = BackendMaxTokens
 	}
 	anthropicReq := AnthropicChatRequest{
-		Model:       modelName,
-		MaxTokens:   maxTokens,
-		Temperature: &temperature,
-		Messages:    conversationMessages,
-		Stream:      false,
+		Model:     modelName,
+		MaxTokens: maxTokens,
+		Messages:  conversationMessages,
+		Stream:    false,
 	}
 
 	// Add system prompt if we have one
@@ -244,18 +245,19 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 	}, nil
 }
 
-// ChatStream generates a streaming chat response using Anthropic
+// ChatStream generates a streaming chat response using Anthropic.
+// The temperature parameter is accepted for interface compatibility but is not sent
+// to the API (sampling params are deprecated on Opus 4.7+).
 func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatMessage, temperature float64) (<-chan StreamChunk, error) {
+	_ = temperature // retained for LLMService interface; not sent to Anthropic
 	// Extract system messages and convert to Anthropic format
 	systemPrompt, conversationMessages := a.splitChatMessages(messages)
 
-	temp := temperature
 	anthropicReq := AnthropicChatRequest{
-		Model:       a.modelName,
-		MaxTokens:   DefaultMaxTokens,
-		Temperature: &temp,
-		Messages:    conversationMessages,
-		Stream:      true,
+		Model:     a.modelName,
+		MaxTokens: DefaultMaxTokens,
+		Messages:  conversationMessages,
+		Stream:    true,
 	}
 
 	// Add system prompt if we have one

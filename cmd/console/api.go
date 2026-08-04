@@ -58,15 +58,19 @@ func getGameState(client *http.Client, baseURL string, gameStateID uuid.UUID) (*
 
 // CreateGameStateRequest matches the API request structure
 type CreateGameStateRequest struct {
-	Scenario   string `json:"scenario"`
-	NarratorID string `json:"narrator_id,omitempty"`
-	PCID       string `json:"pc_id,omitempty"`
+	Scenario    string  `json:"scenario"`
+	NarratorID  string  `json:"narrator_id,omitempty"`
+	PCID        string  `json:"pc_id,omitempty"`
+	Rules       string  `json:"rules,omitempty"`
+	Temperature float64 `json:"temperature,omitempty"`
 }
 
-func createGameState(client *http.Client, baseURL string, scenarioFile string, pcID string) (*state.GameState, error) {
+func createGameState(client *http.Client, baseURL string, scenarioFile string, pcID string, rules string, temperature float64) (*state.GameState, error) {
 	req := CreateGameStateRequest{
-		Scenario: scenarioFile,
-		PCID:     pcID,
+		Scenario:    scenarioFile,
+		PCID:        pcID,
+		Rules:       rules,
+		Temperature: temperature,
 	}
 
 	jsonData, err := json.Marshal(req)

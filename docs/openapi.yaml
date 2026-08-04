@@ -614,6 +614,17 @@ components:
           type: string
           description: Optional player character ID to override scenario default
           example: "pirate_captain"
+        rules:
+          type: string
+          enum: [strict, relaxed]
+          description: Optional ruleset for player latitude. "strict" (default) constrains movement and invention to the world state; "relaxed" lets the player steer more freely.
+          example: "strict"
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Optional LLM sampling temperature (0.0–1.0). Default 0.6. Honored by Venice; ignored by Anthropic (sampling params deprecated on Opus 4.7+).
+          example: 0.6
 
     GameState:
       type: object
@@ -638,6 +649,15 @@ components:
         scene_name:
           type: string
           description: Current scene name (if using scenes)
+        rules:
+          type: string
+          enum: [strict, relaxed]
+          description: Active ruleset for this session
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: LLM sampling temperature for this session (honored by Venice; ignored by Anthropic)
         narrator_id:
           type: string
           description: Narrator ID for this session

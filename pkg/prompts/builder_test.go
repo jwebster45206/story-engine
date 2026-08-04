@@ -470,3 +470,62 @@ func containsHelper(s, substr string) bool {
 	}
 	return false
 }
+
+func TestBuilder_Build_RelaxedSystemPrompt(t *testing.T) {
+	gs := state.NewGameState("test.json", nil, "test-model")
+	gs.Rules = state.RulesRelaxed
+	sc := &scenario.Scenario{
+		Name:   "Test",
+		Story:  "A test story",
+		Rating: scenario.RatingPG,
+	}
+
+	messages, err := New().WithGameState(gs).WithScenario(sc).WithUserMessage("look around", chat.ChatRoleUser).Build()
+	if err != nil {
+		t.Fatalf("Build failed: %v", err)
+	}
+	if len(messages) == 0 {
+		t.Fatal("expected messages")
+	}
+	system := messages[0].Content
+	if !strings.Contains(system, "Honor people, creatures, places, and objects the player introduces") {
+		t.Error("expected relaxed system prompt language")
+	}
+	if strings.Contains(system, "Do not allow the user to control NPCs, create NPCs, invent items") {
+		t.Error("strict invention ban should not appear in relaxed mode")
+	}
+
+	// NarratorRules block is identical in both modes
+	user := messages[len(messages)-1].Content
+	if !strings.Contains(user, "<rules>") {
+		t.Error("expected <rules> block on user message")
+	}
+	if !strings.Contains(user, "Do not act or speak for the Player Character") {
+		t.Error("expected NarratorRules in user message")
+	}
+}
+
+func TestBuilder_Build_StrictAndRelaxedShareRulesBlock(t *testing.T) {
+	sc := &scenario.Scenario{Name: "Test", Story: "Story", Rating: scenario.RatingPG}
+
+	strictGS := state.NewGameState("test.json", nil, "test-model")
+	strictGS.Rules = state.RulesStrict
+	relaxedGS := state.NewGameState("test.json", nil, "test-model")
+	relaxedGS.Rules = state.RulesRelaxed
+
+	strictMsgs, err := New().WithGameState(strictGS).WithScenario(sc).WithUserMessage("hi", chat.ChatRoleUser).Build()
+	if err != nil {
+		t.Fatalf("strict build: %v", err)
+	}
+	relaxedMsgs, err := New().WithGameState(relaxedGS).WithScenario(sc).WithUserMessage("hi", chat.ChatRoleUser).Build()
+	if err != nil {
+		t.Fatalf("relaxed build: %v", err)
+	}
+
+	strictRules := strictMsgs[len(strictMsgs)-1].Content[strings.Index(strictMsgs[len(strictMsgs)-1].Content, "<rules>"):]
+	relaxedRules := relaxedMsgs[len(relaxedMsgs)-1].Content[strings.Index(relaxedMsgs[len(relaxedMsgs)-1].Content, "<rules>"):]
+	if strictRules != relaxedRules {
+		t.Errorf("NarratorRules block should be identical;\nstrict:\n%s\nrelaxed:\n%s", strictRules, relaxedRules)
+	}
+}
+
