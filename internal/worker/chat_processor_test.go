@@ -252,6 +252,8 @@ func newTestSetup(historyCount, historyLimit int) (*ChatProcessor, *stubLLMServi
 	gs := &state.GameState{
 		ID:          gsID,
 		Scenario:    "test.json",
+		Rules:       state.RulesStrict,
+		Temperature: state.DefaultTemperature,
 		ChatHistory: makeHistory(historyCount),
 		IsEnded:     true, // skip background syncGameState goroutine
 		Vars:        make(map[string]string),
@@ -350,12 +352,5 @@ func TestProcessChatRequest_UsesGameStateTemperature(t *testing.T) {
 	}
 	if llm.capturedTemp != wantTemp {
 		t.Errorf("expected gamestate temperature %f, got %f", wantTemp, llm.capturedTemp)
-	}
-}
-
-func TestGameState_GetTemperature_UnsetFallsBack(t *testing.T) {
-	gs := &state.GameState{}
-	if got := gs.GetTemperature(); got != state.DefaultTemperature {
-		t.Errorf("expected default %f, got %f", state.DefaultTemperature, got)
 	}
 }

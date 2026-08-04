@@ -111,8 +111,7 @@ func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 	}
 }
 
-func TestAnthropicChatRequestOmitsSamplingParams(t *testing.T) {
-	// Temperature, top_p, and top_k must never appear on the wire (Opus 4.7+ rejects them).
+func TestAnthropicChatRequestStructure(t *testing.T) {
 	req := AnthropicChatRequest{
 		Model:     "claude-opus-4-7",
 		MaxTokens: 1024,
@@ -120,7 +119,7 @@ func TestAnthropicChatRequestOmitsSamplingParams(t *testing.T) {
 			{Role: "user", Content: "Hello"},
 		},
 		System: "You are a helpful assistant.",
-		Stream: false,
+		Stream: true,
 	}
 
 	data, err := json.Marshal(req)
@@ -131,9 +130,21 @@ func TestAnthropicChatRequestOmitsSamplingParams(t *testing.T) {
 	if err := json.Unmarshal(data, &m); err != nil {
 		t.Fatalf("Failed to unmarshal marshaled request: %v", err)
 	}
-	for _, key := range []string{"temperature", "top_p", "top_k"} {
-		if _, ok := m[key]; ok {
-			t.Errorf("expected %q to be absent from Anthropic request payload", key)
+	expected := map[string]bool{
+		"model":      true,
+		"max_tokens": true,
+		"messages":   true,
+		"system":     true,
+		"stream":     true,
+	}
+	for key := range m {
+		if !expected[key] {
+			t.Errorf("unexpected key %q in Anthropic request payload", key)
+		}
+	}
+	for key := range expected {
+		if _, ok := m[key]; !ok {
+			t.Errorf("expected key %q in Anthropic request payload", key)
 		}
 	}
 }

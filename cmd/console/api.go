@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -56,21 +57,14 @@ func getGameState(client *http.Client, baseURL string, gameStateID uuid.UUID) (*
 	return &gameState, nil
 }
 
-// CreateGameStateRequest matches the API request structure
-type CreateGameStateRequest struct {
-	Scenario    string  `json:"scenario"`
-	NarratorID  string  `json:"narrator_id,omitempty"`
-	PCID        string  `json:"pc_id,omitempty"`
-	Rules       string  `json:"rules,omitempty"`
-	Temperature float64 `json:"temperature,omitempty"`
-}
-
 func createGameState(client *http.Client, baseURL string, scenarioFile string, pcID string, rules string, temperature float64) (*state.GameState, error) {
-	req := CreateGameStateRequest{
+	req := state.GameState{
 		Scenario:    scenarioFile,
-		PCID:        pcID,
-		Rules:       rules,
+		Rules:       state.RulesMode(rules),
 		Temperature: temperature,
+	}
+	if pcID != "" {
+		req.PC = &actor.PC{Spec: &actor.PCSpec{ID: pcID}}
 	}
 
 	jsonData, err := json.Marshal(req)

@@ -53,7 +53,7 @@ func ToPromptState(gs *state.GameState) *PromptState {
 		Location:       gs.Location,
 		Inventory:      gs.Inventory,
 		JustEntered:    gs.JustEntered,
-		Rules:          gs.GetRules(),
+		Rules:          gs.Rules,
 		// Vars and counters intentionally excluded for user-facing prompts
 	}
 }

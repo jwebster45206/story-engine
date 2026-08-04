@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,6 +24,9 @@ const (
 // DefaultTemperature is the LLM sampling temperature used when none is set on the GameState.
 const DefaultTemperature = 0.6
 
+// DefaultPCID is the fallback PC id when neither the request nor the scenario specifies one.
+const DefaultPCID = "classic"
+
 // GameState stores the current state of the game
 type GameState struct {
 	ID                 uuid.UUID                    `json:"id"`                           // Unique ID per session
@@ -30,7 +34,7 @@ type GameState struct {
 	Scenario           string                       `json:"scenario,omitempty" `          // Filename of the scenario being played. Ex: "foo_scenario.json"
 	SceneName          string                       `json:"scene_name,omitempty" `        // Current scene name in the scenario, if applicable
 	Rules              RulesMode                    `json:"rules,omitempty"`              // "strict" (default) or "relaxed"
-	Temperature        float64                      `json:"temperature,omitempty"`        // LLM sampling temperature (0.0-1.0); honored by Venice, ignored by Anthropic
+	Temperature        float64                      `json:"temperature,omitempty"`        // LLM sampling temperature (0.0-1.0)
 	Narrator           *scenario.Narrator           `json:"narrator,omitempty"`           // Embedded narrator for this game session (loaded once at creation)
 	PC                 *actor.PC                    `json:"pc,omitempty"`                 // Player Character for this game session
 	NPCs               map[string]actor.NPC         `json:"npcs,omitempty" `              // All NPCs in the game world
@@ -76,29 +80,95 @@ func NewGameState(scenarioFileName string, narrator *scenario.Narrator, modelNam
 	}
 }
 
-// GetRules returns the effective rules mode, defaulting to strict for
-// legacy GameStates that predate the field (empty value after Redis deserialize).
-func (gs *GameState) GetRules() RulesMode {
-	if gs.Rules == RulesRelaxed {
-		return RulesRelaxed
-	}
-	return RulesStrict
-}
-
-// GetTemperature returns the effective LLM temperature, defaulting to
-// DefaultTemperature when unset (zero) for legacy GameStates.
-func (gs *GameState) GetTemperature() float64 {
-	if gs.Temperature > 0 {
-		return gs.Temperature
-	}
-	return DefaultTemperature
-}
-
+// Validate checks create-request fields before Normalize applies defaults.
+// Empty Rules and zero Temperature are allowed (Normalize fills them in).
 func (gs *GameState) Validate() error {
 	if gs.Scenario == "" {
-		return fmt.Errorf("scenario.file_name is required")
+		return fmt.Errorf("scenario field is required")
+	}
+	if gs.Rules != "" && gs.Rules != RulesStrict && gs.Rules != RulesRelaxed {
+		return fmt.Errorf("rules must be %q or %q", RulesStrict, RulesRelaxed)
+	}
+	if gs.Temperature < 0.0 || gs.Temperature > 1.0 {
+		return fmt.Errorf("temperature must be between 0.0 and 1.0")
 	}
 	return nil
+}
+
+// Normalize applies casing and defaults for create-request fields.
+// Call after Validate. Rules and Temperature defaults are applied here;
+// Scenario gets snake_case + .json; Narrator.ID and PC.Spec.ID get snake_case.
+func (gs *GameState) Normalize() {
+	gs.Scenario = normalizeID(gs.Scenario)
+	gs.Scenario = ensureJSONExtension(gs.Scenario)
+
+	if gs.Narrator != nil {
+		gs.Narrator.ID = stripJSONExtension(normalizeID(gs.Narrator.ID))
+	}
+	if gs.PC != nil && gs.PC.Spec != nil {
+		gs.PC.Spec.ID = stripJSONExtension(normalizeID(gs.PC.Spec.ID))
+	}
+
+	if gs.Rules == "" {
+		gs.Rules = RulesStrict
+	}
+	if gs.Temperature == 0 {
+		gs.Temperature = DefaultTemperature
+	}
+}
+
+// normalizeID converts a string to lowercase snake_case for consistent IDs.
+// It handles spaces, hyphens, dots, and camelCase/PascalCase.
+func normalizeID(s string) string {
+	if s == "" {
+		return ""
+	}
+
+	var out strings.Builder
+	prevUnderscore := false
+	for i, r := range s {
+		if r >= 'A' && r <= 'Z' {
+			r = r + ('a' - 'A')
+		}
+		switch {
+		case r == '.':
+			out.WriteRune('.')
+			prevUnderscore = false
+
+		case r == ' ' || r == '-' || r == '_':
+			if !prevUnderscore && i > 0 {
+				out.WriteRune('_')
+				prevUnderscore = true
+			}
+
+		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
+			out.WriteRune(r)
+			prevUnderscore = false
+
+		default:
+			// Ignore other characters
+		}
+	}
+	return out.String()
+}
+
+// ensureJSONExtension adds .json extension if not present
+func ensureJSONExtension(s string) string {
+	if s == "" {
+		return ""
+	}
+	if !strings.HasSuffix(s, ".json") {
+		return s + ".json"
+	}
+	return s
+}
+
+// stripJSONExtension removes .json extension if present
+func stripJSONExtension(s string) string {
+	if s == "" {
+		return ""
+	}
+	return strings.TrimSuffix(s, ".json")
 }
 
 // GetContingencyPrompts returns all applicable contingency prompts for the current game state

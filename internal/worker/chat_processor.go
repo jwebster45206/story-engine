@@ -88,7 +88,7 @@ func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatReq
 	chatCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	temperature := gs.GetTemperature()
+	temperature := gs.Temperature
 	// TODO: Once model selection is per-gamestate, resolve the LLM service from gs.ModelName
 	// here (and at ChatStream) rather than using the single startup-wired p.llmService.
 	p.logger.Debug("Sending chat request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
@@ -178,7 +178,7 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 
 	// Initialize LLM streaming
 	// Use the context passed in from the worker - it will stay alive while consuming the stream
-	temperature := gs.GetTemperature()
+	temperature := gs.Temperature
 	p.logger.Debug("Sending streaming chat request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
 	streamChan, err := p.llmService.ChatStream(ctx, messages, temperature)
 	if err != nil {

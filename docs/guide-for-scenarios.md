@@ -87,10 +87,6 @@ Scenarios can specify a narrator to define the storytelling voice and style. Nar
 
 **Creating custom narrators:** See `data/narrators/README.md` for details on creating your own narrator personalities.
 
-## Session Settings (API, not scenario)
-
-LLM `temperature` and player-latitude `rules` (`strict` or `relaxed`) are set when creating a game state via `POST /v1/gamestate`, not in the scenario JSON. Defaults are `rules: "strict"` and `temperature: 0.6`. Temperature is honored by Venice and ignored by Anthropic.
-
 ## Writing Voice and Perspective
 
 - **Most content**: Write in third person referring to "the player"

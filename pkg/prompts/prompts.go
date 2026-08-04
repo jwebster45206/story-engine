@@ -156,7 +156,16 @@ func BuildSystemPrompt(narrator *scenario.Narrator, pc *actor.PC, mode state.Rul
 	if pc != nil {
 		pcPrompt = actor.BuildPrompt(pc)
 	}
-	return fmt.Sprintf(GetRuleSet(mode).BaseSystemPrompt, narratorName, narratorPrompts, pcPrompt)
+	rs := GetRuleSet(mode)
+	return fmt.Sprintf(systemPromptTemplate,
+		narratorName,
+		rs.Interpretation,
+		narratorPrompts,
+		pcPrompt,
+		rs.Locations,
+		rs.GameMechanics,
+		rs.Monsters,
+	)
 }
 
 // GetContentRatingPrompt returns the appropriate content rating prompt

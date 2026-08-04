@@ -1,6 +1,7 @@
 package state
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
@@ -753,6 +754,235 @@ func TestDeltaWorker_StoryEventFiringPrevention(t *testing.T) {
 				if !hasFired {
 					t.Errorf("Expected hasStoryEventFired to return true for %q, got false", tt.conditionalID)
 				}
+			}
+		})
+	}
+}
+
+func TestGameState_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		gs      GameState
+		wantErr string
+	}{
+		{
+			name:    "missing scenario",
+			gs:      GameState{},
+			wantErr: "scenario field is required",
+		},
+		{
+			name: "valid with defaults pending",
+			gs:   GameState{Scenario: "pirate"},
+		},
+		{
+			name: "valid relaxed and temperature",
+			gs: GameState{
+				Scenario:    "pirate.json",
+				Rules:       RulesRelaxed,
+				Temperature: 0.8,
+			},
+		},
+		{
+			name: "invalid rules",
+			gs: GameState{
+				Scenario: "pirate.json",
+				Rules:    "chaotic",
+			},
+			wantErr: "rules must be",
+		},
+		{
+			name: "temperature too high",
+			gs: GameState{
+				Scenario:    "pirate.json",
+				Temperature: 1.5,
+			},
+			wantErr: "temperature must be between",
+		},
+		{
+			name: "temperature too low",
+			gs: GameState{
+				Scenario:    "pirate.json",
+				Temperature: -0.1,
+			},
+			wantErr: "temperature must be between",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.gs.Validate()
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("Validate() unexpected error: %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("Validate() expected error, got nil")
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("Validate() error = %q, want substring %q", err.Error(), tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestGameState_Normalize(t *testing.T) {
+	tests := []struct {
+		name             string
+		input            GameState
+		expectedScenario string
+		expectedNarrator string
+		expectedPC       string
+		expectedRules    RulesMode
+		expectedTemp     float64
+	}{
+		{
+			name: "scenario without .json extension",
+			input: GameState{
+				Scenario: "pirate_adventure",
+				Narrator: &scenario.Narrator{ID: "epic"},
+				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "jack_sparrow"}},
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic",
+			expectedPC:       "jack_sparrow",
+			expectedRules:    RulesStrict,
+			expectedTemp:     DefaultTemperature,
+		},
+		{
+			name: "scenario with .json extension",
+			input: GameState{
+				Scenario:    "pirate_adventure.json",
+				Narrator:    &scenario.Narrator{ID: "comedic"},
+				PC:          &actor.PC{Spec: &actor.PCSpec{ID: "custom_hero"}},
+				Rules:       RulesRelaxed,
+				Temperature: 0.8,
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "comedic",
+			expectedPC:       "custom_hero",
+			expectedRules:    RulesRelaxed,
+			expectedTemp:     0.8,
+		},
+		{
+			name: "camelCase and spaces converted to snake_case",
+			input: GameState{
+				Scenario: "PirateAdventure",
+				Narrator: &scenario.Narrator{ID: "Epic Narrator"},
+				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "Jack Sparrow"}},
+			},
+			expectedScenario: "pirateadventure.json",
+			expectedNarrator: "epic_narrator",
+			expectedPC:       "jack_sparrow",
+			expectedRules:    RulesStrict,
+			expectedTemp:     DefaultTemperature,
+		},
+		{
+			name: "hyphens converted to underscores",
+			input: GameState{
+				Scenario: "pirate-adventure",
+				Narrator: &scenario.Narrator{ID: "epic-narrator"},
+				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "jack-sparrow"}},
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic_narrator",
+			expectedPC:       "jack_sparrow",
+			expectedRules:    RulesStrict,
+			expectedTemp:     DefaultTemperature,
+		},
+		{
+			name: "mixed case with special characters",
+			input: GameState{
+				Scenario: "Pirate Adventure!",
+				Narrator: &scenario.Narrator{ID: "Epic.Narrator"},
+				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "Jack@Sparrow"}},
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic.narrator",
+			expectedPC:       "jacksparrow",
+			expectedRules:    RulesStrict,
+			expectedTemp:     DefaultTemperature,
+		},
+		{
+			name: "already normalized",
+			input: GameState{
+				Scenario: "pirate_adventure.json",
+				Narrator: &scenario.Narrator{ID: "epic_narrator"},
+				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "jack_sparrow"}},
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic_narrator",
+			expectedPC:       "jack_sparrow",
+			expectedRules:    RulesStrict,
+			expectedTemp:     DefaultTemperature,
+		},
+		{
+			name: "empty optional fields",
+			input: GameState{
+				Scenario: "test",
+			},
+			expectedScenario: "test.json",
+			expectedNarrator: "",
+			expectedPC:       "",
+			expectedRules:    RulesStrict,
+			expectedTemp:     DefaultTemperature,
+		},
+		{
+			name: "narrator and pc with .json extension should be stripped",
+			input: GameState{
+				Scenario: "pirate_adventure",
+				Narrator: &scenario.Narrator{ID: "epic.json"},
+				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "jack_sparrow.json"}},
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic",
+			expectedPC:       "jack_sparrow",
+			expectedRules:    RulesStrict,
+			expectedTemp:     DefaultTemperature,
+		},
+		{
+			name: "narrator and pc with .JSON extension (uppercase) should be stripped after normalization",
+			input: GameState{
+				Scenario: "pirate_adventure",
+				Narrator: &scenario.Narrator{ID: "Epic.JSON"},
+				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "Jack.JSON"}},
+			},
+			expectedScenario: "pirate_adventure.json",
+			expectedNarrator: "epic",
+			expectedPC:       "jack",
+			expectedRules:    RulesStrict,
+			expectedTemp:     DefaultTemperature,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gs := tt.input
+			gs.Normalize()
+
+			if gs.Scenario != tt.expectedScenario {
+				t.Errorf("Scenario: expected %q, got %q", tt.expectedScenario, gs.Scenario)
+			}
+			gotNarrator := ""
+			if gs.Narrator != nil {
+				gotNarrator = gs.Narrator.ID
+			}
+			if gotNarrator != tt.expectedNarrator {
+				t.Errorf("Narrator.ID: expected %q, got %q", tt.expectedNarrator, gotNarrator)
+			}
+			gotPC := ""
+			if gs.PC != nil && gs.PC.Spec != nil {
+				gotPC = gs.PC.Spec.ID
+			}
+			if gotPC != tt.expectedPC {
+				t.Errorf("PC.Spec.ID: expected %q, got %q", tt.expectedPC, gotPC)
+			}
+			if gs.Rules != tt.expectedRules {
+				t.Errorf("Rules: expected %q, got %q", tt.expectedRules, gs.Rules)
+			}
+			if gs.Temperature != tt.expectedTemp {
+				t.Errorf("Temperature: expected %f, got %f", tt.expectedTemp, gs.Temperature)
 			}
 		})
 	}

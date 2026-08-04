@@ -246,8 +246,6 @@ func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage
 }
 
 // ChatStream generates a streaming chat response using Anthropic.
-// The temperature parameter is accepted for interface compatibility but is not sent
-// to the API (sampling params are deprecated on Opus 4.7+).
 func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatMessage, temperature float64) (<-chan StreamChunk, error) {
 	_ = temperature // retained for LLMService interface; not sent to Anthropic
 	// Extract system messages and convert to Anthropic format

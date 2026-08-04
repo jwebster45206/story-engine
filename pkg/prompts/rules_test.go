@@ -29,20 +29,16 @@ func TestGetRuleSet_Relaxed(t *testing.T) {
 	}
 }
 
-func TestRuleSet_BaseSystemPromptHasThreeSlots(t *testing.T) {
-	for _, rs := range []RuleSet{StrictRuleSet, RelaxedRuleSet} {
-		count := strings.Count(rs.BaseSystemPrompt, "%s")
-		if count != 3 {
-			t.Errorf("%s BaseSystemPrompt has %d %%s slots, want 3", rs.Mode, count)
-		}
+func TestSystemPromptTemplate_HasSevenSlots(t *testing.T) {
+	count := strings.Count(systemPromptTemplate, "%s")
+	if count != 7 {
+		t.Errorf("systemPromptTemplate has %d %%s slots, want 7", count)
 	}
 }
 
-func TestRuleSet_SharedNarratorVoiceHeading(t *testing.T) {
+func TestSystemPromptTemplate_SharedNarratorVoiceHeading(t *testing.T) {
 	const heading = "### Writing rules for narrative output:"
-	for _, rs := range []RuleSet{StrictRuleSet, RelaxedRuleSet} {
-		if !strings.Contains(rs.BaseSystemPrompt, heading) {
-			t.Errorf("%s BaseSystemPrompt missing shared heading %q", rs.Mode, heading)
-		}
+	if !strings.Contains(systemPromptTemplate, heading) {
+		t.Errorf("systemPromptTemplate missing shared heading %q", heading)
 	}
 }

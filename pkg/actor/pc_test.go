@@ -294,7 +294,7 @@ func TestPC_MarshalUnmarshalRoundTrip(t *testing.T) {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	// Verify Spec fields
+	// Verify Spec fields round-trip; Actor is left nil by UnmarshalJSON
 	if restoredPC.Spec.ID != spec.ID {
 		t.Errorf("ID = %q, want %q", restoredPC.Spec.ID, spec.ID)
 	}
@@ -304,37 +304,42 @@ func TestPC_MarshalUnmarshalRoundTrip(t *testing.T) {
 	if restoredPC.Spec.Class != spec.Class {
 		t.Errorf("Class = %q, want %q", restoredPC.Spec.Class, spec.Class)
 	}
+	if restoredPC.Spec.HP != spec.HP {
+		t.Errorf("HP = %d, want %d", restoredPC.Spec.HP, spec.HP)
+	}
+	if restoredPC.Spec.MaxHP != spec.MaxHP {
+		t.Errorf("MaxHP = %d, want %d", restoredPC.Spec.MaxHP, spec.MaxHP)
+	}
+	if restoredPC.Spec.AC != spec.AC {
+		t.Errorf("AC = %d, want %d", restoredPC.Spec.AC, spec.AC)
+	}
+	if restoredPC.Spec.Stats.Dexterity != 18 {
+		t.Errorf("Stats.Dexterity = %d, want 18", restoredPC.Spec.Stats.Dexterity)
+	}
+	if restoredPC.Spec.Attributes["survival"] != 8 {
+		t.Errorf("Attributes[survival] = %d, want 8", restoredPC.Spec.Attributes["survival"])
+	}
+	if len(restoredPC.Spec.CombatModifiers) != 2 {
+		t.Errorf("CombatModifiers count = %d, want 2", len(restoredPC.Spec.CombatModifiers))
+	}
+	if restoredPC.Actor != nil {
+		t.Error("Actor should be nil after unmarshal; use NewPCFromSpec to build it")
+	}
+}
 
-	// Verify Actor was rebuilt
-	if restoredPC.Actor == nil {
-		t.Fatal("Actor is nil after unmarshal, should be rebuilt")
+func TestPC_UnmarshalJSON_IDOnly(t *testing.T) {
+	var pc PC
+	if err := json.Unmarshal([]byte(`{"id":"pirate_captain"}`), &pc); err != nil {
+		t.Fatalf("Unmarshal id-only PC: %v", err)
 	}
-
-	// Verify Actor properties
-	if restoredPC.Actor.HP() != spec.HP {
-		t.Errorf("Actor.HP() = %d, want %d", restoredPC.Actor.HP(), spec.HP)
+	if pc.Spec == nil {
+		t.Fatal("Spec is nil after unmarshal")
 	}
-	if restoredPC.Actor.MaxHP() != spec.MaxHP {
-		t.Errorf("Actor.MaxHP() = %d, want %d", restoredPC.Actor.MaxHP(), spec.MaxHP)
+	if pc.Spec.ID != "pirate_captain" {
+		t.Errorf("Spec.ID = %q, want %q", pc.Spec.ID, "pirate_captain")
 	}
-	if restoredPC.Actor.AC() != spec.AC {
-		t.Errorf("Actor.AC() = %d, want %d", restoredPC.Actor.AC(), spec.AC)
-	}
-
-	// Verify core stats
-	if dex, ok := restoredPC.Actor.Attribute("dexterity"); !ok || dex != 18 {
-		t.Errorf("Attribute('dexterity') = %d, %v, want 18, true", dex, ok)
-	}
-
-	// Verify additional attributes
-	if survival, ok := restoredPC.Actor.Attribute("survival"); !ok || survival != 8 {
-		t.Errorf("Attribute('survival') = %d, %v, want 8, true", survival, ok)
-	}
-
-	// Verify combat modifiers
-	mods := restoredPC.Actor.GetCombatModifiers()
-	if len(mods) != 2 {
-		t.Errorf("CombatModifiers count = %d, want 2", len(mods))
+	if pc.Actor != nil {
+		t.Error("Actor should be nil for id-only unmarshal")
 	}
 }
 
