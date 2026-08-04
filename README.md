@@ -174,17 +174,23 @@ The worker uses the same env var:
 CONFIG=config.json go run ./cmd/worker
 ```
 
-### Docker
+### Docker Compose
 
-Override the host data directory and/or config file when starting compose. Host `CONFIG` is mounted at `/app/config.json` inside the container; the container always reads that path.
+Pass a host config file via `CONFIG` (mounted read-only at `/app/config.json`) and optionally override scenario data with `DATA_DIR`:
 
 ```bash
-# Default: ./data and ./config.docker.json
-docker compose up
-
-# Custom data dir and config
-DATA_DIR=/path/to/data CONFIG=/somewhere.json docker compose up
+DATA_DIR=~/Documents/story-engine-scenarios \
+CONFIG=./config.venice.json \
+docker compose up --build -d
 ```
+
+`CONFIG` is required. Edit the mounted config on the host, then restart without rebuilding:
+
+```bash
+docker compose restart story-engine-api story-engine-worker
+```
+
+Use `redis:6379` as `redis_url` in Docker configs (the compose Redis service hostname).
 
 ### Console Client
 

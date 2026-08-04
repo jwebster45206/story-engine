@@ -193,41 +193,16 @@ func (pc *PC) MarshalJSON() ([]byte, error) {
 	return json.Marshal(resp)
 }
 
-// UnmarshalJSON reconstructs a PC from JSON and rebuilds its Actor
+// UnmarshalJSON reconstructs a PC from JSON. The Actor is left nil; callers
+// that need a live d20.Actor should use NewPCFromSpec after loading a full
+// spec. This allows id-only references (e.g. {"id":"pirate_captain"}) to
+// decode without requiring HP/AC.
 func (pc *PC) UnmarshalJSON(data []byte) error {
-	// First unmarshal into a PCSpec
 	var spec PCSpec
 	if err := json.Unmarshal(data, &spec); err != nil {
 		return fmt.Errorf("failed to unmarshal PC spec: %w", err)
 	}
-
-	// Store the spec
 	pc.Spec = &spec
-
-	// Rebuild the Actor from the spec
-	allAttrs := spec.Stats.ToAttributes()
-	for k, v := range spec.Attributes {
-		allAttrs[k] = v
-	}
-
-	actor, err := d20.NewActor(spec.ID).
-		WithHP(spec.MaxHP).
-		WithAC(spec.AC).
-		WithAttributes(allAttrs).
-		WithCombatModifiers(spec.CombatModifiers).
-		Build()
-	if err != nil {
-		return fmt.Errorf("failed to rebuild actor: %w", err)
-	}
-
-	// Set current HP if different from max
-	if spec.HP != spec.MaxHP && spec.HP > 0 {
-		if err := actor.SetHP(spec.HP); err != nil {
-			return fmt.Errorf("failed to set HP: %w", err)
-		}
-	}
-
-	pc.Actor = actor
 	return nil
 }
 

@@ -122,6 +122,8 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func isCensoredModel(modelName string) bool {
+	// TODO: Once model selection is per-gamestate, validate the *requested* model
+	// from the create request rather than the server's single h.modelName default.
 	modelLower := strings.ToLower(modelName)
 	if strings.Contains(modelLower, "gpt") ||
 		strings.Contains(modelLower, "claude") ||
@@ -136,85 +138,10 @@ func isCensoredModel(modelName string) bool {
 	return false
 }
 
-// CreateGameStateRequest defines the request body for creating a new game state
-type CreateGameStateRequest struct {
-	Scenario   string `json:"scenario"`              // Required: scenario filename
-	NarratorID string `json:"narrator_id,omitempty"` // Optional: override scenario's narrator
-	PCID       string `json:"pc_id,omitempty"`       // Optional: override scenario's default PC
-}
-
-// normalizeID converts a string to lowercase snake_case for consistent IDs.
-// It handles spaces, hyphens, dots, and camelCase/PascalCase.
-func normalizeID(s string) string {
-	if s == "" {
-		return ""
-	}
-
-	var out strings.Builder
-	prevUnderscore := false
-	for i, r := range s {
-		if r >= 'A' && r <= 'Z' {
-			r = r + ('a' - 'A')
-		}
-		switch {
-		case r == '.':
-			out.WriteRune('.')
-			prevUnderscore = false
-
-		case r == ' ' || r == '-' || r == '_':
-			if !prevUnderscore && i > 0 {
-				out.WriteRune('_')
-				prevUnderscore = true
-			}
-
-		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
-			out.WriteRune(r)
-			prevUnderscore = false
-
-		default:
-			// Ignore other characters
-		}
-	}
-	return out.String()
-}
-
-// ensureJSONExtension adds .json extension if not present
-func ensureJSONExtension(s string) string {
-	if s == "" {
-		return ""
-	}
-	if !strings.HasSuffix(s, ".json") {
-		return s + ".json"
-	}
-	return s
-}
-
-// stripJSONExtension removes .json extension if present
-func stripJSONExtension(s string) string {
-	if s == "" {
-		return ""
-	}
-	return strings.TrimSuffix(s, ".json")
-}
-
-// Normalize normalizes all ID fields to lowercase snake_case,
-// ensures .json extension for scenario, and strips .json from narrator/pc IDs
-func (req *CreateGameStateRequest) Normalize() {
-	req.Scenario = normalizeID(req.Scenario)
-	req.Scenario = ensureJSONExtension(req.Scenario)
-
-	req.NarratorID = normalizeID(req.NarratorID)
-	req.NarratorID = stripJSONExtension(req.NarratorID)
-
-	req.PCID = normalizeID(req.PCID)
-	req.PCID = stripJSONExtension(req.PCID)
-}
-
 func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Creating new game state")
 
-	// Parse request body into CreateGameStateRequest struct
-	var req CreateGameStateRequest
+	var req state.GameState
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Warn("Invalid JSON in request body", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -227,21 +154,18 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Normalize all input fields to snake_case
-	req.Normalize()
-
-	// Validate required fields
-	if req.Scenario == "" {
-		h.logger.Warn("Missing required field: scenario")
+	if err := req.Validate(); err != nil {
+		h.logger.Warn("Invalid create gamestate request", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
 		response := ErrorResponse{
-			Error: "scenario field is required",
+			Error: err.Error(),
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Failed to encode error response", "error", err)
 		}
 		return
 	}
+	req.Normalize()
 
 	// Get initial gamestate values from scenario
 	s, err := h.storage.GetScenario(r.Context(), req.Scenario)
@@ -275,7 +199,11 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Determine which narrator to use and load it ONCE (will be embedded in gamestate)
-	narratorID := req.NarratorID // Use request override if provided
+	var requestNarratorID string
+	if req.Narrator != nil {
+		requestNarratorID = req.Narrator.ID
+	}
+	narratorID := requestNarratorID
 	if narratorID == "" {
 		narratorID = s.NarratorID // Fall back to scenario's narrator
 	}
@@ -285,12 +213,14 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		if err != nil {
 			h.logger.Warn("Failed to load narrator, continuing without narrator", "narrator_id", narratorID, "error", err)
 		} else {
-			h.logger.Debug("Loaded narrator for embedding", "narrator_id", narratorID, "name", narrator.Name, "source", map[bool]string{true: "request", false: "scenario"}[req.NarratorID != ""])
+			h.logger.Debug("Loaded narrator for embedding", "narrator_id", narratorID, "name", narrator.Name, "source", map[bool]string{true: "request", false: "scenario"}[requestNarratorID != ""])
 		}
 	}
 
 	// Create a new GameState with embedded narrator
 	gs := state.NewGameState(req.Scenario, narrator, h.modelName)
+	gs.Rules = req.Rules
+	gs.Temperature = req.Temperature
 
 	// Initialize game state with scenario-level values
 	gs.NPCs = s.NPCs
@@ -303,20 +233,23 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	gs.ContingencyPrompts = make([]string, 0)
 
 	// Determine which PC to use
-	pcID := req.PCID // Use request override if provided
+	var requestPCID string
+	if req.PC != nil && req.PC.Spec != nil {
+		requestPCID = req.PC.Spec.ID
+	}
+	pcID := requestPCID
 	if pcID == "" {
 		pcID = s.DefaultPC // Fall back to scenario's default PC
 	}
 	if pcID == "" {
-		pcID = "classic" // Final fallback to classic
+		pcID = state.DefaultPCID
 	}
 
 	var loadedPC *actor.PC
 	pcSpec, pcErr := h.storage.GetPCSpec(r.Context(), pcID)
 	if pcErr != nil {
 		h.logger.Warn("Failed to load PC spec, trying fallback to classic", "pc_id", pcID, "error", pcErr)
-		// Try fallback to classic
-		pcSpec, pcErr = h.storage.GetPCSpec(r.Context(), "classic")
+		pcSpec, pcErr = h.storage.GetPCSpec(r.Context(), state.DefaultPCID)
 		if pcErr != nil {
 			h.logger.Error("Failed to load fallback PC 'classic'", "error", pcErr)
 			// Continue without PC rather than failing - PC is optional for now
@@ -329,7 +262,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 			h.logger.Error("Failed to construct PC from spec", "pc_id", pcSpec.ID, "error", err)
 		} else {
 			gs.PC = loadedPC
-			h.logger.Debug("PC loaded successfully", "pc_id", loadedPC.Spec.ID, "name", loadedPC.Spec.Name, "source", map[bool]string{true: "request", false: "scenario"}[req.PCID != ""])
+			h.logger.Debug("PC loaded successfully", "pc_id", loadedPC.Spec.ID, "name", loadedPC.Spec.Name, "source", map[bool]string{true: "request", false: "scenario"}[requestPCID != ""])
 		}
 	}
 
@@ -552,6 +485,12 @@ func (h *GameStateHandler) handlePatch(w http.ResponseWriter, r *http.Request, g
 	}
 	if patchData.Location != "" {
 		updatedGS.Location = patchData.Location
+	}
+	if patchData.Rules != "" {
+		updatedGS.Rules = patchData.Rules
+	}
+	if patchData.Temperature > 0 {
+		updatedGS.Temperature = patchData.Temperature
 	}
 	if patchData.TurnCounter != 0 {
 		updatedGS.TurnCounter = patchData.TurnCounter

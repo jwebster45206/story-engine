@@ -68,6 +68,12 @@ func TestGameStateHandler_Create(t *testing.T) {
 	if response.ID == uuid.Nil {
 		t.Error("Expected non-nil game state ID")
 	}
+	if response.Rules != state.RulesStrict {
+		t.Errorf("Expected default rules %q, got %q", state.RulesStrict, response.Rules)
+	}
+	if response.Temperature != state.DefaultTemperature {
+		t.Errorf("Expected default temperature %f, got %f", state.DefaultTemperature, response.Temperature)
+	}
 }
 
 func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
@@ -102,30 +108,30 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 		checkPCID       string
 	}{
 		{
-			name:           "with narrator_id override",
-			requestBody:    `{"scenario":"foo_scenario.json","narrator_id":"epic"}`,
+			name:           "with narrator override",
+			requestBody:    `{"scenario":"foo_scenario.json","narrator":{"id":"epic"}}`,
 			expectedStatus: http.StatusCreated,
 			// Note: Will use fallback since 'epic' doesn't exist in test env
 		},
 		{
-			name:           "with pc_id override",
-			requestBody:    `{"scenario":"foo_scenario.json","pc_id":"custom_hero"}`,
+			name:           "with pc override",
+			requestBody:    `{"scenario":"foo_scenario.json","pc":{"id":"custom_hero"}}`,
 			expectedStatus: http.StatusCreated,
 			// Note: Will use fallback since 'custom_hero' doesn't exist in test env
 		},
 		{
 			name:           "with both overrides",
-			requestBody:    `{"scenario":"foo_scenario.json","narrator_id":"epic","pc_id":"custom_hero"}`,
+			requestBody:    `{"scenario":"foo_scenario.json","narrator":{"id":"epic"},"pc":{"id":"custom_hero"}}`,
 			expectedStatus: http.StatusCreated,
 		},
 		{
 			name:           "with empty overrides (should use defaults)",
-			requestBody:    `{"scenario":"foo_scenario.json","narrator_id":"","pc_id":""}`,
+			requestBody:    `{"scenario":"foo_scenario.json","narrator":{"id":""},"pc":{"id":""}}`,
 			expectedStatus: http.StatusCreated,
 		},
 		{
 			name:           "missing scenario field",
-			requestBody:    `{"narrator_id":"epic"}`,
+			requestBody:    `{"narrator":{"id":"epic"}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
@@ -185,133 +191,6 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 				if response.Error == "" {
 					t.Error("Expected error message in response")
 				}
-			}
-		})
-	}
-}
-
-func TestCreateGameStateRequest_Normalize(t *testing.T) {
-	tests := []struct {
-		name             string
-		input            CreateGameStateRequest
-		expectedScenario string
-		expectedNarrator string
-		expectedPC       string
-	}{
-		{
-			name: "scenario without .json extension",
-			input: CreateGameStateRequest{
-				Scenario:   "pirate_adventure",
-				NarratorID: "epic",
-				PCID:       "jack_sparrow",
-			},
-			expectedScenario: "pirate_adventure.json",
-			expectedNarrator: "epic",
-			expectedPC:       "jack_sparrow",
-		},
-		{
-			name: "scenario with .json extension",
-			input: CreateGameStateRequest{
-				Scenario:   "pirate_adventure.json",
-				NarratorID: "comedic",
-				PCID:       "custom_hero",
-			},
-			expectedScenario: "pirate_adventure.json",
-			expectedNarrator: "comedic",
-			expectedPC:       "custom_hero",
-		},
-		{
-			name: "camelCase and spaces converted to snake_case",
-			input: CreateGameStateRequest{
-				Scenario:   "PirateAdventure",
-				NarratorID: "Epic Narrator",
-				PCID:       "Jack Sparrow",
-			},
-			expectedScenario: "pirateadventure.json",
-			expectedNarrator: "epic_narrator",
-			expectedPC:       "jack_sparrow",
-		},
-		{
-			name: "hyphens converted to underscores",
-			input: CreateGameStateRequest{
-				Scenario:   "pirate-adventure",
-				NarratorID: "epic-narrator",
-				PCID:       "jack-sparrow",
-			},
-			expectedScenario: "pirate_adventure.json",
-			expectedNarrator: "epic_narrator",
-			expectedPC:       "jack_sparrow",
-		},
-		{
-			name: "mixed case with special characters",
-			input: CreateGameStateRequest{
-				Scenario:   "Pirate Adventure!",
-				NarratorID: "Epic.Narrator",
-				PCID:       "Jack@Sparrow",
-			},
-			expectedScenario: "pirate_adventure.json",
-			expectedNarrator: "epic.narrator",
-			expectedPC:       "jacksparrow",
-		},
-		{
-			name: "already normalized",
-			input: CreateGameStateRequest{
-				Scenario:   "pirate_adventure.json",
-				NarratorID: "epic_narrator",
-				PCID:       "jack_sparrow",
-			},
-			expectedScenario: "pirate_adventure.json",
-			expectedNarrator: "epic_narrator",
-			expectedPC:       "jack_sparrow",
-		},
-		{
-			name: "empty optional fields",
-			input: CreateGameStateRequest{
-				Scenario:   "test",
-				NarratorID: "",
-				PCID:       "",
-			},
-			expectedScenario: "test.json",
-			expectedNarrator: "",
-			expectedPC:       "",
-		},
-		{
-			name: "narrator and pc with .json extension should be stripped",
-			input: CreateGameStateRequest{
-				Scenario:   "pirate_adventure",
-				NarratorID: "epic.json",
-				PCID:       "jack_sparrow.json",
-			},
-			expectedScenario: "pirate_adventure.json",
-			expectedNarrator: "epic",
-			expectedPC:       "jack_sparrow",
-		},
-		{
-			name: "narrator and pc with .JSON extension (uppercase) should be stripped after normalization",
-			input: CreateGameStateRequest{
-				Scenario:   "pirate_adventure",
-				NarratorID: "Epic.JSON",
-				PCID:       "Jack.JSON",
-			},
-			expectedScenario: "pirate_adventure.json",
-			expectedNarrator: "epic",
-			expectedPC:       "jack",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req := tt.input
-			req.Normalize()
-
-			if req.Scenario != tt.expectedScenario {
-				t.Errorf("Scenario: expected %q, got %q", tt.expectedScenario, req.Scenario)
-			}
-			if req.NarratorID != tt.expectedNarrator {
-				t.Errorf("NarratorID: expected %q, got %q", tt.expectedNarrator, req.NarratorID)
-			}
-			if req.PCID != tt.expectedPC {
-				t.Errorf("PCID: expected %q, got %q", tt.expectedPC, req.PCID)
 			}
 		})
 	}
@@ -540,6 +419,81 @@ func TestGameStateHandler_MissingID(t *testing.T) {
 
 			if response.Error == "" {
 				t.Error("Expected error message for missing ID")
+			}
+		})
+	}
+}
+
+func TestGameStateHandler_CreateRulesAndTemperature(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+	mockStorage := storage.NewMockStorage()
+	mockStorage.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:            "Test Scenario",
+		FileName:        "foo_scenario.json",
+		Story:           "A test scenario",
+		OpeningPrompt:   "Welcome!",
+		OpeningLocation: "start",
+		Locations: map[string]scenario.Location{
+			"start": {Name: "start", Description: "Starting location"},
+		},
+	})
+	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
+
+	tests := []struct {
+		name           string
+		requestBody    string
+		expectedStatus int
+		wantRules      state.RulesMode
+		wantTemp       float64
+	}{
+		{
+			name:           "relaxed rules and custom temperature",
+			requestBody:    `{"scenario":"foo_scenario.json","rules":"relaxed","temperature":0.8}`,
+			expectedStatus: http.StatusCreated,
+			wantRules:      state.RulesRelaxed,
+			wantTemp:       0.8,
+		},
+		{
+			name:           "invalid rules",
+			requestBody:    `{"scenario":"foo_scenario.json","rules":"chaotic"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "temperature too high",
+			requestBody:    `{"scenario":"foo_scenario.json","temperature":1.5}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "temperature too low",
+			requestBody:    `{"scenario":"foo_scenario.json","temperature":-0.1}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/v1/gamestate", strings.NewReader(tt.requestBody))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Fatalf("Expected status %d, got %d. Body: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+			if tt.expectedStatus != http.StatusCreated {
+				return
+			}
+			var response state.GameState
+			if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+				t.Fatalf("Failed to decode response: %v", err)
+			}
+			if response.Rules != tt.wantRules {
+				t.Errorf("Rules = %q, want %q", response.Rules, tt.wantRules)
+			}
+			if response.Temperature != tt.wantTemp {
+				t.Errorf("Temperature = %f, want %f", response.Temperature, tt.wantTemp)
 			}
 		})
 	}

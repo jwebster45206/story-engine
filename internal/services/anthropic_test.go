@@ -112,22 +112,40 @@ func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 }
 
 func TestAnthropicChatRequestStructure(t *testing.T) {
-	// Test that the request structure can be marshaled properly
-	temp := 0.7
 	req := AnthropicChatRequest{
-		Model:       "claude-3-sonnet-20240229",
-		MaxTokens:   1024,
-		Temperature: &temp,
+		Model:     "claude-opus-4-7",
+		MaxTokens: 1024,
 		Messages: []chat.ChatMessage{
 			{Role: "user", Content: "Hello"},
 		},
 		System: "You are a helpful assistant.",
-		Stream: false,
+		Stream: true,
 	}
 
-	_, err := json.Marshal(req)
+	data, err := json.Marshal(req)
 	if err != nil {
-		t.Errorf("Failed to marshal request: %v", err)
+		t.Fatalf("Failed to marshal request: %v", err)
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("Failed to unmarshal marshaled request: %v", err)
+	}
+	expected := map[string]bool{
+		"model":      true,
+		"max_tokens": true,
+		"messages":   true,
+		"system":     true,
+		"stream":     true,
+	}
+	for key := range m {
+		if !expected[key] {
+			t.Errorf("unexpected key %q in Anthropic request payload", key)
+		}
+	}
+	for key := range expected {
+		if _, ok := m[key]; !ok {
+			t.Errorf("expected key %q in Anthropic request payload", key)
+		}
 	}
 }
 

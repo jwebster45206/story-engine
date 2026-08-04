@@ -8,10 +8,11 @@ import (
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 const (
-	DefaultTemperature = 0.6
+	DefaultTemperature = state.DefaultTemperature
 	DefaultMaxTokens   = 512
 	BackendMaxTokens   = 512
 )
@@ -43,7 +44,11 @@ func (sc StreamChunk) MarshalJSON() ([]byte, error) {
 type LLMService interface {
 	InitModel(ctx context.Context, modelName string) error
 
-	// Chat generates a chat response using the LLM
+	// Chat generates a chat response using the LLM.
+	// TODO: Once model selection is per-gamestate, temperature applicability becomes a
+	// per-session question (Venice honors it; Anthropic ignores it). Grow a capability
+	// query (SupportsTemperature() or Capabilities()) so callers can surface or reject
+	// inert settings rather than silently dropping them.
 	Chat(ctx context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error)
 
 	// ChatStream generates a streaming chat response using the LLM

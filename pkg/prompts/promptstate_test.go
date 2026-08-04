@@ -462,3 +462,28 @@ func TestPromptState_ToString_RedirectTemplateMultiExit(t *testing.T) {
 	// Movement options use parenthesized form, sorted alphabetically by direction.
 	requireContains(t, result, "Movement: the player may only choose one of: east (East Room), north (North Room), south (South Room).")
 }
+
+func TestPromptState_ToString_RelaxedRules(t *testing.T) {
+	ps := &PromptState{
+		Location: "tavern",
+		Rules:    "relaxed",
+		WorldLocations: map[string]scenario.Location{
+			"tavern": {
+				Name: "The Rusty Anchor Tavern",
+				Exits: map[string]string{
+					"north": "street",
+				},
+			},
+			"street": {Name: "Harbor Street", Preview: "A busy street."},
+		},
+	}
+
+	result := ps.ToString()
+
+	requireContains(t, result, "<world_state_rules>")
+	requireContains(t, result, "Known exits from here: north (Harbor Street).")
+	requireContains(t, result, "The player may attempt other directions")
+	requireNotContains(t, result, "You can't go that way")
+	requireNotContains(t, result, "may only choose one of")
+	requireNotContains(t, result, "Narrate ONLY current_location")
+}

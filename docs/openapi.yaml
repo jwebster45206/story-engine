@@ -91,7 +91,12 @@ paths:
   /v1/gamestate:
     post:
       summary: Create new game state
-      description: Create a new game session with the specified scenario and optional narrator/PC overrides
+      description: |
+        Create a new game session. `scenario` is required. Optional `narrator` and `pc`
+        may be supplied as id-only references (e.g. `{"narrator":{"id":"vincent_price"},"pc":{"id":"pirate_captain"}}`);
+        other fields on those objects are ignored at create time. Optional `rules`
+        (`strict` or `relaxed`, default `strict`) and `temperature` (0.0–1.0, default 0.6)
+        set session play style.
       operationId: createGameState
       tags:
         - Game State
@@ -100,7 +105,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateGameStateRequest'
+              $ref: '#/components/schemas/GameState'
       responses:
         '201':
           description: Game state created successfully
@@ -597,33 +602,8 @@ components:
           type: string
           description: Error message if an error occurred
 
-    CreateGameStateRequest:
-      type: object
-      required:
-        - scenario
-      properties:
-        scenario:
-          type: string
-          description: Scenario filename (e.g., "pirate.json")
-          example: "pirate.json"
-        narrator_id:
-          type: string
-          description: Optional narrator ID to override scenario default
-          example: "vincent_price"
-        pc_id:
-          type: string
-          description: Optional player character ID to override scenario default
-          example: "pirate_captain"
-
     GameState:
       type: object
-      required:
-        - id
-        - turn_counter
-        - scene_turn_counter
-        - is_ended
-        - created_at
-        - updated_at
       properties:
         id:
           type: string
@@ -634,13 +614,24 @@ components:
           description: Name of the LLM model used
         scenario:
           type: string
-          description: Scenario filename
+          description: Scenario filename (required on create)
+          example: "pirate.json"
         scene_name:
           type: string
           description: Current scene name (if using scenes)
-        narrator_id:
+        rules:
           type: string
-          description: Narrator ID for this session
+          enum: [strict, relaxed]
+          description: Optional ruleset for player latitude. "strict" (default) constrains movement and invention to the world state; "relaxed" lets the player steer more freely.
+          example: "strict"
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Optional LLM sampling temperature (0.0–1.0). May not affect output, as some LLM providers don't support it.
+          example: 0.6
+        narrator:
+          $ref: '#/components/schemas/Narrator'
         pc:
           $ref: '#/components/schemas/PC'
         npcs:

@@ -60,6 +60,9 @@ func main() {
 
 	// Initialize LLM service
 	var llmService services.LLMService
+	// TODO: Once model selection is per-gamestate, replace this single-provider
+	// startup switch with a registry/resolver keyed by model name (one initialized
+	// service per configured provider). InitModel would move behind that registry.
 	switch strings.ToLower(cfg.LLMProvider) {
 	case "anthropic":
 		if cfg.AnthropicAPIKey == "" {

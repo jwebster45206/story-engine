@@ -75,7 +75,6 @@ Always emit fields in this order. It matches the schema and keeps files readable
 name
 story
 rating
-temperature          (optional — omit if using 0.6 default)
 narrator_id
 default_pc
 opening_scene
@@ -170,7 +169,6 @@ Use this exact structure and field order:
 - `locations` — global level only; no scene-level locations in the starter
 - `npcs` — empty object `{}`, not an array
 - `contingency_prompts` and `contingency_rules` — empty arrays `[]`
-- `temperature` — omit (use system default 0.6)
 - `game_end_prompt` — omit
 
 ---
@@ -238,9 +236,6 @@ Content rating string. Use the canonical values from code:
 | `"R"` | `RatingR` | Restricted to adults |
 
 Default to `"PG-13"` when the tone involves peril, violence, or mature themes but nothing explicitly adult. Use `"PG"` for younger-friendly adventures and `"R"` only when the scenario is intentionally adult.
-
-### `temperature`
-Float 0.0–1.0. Omit to use system default (0.6). Lower = more predictable; higher = more creative. Can be overridden per scene.
 
 ### `narrator_id`
 String ID from `data/narrators/`. See the Standard Catalog above. Must match an existing file (without `.json`).
@@ -310,7 +305,6 @@ Array of strings. Scenario-wide state-change instructions for the LLM. Active th
 - [ ] `npcs` is `{}` (object, not array)
 - [ ] `contingency_prompts` and `contingency_rules` are `[]`
 - [ ] `opening_inventory` omitted (not an empty array)
-- [ ] `temperature` omitted
 - [ ] Fields in correct order (name → story → rating → narrator_id → default_pc → opening_scene → opening_location → opening_prompt → locations → npcs → scenes → contingency_prompts → contingency_rules)
 
 ### Full scenario (additional checks)

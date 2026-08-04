@@ -8,7 +8,7 @@ services:
       - "8080:8080"
     volumes:
       - ${DATA_DIR:-./data}:/app/data
-      - ${CONFIG:-./config.docker.json}:/app/config.json:ro
+      - ${CONFIG:?Set CONFIG to a host config JSON path}:/app/config.json:ro
     environment:
       - CONFIG=/app/config.json
     depends_on:
@@ -30,7 +30,7 @@ services:
     command: ["./worker"]  # Override CMD
     volumes:
       - ${DATA_DIR:-./data}:/app/data
-      - ${CONFIG:-./config.docker.json}:/app/config.json:ro
+      - ${CONFIG:?Set CONFIG to a host config JSON path}:/app/config.json:ro
     environment:
       - CONFIG=/app/config.json
       - WORKER_ID=worker-1
