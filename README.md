@@ -165,7 +165,31 @@ Create a JSON configuration file with your service settings:
 ### API Server
 
 ```bash
-GAME_CONFIG=config.json go run cmd/api/main.go
+CONFIG=config.json go run ./cmd/api
+```
+
+The worker uses the same env var:
+
+```bash
+CONFIG=config.json go run ./cmd/worker
+```
+
+### Docker
+
+Override the host data directory and/or config file when starting compose. Host `CONFIG` is mounted at `/app/config.json` inside the container; the container always reads that path.
+
+```bash
+# Default: ./data and ./config.docker.json
+docker compose up
+
+# Custom data dir and config
+DATA_DIR=/path/to/data CONFIG=/somewhere.json docker compose up
+
+# Override only data
+DATA_DIR=/path/to/my-data docker compose up
+
+# Override only config
+CONFIG=./config.venice.json docker compose up
 ```
 
 ### Console Client

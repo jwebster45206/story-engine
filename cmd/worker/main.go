@@ -27,6 +27,7 @@ func main() {
 	log := logger.Setup(cfg)
 
 	log.Info("Starting Story Engine Worker",
+		"config", os.Getenv("CONFIG"),
 		"environment", cfg.Environment,
 		"redis_url", cfg.RedisURL)
 

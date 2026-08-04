@@ -23,14 +23,13 @@ type Config struct {
 	ChatHistoryLimit int        `json:"chat_history_limit"` // max number of past messages sent to LLM per request (0 = use default)
 }
 
+// Load reads configuration from the CONFIG environment variable.
 func Load() (*Config, error) {
-
-	configFile := getEnv("GAME_CONFIG", "")
+	configFile := getEnv("CONFIG", "")
 	if configFile == "" {
-		return nil, fmt.Errorf("GAME_CONFIG environment variable is not set")
+		return nil, fmt.Errorf("CONFIG environment variable is not set")
 	}
 
-	// Read config file
 	data, err := os.ReadFile(configFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file %s: %v", configFile, err)
@@ -41,7 +40,6 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config file %s: %v", configFile, err)
 	}
 
-	// Parse log level from string
 	config.LogLevel = parseLogLevel(config.LogLevelStr)
 	return &config, nil
 }
