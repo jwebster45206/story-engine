@@ -347,8 +347,12 @@ func (v *VeniceService) ChatStream(ctx context.Context, messages []chat.ChatMess
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		body, readErr := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
-		return nil, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
+		if readErr != nil {
+			return nil, fmt.Errorf("API request failed with status %d (also failed to read body: %w)", resp.StatusCode, readErr)
+		}
+		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	chunkChan := make(chan StreamChunk, 10)
