@@ -36,11 +36,8 @@ WORKDIR /app
 COPY --from=builder /app/api .
 COPY --from=builder /app/worker .
 
-# Copy config files
-COPY config.docker.json .
-
-# Note: scenario files are mounted as a volume in docker-compose.yml
-# This allows for live editing without rebuilding the image
+# Note: config and scenario data are mounted as volumes in docker-compose.yml
+# This allows live editing without rebuilding the image
 
 # Change ownership of all files to appuser
 RUN chown -R appuser:appgroup /app
