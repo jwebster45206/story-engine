@@ -3,7 +3,7 @@ module github.com/jwebster45206/story-engine
 go 1.26.1
 
 require (
-	github.com/alicebob/miniredis/v2 v2.35.0
+	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
@@ -11,9 +11,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jwebster45206/d20 v0.4.0
 	github.com/muesli/reflow v0.3.0
-	github.com/redis/go-redis/v9 v9.18.0
-	github.com/stretchr/testify v1.10.0
-	golang.org/x/text v0.35.0
+	github.com/redis/go-redis/v9 v9.21.0
+	github.com/stretchr/testify v1.11.1
+	golang.org/x/text v0.40.0
 )
 
 require (
@@ -26,7 +26,6 @@ require (
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
