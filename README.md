@@ -184,12 +184,6 @@ docker compose up
 
 # Custom data dir and config
 DATA_DIR=/path/to/data CONFIG=/somewhere.json docker compose up
-
-# Override only data
-DATA_DIR=/path/to/my-data docker compose up
-
-# Override only config
-CONFIG=./config.venice.json docker compose up
 ```
 
 ### Console Client
