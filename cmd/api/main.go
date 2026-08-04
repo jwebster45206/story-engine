@@ -28,6 +28,7 @@ func main() {
 	log := logger.Setup(cfg)
 
 	log.Info("Starting Story Engine API",
+		"config", os.Getenv("CONFIG"),
 		"port", cfg.Port,
 		"environment", cfg.Environment,
 		"llm_provider", cfg.LLMProvider,

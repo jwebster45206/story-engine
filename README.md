@@ -165,12 +165,18 @@ Create a JSON configuration file with your service settings:
 ### API Server
 
 ```bash
-GAME_CONFIG=config.json go run cmd/api/main.go
+CONFIG=config.json go run ./cmd/api
+```
+
+The worker uses the same env var:
+
+```bash
+CONFIG=config.json go run ./cmd/worker
 ```
 
 ### Docker Compose
 
-Pass a host config file via `CONFIG` (mounted read-only) and optionally override scenario data with `DATA_DIR`:
+Pass a host config file via `CONFIG` (mounted read-only at `/app/config.json`) and optionally override scenario data with `DATA_DIR`:
 
 ```bash
 DATA_DIR=~/Documents/story-engine-scenarios \
@@ -178,7 +184,7 @@ CONFIG=./config.venice.json \
 docker compose up --build -d
 ```
 
-Edit the mounted config on the host, then restart without rebuilding:
+`CONFIG` is required. Edit the mounted config on the host, then restart without rebuilding:
 
 ```bash
 docker compose restart story-engine-api story-engine-worker

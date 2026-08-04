@@ -31,7 +31,6 @@ go.work.sum
 .env
 
 # Config files with secrets
-config.docker.json
 config*.json
 !config.template.json
 
