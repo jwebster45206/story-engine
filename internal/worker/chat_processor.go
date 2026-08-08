@@ -20,7 +20,7 @@ import (
 
 const PromptHistoryLimit = 16
 
-// LLMResolver is satisfied by *services.Registry and by a one-line test stub.
+// LLMResolver looks up an LLMService by provider name (e.g. *services.Registry).
 type LLMResolver interface {
 	Get(name string) (services.LLMService, error)
 }
