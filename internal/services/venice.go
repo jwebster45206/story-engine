@@ -47,7 +47,7 @@ type VeniceParameters struct {
 // VeniceChatRequest represents the request structure for Venice AI chat completions
 type VeniceChatRequest struct {
 	Model            string                `json:"model"`
-	Messages         []chat.ChatMessage    `json:"messages"`
+	Messages         []chat.LLMMessage     `json:"messages"`
 	Temperature      float64               `json:"temperature,omitempty"`
 	MaxTokens        int                   `json:"max_tokens,omitempty"`
 	Stream           bool                  `json:"stream"`
@@ -133,7 +133,7 @@ func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.Chat
 	}
 	veniceReq := VeniceChatRequest{
 		Model:       modelName,
-		Messages:    messages,
+		Messages:    chat.ToLLMMessages(messages),
 		Temperature: temperature,
 		MaxTokens:   maxTokens,
 		Stream:      false,
@@ -318,7 +318,7 @@ func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage, t
 func (v *VeniceService) ChatStream(ctx context.Context, messages []chat.ChatMessage, temperature float64) (<-chan StreamChunk, error) {
 	reqBody := VeniceChatRequest{
 		Model:       v.modelName,
-		Messages:    messages,
+		Messages:    chat.ToLLMMessages(messages),
 		Temperature: temperature,
 		MaxTokens:   DefaultMaxTokens,
 		Stream:      true,

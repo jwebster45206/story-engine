@@ -115,9 +115,9 @@ func TestAnthropicChatRequestStructure(t *testing.T) {
 	req := AnthropicChatRequest{
 		Model:     "claude-opus-4-7",
 		MaxTokens: 1024,
-		Messages: []chat.ChatMessage{
-			{Role: "user", Content: "Hello"},
-		},
+		Messages: chat.ToLLMMessages([]chat.ChatMessage{
+			{Role: "user", Content: "Hello", IsStoryEvent: true},
+		}),
 		System: "You are a helpful assistant.",
 		Stream: true,
 	}
@@ -146,6 +146,20 @@ func TestAnthropicChatRequestStructure(t *testing.T) {
 		if _, ok := m[key]; !ok {
 			t.Errorf("expected key %q in Anthropic request payload", key)
 		}
+	}
+
+	var msgs []map[string]any
+	if err := json.Unmarshal(m["messages"], &msgs); err != nil {
+		t.Fatalf("Failed to unmarshal messages: %v", err)
+	}
+	if len(msgs) != 1 {
+		t.Fatalf("expected 1 message, got %d", len(msgs))
+	}
+	if _, ok := msgs[0]["is_story_event"]; ok {
+		t.Errorf("is_story_event must not appear in Anthropic request messages")
+	}
+	if msgs[0]["role"] != "user" || msgs[0]["content"] != "Hello" {
+		t.Errorf("unexpected message payload: %#v", msgs[0])
 	}
 }
 

@@ -49,13 +49,13 @@ func TestVeniceService_InitModel(t *testing.T) {
 // Mock test for chat response structure
 func TestVeniceChatRequestStructure(t *testing.T) {
 	messages := []chat.ChatMessage{
-		{Role: "user", Content: "Hello"},
+		{Role: "user", Content: "Hello", IsStoryEvent: true},
 		{Role: "assistant", Content: "Hi there!"},
 	}
 
 	req := VeniceChatRequest{
 		Model:       "test-model",
-		Messages:    messages,
+		Messages:    chat.ToLLMMessages(messages),
 		Temperature: 0.7,
 		MaxTokens:   1000,
 		Stream:      false,
@@ -71,6 +71,14 @@ func TestVeniceChatRequestStructure(t *testing.T) {
 
 	if req.Temperature != 0.7 {
 		t.Errorf("Expected temperature 0.7, got %f", req.Temperature)
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("Failed to marshal request: %v", err)
+	}
+	if strings.Contains(string(data), "is_story_event") {
+		t.Errorf("is_story_event must not appear in Venice request payload: %s", data)
 	}
 }
 
