@@ -1498,6 +1498,8 @@ func (m ConsoleUI) handleGameStateCreated(msg gameStateCreatedMsg) (tea.Model, t
 	m.gameState = msg.gameState
 	m.showPlayStyleModal = false
 	m.showPCModal = false
+	m.showProviderModal = false
+	m.loadingProviders = false
 	// Set up viewport dimensions now that we have a game state
 	if m.width > 0 && m.height > 0 {
 		chatWidth := int(float64(m.width)*0.75) - 4
@@ -1607,14 +1609,14 @@ func (m ConsoleUI) updateProviderModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 		}
-		// Skip the picker when only one provider is configured.
+		// Skip the picker when only one provider is configured, but keep the
+		// modal flag set so gameStateCreatedMsg is still routed here.
 		if len(m.providers) <= 1 {
 			providerID := m.defaultProvider
 			if len(m.providers) == 1 {
 				providerID = m.providers[0].Name
 			}
 			m.selectedProviderID = providerID
-			m.showProviderModal = false
 			m.loading = true
 			return m, m.createGameStateFromScenario(
 				m.selectedScenarioFile,
