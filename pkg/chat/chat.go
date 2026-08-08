@@ -33,7 +33,6 @@ const (
 )
 
 // ChatMessage represents a single chat message in the conversation.
-// IsStoryEvent is persisted/API metadata and must not be sent to LLM providers.
 type ChatMessage struct {
 	Role         string `json:"role"` // "user", "assistant", "system"
 	Content      string `json:"content"`
