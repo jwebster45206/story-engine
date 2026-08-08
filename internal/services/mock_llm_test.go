@@ -11,21 +11,6 @@ import (
 func TestMockLLMService(t *testing.T) {
 	mockService := NewMockLLMAPI()
 
-	// Test InitializeModel
-	err := mockService.InitModel(context.Background(), "test-model")
-	if err != nil {
-		t.Errorf("InitializeModel failed: %v", err)
-	}
-
-	if len(mockService.InitModelCalls) != 1 {
-		t.Errorf("Expected 1 InitializeModel call, got %d", len(mockService.InitModelCalls))
-	}
-
-	if mockService.InitModelCalls[0] != "test-model" {
-		t.Errorf("Expected model name 'test-model', got '%s'", mockService.InitModelCalls[0])
-	}
-
-	// Test GenerateResponse
 	messages := []chat.ChatMessage{
 		{Role: chat.ChatRoleUser, Content: "Hello"},
 	}
@@ -39,7 +24,7 @@ func TestMockLLMService(t *testing.T) {
 		t.Errorf("Expected 'Mock response', got '%s'", response.Message)
 	}
 
-	_, generateCalls := mockService.GetCalls()
+	generateCalls := mockService.GetCalls()
 	if len(generateCalls) != 1 {
 		t.Errorf("Expected 1 GenerateResponse call, got %d", len(generateCalls))
 	}
@@ -48,11 +33,10 @@ func TestMockLLMService(t *testing.T) {
 func TestMockLLMService_ErrorHandling(t *testing.T) {
 	mockService := NewMockLLMAPI()
 
-	// Test InitializeModel error
-	expectedErr := fmt.Errorf("initialization failed")
-	mockService.SetInitModelError(expectedErr)
+	expectedErr := fmt.Errorf("generation failed")
+	mockService.SetGenerateResponseError(expectedErr)
 
-	err := mockService.InitModel(context.Background(), "test-model")
+	_, err := mockService.Chat(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "x"}}, DefaultTemperature)
 	if err == nil {
 		t.Errorf("Expected error, got nil")
 	}

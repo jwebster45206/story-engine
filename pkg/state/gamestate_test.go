@@ -439,7 +439,7 @@ func validateItemSingletons(t *testing.T, normalizedState *GameState, originalSt
 }
 
 func TestGameState_IncrementTurnCounters(t *testing.T) {
-	gs := NewGameState("test.json", nil, "test-model")
+	gs := NewGameState("test.json", nil, "test-provider", "test-model")
 
 	if gs.TurnCounter != 0 {
 		t.Errorf("Expected TurnCounter to be 0 initially, got %d", gs.TurnCounter)

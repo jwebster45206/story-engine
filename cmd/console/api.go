@@ -57,9 +57,10 @@ func getGameState(client *http.Client, baseURL string, gameStateID uuid.UUID) (*
 	return &gameState, nil
 }
 
-func createGameState(client *http.Client, baseURL string, scenarioFile string, pcID string, rules string, temperature float64) (*state.GameState, error) {
+func createGameState(client *http.Client, baseURL string, scenarioFile string, pcID string, provider string, rules string, temperature float64) (*state.GameState, error) {
 	req := state.GameState{
 		Scenario:    scenarioFile,
+		Provider:    provider,
 		Rules:       state.RulesMode(rules),
 		Temperature: temperature,
 	}
@@ -212,6 +213,57 @@ func listPCs(client *http.Client, baseURL string) ([]string, map[string]string, 
 
 	sort.Strings(names)
 	return names, pcMap, nil
+}
+
+type providerOption struct {
+	Name        string
+	DisplayName string
+	Vendor      string
+	Model       string
+}
+
+type providersListResponse struct {
+	Default   string `json:"default"`
+	Providers []struct {
+		Name        string `json:"name"`
+		DisplayName string `json:"display_name"`
+		Vendor      string `json:"vendor"`
+		Model       string `json:"model"`
+	} `json:"providers"`
+}
+
+func getProviders(client *http.Client, baseURL string) (string, []providerOption, error) {
+	resp, err := client.Get(baseURL + "/v1/providers")
+	if err != nil {
+		return "", nil, err
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+
+	var parsed providersListResponse
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return "", nil, err
+	}
+
+	opts := make([]providerOption, 0, len(parsed.Providers))
+	for _, p := range parsed.Providers {
+		display := p.DisplayName
+		if display == "" {
+			display = p.Name
+		}
+		opts = append(opts, providerOption{
+			Name:        p.Name,
+			DisplayName: display,
+			Vendor:      p.Vendor,
+			Model:       p.Model,
+		})
+	}
+	return parsed.Default, opts, nil
 }
 
 // ChatResponse is the async chat response with request_id

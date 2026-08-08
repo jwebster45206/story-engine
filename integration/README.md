@@ -207,7 +207,7 @@ TEST_TIMEOUT_SECONDS=60 go test -v -tags=integration ./integration/
 5. **Validate**: Check expectations against updated gamestate and response
 6. **Repeat**: Continue for each test step
 
-**Note**: `ModelName` and `Scenario` are immutable and set during creation - they cannot be changed via PATCH.
+**Note**: `Provider`, `ModelName`, and `Scenario` are immutable and set during creation - they cannot be changed via PATCH.
 
 ### Parallel Execution
 - Tests run with configurable concurrency (default: 5)

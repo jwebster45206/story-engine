@@ -12,18 +12,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
 const (
-	anthropicBaseURL = "https://api.anthropic.com/v1"
-	anthropicVersion = "2023-06-01"
+	defaultAnthropicBaseURL = "https://api.anthropic.com/v1"
+	anthropicVersion        = "2023-06-01"
 )
 
 // AnthropicService implements LLMService for Anthropic Claude
 type AnthropicService struct {
 	apiKey           string
+	baseURL          string
 	modelName        string
 	backendModelName string
 	httpClient       *http.Client
@@ -102,27 +104,33 @@ type AnthropicChatResponse struct {
 	} `json:"error,omitempty"`
 }
 
-func NewAnthropicService(apiKey string, modelName string, backendModelName string, logger *slog.Logger) *AnthropicService {
+func NewAnthropicService(pc *config.ProviderConfig, logger *slog.Logger) *AnthropicService {
 	if logger != nil {
 		logger.Debug("Anthropic sampling parameters (temperature, top_p, top_k) are not sent; Opus 4.7+ rejects non-default values")
 	}
+	baseURL := defaultAnthropicBaseURL
+	if pc.BaseURL != "" {
+		baseURL = strings.TrimRight(pc.BaseURL, "/")
+	}
+	timeout := 60 * time.Second
+	if pc.TimeoutSeconds > 0 {
+		timeout = time.Duration(pc.TimeoutSeconds) * time.Second
+	}
 	return &AnthropicService{
-		apiKey:           apiKey,
-		modelName:        modelName,
-		backendModelName: backendModelName,
+		apiKey:           pc.ResolvedAPIKey(),
+		baseURL:          baseURL,
+		modelName:        pc.Model,
+		backendModelName: pc.BackendModel,
 		httpClient: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout: timeout,
 		},
 		logger: logger,
 	}
 }
 
-func (a *AnthropicService) InitModel(ctx context.Context, modelName string) error {
-	return nil
-}
-
-// splitChatMessages extracts and combines all system messages into a single system prompt
-// and returns the remaining non-system messages
+// splitChatMessages extracts and combines all system messages into a single top-level
+// Anthropic system prompt. Trailing system messages (e.g. the game-end prompt appended
+// after the user turn) are hoisted to the front here; Venice leaves them inline.
 func (a *AnthropicService) splitChatMessages(messages []chat.ChatMessage) (string, []chat.ChatMessage) {
 	var systemParts []string
 	var nonSystemMessages []chat.ChatMessage
@@ -177,7 +185,7 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", anthropicBaseURL+"/messages", bytes.NewBuffer(reqBody))
+	req, err := http.NewRequestWithContext(ctx, "POST", a.baseURL+"/messages", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
@@ -268,7 +276,7 @@ func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatM
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", anthropicBaseURL+"/messages", bytes.NewBuffer(reqBody))
+	req, err := http.NewRequestWithContext(ctx, "POST", a.baseURL+"/messages", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -375,103 +383,7 @@ func (a *AnthropicService) getDeltaUpdateTool() AnthropicTool {
 	return AnthropicTool{
 		Name:        "apply_changes",
 		Description: "Return only the delta for game state updates.",
-		InputSchema: map[string]any{
-			"type":                 "object",
-			"additionalProperties": false,
-			"properties": map[string]any{
-				"user_location": map[string]any{
-					"type": "string",
-				},
-				"scene_change": map[string]any{
-					"anyOf": []any{
-						map[string]any{
-							"type":                 "object",
-							"additionalProperties": false,
-							"properties": map[string]any{
-								"to":     map[string]any{"type": "string"},
-								"reason": map[string]any{"type": "string"},
-							},
-							"required": []string{"to", "reason"},
-						},
-						map[string]any{"type": "null"},
-					},
-				},
-				"item_events": map[string]any{
-					"type": "array",
-					"items": map[string]any{
-						"type":                 "object",
-						"additionalProperties": false,
-						"properties": map[string]any{
-							"item": map[string]any{
-								"type": "string",
-							},
-							"action": map[string]any{
-								"type": "string",
-								"enum": []string{"acquire", "give", "drop", "move", "use"},
-							},
-							"from": map[string]any{
-								"type":                 "object",
-								"additionalProperties": false,
-								"properties": map[string]any{
-									"type": map[string]any{
-										"type": "string",
-										"enum": []string{"player", "npc", "location"},
-									},
-									"name": map[string]any{
-										"type": "string",
-									},
-								},
-								"required": []string{"type"},
-							},
-							"to": map[string]any{
-								"type":                 "object",
-								"additionalProperties": false,
-								"properties": map[string]any{
-									"type": map[string]any{
-										"type": "string",
-										"enum": []string{"player", "npc", "location"},
-									},
-									"name": map[string]any{
-										"type": "string",
-									},
-								},
-								"required": []string{"type"},
-							},
-							"consumed": map[string]any{
-								"type": "boolean",
-							},
-						},
-						"required": []string{"item", "action"},
-					},
-				},
-				"npc_events": map[string]any{
-					"type": "array",
-					"items": map[string]any{
-						"type":                 "object",
-						"additionalProperties": false,
-						"properties": map[string]any{
-							"npc_id": map[string]any{
-								"type": "string",
-							},
-							"set_location": map[string]any{
-								"type": "string",
-							},
-						},
-						"required": []string{"npc_id"},
-					},
-				},
-				"set_vars": map[string]any{
-					"type": "object",
-					"additionalProperties": map[string]any{
-						"type": "string",
-					},
-				},
-				"game_ended": map[string]any{
-					"type": "boolean",
-				},
-			},
-			"required": []string{"user_location", "scene_change", "item_events", "npc_events", "set_vars", "game_ended"},
-		},
+		InputSchema: deltaUpdateSchema(),
 	}
 }
 

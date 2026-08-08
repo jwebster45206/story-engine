@@ -42,13 +42,8 @@ func (sc StreamChunk) MarshalJSON() ([]byte, error) {
 
 // LLMService defines the interface for interacting with the LLM API
 type LLMService interface {
-	InitModel(ctx context.Context, modelName string) error
-
 	// Chat generates a chat response using the LLM.
-	// TODO: Once model selection is per-gamestate, temperature applicability becomes a
-	// per-session question (Venice honors it; Anthropic ignores it). Grow a capability
-	// query (SupportsTemperature() or Capabilities()) so callers can surface or reject
-	// inert settings rather than silently dropping them.
+	// Venice honors temperature; Anthropic does not send it.
 	Chat(ctx context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error)
 
 	// ChatStream generates a streaming chat response using the LLM

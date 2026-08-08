@@ -25,7 +25,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestBuilder_FluentInterface(t *testing.T) {
-	gs := state.NewGameState("test.json", nil, "test-model")
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	scenario := &scenario.Scenario{
 		Name:   "Test",
 		Story:  "A test story",
@@ -75,7 +75,7 @@ func TestBuilder_Build_RequiresGameState(t *testing.T) {
 }
 
 func TestBuilder_Build_RequiresScenario(t *testing.T) {
-	gs := state.NewGameState("test.json", nil, "test-model")
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 
 	builder := New().WithGameState(gs)
 	_, err := builder.Build()
@@ -89,7 +89,7 @@ func TestBuilder_Build_RequiresScenario(t *testing.T) {
 }
 
 func TestBuilder_Build_BasicMessages(t *testing.T) {
-	gs := state.NewGameState("test.json", nil, "test-model")
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "start"
 
 	scenario := &scenario.Scenario{
@@ -146,7 +146,7 @@ func TestBuilder_Build_WithNarrator(t *testing.T) {
 		},
 	}
 
-	gs := state.NewGameState("test.json", narrator, "test-model")
+	gs := state.NewGameState("test.json", narrator, "test-provider", "test-model")
 	gs.Location = "start"
 
 	scenario := &scenario.Scenario{
@@ -196,7 +196,7 @@ func TestBuilder_Build_WithPC(t *testing.T) {
 		t.Fatalf("Failed to create PC: %v", err)
 	}
 
-	gs := state.NewGameState("test.json", nil, "test-model")
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.PC = pc
 	gs.Location = "start"
 
@@ -234,7 +234,7 @@ func TestBuilder_Build_WithPC(t *testing.T) {
 }
 
 func TestBuilder_Build_WithChatHistory(t *testing.T) {
-	gs := state.NewGameState("test.json", nil, "test-model")
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "start"
 	gs.ChatHistory = []chat.ChatMessage{
 		{Role: chat.ChatRoleUser, Content: "Message 1"},
@@ -277,7 +277,7 @@ func TestBuilder_Build_WithChatHistory(t *testing.T) {
 }
 
 func TestBuilder_Build_HistoryWindowing(t *testing.T) {
-	gs := state.NewGameState("test.json", nil, "test-model")
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "start"
 
 	// Create more history than the limit
@@ -318,7 +318,7 @@ func TestBuilder_Build_HistoryWindowing(t *testing.T) {
 }
 
 func TestBuilder_Build_GameEnded(t *testing.T) {
-	gs := state.NewGameState("test.json", nil, "test-model")
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "start"
 	gs.IsEnded = true
 
@@ -353,7 +353,7 @@ func TestBuilder_Build_GameEnded(t *testing.T) {
 }
 
 func TestBuilder_Build_WithContingencyPrompts(t *testing.T) {
-	gs := state.NewGameState("test.json", nil, "test-model")
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "start"
 	gs.Vars = map[string]string{"test_flag": "true"}
 
@@ -401,7 +401,7 @@ func TestBuilder_Build_WithContingencyPrompts(t *testing.T) {
 }
 
 func TestBuildMessages_ConvenienceFunction(t *testing.T) {
-	gs := state.NewGameState("test.json", nil, "test-model")
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "start"
 
 	scenario := &scenario.Scenario{
@@ -448,7 +448,7 @@ func TestBuildMessages_ErrorHandling(t *testing.T) {
 	}
 
 	// Test with nil scenario
-	gs := state.NewGameState("test.json", nil, "test-model")
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	_, err = BuildMessages(gs, nil, "Test", chat.ChatRoleUser, 10, "")
 	if err == nil {
 		t.Error("Expected error with nil scenario")
@@ -472,7 +472,7 @@ func containsHelper(s, substr string) bool {
 }
 
 func TestBuilder_Build_RelaxedSystemPrompt(t *testing.T) {
-	gs := state.NewGameState("test.json", nil, "test-model")
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Rules = state.RulesRelaxed
 	sc := &scenario.Scenario{
 		Name:   "Test",
@@ -508,9 +508,9 @@ func TestBuilder_Build_RelaxedSystemPrompt(t *testing.T) {
 func TestBuilder_Build_StrictAndRelaxedShareRulesBlock(t *testing.T) {
 	sc := &scenario.Scenario{Name: "Test", Story: "Story", Rating: scenario.RatingPG}
 
-	strictGS := state.NewGameState("test.json", nil, "test-model")
+	strictGS := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	strictGS.Rules = state.RulesStrict
-	relaxedGS := state.NewGameState("test.json", nil, "test-model")
+	relaxedGS := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	relaxedGS.Rules = state.RulesRelaxed
 
 	strictMsgs, err := New().WithGameState(strictGS).WithScenario(sc).WithUserMessage("hi", chat.ChatRoleUser).Build()

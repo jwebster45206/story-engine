@@ -27,9 +27,6 @@ services:
     environment:
       - PORT=8080
       - REDIS_URL=redis://redis:6379
-      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
-      - MODEL_NAME=${MODEL_NAME:-claude-3-5-sonnet-20241022}
-      - BACKEND_MODEL_NAME=${BACKEND_MODEL_NAME:-claude-3-5-sonnet-20241022}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - VENICE_API_KEY=${VENICE_API_KEY}
     healthcheck:

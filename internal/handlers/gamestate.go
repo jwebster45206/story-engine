@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/internal/services"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
@@ -19,17 +20,24 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
-type GameStateHandler struct {
-	storage   storage.Storage
-	logger    *slog.Logger
-	modelName string
+// ProviderCatalog is the slice of the registry that HTTP handlers need.
+type ProviderCatalog interface {
+	Default() string
+	Names() []string
+	Info(name string) (services.ProviderInfo, bool)
 }
 
-func NewGameStateHandler(logger *slog.Logger, modelName string, storage storage.Storage) *GameStateHandler {
+type GameStateHandler struct {
+	storage storage.Storage
+	logger  *slog.Logger
+	catalog ProviderCatalog
+}
+
+func NewGameStateHandler(logger *slog.Logger, catalog ProviderCatalog, storage storage.Storage) *GameStateHandler {
 	return &GameStateHandler{
-		logger:    logger,
-		modelName: modelName,
-		storage:   storage,
+		logger:  logger,
+		catalog: catalog,
+		storage: storage,
 	}
 }
 
@@ -121,23 +129,6 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func isCensoredModel(modelName string) bool {
-	// TODO: Once model selection is per-gamestate, validate the *requested* model
-	// from the create request rather than the server's single h.modelName default.
-	modelLower := strings.ToLower(modelName)
-	if strings.Contains(modelLower, "gpt") ||
-		strings.Contains(modelLower, "claude") ||
-		strings.HasPrefix(modelLower, "text-davinci") ||
-		strings.HasPrefix(modelLower, "text-curie") ||
-		strings.HasPrefix(modelLower, "text-babbage") ||
-		strings.HasPrefix(modelLower, "text-ada") ||
-		strings.Contains(modelLower, "openai") ||
-		strings.Contains(modelLower, "anthropic") {
-		return true
-	}
-	return false
-}
-
 func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Creating new game state")
 
@@ -167,13 +158,16 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	}
 	req.Normalize()
 
-	// Get initial gamestate values from scenario
-	s, err := h.storage.GetScenario(r.Context(), req.Scenario)
-	if err != nil {
-		h.logger.Warn("Failed to load scenario", "error", err)
+	provider := req.Provider
+	if provider == "" {
+		provider = h.catalog.Default()
+	}
+	info, ok := h.catalog.Info(provider)
+	if !ok {
+		h.logger.Warn("Unknown provider on create", "provider", provider)
 		w.WriteHeader(http.StatusBadRequest)
 		response := ErrorResponse{
-			Error: "Failed to load scenario: " + err.Error(),
+			Error: "Unknown provider: " + provider,
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Failed to encode error response", "error", err)
@@ -181,16 +175,13 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// If using a censored model, check the scenario for compatibility
-	if isCensoredModel(h.modelName) &&
-		s.Rating != scenario.RatingG &&
-		s.Rating != scenario.RatingPG &&
-		s.Rating != scenario.RatingPG13 &&
-		s.Rating != "PG13" {
-		h.logger.Error("Attempt to use censored model with wrong scenario rating", "model", h.modelName, "rating", s.Rating)
+	// Get initial gamestate values from scenario
+	s, err := h.storage.GetScenario(r.Context(), req.Scenario)
+	if err != nil {
+		h.logger.Warn("Failed to load scenario", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
 		response := ErrorResponse{
-			Error: "Censored model cannot be used with this scenario rating: " + s.Rating,
+			Error: "Failed to load scenario: " + err.Error(),
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Failed to encode error response", "error", err)
@@ -217,8 +208,8 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// Create a new GameState with embedded narrator
-	gs := state.NewGameState(req.Scenario, narrator, h.modelName)
+	// Create a new GameState; model_name is stamped from the provider config (client value ignored).
+	gs := state.NewGameState(req.Scenario, narrator, provider, info.Model)
 	gs.Rules = req.Rules
 	gs.Temperature = req.Temperature
 

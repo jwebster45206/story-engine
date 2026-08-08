@@ -13,11 +13,9 @@ import (
 
 // MockLLMAPI is a mock implementation of LLMService for testing
 type MockLLMAPI struct {
-	InitModelFunc        func(ctx context.Context, modelName string) error
 	GenerateResponseFunc func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error)
 
 	// Track calls for testing
-	InitModelCalls        []string
 	GenerateResponseCalls []GenerateResponseCall
 
 	mu sync.Mutex // protects all fields above
@@ -84,24 +82,8 @@ type GenerateResponseCall struct {
 // NewMockLLMAPI creates a new mock LLM service
 func NewMockLLMAPI() *MockLLMAPI {
 	return &MockLLMAPI{
-		InitModelCalls:        make([]string, 0),
 		GenerateResponseCalls: make([]GenerateResponseCall, 0),
 	}
-}
-
-// InitModel mocks model initialization
-func (m *MockLLMAPI) InitModel(ctx context.Context, modelName string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.InitModelCalls = append(m.InitModelCalls, modelName)
-
-	if m.InitModelFunc != nil {
-		return m.InitModelFunc(ctx, modelName)
-	}
-
-	// Default behavior - success
-	return nil
 }
 
 // Chat mocks response generation
@@ -144,17 +126,7 @@ func (m *MockLLMAPI) ChatStream(ctx context.Context, messages []chat.ChatMessage
 func (m *MockLLMAPI) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.InitModelCalls = make([]string, 0)
 	m.GenerateResponseCalls = make([]GenerateResponseCall, 0)
-}
-
-// SetInitModelError sets up the mock to return an error on InitModel
-func (m *MockLLMAPI) SetInitModelError(err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.InitModelFunc = func(ctx context.Context, modelName string) error {
-		return err
-	}
 }
 
 // SetGenerateResponseError sets up the mock to return an error on GenerateResponse
@@ -167,15 +139,12 @@ func (m *MockLLMAPI) SetGenerateResponseError(err error) {
 }
 
 // GetCalls returns a copy of the call tracking data in a thread-safe way
-func (m *MockLLMAPI) GetCalls() ([]string, []GenerateResponseCall) {
+func (m *MockLLMAPI) GetCalls() []GenerateResponseCall {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
-	initCalls := make([]string, len(m.InitModelCalls))
-	copy(initCalls, m.InitModelCalls)
 
 	respCalls := make([]GenerateResponseCall, len(m.GenerateResponseCalls))
 	copy(respCalls, m.GenerateResponseCalls)
 
-	return initCalls, respCalls
+	return respCalls
 }

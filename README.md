@@ -135,32 +135,37 @@ All endpoints return JSON responses with consistent error formatting.
 
 Create a JSON configuration file with your service settings:
 
-**Anthropic Claude**
+**Multi-provider config**
+
+Providers are named vendor+model pairings. A vendor is a wire protocol (`anthropic` or `venice`). Adding a provider is JSON-only.
+
 ```json
 {
   "port": "8080",
   "environment": "dev",
   "log_level": "debug",
-  "llm_provider": "anthropic",
-  "anthropic_api_key": "sk-ant-api03-...",
-  "model_name": "claude-sonnet-4-6",
-  "backend_model_name": "claude-haiku-4-5",
+  "default_provider": "sonnet",
+  "providers": {
+    "sonnet": {
+      "vendor": "anthropic",
+      "display_name": "Claude Sonnet 4.6",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "model": "claude-sonnet-4-6",
+      "backend_model": "claude-haiku-4-5"
+    },
+    "venice": {
+      "vendor": "venice",
+      "display_name": "Venice Uncensored",
+      "api_key_env": "VENICE_API_KEY",
+      "model": "venice-uncensored-role-play",
+      "backend_model": "qwen3-4b"
+    }
+  },
   "redis_url": "localhost:6379"
 }
 ```
 
-**Venice AI**
-```json
-{
-  "port": "8080",
-  "environment": "dev", 
-  "log_level": "debug",
-  "llm_provider": "venice",
-  "venice_api_key": "your_venice_api_key_here",
-  "model_name": "llama-3.3-70b",
-  "redis_url": "localhost:6379"
-}
-```
+`api_key_env` takes precedence over inline `api_key` when set. List providers via `GET /v1/providers`. Pass `provider` on `POST /v1/gamestate` (defaults to `default_provider`).
 
 ### API Server
 

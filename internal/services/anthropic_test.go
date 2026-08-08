@@ -3,53 +3,47 @@ package services
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
+	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/pkg/chat"
-	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
-func TestNewAnthropicService(t *testing.T) {
-	apiKey := "test-api-key"
-	modelName := "claude-3-sonnet-20240229"
-	backendModelName := "claude-3-backend"
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-
-	service := NewAnthropicService(apiKey, modelName, backendModelName, log)
-
-	if service.apiKey != apiKey {
-		t.Errorf("Expected API key %s, got %s", apiKey, service.apiKey)
-	}
-
-	if service.modelName != modelName {
-		t.Errorf("Expected model name %s, got %s", modelName, service.modelName)
-	}
-
-	if service.httpClient == nil {
-		t.Error("Expected HTTP client to be initialized")
+func anthropicPC(baseURL string) *config.ProviderConfig {
+	return &config.ProviderConfig{
+		Vendor:       config.VendorAnthropic,
+		APIKey:       "test-key",
+		Model:        "claude-test",
+		BackendModel: "claude-backend",
+		BaseURL:      baseURL,
 	}
 }
 
-func TestAnthropicService_InitModel(t *testing.T) {
+func TestNewAnthropicService(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	service := NewAnthropicService("test-key", "claude-3-sonnet-20240229", "claude-3-backend", log)
-
-	err := service.InitModel(context.Background(), "test-model")
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+	service := NewAnthropicService(anthropicPC(""), log)
+	if service.apiKey != "test-key" {
+		t.Errorf("apiKey = %q", service.apiKey)
+	}
+	if service.modelName != "claude-test" {
+		t.Errorf("modelName = %q", service.modelName)
+	}
+	if service.baseURL != defaultAnthropicBaseURL {
+		t.Errorf("baseURL = %q", service.baseURL)
+	}
+	if service.httpClient == nil {
+		t.Error("httpClient nil")
 	}
 }
 
 func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	service := NewAnthropicService("test-key", "claude-3-sonnet-20240229", "claude-3-backend", log)
+	service := NewAnthropicService(anthropicPC(""), log)
 
 	tests := []struct {
 		name                   string
@@ -92,389 +86,125 @@ func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			systemPrompt, nonSystemMessages := service.splitChatMessages(tt.messages)
-
 			if systemPrompt != tt.expectedSystem {
-				t.Errorf("Expected system prompt '%s', got '%s'", tt.expectedSystem, systemPrompt)
+				t.Errorf("system = %q, want %q", systemPrompt, tt.expectedSystem)
 			}
-
 			if len(nonSystemMessages) != tt.expectedNonSystemCount {
-				t.Errorf("Expected %d non-system messages, got %d", tt.expectedNonSystemCount, len(nonSystemMessages))
-			}
-
-			// Verify no system messages remain
-			for _, msg := range nonSystemMessages {
-				if msg.Role == chat.ChatRoleSystem {
-					t.Error("Found system message in non-system messages")
-				}
+				t.Errorf("non-system count = %d", len(nonSystemMessages))
 			}
 		})
 	}
 }
 
-func TestAnthropicChatRequestStructure(t *testing.T) {
-	req := AnthropicChatRequest{
-		Model:     "claude-opus-4-7",
-		MaxTokens: 1024,
-		Messages: chat.ToLLMMessages([]chat.ChatMessage{
-			{Role: "user", Content: "Hello", IsStoryEvent: true},
-		}),
-		System: "You are a helpful assistant.",
-		Stream: true,
-	}
+func TestAnthropicService_Chat_RequestShape(t *testing.T) {
+	var gotBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/messages" {
+			t.Errorf("path = %s", r.URL.Path)
+		}
+		if r.Header.Get("x-api-key") != "test-key" {
+			t.Errorf("missing x-api-key")
+		}
+		if r.Header.Get("anthropic-version") != anthropicVersion {
+			t.Errorf("anthropic-version = %s", r.Header.Get("anthropic-version"))
+		}
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"text","text":"hi"}],"model":"claude-test","stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}`))
+	}))
+	defer server.Close()
 
-	data, err := json.Marshal(req)
+	svc := NewAnthropicService(anthropicPC(server.URL), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	resp, err := svc.Chat(context.Background(), []chat.ChatMessage{
+		{Role: chat.ChatRoleSystem, Content: "sys"},
+		{Role: chat.ChatRoleUser, Content: "Hello", IsStoryEvent: true},
+	}, 0.7)
 	if err != nil {
-		t.Fatalf("Failed to marshal request: %v", err)
+		t.Fatal(err)
 	}
-	var m map[string]json.RawMessage
-	if err := json.Unmarshal(data, &m); err != nil {
-		t.Fatalf("Failed to unmarshal marshaled request: %v", err)
+	if resp.Message != "hi" {
+		t.Fatalf("message = %q", resp.Message)
 	}
-	expected := map[string]bool{
-		"model":      true,
-		"max_tokens": true,
-		"messages":   true,
-		"system":     true,
-		"stream":     true,
+	if gotBody["model"] != "claude-test" {
+		t.Fatalf("model = %v", gotBody["model"])
 	}
-	for key := range m {
-		if !expected[key] {
-			t.Errorf("unexpected key %q in Anthropic request payload", key)
-		}
+	if _, ok := gotBody["temperature"]; ok {
+		t.Fatal("temperature must not be sent to Anthropic")
 	}
-	for key := range expected {
-		if _, ok := m[key]; !ok {
-			t.Errorf("expected key %q in Anthropic request payload", key)
-		}
+	if gotBody["system"] != "sys" {
+		t.Fatalf("system = %v", gotBody["system"])
 	}
-
-	var msgs []map[string]any
-	if err := json.Unmarshal(m["messages"], &msgs); err != nil {
-		t.Fatalf("Failed to unmarshal messages: %v", err)
-	}
-	if len(msgs) != 1 {
-		t.Fatalf("expected 1 message, got %d", len(msgs))
-	}
-	if _, ok := msgs[0]["is_story_event"]; ok {
-		t.Errorf("is_story_event must not appear in Anthropic request messages")
-	}
-	if msgs[0]["role"] != "user" || msgs[0]["content"] != "Hello" {
-		t.Errorf("unexpected message payload: %#v", msgs[0])
+	raw, _ := json.Marshal(gotBody)
+	if strings.Contains(string(raw), "is_story_event") {
+		t.Fatalf("is_story_event leaked: %s", raw)
 	}
 }
 
-func TestAnthropicChatResponseStructure(t *testing.T) {
-	// Test that we can unmarshal a typical Anthropic response
-	responseJSON := `{
-		"id": "msg_01ABC123",
-		"type": "message",
-		"role": "assistant",
-		"content": [
-			{
-				"type": "text",
-				"text": "Hello! How can I help you today?"
-			}
-		],
-		"model": "claude-3-sonnet-20240229",
-		"stop_reason": "end_turn",
-		"stop_sequence": null,
-		"usage": {
-			"input_tokens": 10,
-			"output_tokens": 20
+func TestAnthropicService_ChatStream_SSE(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		frames := []string{
+			`event: content_block_delta`,
+			`data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hello"}}`,
+			``,
+			`event: content_block_delta`,
+			`data: {"type":"content_block_delta","delta":{"type":"text_delta","text":" world"}}`,
+			``,
+			`event: message_stop`,
+			`data: {"type":"message_stop"}`,
+			``,
 		}
-	}`
+		for _, f := range frames {
+			_, _ = w.Write([]byte(f + "\n"))
+			if fl, ok := w.(http.Flusher); ok {
+				fl.Flush()
+			}
+		}
+	}))
+	defer server.Close()
 
-	var resp AnthropicChatResponse
-	err := json.Unmarshal([]byte(responseJSON), &resp)
+	svc := NewAnthropicService(anthropicPC(server.URL), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	ch, err := svc.ChatStream(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "Hi"}}, 0.5)
 	if err != nil {
-		t.Errorf("Failed to unmarshal response: %v", err)
+		t.Fatal(err)
 	}
-
-	if resp.ID != "msg_01ABC123" {
-		t.Errorf("Expected ID 'msg_01ABC123', got '%s'", resp.ID)
+	var content strings.Builder
+	for chunk := range ch {
+		if chunk.Error != nil {
+			t.Fatal(chunk.Error)
+		}
+		content.WriteString(chunk.Content)
+		if chunk.Done {
+			break
+		}
 	}
-
-	if len(resp.Content) != 1 {
-		t.Errorf("Expected 1 content block, got %d", len(resp.Content))
-	}
-
-	if resp.Content[0].Text != "Hello! How can I help you today?" {
-		t.Errorf("Expected text 'Hello! How can I help you today?', got '%s'", resp.Content[0].Text)
-	}
-}
-
-func TestAnthropicService_MetaUpdateJSONParsing(t *testing.T) {
-	// Test JSON cleaning logic by creating test cases for various response formats
-	tests := []struct {
-		name             string
-		responseText     string
-		expectedError    bool
-		expectedLocation string
-	}{
-		{
-			name:             "clean JSON",
-			responseText:     `{"user_location": "forest"}`,
-			expectedError:    false,
-			expectedLocation: "forest",
-		},
-		{
-			name:             "JSON with markdown code blocks",
-			responseText:     "```json\n{\"user_location\": \"forest\"}\n```",
-			expectedError:    false,
-			expectedLocation: "forest",
-		},
-		{
-			name:             "JSON with backticks in content",
-			responseText:     "```\n{\"user_location\": \"forest`area\"}\n```",
-			expectedError:    false,
-			expectedLocation: "forestarea",
-		},
-		{
-			name:             "mixed narrative and JSON (real world case)",
-			responseText:     "Across the tavern, you spot the burly Shipwright hunched over a table, nursing a mug of ale and examining what looks like ship blueprints.\n\njson\n{\n \"user_location\": \"Sleepy Mermaid\",\n \"remove_from_inventory\": [\"cutlass\"]\n}",
-			expectedError:    false,
-			expectedLocation: "Sleepy Mermaid",
-		},
-		{
-			name:             "invalid JSON",
-			responseText:     "```json\n{invalid json}\n```",
-			expectedError:    true,
-			expectedLocation: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Test the cleaning logic directly by applying the same logic as MetaUpdate
-			originalText := tt.responseText
-			mTxt := originalText
-
-			// Apply the same cleaning logic as in MetaUpdate
-			mTxt = strings.TrimSpace(mTxt)
-
-			// Strategy 1: Remove markdown code blocks if present
-			if strings.HasPrefix(mTxt, "```") {
-				lines := strings.Split(mTxt, "\n")
-				startIdx := 0
-				for i, line := range lines {
-					if strings.HasPrefix(line, "```") && i == 0 {
-						startIdx = 1
-						break
-					}
-				}
-
-				endIdx := len(lines)
-				for i := len(lines) - 1; i >= 0; i-- {
-					if strings.HasPrefix(lines[i], "```") && i > 0 {
-						endIdx = i
-						break
-					}
-				}
-
-				if startIdx < endIdx {
-					mTxt = strings.Join(lines[startIdx:endIdx], "\n")
-				}
-			}
-
-			// Strategy 2: Look for JSON object if we have mixed content
-			if !strings.HasPrefix(strings.TrimSpace(mTxt), "{") {
-				jsonStart := strings.Index(mTxt, "{")
-				if jsonStart >= 0 {
-					mTxt = mTxt[jsonStart:]
-				}
-			}
-
-			// Strategy 3: Clean up any remaining artifacts
-			mTxt = strings.ReplaceAll(mTxt, "`", "")
-
-			// Remove standalone "json" lines that might appear
-			lines := strings.Split(mTxt, "\n")
-			var cleanLines []string
-			for _, line := range lines {
-				trimmed := strings.TrimSpace(line)
-				if trimmed != "json" && trimmed != "" {
-					cleanLines = append(cleanLines, line)
-				}
-			}
-			mTxt = strings.Join(cleanLines, "\n")
-			mTxt = strings.TrimSpace(mTxt)
-
-			var metaUpdate conditionals.GameStateDelta
-			err := json.Unmarshal([]byte(mTxt), &metaUpdate)
-
-			if tt.expectedError {
-				if err == nil {
-					t.Error("Expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("Unexpected error parsing %q -> %q: %v", originalText, mTxt, err)
-				return
-			}
-
-			if metaUpdate.UserLocation != tt.expectedLocation {
-				t.Errorf("Expected UserLocation %q, got %q", tt.expectedLocation, metaUpdate.UserLocation)
-			}
-		})
+	if content.String() != "Hello world" {
+		t.Fatalf("content = %q", content.String())
 	}
 }
 
-func TestAnthropicService_ChatStream(t *testing.T) {
-	t.Run("successful streaming response", func(t *testing.T) {
-		// Mock server that returns Anthropic SSE streaming response
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/event-stream")
-			w.WriteHeader(http.StatusOK)
-
-			// Send Anthropic-style streaming events
-			responses := []string{
-				`event: message_start`,
-				`data: {"type": "message_start", "message": {"id": "msg_test", "type": "message", "role": "assistant", "content": [], "model": "claude-3-sonnet-20240229", "stop_reason": null, "stop_sequence": null, "usage": {"input_tokens": 10, "output_tokens": 1}}}`,
-				``,
-				`event: content_block_start`,
-				`data: {"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}`,
-				``,
-				`event: ping`,
-				`data: {"type": "ping"}`,
-				``,
-				`event: content_block_delta`,
-				`data: {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "Hello"}}`,
-				``,
-				`event: content_block_delta`,
-				`data: {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": " world"}}`,
-				``,
-				`event: content_block_stop`,
-				`data: {"type": "content_block_stop", "index": 0}`,
-				``,
-				`event: message_delta`,
-				`data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": null}, "usage": {"output_tokens": 15}}`,
-				``,
-				`event: message_stop`,
-				`data: {"type": "message_stop"}`,
-				``,
-			}
-
-			for _, response := range responses {
-				if _, err := w.Write([]byte(response + "\n")); err != nil {
-					return // Exit on write error in test
-				}
-				if f, ok := w.(http.Flusher); ok {
-					f.Flush()
-				}
-				time.Sleep(10 * time.Millisecond) // Small delay to simulate streaming
-			}
-		}))
-		defer server.Close()
-
-		log := slog.New(slog.NewTextHandler(io.Discard, nil))
-		_ = NewAnthropicService("test-key", "claude-3-sonnet-20240229", "", log) // Keep for consistency
-
-		// Test the streaming parsing logic by simulating the core events
-		chunkChan := make(chan StreamChunk, 10)
-		go func() {
-			defer close(chunkChan)
-			// Simulate the streaming response parsing with actual Anthropic events
-			testEvents := []string{
-				`{"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "Hello"}}`,
-				`{"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": " world"}}`,
-				`{"type": "message_stop"}`,
-			}
-
-			for _, eventData := range testEvents {
-				var streamEvent AnthropicStreamEvent
-				if err := json.Unmarshal([]byte(eventData), &streamEvent); err != nil {
-					chunkChan <- StreamChunk{Error: err}
-					return
-				}
-
-				// Apply the same logic as in the actual ChatStream method
-				switch streamEvent.Type {
-				case "content_block_delta":
-					if streamEvent.Delta != nil && streamEvent.Delta.Type == "text_delta" {
-						chunkChan <- StreamChunk{
-							Content: streamEvent.Delta.Text,
-							Done:    false,
-						}
-					}
-				case "message_stop":
-					chunkChan <- StreamChunk{Done: true}
-					return
-				}
-			}
-		}()
-
-		// Collect streaming chunks
-		var content strings.Builder
-		var chunks []StreamChunk
-
-		for chunk := range chunkChan {
-			chunks = append(chunks, chunk)
-			if chunk.Error != nil {
-				t.Fatalf("Streaming error: %v", chunk.Error)
-			}
-			if chunk.Content != "" {
-				content.WriteString(chunk.Content)
-			}
-			if chunk.Done {
-				break
-			}
+func TestAnthropicService_DeltaUpdate_ToolUse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if _, ok := body["tools"]; !ok {
+			t.Error("expected tools in delta request")
 		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"tool_use","id":"t1","name":"apply_changes","input":{"user_location":"dock","scene_change":null,"item_events":[],"npc_events":[],"set_vars":{},"game_ended":false}}],"model":"claude-backend","stop_reason":"tool_use","usage":{"input_tokens":1,"output_tokens":1}}`))
+	}))
+	defer server.Close()
 
-		expectedContent := "Hello world"
-		if content.String() != expectedContent {
-			t.Errorf("Expected content '%s', got '%s'", expectedContent, content.String())
-		}
-
-		// Verify we received the expected number of chunks
-		if len(chunks) != 3 { // 2 content chunks + 1 done chunk
-			t.Errorf("Expected 3 chunks, got %d", len(chunks))
-		}
-
-		// Verify the last chunk is done
-		if !chunks[len(chunks)-1].Done {
-			t.Error("Expected last chunk to be marked as done")
-		}
-	})
-
-	t.Run("handles API errors in stream", func(t *testing.T) {
-		// Test error handling in streaming
-		chunkChan := make(chan StreamChunk, 10)
-		go func() {
-			defer close(chunkChan)
-			// Simulate an error event
-			errorEvent := `{"type": "error", "error": {"type": "overloaded_error", "message": "Overloaded"}}`
-
-			var streamEvent AnthropicStreamEvent
-			if err := json.Unmarshal([]byte(errorEvent), &streamEvent); err != nil {
-				chunkChan <- StreamChunk{Error: err}
-				return
-			}
-
-			// Apply the same error handling logic as in ChatStream
-			if streamEvent.Error != nil {
-				chunkChan <- StreamChunk{Error: fmt.Errorf("anthropic API error: %s", streamEvent.Error.Message)}
-				return
-			}
-		}()
-
-		// Collect chunks and verify error handling
-		var errorReceived error
-		for chunk := range chunkChan {
-			if chunk.Error != nil {
-				errorReceived = chunk.Error
-				break
-			}
-		}
-
-		if errorReceived == nil {
-			t.Error("Expected to receive an error")
-		}
-
-		expectedErrorMsg := "anthropic API error: Overloaded"
-		if errorReceived.Error() != expectedErrorMsg {
-			t.Errorf("Expected error message '%s', got '%s'", expectedErrorMsg, errorReceived.Error())
-		}
-	})
+	svc := NewAnthropicService(anthropicPC(server.URL), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	delta, model, err := svc.DeltaUpdate(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "update"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if model != "claude-backend" {
+		t.Fatalf("model = %q", model)
+	}
+	if delta == nil || delta.UserLocation != "dock" {
+		t.Fatalf("delta = %#v", delta)
+	}
 }

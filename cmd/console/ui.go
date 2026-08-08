@@ -130,6 +130,16 @@ type ConsoleUI struct {
 	showPlayStyleModal bool
 	selectedPlayStyle  int
 
+	// Provider selection state
+	showProviderModal  bool
+	providers          []providerOption
+	selectedProvider   int
+	loadingProviders   bool
+	defaultProvider    string
+	selectedProviderID string
+	selectedRules      string
+	selectedTemp       float64
+
 	// Profanity filter for family-friendly content
 	profanityFilter *textfilter.ProfanityFilter
 
@@ -505,6 +515,9 @@ func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollin
 	}
 
 	content.WriteString("\n")
+	if gs.Provider != "" {
+		content.WriteString(promptStyle.Render(gs.Provider) + "\n")
+	}
 	content.WriteString(promptStyle.Render(gs.ModelName) + "\n\n")
 	// width = max(8, width) // min width of 8
 
@@ -601,6 +614,11 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle play style modal third
 	if m.showPlayStyleModal {
 		return m.updatePlayStyleModal(msg)
+	}
+
+	// Handle provider modal fourth
+	if m.showProviderModal {
+		return m.updateProviderModal(msg)
 	}
 
 	// Handle quit modal
@@ -1141,6 +1159,9 @@ func (m ConsoleUI) handleExport() (ConsoleUI, tea.Cmd) {
 	if charName != "" {
 		fmt.Fprintf(&content, "**Character:** %s\n\n", charName)
 	}
+	if m.gameState.Provider != "" {
+		fmt.Fprintf(&content, "**Provider:** %s\n\n", m.gameState.Provider)
+	}
 	fmt.Fprintf(&content, "**Model:** %s\n\n", m.gameState.ModelName)
 	fmt.Fprintf(&content, "**Turn Count:** %d\n\n", m.gameState.TurnCounter)
 	fmt.Fprintf(&content, "**Exported:** %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
@@ -1297,11 +1318,24 @@ func (m ConsoleUI) loadPCs() tea.Cmd {
 	}
 }
 
-func (m ConsoleUI) createGameStateFromScenario(scenarioFile string, pcID string, rules string, temperature float64) tea.Cmd {
+func (m ConsoleUI) createGameStateFromScenario(scenarioFile string, pcID string, provider string, rules string, temperature float64) tea.Cmd {
 	return func() tea.Msg {
-		gs, err := createGameState(m.client, m.config.APIBaseURL, scenarioFile, pcID, rules, temperature)
+		gs, err := createGameState(m.client, m.config.APIBaseURL, scenarioFile, pcID, provider, rules, temperature)
 		return gameStateCreatedMsg{gs, err}
 	}
+}
+
+func (m ConsoleUI) loadProviders() tea.Cmd {
+	return func() tea.Msg {
+		def, providers, err := getProviders(m.client, m.config.APIBaseURL)
+		return providersLoadedMsg{def, providers, err}
+	}
+}
+
+type providersLoadedMsg struct {
+	defaultProvider string
+	providers       []providerOption
+	err             error
 }
 
 func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -1539,12 +1573,110 @@ func (m ConsoleUI) updatePlayStyleModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case tea.KeyEnter:
 			style := playStyles[m.selectedPlayStyle]
+			m.selectedRules = string(style.rules)
+			m.selectedTemp = style.temperature
+			m.showPlayStyleModal = false
+			m.showProviderModal = true
+			m.loadingProviders = true
+			m.err = nil
+			return m, m.loadProviders()
+		}
+	}
+
+	return m, nil
+}
+
+func (m ConsoleUI) updateProviderModal(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+	case providersLoadedMsg:
+		m.loadingProviders = false
+		if msg.err != nil {
+			m.err = msg.err
+			return m, nil
+		}
+		m.providers = msg.providers
+		m.defaultProvider = msg.defaultProvider
+		m.selectedProvider = 0
+		for i, p := range m.providers {
+			if p.Name == m.defaultProvider {
+				m.selectedProvider = i
+				break
+			}
+		}
+		// Skip the picker when only one provider is configured.
+		if len(m.providers) <= 1 {
+			providerID := m.defaultProvider
+			if len(m.providers) == 1 {
+				providerID = m.providers[0].Name
+			}
+			m.selectedProviderID = providerID
+			m.showProviderModal = false
 			m.loading = true
 			return m, m.createGameStateFromScenario(
 				m.selectedScenarioFile,
 				m.selectedPCID,
-				string(style.rules),
-				style.temperature,
+				providerID,
+				m.selectedRules,
+				m.selectedTemp,
+			)
+		}
+
+	case gameStateCreatedMsg:
+		return m.handleGameStateCreated(msg)
+
+	case tea.KeyMsg:
+		if m.loadingProviders || m.loading {
+			if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyEsc {
+				return m, tea.Quit
+			}
+			return m, nil
+		}
+
+		if m.err != nil {
+			switch msg.Type {
+			case tea.KeyCtrlC:
+				return m, tea.Quit
+			case tea.KeyEsc:
+				m.showProviderModal = false
+				m.showPlayStyleModal = true
+				m.err = nil
+				return m, nil
+			}
+			return m, nil
+		}
+
+		switch msg.Type {
+		case tea.KeyCtrlC:
+			return m, tea.Quit
+		case tea.KeyEsc:
+			m.showProviderModal = false
+			m.showPlayStyleModal = true
+			m.err = nil
+			return m, nil
+		case tea.KeyUp:
+			if m.selectedProvider > 0 {
+				m.selectedProvider--
+			}
+		case tea.KeyDown:
+			if m.selectedProvider < len(m.providers)-1 {
+				m.selectedProvider++
+			}
+		case tea.KeyEnter:
+			if len(m.providers) == 0 {
+				return m, nil
+			}
+			m.selectedProviderID = m.providers[m.selectedProvider].Name
+			m.loading = true
+			return m, m.createGameStateFromScenario(
+				m.selectedScenarioFile,
+				m.selectedPCID,
+				m.selectedProviderID,
+				m.selectedRules,
+				m.selectedTemp,
 			)
 		}
 	}
@@ -1640,6 +1772,15 @@ func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
 	// Reset play style selection state
 	m.showPlayStyleModal = false
 	m.selectedPlayStyle = defaultPlayStyleIndex
+	// Reset provider selection state
+	m.showProviderModal = false
+	m.providers = nil
+	m.selectedProvider = 0
+	m.loadingProviders = false
+	m.defaultProvider = ""
+	m.selectedProviderID = ""
+	m.selectedRules = ""
+	m.selectedTemp = 0
 	// Reset polling state
 	m.pollSeq = 0
 	m.activePollSeq = 0
@@ -1816,6 +1957,49 @@ func (m ConsoleUI) renderPlayStyleModal() string {
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modal, lipgloss.WithWhitespaceChars(" "))
 }
 
+func (m ConsoleUI) renderProviderModal() string {
+	if m.width == 0 || m.height == 0 {
+		return "Loading..."
+	}
+
+	var content strings.Builder
+
+	if m.loadingProviders {
+		content.WriteString(modalTitleStyle.Render("Loading Providers..."))
+		content.WriteString("\n\n")
+		content.WriteString(loadingStyle.Render("Please wait while we fetch available providers..."))
+	} else if m.err != nil {
+		content.WriteString(modalTitleStyle.Render("Error"))
+		content.WriteString("\n\n")
+		content.WriteString(errorStyle.Render(fmt.Sprintf("Failed to load providers: %v", m.err)))
+		content.WriteString("\n\n")
+		content.WriteString("Press Ctrl+C to force quit, Esc to go back")
+	} else if m.loading {
+		content.WriteString(modalTitleStyle.Render("Creating Game..."))
+		content.WriteString("\n\n")
+		content.WriteString(loadingStyle.Render("Setting up your adventure..."))
+	} else {
+		content.WriteString(modalTitleStyle.Render("Select API Provider"))
+		content.WriteString("\n\n")
+
+		for i, p := range m.providers {
+			label := fmt.Sprintf("%s (%s)", p.DisplayName, p.Model)
+			if i == m.selectedProvider {
+				content.WriteString(modalSelectedItemStyle.Render(fmt.Sprintf("▶ %s", label)))
+			} else {
+				content.WriteString(modalItemStyle.Render(fmt.Sprintf("  %s", label)))
+			}
+			content.WriteString("\n")
+		}
+
+		content.WriteString("\n")
+		content.WriteString(promptStyle.Render("Use ↑/↓ to navigate, Enter to select, Esc to go back"))
+	}
+
+	modal := modalStyle.Width(60).Render(content.String())
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modal, lipgloss.WithWhitespaceChars(" "))
+}
+
 func (m ConsoleUI) View() string {
 	if m.showScenarioModal {
 		return m.renderScenarioModal()
@@ -1827,6 +2011,10 @@ func (m ConsoleUI) View() string {
 
 	if m.showPlayStyleModal {
 		return m.renderPlayStyleModal()
+	}
+
+	if m.showProviderModal {
+		return m.renderProviderModal()
 	}
 
 	if m.showQuitModal {

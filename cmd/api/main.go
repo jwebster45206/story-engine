@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -31,33 +30,12 @@ func main() {
 		"config", os.Getenv("CONFIG"),
 		"port", cfg.Port,
 		"environment", cfg.Environment,
-		"llm_provider", cfg.LLMProvider,
-		"model_name", cfg.ModelName)
+		"default_provider", cfg.DefaultProvider,
+		"providers", len(cfg.Providers))
 
-	var llmService services.LLMService
-	// TODO: Once model selection is per-gamestate, replace this single-provider
-	// startup switch with a registry/resolver keyed by model name (one initialized
-	// service per configured provider). InitModel would move behind that registry.
-	switch strings.ToLower(cfg.LLMProvider) {
-	case "anthropic":
-		// Initialize Anthropic LLM service
-		if cfg.AnthropicAPIKey == "" {
-			log.Error("Anthropic API key is required when using anthropic provider")
-			os.Exit(1)
-		}
-		llmService = services.NewAnthropicService(cfg.AnthropicAPIKey, cfg.ModelName, cfg.BackendModelName, log)
-		log.Info("Using Anthropic LLM provider")
-	case "venice":
-		// Initialize Venice LLM service
-		if cfg.VeniceAPIKey == "" {
-			log.Error("Venice API key is required when using venice provider")
-			os.Exit(1)
-		}
-		llmService = services.NewVeniceService(cfg.VeniceAPIKey, cfg.ModelName, cfg.BackendModelName)
-		log.Info("Using Venice LLM provider")
-	// case "ollama": // TODO: Support for Ollama self-hosted LLM
-	default:
-		log.Error("Invalid LLM provider specified", "provider", cfg.LLMProvider, "supported", []string{"anthropic", "venice"})
+	registry, err := services.NewRegistry(cfg, log)
+	if err != nil {
+		log.Error("Failed to initialize LLM providers", "error", err)
 		os.Exit(1)
 	}
 
@@ -90,17 +68,9 @@ func main() {
 	// Create Redis client for SSE (reusing queue client's redis)
 	redisClient := queueClient.GetRedisClient()
 
-	// Initialize the model on startup
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-	if err := llmService.InitModel(ctx, cfg.ModelName); err != nil {
-		log.Error("Failed to initialize LLM model", "error", err, "model", cfg.ModelName)
-		os.Exit(1)
-	}
-
 	mux := http.NewServeMux()
 
-	healthHandler := handlers.NewHealthHandler(log, storageService, llmService)
+	healthHandler := handlers.NewHealthHandler(log, storageService)
 	mux.Handle("/health", healthHandler)
 
 	chatHandler := handlers.NewChatHandler(chatQueue, log)
@@ -109,9 +79,12 @@ func main() {
 	eventsHandler := handlers.NewEventsHandler(redisClient, log)
 	mux.Handle("/v1/events/gamestate/", eventsHandler)
 
-	gameStateHandler := handlers.NewGameStateHandler(log, cfg.ModelName, storageService)
+	gameStateHandler := handlers.NewGameStateHandler(log, registry, storageService)
 	mux.Handle("/v1/gamestate", gameStateHandler)
 	mux.Handle("/v1/gamestate/", gameStateHandler)
+
+	providersHandler := handlers.NewProvidersHandler(log, registry)
+	mux.Handle("/v1/providers", providersHandler)
 
 	scenarioHandler := handlers.NewScenarioHandler(log, storageService)
 	mux.Handle("/v1/scenarios", scenarioHandler)

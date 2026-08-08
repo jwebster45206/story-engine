@@ -7,25 +7,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
 const (
-	veniceBaseURL = "https://api.venice.ai/api/v1"
-	msgNoResponse = "(no response)"
+	defaultVeniceBaseURL = "https://api.venice.ai/api/v1"
+	msgNoResponse        = "(no response)"
 )
 
 // VeniceService implements LLMService for Venice AI
 type VeniceService struct {
 	apiKey           string
+	baseURL          string
 	modelName        string
 	backendModelName string
 	httpClient       *http.Client
+	logger           *slog.Logger
 }
 
 type VeniceResponseFormat struct {
@@ -109,20 +113,25 @@ type VeniceStreamResponse struct {
 }
 
 // NewVeniceService creates a new Venice AI service
-func NewVeniceService(apiKey string, modelName string, backendModelName string) *VeniceService {
-	return &VeniceService{
-		apiKey:           apiKey,
-		modelName:        modelName,
-		backendModelName: backendModelName,
-		httpClient: &http.Client{
-			Timeout: 60 * time.Second,
-		},
+func NewVeniceService(pc *config.ProviderConfig, logger *slog.Logger) *VeniceService {
+	baseURL := defaultVeniceBaseURL
+	if pc.BaseURL != "" {
+		baseURL = strings.TrimRight(pc.BaseURL, "/")
 	}
-}
-
-// InitModel initializes the model (Venice AI doesn't require explicit model initialization)
-func (v *VeniceService) InitModel(ctx context.Context, modelName string) error {
-	return nil
+	timeout := 60 * time.Second
+	if pc.TimeoutSeconds > 0 {
+		timeout = time.Duration(pc.TimeoutSeconds) * time.Second
+	}
+	return &VeniceService{
+		apiKey:           pc.ResolvedAPIKey(),
+		baseURL:          baseURL,
+		modelName:        pc.Model,
+		backendModelName: pc.BackendModel,
+		httpClient: &http.Client{
+			Timeout: timeout,
+		},
+		logger: logger,
+	}
 }
 
 // chatCompletion makes a chat completion request to Venice AI with the specified model
@@ -153,7 +162,7 @@ func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.Chat
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", veniceBaseURL+"/chat/completions", bytes.NewBuffer(reqBody))
+	req, err := http.NewRequestWithContext(ctx, "POST", v.baseURL+"/chat/completions", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
@@ -200,104 +209,7 @@ func (v *VeniceService) getDeltaUpdateResponseFormat() *VeniceResponseFormat {
 		JSONSchema: VeniceJSONSchema{
 			Name:   "apply_changes",
 			Strict: true,
-			Schema: map[string]any{
-				"type":                 "object",
-				"additionalProperties": false,
-				"properties": map[string]any{
-					"user_location": map[string]any{
-						"type": "string",
-					},
-					// REQUIRED + NULLABLE scene_change
-					"scene_change": map[string]any{
-						"anyOf": []any{
-							map[string]any{
-								"type":                 "object",
-								"additionalProperties": false,
-								"properties": map[string]any{
-									"to":     map[string]any{"type": "string"},
-									"reason": map[string]any{"type": "string"},
-								},
-								"required": []string{"to", "reason"},
-							},
-							map[string]any{"type": "null"},
-						},
-					},
-					"item_events": map[string]any{
-						"type": "array",
-						"items": map[string]any{
-							"type":                 "object",
-							"additionalProperties": false,
-							"properties": map[string]any{
-								"item": map[string]any{
-									"type": "string",
-								},
-								"action": map[string]any{
-									"type": "string",
-									"enum": []string{"acquire", "give", "drop", "move", "use"},
-								},
-								"from": map[string]any{
-									"type":                 "object",
-									"additionalProperties": false,
-									"properties": map[string]any{
-										"type": map[string]any{
-											"type": "string",
-											"enum": []string{"player", "npc", "location"},
-										},
-										"name": map[string]any{
-											"type": "string",
-										},
-									},
-									"required": []string{"type"},
-								},
-								"to": map[string]any{
-									"type":                 "object",
-									"additionalProperties": false,
-									"properties": map[string]any{
-										"type": map[string]any{
-											"type": "string",
-											"enum": []string{"player", "npc", "location"},
-										},
-										"name": map[string]any{
-											"type": "string",
-										},
-									},
-									"required": []string{"type"},
-								},
-								"consumed": map[string]any{
-									"type": "boolean",
-								},
-							},
-							"required": []string{"item", "action"},
-						},
-					},
-					"npc_events": map[string]any{
-						"type": "array",
-						"items": map[string]any{
-							"type":                 "object",
-							"additionalProperties": false,
-							"properties": map[string]any{
-								"npc_id": map[string]any{
-									"type": "string",
-								},
-								"set_location": map[string]any{
-									"type": "string",
-								},
-							},
-							"required": []string{"npc_id"},
-						},
-					},
-					"set_vars": map[string]any{
-						"type": "object",
-						"additionalProperties": map[string]any{
-							"type": "string",
-						},
-					},
-					"game_ended": map[string]any{
-						"type": "boolean",
-					},
-				},
-				"required": []string{"user_location", "scene_change", "item_events", "npc_events", "set_vars", "game_ended"},
-			},
+			Schema: deltaUpdateSchema(),
 		},
 	}
 }
@@ -333,7 +245,7 @@ func (v *VeniceService) ChatStream(ctx context.Context, messages []chat.ChatMess
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", veniceBaseURL+"/chat/completions", bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequestWithContext(ctx, "POST", v.baseURL+"/chat/completions", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

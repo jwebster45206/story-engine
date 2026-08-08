@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -29,7 +28,9 @@ func main() {
 	log.Info("Starting Story Engine Worker",
 		"config", os.Getenv("CONFIG"),
 		"environment", cfg.Environment,
-		"redis_url", cfg.RedisURL)
+		"redis_url", cfg.RedisURL,
+		"default_provider", cfg.DefaultProvider,
+		"providers", len(cfg.Providers))
 
 	// Initialize queue service
 	queueClient, err := queue.NewClient(cfg.RedisURL, log)
@@ -58,42 +59,15 @@ func main() {
 	}
 	log.Info("Storage service initialized successfully")
 
-	// Initialize LLM service
-	var llmService services.LLMService
-	// TODO: Once model selection is per-gamestate, replace this single-provider
-	// startup switch with a registry/resolver keyed by model name (one initialized
-	// service per configured provider). InitModel would move behind that registry.
-	switch strings.ToLower(cfg.LLMProvider) {
-	case "anthropic":
-		if cfg.AnthropicAPIKey == "" {
-			log.Error("Anthropic API key is required when using anthropic provider")
-			os.Exit(1)
-		}
-		llmService = services.NewAnthropicService(cfg.AnthropicAPIKey, cfg.ModelName, cfg.BackendModelName, log)
-		log.Info("Using Anthropic LLM provider")
-	case "venice":
-		if cfg.VeniceAPIKey == "" {
-			log.Error("Venice API key is required when using venice provider")
-			os.Exit(1)
-		}
-		llmService = services.NewVeniceService(cfg.VeniceAPIKey, cfg.ModelName, cfg.BackendModelName)
-		log.Info("Using Venice LLM provider")
-	default:
-		log.Error("Invalid LLM provider specified", "provider", cfg.LLMProvider, "supported", []string{"anthropic", "venice"})
+	registry, err := services.NewRegistry(cfg, log)
+	if err != nil {
+		log.Error("Failed to initialize LLM providers", "error", err)
 		os.Exit(1)
 	}
-
-	// Initialize the model
-	initCtx, initCancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer initCancel()
-	if err := llmService.InitModel(initCtx, cfg.ModelName); err != nil {
-		log.Error("Failed to initialize LLM model", "error", err, "model", cfg.ModelName)
-		os.Exit(1)
-	}
-	log.Info("LLM service initialized successfully", "model", cfg.ModelName)
+	log.Info("LLM providers initialized successfully", "default", registry.Default(), "count", len(registry.Names()))
 
 	// Create ChatProcessor
-	processor := worker.NewChatProcessor(storageService, llmService, chatQueue, log, cfg.ChatHistoryLimit)
+	processor := worker.NewChatProcessor(storageService, registry, chatQueue, log, cfg.ChatHistoryLimit)
 	log.Info("Chat processor initialized successfully")
 
 	// Create a separate Redis client for worker locking
