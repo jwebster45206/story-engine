@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	defaultAnthropicBaseURL = "https://api.anthropic.com/v1"
-	anthropicVersion        = "2023-06-01"
+	anthropicBaseURL = "https://api.anthropic.com/v1"
+	anthropicVersion = "2023-06-01"
 )
 
 // AnthropicService implements LLMService for Anthropic Claude
@@ -108,17 +108,13 @@ func NewAnthropicService(pc *config.ProviderConfig, logger *slog.Logger) *Anthro
 	if logger != nil {
 		logger.Debug("Anthropic sampling parameters (temperature, top_p, top_k) are not sent; Opus 4.7+ rejects non-default values")
 	}
-	baseURL := defaultAnthropicBaseURL
-	if pc.BaseURL != "" {
-		baseURL = strings.TrimRight(pc.BaseURL, "/")
-	}
 	timeout := 60 * time.Second
 	if pc.TimeoutSeconds > 0 {
 		timeout = time.Duration(pc.TimeoutSeconds) * time.Second
 	}
 	return &AnthropicService{
 		apiKey:           pc.APIKey,
-		baseURL:          baseURL,
+		baseURL:          anthropicBaseURL,
 		modelName:        pc.Model,
 		backendModelName: pc.BackendModel,
 		httpClient: &http.Client{

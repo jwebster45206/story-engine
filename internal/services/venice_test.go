@@ -16,25 +16,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func venicePC(baseURL string) *config.ProviderConfig {
+func venicePC() *config.ProviderConfig {
 	return &config.ProviderConfig{
 		Vendor:       config.VendorVenice,
 		APIKey:       "test-key",
 		Model:        "test-model",
 		BackendModel: "test-backend-model",
-		BaseURL:      baseURL,
 	}
 }
 
 func TestNewVeniceService(t *testing.T) {
-	service := NewVeniceService(venicePC(""), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	service := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if service.apiKey != "test-key" {
 		t.Errorf("apiKey = %q", service.apiKey)
 	}
 	if service.modelName != "test-model" {
 		t.Errorf("modelName = %q", service.modelName)
 	}
-	if service.baseURL != defaultVeniceBaseURL {
+	if service.baseURL != veniceBaseURL {
 		t.Errorf("baseURL = %q", service.baseURL)
 	}
 	if service.httpClient == nil {
@@ -57,7 +56,8 @@ func TestVeniceService_Chat_RequestShape(t *testing.T) {
 	}))
 	defer server.Close()
 
-	svc := NewVeniceService(venicePC(server.URL), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
 	resp, err := svc.Chat(context.Background(), []chat.ChatMessage{
 		{Role: chat.ChatRoleUser, Content: "Hello", IsStoryEvent: true},
 	}, 0.7)
@@ -89,7 +89,8 @@ func TestVeniceService_ChatStream_SSE(t *testing.T) {
 	}))
 	defer server.Close()
 
-	svc := NewVeniceService(venicePC(server.URL), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
 	ch, err := svc.ChatStream(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "Hi"}}, DefaultTemperature)
 	require.NoError(t, err)
 	var content strings.Builder
@@ -116,7 +117,8 @@ func TestVeniceService_DeltaUpdate_JSONSchema(t *testing.T) {
 	}))
 	defer server.Close()
 
-	svc := NewVeniceService(venicePC(server.URL), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
 	delta, model, err := svc.DeltaUpdate(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "update"}})
 	require.NoError(t, err)
 	assert.Equal(t, "test-backend-model", model)

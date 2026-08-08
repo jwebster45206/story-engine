@@ -14,26 +14,25 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/chat"
 )
 
-func anthropicPC(baseURL string) *config.ProviderConfig {
+func anthropicPC() *config.ProviderConfig {
 	return &config.ProviderConfig{
 		Vendor:       config.VendorAnthropic,
 		APIKey:       "test-key",
 		Model:        "claude-test",
 		BackendModel: "claude-backend",
-		BaseURL:      baseURL,
 	}
 }
 
 func TestNewAnthropicService(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	service := NewAnthropicService(anthropicPC(""), log)
+	service := NewAnthropicService(anthropicPC(), log)
 	if service.apiKey != "test-key" {
 		t.Errorf("apiKey = %q", service.apiKey)
 	}
 	if service.modelName != "claude-test" {
 		t.Errorf("modelName = %q", service.modelName)
 	}
-	if service.baseURL != defaultAnthropicBaseURL {
+	if service.baseURL != anthropicBaseURL {
 		t.Errorf("baseURL = %q", service.baseURL)
 	}
 	if service.httpClient == nil {
@@ -43,7 +42,7 @@ func TestNewAnthropicService(t *testing.T) {
 
 func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	service := NewAnthropicService(anthropicPC(""), log)
+	service := NewAnthropicService(anthropicPC(), log)
 
 	tests := []struct {
 		name                   string
@@ -114,7 +113,8 @@ func TestAnthropicService_Chat_RequestShape(t *testing.T) {
 	}))
 	defer server.Close()
 
-	svc := NewAnthropicService(anthropicPC(server.URL), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc := NewAnthropicService(anthropicPC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
 	resp, err := svc.Chat(context.Background(), []chat.ChatMessage{
 		{Role: chat.ChatRoleSystem, Content: "sys"},
 		{Role: chat.ChatRoleUser, Content: "Hello", IsStoryEvent: true},
@@ -164,7 +164,8 @@ func TestAnthropicService_ChatStream_SSE(t *testing.T) {
 	}))
 	defer server.Close()
 
-	svc := NewAnthropicService(anthropicPC(server.URL), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc := NewAnthropicService(anthropicPC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
 	ch, err := svc.ChatStream(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "Hi"}}, 0.5)
 	if err != nil {
 		t.Fatal(err)
@@ -196,7 +197,8 @@ func TestAnthropicService_DeltaUpdate_ToolUse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	svc := NewAnthropicService(anthropicPC(server.URL), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc := NewAnthropicService(anthropicPC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
 	delta, model, err := svc.DeltaUpdate(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "update"}})
 	if err != nil {
 		t.Fatal(err)

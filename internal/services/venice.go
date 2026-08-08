@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	defaultVeniceBaseURL = "https://api.venice.ai/api/v1"
-	msgNoResponse        = "(no response)"
+	veniceBaseURL = "https://api.venice.ai/api/v1"
+	msgNoResponse = "(no response)"
 )
 
 // VeniceService implements LLMService for Venice AI
@@ -114,17 +114,13 @@ type VeniceStreamResponse struct {
 
 // NewVeniceService creates a new Venice AI service
 func NewVeniceService(pc *config.ProviderConfig, logger *slog.Logger) *VeniceService {
-	baseURL := defaultVeniceBaseURL
-	if pc.BaseURL != "" {
-		baseURL = strings.TrimRight(pc.BaseURL, "/")
-	}
 	timeout := 60 * time.Second
 	if pc.TimeoutSeconds > 0 {
 		timeout = time.Duration(pc.TimeoutSeconds) * time.Second
 	}
 	return &VeniceService{
 		apiKey:           pc.APIKey,
-		baseURL:          baseURL,
+		baseURL:          veniceBaseURL,
 		modelName:        pc.Model,
 		backendModelName: pc.BackendModel,
 		httpClient: &http.Client{

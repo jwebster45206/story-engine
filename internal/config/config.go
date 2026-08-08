@@ -26,8 +26,6 @@ type ProviderConfig struct {
 	BackendModel string `json:"backend_model,omitempty"`
 	// APIKey is the provider credential.
 	APIKey string `json:"api_key,omitempty"`
-	// BaseURL overrides the vendor default endpoint (useful for proxies and tests).
-	BaseURL string `json:"base_url,omitempty"`
 	// TimeoutSeconds defaults to 60 when zero or negative.
 	TimeoutSeconds int `json:"timeout_seconds,omitempty"`
 }
