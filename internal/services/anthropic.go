@@ -44,7 +44,7 @@ type AnthropicToolChoice struct {
 type AnthropicChatRequest struct {
 	Model         string               `json:"model"`
 	MaxTokens     int                  `json:"max_tokens"`
-	Messages      []chat.ChatMessage   `json:"messages"`
+	Messages      []chat.LLMMessage    `json:"messages"`
 	System        string               `json:"system,omitempty"`
 	Stream        bool                 `json:"stream,omitempty"`
 	StopSequences []string             `json:"stop_sequences,omitempty"`
@@ -154,7 +154,7 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 	anthropicReq := AnthropicChatRequest{
 		Model:     modelName,
 		MaxTokens: maxTokens,
-		Messages:  conversationMessages,
+		Messages:  chat.ToLLMMessages(conversationMessages),
 		Stream:    false,
 	}
 
@@ -254,7 +254,7 @@ func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatM
 	anthropicReq := AnthropicChatRequest{
 		Model:     a.modelName,
 		MaxTokens: DefaultMaxTokens,
-		Messages:  conversationMessages,
+		Messages:  chat.ToLLMMessages(conversationMessages),
 		Stream:    true,
 	}
 

@@ -32,13 +32,26 @@ const (
 	ChatRoleSystem = "system"    // System messages
 )
 
-// ChatMessage represents a single chat message in the conversation
-// This interface is defined by Ollama's API and is used to structure messages
-// sent to the LLM.
+// ChatMessage represents a single chat message in the conversation.
 type ChatMessage struct {
 	Role         string `json:"role"` // "user", "assistant", "system"
 	Content      string `json:"content"`
 	IsStoryEvent bool   `json:"is_story_event,omitempty"` // True if this message is a story event injected by the engine
+}
+
+// LLMMessage is the role/content-only payload accepted by LLM provider APIs.
+type LLMMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// ToLLMMessages maps chat history to provider-safe messages (role + content only).
+func ToLLMMessages(msgs []ChatMessage) []LLMMessage {
+	out := make([]LLMMessage, len(msgs))
+	for i, m := range msgs {
+		out[i] = LLMMessage{Role: m.Role, Content: m.Content}
+	}
+	return out
 }
 
 func (cr *ChatRequest) Validate() error {

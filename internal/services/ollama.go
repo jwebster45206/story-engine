@@ -73,7 +73,7 @@ func (s *OllamaService) ChatStream(ctx context.Context, messages []chat.ChatMess
 func (s *OllamaService) GetChatResponse(ctx context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error) {
 	reqBody := map[string]interface{}{
 		"model":       s.modelName,
-		"messages":    messages,
+		"messages":    chat.ToLLMMessages(messages),
 		"stream":      false,
 		"temperature": temperature,
 	}
