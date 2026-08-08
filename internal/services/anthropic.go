@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/pkg/chat"
@@ -108,17 +107,13 @@ func NewAnthropicService(pc *config.ProviderConfig, logger *slog.Logger) *Anthro
 	if logger != nil {
 		logger.Debug("Anthropic sampling parameters (temperature, top_p, top_k) are not sent; Opus 4.7+ rejects non-default values")
 	}
-	timeout := 60 * time.Second
-	if pc.TimeoutSeconds > 0 {
-		timeout = time.Duration(pc.TimeoutSeconds) * time.Second
-	}
 	return &AnthropicService{
 		apiKey:           pc.APIKey,
 		baseURL:          anthropicBaseURL,
 		modelName:        pc.Model,
 		backendModelName: pc.BackendModel,
 		httpClient: &http.Client{
-			Timeout: timeout,
+			Timeout: HTTPClientTimeout,
 		},
 		logger: logger,
 	}

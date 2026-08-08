@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/pkg/chat"
@@ -114,17 +113,13 @@ type VeniceStreamResponse struct {
 
 // NewVeniceService creates a new Venice AI service
 func NewVeniceService(pc *config.ProviderConfig, logger *slog.Logger) *VeniceService {
-	timeout := 60 * time.Second
-	if pc.TimeoutSeconds > 0 {
-		timeout = time.Duration(pc.TimeoutSeconds) * time.Second
-	}
 	return &VeniceService{
 		apiKey:           pc.APIKey,
 		baseURL:          veniceBaseURL,
 		modelName:        pc.Model,
 		backendModelName: pc.BackendModel,
 		httpClient: &http.Client{
-			Timeout: timeout,
+			Timeout: HTTPClientTimeout,
 		},
 		logger: logger,
 	}

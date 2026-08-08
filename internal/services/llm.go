@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
@@ -15,6 +16,7 @@ const (
 	DefaultTemperature = state.DefaultTemperature
 	DefaultMaxTokens   = 512
 	BackendMaxTokens   = 512
+	HTTPClientTimeout  = 60 * time.Second
 )
 
 type StreamChunk struct {
