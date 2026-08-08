@@ -24,24 +24,12 @@ type ProviderConfig struct {
 	Model string `json:"model"`
 	// BackendModel is used for delta extraction; falls back to Model when empty.
 	BackendModel string `json:"backend_model,omitempty"`
-	// APIKey is an inline key. Prefer APIKeyEnv in committed configs.
+	// APIKey is the provider credential.
 	APIKey string `json:"api_key,omitempty"`
-	// APIKeyEnv names an environment variable; when set, it takes precedence over APIKey.
-	APIKeyEnv string `json:"api_key_env,omitempty"`
 	// BaseURL overrides the vendor default endpoint (useful for proxies and tests).
 	BaseURL string `json:"base_url,omitempty"`
 	// TimeoutSeconds defaults to 60 when zero or negative.
 	TimeoutSeconds int `json:"timeout_seconds,omitempty"`
-}
-
-// ResolvedAPIKey returns the effective API key after env resolution.
-func (p *ProviderConfig) ResolvedAPIKey() string {
-	if p.APIKeyEnv != "" {
-		if v := os.Getenv(p.APIKeyEnv); v != "" {
-			return v
-		}
-	}
-	return p.APIKey
 }
 
 type Config struct {
@@ -98,8 +86,8 @@ func (c *Config) validateProviders() error {
 		if strings.TrimSpace(p.Model) == "" {
 			return fmt.Errorf("providers[%q]: model is required", name)
 		}
-		if p.ResolvedAPIKey() == "" {
-			return fmt.Errorf("providers[%q]: api_key or api_key_env is required", name)
+		if strings.TrimSpace(p.APIKey) == "" {
+			return fmt.Errorf("providers[%q]: api_key is required", name)
 		}
 	}
 

@@ -79,18 +79,13 @@ func TestLoad_MissingModel(t *testing.T) {
 	}
 }
 
-func TestLoad_APIKeyEnvPrecedence(t *testing.T) {
-	t.Setenv("TEST_PROVIDER_KEY", "from-env")
+func TestLoad_MissingAPIKey(t *testing.T) {
 	path := writeConfig(t, `{
-		"providers":{"x":{"vendor":"anthropic","api_key":"inline","api_key_env":"TEST_PROVIDER_KEY","model":"m"}},
+		"providers":{"x":{"vendor":"anthropic","model":"m"}},
 		"redis_url":"localhost:6379"
 	}`)
-	cfg, err := loadFrom(t, path)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if got := cfg.Providers["x"].ResolvedAPIKey(); got != "from-env" {
-		t.Fatalf("ResolvedAPIKey = %q, want from-env", got)
+	if _, err := loadFrom(t, path); err == nil {
+		t.Fatal("expected error for missing api_key")
 	}
 }
 

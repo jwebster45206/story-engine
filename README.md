@@ -149,14 +149,14 @@ Providers are named vendor+model pairings. A vendor is a wire protocol (`anthrop
     "sonnet": {
       "vendor": "anthropic",
       "display_name": "Claude Sonnet 4.6",
-      "api_key_env": "ANTHROPIC_API_KEY",
+      "api_key": "sk-ant-api03-...",
       "model": "claude-sonnet-4-6",
       "backend_model": "claude-haiku-4-5"
     },
     "venice": {
       "vendor": "venice",
       "display_name": "Venice Uncensored",
-      "api_key_env": "VENICE_API_KEY",
+      "api_key": "your_venice_api_key_here",
       "model": "venice-uncensored-role-play",
       "backend_model": "qwen3-4b"
     }
@@ -165,8 +165,7 @@ Providers are named vendor+model pairings. A vendor is a wire protocol (`anthrop
 }
 ```
 
-`api_key_env` takes precedence over inline `api_key` when set. List providers via `GET /v1/providers`. Pass `provider` on `POST /v1/gamestate` (defaults to `default_provider`).
-
+List providers via `GET /v1/providers`. Pass `provider` on `POST /v1/gamestate` (defaults to `default_provider`).
 ### API Server
 
 ```bash

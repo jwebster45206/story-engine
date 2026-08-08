@@ -117,7 +117,7 @@ func NewAnthropicService(pc *config.ProviderConfig, logger *slog.Logger) *Anthro
 		timeout = time.Duration(pc.TimeoutSeconds) * time.Second
 	}
 	return &AnthropicService{
-		apiKey:           pc.ResolvedAPIKey(),
+		apiKey:           pc.APIKey,
 		baseURL:          baseURL,
 		modelName:        pc.Model,
 		backendModelName: pc.BackendModel,

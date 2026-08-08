@@ -123,7 +123,7 @@ func NewVeniceService(pc *config.ProviderConfig, logger *slog.Logger) *VeniceSer
 		timeout = time.Duration(pc.TimeoutSeconds) * time.Second
 	}
 	return &VeniceService{
-		apiKey:           pc.ResolvedAPIKey(),
+		apiKey:           pc.APIKey,
 		baseURL:          baseURL,
 		modelName:        pc.Model,
 		backendModelName: pc.BackendModel,
