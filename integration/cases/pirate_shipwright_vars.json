@@ -3,7 +3,6 @@
   "scenario": "pirate.vars.json",
   "seed_game_state": {
     "provider": "sonnet",
-    "model_name": "claude-3-5-sonnet-20241022",
     "scenario": "pirate.vars.json",
     "scene_name": "shipwright",
     "user_location": "sleepy_mermaid",

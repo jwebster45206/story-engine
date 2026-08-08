@@ -120,6 +120,7 @@ paths:
         other fields on those objects are ignored at create time. Optional `rules`
         (`strict` or `relaxed`, default `strict`) and `temperature` (0.0–1.0, default 0.6)
         set session play style. `model_name` on create is ignored; the server stamps it from the provider.
+        After create, `provider` and `model_name` are immutable (PATCH cannot change them).
       operationId: createGameState
       tags:
         - Game State
@@ -194,6 +195,7 @@ paths:
       summary: Update game state
       description: |
         Partially update an existing game state. Only provided fields will be updated.
+        `provider`, `model_name`, and `scenario` cannot be changed via PATCH (set at create only).
         This endpoint is primarily used for testing and administrative purposes.
       operationId: updateGameState
       tags:
@@ -634,11 +636,16 @@ components:
           description: Unique game state identifier
         provider:
           type: string
-          description: Named provider from server config (vendor + model). Defaults to the server default_provider when omitted on create.
+          description: |
+            Named provider from server config (vendor + model). Accepted on create only
+            (defaults to the server default_provider when omitted). Immutable after create;
+            PATCH cannot change it.
           example: "sonnet"
         model_name:
           type: string
-          description: Server-stamped model id from the selected provider. Ignored on create input.
+          description: |
+            Server-stamped model id from the selected provider. Ignored on create input;
+            immutable after create (PATCH cannot change it).
           readOnly: true
         scenario:
           type: string
@@ -720,7 +727,9 @@ components:
 
     GameStatePatch:
       type: object
-      description: Partial game state update (only provided fields will be updated)
+      description: |
+        Partial game state update (only provided fields will be updated).
+        Does not include `provider`, `model_name`, or `scenario` — those are create-only and immutable.
       properties:
         scene_name:
           type: string
