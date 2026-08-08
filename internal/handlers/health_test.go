@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jwebster45206/story-engine/internal/services"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
@@ -54,8 +53,7 @@ func TestHealthHandler_ServeHTTP(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := tt.setupStorage()
 			// Create a mock LLM service for the handler (even though we don't use it in health check)
-			mockLLM := services.NewMockLLMAPI()
-			handler := NewHealthHandler(logger, storage, mockLLM)
+			handler := NewHealthHandler(logger, storage)
 
 			req := httptest.NewRequest(http.MethodGet, "/health", nil)
 			rr := httptest.NewRecorder()
@@ -114,9 +112,7 @@ func TestHealthHandler_ResponseFormat(t *testing.T) {
 	mockStorage := storage.NewMockStorage()
 	mockStorage.SetPingError(errors.New("storage unavailable"))
 
-	mockLLM := services.NewMockLLMAPI()
-
-	handler := NewHealthHandler(logger, mockStorage, mockLLM)
+	handler := NewHealthHandler(logger, mockStorage)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()

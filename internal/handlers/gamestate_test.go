@@ -11,10 +11,40 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/internal/services"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
+
+
+func testCatalog() ProviderCatalog {
+	return &stubCatalog{
+		defaultName: "foo",
+		infos: map[string]services.ProviderInfo{
+			"foo": {Name: "foo", DisplayName: "Foo", Vendor: "venice", Model: "foo_model"},
+			"bar": {Name: "bar", DisplayName: "Bar", Vendor: "anthropic", Model: "bar_model"},
+		},
+	}
+}
+
+type stubCatalog struct {
+	defaultName string
+	infos       map[string]services.ProviderInfo
+}
+
+func (s *stubCatalog) Default() string { return s.defaultName }
+func (s *stubCatalog) Names() []string {
+	names := make([]string, 0, len(s.infos))
+	for n := range s.infos {
+		names = append(names, n)
+	}
+	return names
+}
+func (s *stubCatalog) Info(name string) (services.ProviderInfo, bool) {
+	info, ok := s.infos[name]
+	return info, ok
+}
 
 func TestGameStateHandler_Create(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
@@ -38,7 +68,7 @@ func TestGameStateHandler_Create(t *testing.T) {
 		},
 	})
 
-	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
+	handler := NewGameStateHandler(logger, testCatalog(), mockStorage)
 
 	// Test creating a new game state
 	reqBody := `{"scenario":"foo_scenario.json"}`
@@ -74,6 +104,12 @@ func TestGameStateHandler_Create(t *testing.T) {
 	if response.Temperature != state.DefaultTemperature {
 		t.Errorf("Expected default temperature %f, got %f", state.DefaultTemperature, response.Temperature)
 	}
+	if response.Provider != "foo" {
+		t.Errorf("Expected default provider foo, got %q", response.Provider)
+	}
+	if response.ModelName != "foo_model" {
+		t.Errorf("Expected stamped model foo_model, got %q", response.ModelName)
+	}
 }
 
 func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
@@ -98,7 +134,7 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 		},
 	})
 
-	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
+	handler := NewGameStateHandler(logger, testCatalog(), mockStorage)
 
 	tests := []struct {
 		name            string
@@ -139,6 +175,16 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 			requestBody:    `{invalid json}`,
 			expectedStatus: http.StatusBadRequest,
 		},
+		{
+			name:           "unknown provider",
+			requestBody:    `{"scenario":"foo_scenario.json","provider":"nope"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "explicit provider stamps model",
+			requestBody:    `{"scenario":"foo_scenario.json","provider":"bar","model_name":"client-ignored"}`,
+			expectedStatus: http.StatusCreated,
+		},
 	}
 
 	for _, tt := range tests {
@@ -163,6 +209,12 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 				// Validate response
 				if response.ID == uuid.Nil {
 					t.Error("Expected non-nil game state ID")
+				}
+
+				if strings.Contains(tt.requestBody, `"provider":"bar"`) {
+					if response.Provider != "bar" || response.ModelName != "bar_model" {
+						t.Errorf("provider/model = %q/%q, want bar/bar_model", response.Provider, response.ModelName)
+					}
 				}
 
 				// Check that narrator is embedded if specified
@@ -202,10 +254,10 @@ func TestGameStateHandler_Read(t *testing.T) {
 	}))
 
 	mockStorage := storage.NewMockStorage()
-	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
+	handler := NewGameStateHandler(logger, testCatalog(), mockStorage)
 
 	// Create a test game state (nil narrator is fine for tests)
-	testGS := state.NewGameState("FooScenario", nil, "foo_model")
+	testGS := state.NewGameState("FooScenario", nil, "test-provider", "foo_model")
 	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
@@ -276,10 +328,10 @@ func TestGameStateHandler_Delete(t *testing.T) {
 	}))
 
 	mockStorage := storage.NewMockStorage()
-	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
+	handler := NewGameStateHandler(logger, testCatalog(), mockStorage)
 
 	// Create a test game state (nil narrator is fine for tests)
-	testGS := state.NewGameState("FooScenario", nil, "foo_model")
+	testGS := state.NewGameState("FooScenario", nil, "test-provider", "foo_model")
 	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
@@ -346,7 +398,7 @@ func TestGameStateHandler_MethodNotAllowed(t *testing.T) {
 	}))
 
 	mockStorage := storage.NewMockStorage()
-	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
+	handler := NewGameStateHandler(logger, testCatalog(), mockStorage)
 
 	// Test unsupported methods
 	methods := []string{http.MethodPut, http.MethodHead}
@@ -380,7 +432,7 @@ func TestGameStateHandler_MissingID(t *testing.T) {
 	}))
 
 	mockStorage := storage.NewMockStorage()
-	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
+	handler := NewGameStateHandler(logger, testCatalog(), mockStorage)
 
 	tests := []struct {
 		name   string
@@ -439,7 +491,7 @@ func TestGameStateHandler_CreateRulesAndTemperature(t *testing.T) {
 			"start": {Name: "start", Description: "Starting location"},
 		},
 	})
-	handler := NewGameStateHandler(logger, "foo_model", mockStorage)
+	handler := NewGameStateHandler(logger, testCatalog(), mockStorage)
 
 	tests := []struct {
 		name           string

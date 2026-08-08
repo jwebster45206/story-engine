@@ -54,7 +54,7 @@ These tests validate:
   "name": "Test Name",
   "scenario": "scenario.json",
   "seed_game_state": {
-    "model_name": "claude-3-5-sonnet-20241022",
+    "provider": "sonnet",
     "scenario": "scenario.json",
     "location": "Starting Location",
     "turn_counter": 0,
@@ -200,14 +200,14 @@ TEST_TIMEOUT_SECONDS=60 go test -v -tags=integration ./integration/
 ## Architecture
 
 ### Test Flow
-1. **Create**: Create new gamestate via `POST /v1/gamestate` (sets immutable scenario and model)
+1. **Create**: Create new gamestate via `POST /v1/gamestate` (sets immutable scenario and provider; `model_name` is stamped from the provider)
 2. **Seed**: Patch gamestate with test data via `PATCH /v1/gamestate/{id}` (location, inventory, etc.)
 3. **Execute**: Send user prompt to `/v1/chat?id={gamestate_id}`
 4. **Poll**: Wait for gamestate update by polling `/v1/gamestate/{id}`
 5. **Validate**: Check expectations against updated gamestate and response
 6. **Repeat**: Continue for each test step
 
-**Note**: `ModelName` and `Scenario` are immutable and set during creation - they cannot be changed via PATCH.
+**Note**: `provider`, `model_name`, and `scenario` are set during creation and cannot be changed via PATCH. Optional seed `provider` is passed on create; omit it to use the server default.
 
 ### Parallel Execution
 - Tests run with configurable concurrency (default: 5)

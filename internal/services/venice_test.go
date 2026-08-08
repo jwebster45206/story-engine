@@ -3,166 +3,132 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func venicePC() *config.ProviderConfig {
+	return &config.ProviderConfig{
+		Vendor:       config.VendorVenice,
+		APIKey:       "test-key",
+		Model:        "test-model",
+		BackendModel: "test-backend-model",
+	}
+}
+
 func TestNewVeniceService(t *testing.T) {
-	apiKey := "test-api-key"
-	modelName := "test-model"
-	backendModelName := "test-backend-model"
-
-	service := NewVeniceService(apiKey, modelName, backendModelName)
-
-	if service.apiKey != apiKey {
-		t.Errorf("Expected apiKey %s, got %s", apiKey, service.apiKey)
+	service := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if service.apiKey != "test-key" {
+		t.Errorf("apiKey = %q", service.apiKey)
 	}
-
-	if service.modelName != modelName {
-		t.Errorf("Expected modelName %s, got %s", modelName, service.modelName)
+	if service.modelName != "test-model" {
+		t.Errorf("modelName = %q", service.modelName)
 	}
-
+	if service.baseURL != veniceBaseURL {
+		t.Errorf("baseURL = %q", service.baseURL)
+	}
 	if service.httpClient == nil {
-		t.Error("Expected httpClient to be initialized")
+		t.Error("httpClient nil")
 	}
 }
 
-func TestVeniceService_InitModel(t *testing.T) {
-	service := NewVeniceService("invalid-key", "test-model", "test-backend-model")
+func TestVeniceService_Chat_RequestShape(t *testing.T) {
+	var gotBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/chat/completions" {
+			t.Errorf("path = %s", r.URL.Path)
+		}
+		if !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+			t.Errorf("Authorization = %s", r.Header.Get("Authorization"))
+		}
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"hi"},"finish_reason":"stop"}]}`))
+	}))
+	defer server.Close()
 
-	// This should not fail even with invalid key since we handle the error gracefully
-	err := service.InitModel(context.Background(), "test-model")
-	// We expect this to fail with invalid key, but it should not panic
-	if err == nil {
-		t.Log("InitModel succeeded (possibly due to graceful error handling)")
-	} else {
-		t.Logf("InitModel failed as expected with invalid key: %v", err)
-	}
+	svc := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
+	resp, err := svc.Chat(context.Background(), []chat.ChatMessage{
+		{Role: chat.ChatRoleUser, Content: "Hello", IsStoryEvent: true},
+	}, 0.7)
+	require.NoError(t, err)
+	assert.Equal(t, "hi", resp.Message)
+	assert.Equal(t, "test-model", gotBody["model"])
+	assert.EqualValues(t, 0.7, gotBody["temperature"])
+	raw, _ := json.Marshal(gotBody)
+	assert.NotContains(t, string(raw), "is_story_event")
+	vp, ok := gotBody["venice_parameters"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, false, vp["include_venice_system_prompt"])
 }
 
-// Mock test for chat response structure
-func TestVeniceChatRequestStructure(t *testing.T) {
-	messages := []chat.ChatMessage{
-		{Role: "user", Content: "Hello", IsStoryEvent: true},
-		{Role: "assistant", Content: "Hi there!"},
-	}
+func TestVeniceService_ChatStream_SSE(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		responses := []string{
+			`data: {"id":"test-1","object":"chat.completion.chunk","created":1,"model":"test-model","choices":[{"index":0,"delta":{"content":"Hello"}}]}`,
+			`data: {"id":"test-1","object":"chat.completion.chunk","created":1,"model":"test-model","choices":[{"index":0,"delta":{"content":" world"}}]}`,
+			`data: {"id":"test-1","object":"chat.completion.chunk","created":1,"model":"test-model","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`,
+			`data: [DONE]`,
+		}
+		for _, resp := range responses {
+			_, _ = w.Write([]byte(resp + "\n"))
+			w.(http.Flusher).Flush()
+		}
+	}))
+	defer server.Close()
 
-	req := VeniceChatRequest{
-		Model:       "test-model",
-		Messages:    chat.ToLLMMessages(messages),
-		Temperature: 0.7,
-		MaxTokens:   1000,
-		Stream:      false,
+	svc := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
+	ch, err := svc.ChatStream(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "Hi"}}, DefaultTemperature)
+	require.NoError(t, err)
+	var content strings.Builder
+	for chunk := range ch {
+		require.NoError(t, chunk.Error)
+		content.WriteString(chunk.Content)
+		if chunk.Done {
+			break
+		}
 	}
-
-	if req.Model != "test-model" {
-		t.Errorf("Expected model 'test-model', got '%s'", req.Model)
-	}
-
-	if len(req.Messages) != 2 {
-		t.Errorf("Expected 2 messages, got %d", len(req.Messages))
-	}
-
-	if req.Temperature != 0.7 {
-		t.Errorf("Expected temperature 0.7, got %f", req.Temperature)
-	}
-
-	data, err := json.Marshal(req)
-	if err != nil {
-		t.Fatalf("Failed to marshal request: %v", err)
-	}
-	if strings.Contains(string(data), "is_story_event") {
-		t.Errorf("is_story_event must not appear in Venice request payload: %s", data)
-	}
+	assert.Equal(t, "Hello world", content.String())
 }
 
-func TestVeniceService_ChatStream(t *testing.T) {
-	t.Run("successful streaming response", func(t *testing.T) {
-		// Mock server that returns SSE streaming response
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/event-stream")
-			w.WriteHeader(http.StatusOK)
+func TestVeniceService_DeltaUpdate_JSONSchema(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if _, ok := body["response_format"]; !ok {
+			t.Error("expected response_format")
+		}
+		assert.Equal(t, "test-backend-model", body["model"])
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"{\"user_location\":\"dock\",\"scene_change\":null,\"item_events\":[],\"npc_events\":[],\"set_vars\":{},\"game_ended\":false}"},"finish_reason":"stop"}]}`))
+	}))
+	defer server.Close()
 
-			// Send streaming chunks
-			responses := []string{
-				`data: {"id":"test-1","object":"chat.completion.chunk","created":1234567890,"model":"test-model","choices":[{"index":0,"delta":{"content":"Hello"}}]}`,
-				`data: {"id":"test-1","object":"chat.completion.chunk","created":1234567890,"model":"test-model","choices":[{"index":0,"delta":{"content":" world"}}]}`,
-				`data: {"id":"test-1","object":"chat.completion.chunk","created":1234567890,"model":"test-model","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`,
-				`data: [DONE]`,
-			}
+	svc := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
+	delta, model, err := svc.DeltaUpdate(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "update"}})
+	require.NoError(t, err)
+	assert.Equal(t, "test-backend-model", model)
+	require.NotNil(t, delta)
+	assert.Equal(t, "dock", delta.UserLocation)
+}
 
-			for _, resp := range responses {
-				_, _ = w.Write([]byte(resp + "\n"))
-				w.(http.Flusher).Flush()
-			}
-		}))
-		defer server.Close()
-
-		// Create service with custom HTTP client pointing to mock server
-		service := NewVeniceService("test-key", "test-model", "test-model")
-		service.httpClient = server.Client()
-
-		// For now, let's test the error case to verify the interface works
-		// In a real implementation, we'd make the base URL configurable for testing
-		messages := []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "Hello"}}
-		stream, err := service.ChatStream(context.Background(), messages, DefaultTemperature)
-
-		assert.Nil(t, stream)
-		assert.Error(t, err)
-		// Should be either a connection error or auth error since we're hitting the real Venice API with fake creds
-		assert.True(t,
-			strings.Contains(err.Error(), "failed to send request") ||
-				strings.Contains(err.Error(), "API request failed with status"),
-			"Expected connection or API error, got: %s", err.Error())
-	})
-
-	t.Run("streaming response parsing", func(t *testing.T) {
-		// Test the streaming response structures
-		streamData := `{"id":"test-1","object":"chat.completion.chunk","created":1234567890,"model":"test-model","choices":[{"index":0,"delta":{"content":"Hello world"},"finish_reason":null}]}`
-
-		var streamResp VeniceStreamResponse
-		err := json.Unmarshal([]byte(streamData), &streamResp)
-
-		require.NoError(t, err)
-		assert.Equal(t, "test-1", streamResp.ID)
-		assert.Equal(t, "chat.completion.chunk", streamResp.Object)
-		assert.Equal(t, "test-model", streamResp.Model)
-		assert.Len(t, streamResp.Choices, 1)
-		assert.Equal(t, "Hello world", streamResp.Choices[0].Delta.Content)
-		assert.Nil(t, streamResp.Choices[0].FinishReason)
-	})
-
-	t.Run("streaming response with finish reason", func(t *testing.T) {
-		streamData := `{"id":"test-1","object":"chat.completion.chunk","created":1234567890,"model":"test-model","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`
-
-		var streamResp VeniceStreamResponse
-		err := json.Unmarshal([]byte(streamData), &streamResp)
-
-		require.NoError(t, err)
-		assert.Equal(t, "test-1", streamResp.ID)
-		assert.Len(t, streamResp.Choices, 1)
-		assert.Equal(t, "", streamResp.Choices[0].Delta.Content)
-		require.NotNil(t, streamResp.Choices[0].FinishReason)
-		assert.Equal(t, "stop", *streamResp.Choices[0].FinishReason)
-	})
-
-	t.Run("streaming response with error", func(t *testing.T) {
-		streamData := `{"id":"test-1","object":"error","error":{"message":"Invalid API key","type":"authentication_error","code":"invalid_api_key"}}`
-
-		var streamResp VeniceStreamResponse
-		err := json.Unmarshal([]byte(streamData), &streamResp)
-
-		require.NoError(t, err)
-		assert.Equal(t, "test-1", streamResp.ID)
-		require.NotNil(t, streamResp.Error)
-		assert.Equal(t, "Invalid API key", streamResp.Error.Message)
-		assert.Equal(t, "authentication_error", streamResp.Error.Type)
-		assert.Equal(t, "invalid_api_key", streamResp.Error.Code)
-	})
+func TestVeniceStreamResponseParsing(t *testing.T) {
+	streamData := `{"id":"test-1","object":"chat.completion.chunk","created":1234567890,"model":"test-model","choices":[{"index":0,"delta":{"content":"Hello world"},"finish_reason":null}]}`
+	var streamResp VeniceStreamResponse
+	require.NoError(t, json.Unmarshal([]byte(streamData), &streamResp))
+	assert.Equal(t, "Hello world", streamResp.Choices[0].Delta.Content)
 }

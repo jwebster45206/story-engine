@@ -163,12 +163,15 @@ func TestApplyConditionalsCascade_TwoIterations(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 // stubLLMService captures the messages slice passed to Chat() and no-ops everything else.
+type stubResolver struct{ llm services.LLMService }
+
+func (s stubResolver) Get(_ string) (services.LLMService, error) { return s.llm, nil }
+
 type stubLLMService struct {
 	capturedMessages []chat.ChatMessage
 	capturedTemp     float64
 }
 
-func (s *stubLLMService) InitModel(_ context.Context, _ string) error { return nil }
 func (s *stubLLMService) Chat(_ context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error) {
 	s.capturedMessages = messages
 	s.capturedTemp = temperature
@@ -265,7 +268,7 @@ func newTestSetup(historyCount, historyLimit int) (*ChatProcessor, *stubLLMServi
 	}
 	llm := &stubLLMService{}
 	stor := &stubStorage{gs: gs, sc: sc}
-	processor := NewChatProcessor(stor, llm, nil, slog.Default(), historyLimit)
+	processor := NewChatProcessor(stor, stubResolver{llm}, nil, slog.Default(), historyLimit)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "hello"}
 	return processor, llm, req
 }
@@ -343,7 +346,7 @@ func TestProcessChatRequest_UsesGameStateTemperature(t *testing.T) {
 	}
 	llm := &stubLLMService{}
 	stor := &stubStorage{gs: gs, sc: sc}
-	processor := NewChatProcessor(stor, llm, nil, slog.Default(), 10)
+	processor := NewChatProcessor(stor, stubResolver{llm}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "hello"}
 
 	_, err := processor.ProcessChatRequest(context.Background(), req)

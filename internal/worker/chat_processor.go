@@ -20,11 +20,16 @@ import (
 
 const PromptHistoryLimit = 16
 
+// LLMResolver looks up an LLMService by provider name (e.g. *services.Registry).
+type LLMResolver interface {
+	Get(name string) (services.LLMService, error)
+}
+
 // ChatProcessor handles the core chat processing logic
 // It's used by both the HTTP handler (synchronously) and the worker (asynchronously)
 type ChatProcessor struct {
 	storage      storage.Storage
-	llmService   services.LLMService
+	resolver     LLMResolver
 	chatQueue    state.ChatQueue
 	logger       *slog.Logger
 	historyLimit int
@@ -37,7 +42,7 @@ type ChatProcessor struct {
 // NewChatProcessor creates a new chat processor
 func NewChatProcessor(
 	storage storage.Storage,
-	llmService services.LLMService,
+	resolver LLMResolver,
 	chatQueue state.ChatQueue,
 	logger *slog.Logger,
 	historyLimit int,
@@ -47,7 +52,7 @@ func NewChatProcessor(
 	}
 	return &ChatProcessor{
 		storage:      storage,
-		llmService:   llmService,
+		resolver:     resolver,
 		chatQueue:    chatQueue,
 		logger:       logger,
 		historyLimit: historyLimit,
@@ -89,10 +94,12 @@ func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatReq
 	defer cancel()
 
 	temperature := gs.Temperature
-	// TODO: Once model selection is per-gamestate, resolve the LLM service from gs.ModelName
-	// here (and at ChatStream) rather than using the single startup-wired p.llmService.
-	p.logger.Debug("Sending chat request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
-	response, err := p.llmService.Chat(chatCtx, messages, temperature)
+	llm, err := p.resolver.Get(gs.Provider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve LLM provider %q: %w", gs.Provider, err)
+	}
+	p.logger.Debug("Sending chat request to LLM", "game_state_id", gs.ID.String(), "provider", gs.Provider, "messages", messages)
+	response, err := llm.Chat(chatCtx, messages, temperature)
 	if err != nil {
 		return nil, fmt.Errorf("LLM chat failed: %w", err)
 	}
@@ -179,8 +186,12 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 	// Initialize LLM streaming
 	// Use the context passed in from the worker - it will stay alive while consuming the stream
 	temperature := gs.Temperature
-	p.logger.Debug("Sending streaming chat request to LLM", "game_state_id", gs.ID.String(), "messages", messages)
-	streamChan, err := p.llmService.ChatStream(ctx, messages, temperature)
+	llm, err := p.resolver.Get(gs.Provider)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to resolve LLM provider %q: %w", gs.Provider, err)
+	}
+	p.logger.Debug("Sending streaming chat request to LLM", "game_state_id", gs.ID.String(), "provider", gs.Provider, "messages", messages)
+	streamChan, err := llm.ChatStream(ctx, messages, temperature)
 	if err != nil {
 		return nil, "", fmt.Errorf("LLM chat stream failed: %w", err)
 	}
@@ -298,13 +309,18 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 	var deltaErr error
 
 	maxAttempts := 2
+	llm, err := p.resolver.Get(gs.Provider)
+	if err != nil {
+		p.logger.Error("Failed to resolve LLM provider for delta", "error", err, "provider", gs.Provider, "game_state_id", gs.ID.String())
+		return
+	}
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		if attempt > 1 {
 			p.logger.Info("Retrying gamestate delta extraction", "game_state_id", gs.ID.String(), "attempt", attempt)
 		}
 
-		p.logger.Debug("Sending gamestate delta request to LLM", "game_state_id", gs.ID.String(), "attempt", attempt)
-		delta, backendModel, deltaErr = p.llmService.DeltaUpdate(metaCtx, messages)
+		p.logger.Debug("Sending gamestate delta request to LLM", "game_state_id", gs.ID.String(), "provider", gs.Provider, "attempt", attempt)
+		delta, backendModel, deltaErr = llm.DeltaUpdate(metaCtx, messages)
 
 		if deltaErr == nil {
 			p.logger.Debug("Received gamestate delta from LLM", "game_state_id", gs.ID.String(), "delta", delta, "backend_model", backendModel)

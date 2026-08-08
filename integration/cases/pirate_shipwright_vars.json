@@ -2,7 +2,7 @@
   "name": "Pirate Shipwright Hiring Variable Test", 
   "scenario": "pirate.vars.json",
   "seed_game_state": {
-    "model_name": "claude-3-5-sonnet-20241022",
+    "provider": "sonnet",
     "scenario": "pirate.vars.json",
     "scene_name": "shipwright",
     "user_location": "sleepy_mermaid",

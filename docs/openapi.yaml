@@ -88,15 +88,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /v1/providers:
+    get:
+      summary: List configured LLM providers
+      description: Returns the default provider name and the public projection of each configured provider (never includes API keys).
+      operationId: listProviders
+      tags:
+        - Providers
+      responses:
+        '200':
+          description: Provider catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  default:
+                    type: string
+                  providers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProviderInfo'
+
   /v1/gamestate:
     post:
       summary: Create new game state
       description: |
-        Create a new game session. `scenario` is required. Optional `narrator` and `pc`
+        Create a new game session. `scenario` is required. Optional `provider` selects a
+        configured LLM provider (defaults to the server default). Optional `narrator` and `pc`
         may be supplied as id-only references (e.g. `{"narrator":{"id":"vincent_price"},"pc":{"id":"pirate_captain"}}`);
         other fields on those objects are ignored at create time. Optional `rules`
         (`strict` or `relaxed`, default `strict`) and `temperature` (0.0–1.0, default 0.6)
-        set session play style.
+        set session play style. `model_name` on create is ignored; the server stamps it from the provider.
+        After create, `provider` and `model_name` are immutable (PATCH cannot change them).
       operationId: createGameState
       tags:
         - Game State
@@ -171,6 +195,7 @@ paths:
       summary: Update game state
       description: |
         Partially update an existing game state. Only provided fields will be updated.
+        `provider`, `model_name`, and `scenario` cannot be changed via PATCH (set at create only).
         This endpoint is primarily used for testing and administrative purposes.
       operationId: updateGameState
       tags:
@@ -609,9 +634,19 @@ components:
           type: string
           format: uuid
           description: Unique game state identifier
+        provider:
+          type: string
+          description: |
+            Named provider from server config (vendor + model). Accepted on create only
+            (defaults to the server default_provider when omitted). Immutable after create;
+            PATCH cannot change it.
+          example: "sonnet"
         model_name:
           type: string
-          description: Name of the LLM model used
+          description: |
+            Server-stamped model id from the selected provider. Ignored on create input;
+            immutable after create (PATCH cannot change it).
+          readOnly: true
         scenario:
           type: string
           description: Scenario filename (required on create)
@@ -692,7 +727,9 @@ components:
 
     GameStatePatch:
       type: object
-      description: Partial game state update (only provided fields will be updated)
+      description: |
+        Partial game state update (only provided fields will be updated).
+        Does not include `provider`, `model_name`, or `scenario` — those are create-only and immutable.
       properties:
         scene_name:
           type: string
@@ -1110,6 +1147,19 @@ components:
           description: Whether items should be dropped to the location when the monster is defeated
           example: true
 
+    ProviderInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        display_name:
+          type: string
+        vendor:
+          type: string
+          enum: [anthropic, venice]
+        model:
+          type: string
+
     ErrorResponse:
       type: object
       required:
@@ -1135,3 +1185,5 @@ tags:
     description: AI narrator configurations
   - name: Monsters
     description: Monster templates and creatures
+  - name: Providers
+    description: Configured LLM providers

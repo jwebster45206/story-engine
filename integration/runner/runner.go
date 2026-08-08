@@ -172,10 +172,11 @@ func (r *Runner) RunSuite(ctx context.Context, suite TestSuite) (TestRunResult, 
 
 // seedGameState creates a new gamestate and then patches it with seed data
 func (r *Runner) seedGameState(ctx context.Context, seed state.GameState) (uuid.UUID, error) {
-	// Step 1: Create a basic gamestate via POST /v1/gamestate
-	// ModelName is set by the handler from its configuration, Scenario is set from request
+	// Step 1: Create a basic gamestate via POST /v1/gamestate.
+	// Provider is optional (server default when empty); model_name is stamped from the provider.
 	createReq := state.GameState{
 		Scenario: seed.Scenario,
+		Provider: seed.Provider,
 	}
 
 	createBody, err := json.Marshal(createReq)

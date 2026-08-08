@@ -2,9 +2,23 @@
   "port": "8080",
   "environment": "dev",
   "log_level": "debug",
-  "llm_provider": "anthropic",
-  "anthropic_api_key": "API_KEY_HERE",
-  "model_name": "claude-sonnet-4-20250514",
+  "default_provider": "sonnet",
+  "providers": {
+    "sonnet": {
+      "vendor": "anthropic",
+      "display_name": "Claude Sonnet",
+      "api_key": "API_KEY_HERE",
+      "model": "claude-sonnet-4-6",
+      "backend_model": "claude-haiku-4-5"
+    },
+    "venice": {
+      "vendor": "venice",
+      "display_name": "Venice Uncensored",
+      "api_key": "API_KEY_HERE",
+      "model": "venice-uncensored-role-play",
+      "backend_model": "qwen3-coder-480b-a35b-instruct-turbo"
+    }
+  },
   "redis_url": "localhost:6379",
   "chat_history_limit": 6
 }
