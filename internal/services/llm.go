@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	sejson "github.com/jwebster45206/story-engine/internal/json"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/state"
@@ -57,9 +58,11 @@ type LLMService interface {
 // parseDeltaUpdateResponse parses an LLM response text into a DeltaUpdate struct.
 // It handles various response formats including markdown code blocks, mixed content,
 // and other common artifacts that LLMs might include in their JSON responses.
-func parseDeltaUpdateResponse(responseText string) (*conditionals.GameStateDelta, error) {
+// When the JSON is truncated, it attempts to salvage complete fields and returns
+// repaired=true if salvage succeeded.
+func parseDeltaUpdateResponse(responseText string) (*conditionals.GameStateDelta, bool, error) {
 	if responseText == "" {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	originalText := responseText
@@ -111,9 +114,10 @@ func parseDeltaUpdateResponse(responseText string) (*conditionals.GameStateDelta
 	mTxt = strings.TrimSpace(mTxt)
 
 	var metaUpdate conditionals.GameStateDelta
-	if err := json.Unmarshal([]byte(mTxt), &metaUpdate); err != nil {
-		return nil, fmt.Errorf("failed to parse gamestate delta. Original response: %q, Cleaned text: %q, Error: %w", originalText, mTxt, err)
+	repaired, err := sejson.Unmarshal([]byte(mTxt), &metaUpdate)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to parse gamestate delta. Original response: %q, Cleaned text: %q, Error: %w", originalText, mTxt, err)
 	}
 
-	return &metaUpdate, nil
+	return &metaUpdate, repaired, nil
 }

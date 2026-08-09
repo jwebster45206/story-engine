@@ -341,9 +341,16 @@ func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMes
 		return nil, "", err
 	}
 
-	deltaUpdate, err := parseDeltaUpdateResponse(content)
+	deltaUpdate, repaired, err := parseDeltaUpdateResponse(content)
 	if err != nil {
 		return nil, "", err
+	}
+	if repaired {
+		v.logger.Warn("fixed truncated gamestate delta JSON",
+			"backend_model", modelToUse,
+			"original_len", len(content),
+			"preview", content,
+		)
 	}
 
 	return deltaUpdate, modelToUse, nil
