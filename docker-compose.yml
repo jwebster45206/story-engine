@@ -8,9 +8,9 @@ services:
       - "8080:8080"
     volumes:
       - ${DATA_DIR:-./data}:/app/data
-      - ${CONFIG:-./config.docker.json}:/app/config.json:ro
+      - ./config.docker.json:/app/config.docker.json
     environment:
-      - CONFIG=/app/config.json
+      - CONFIG=/app/config.docker.json
     depends_on:
       - redis
     healthcheck:
@@ -30,9 +30,9 @@ services:
     command: ["./worker"]  # Override CMD
     volumes:
       - ${DATA_DIR:-./data}:/app/data
-      - ${CONFIG:-./config.docker.json}:/app/config.json:ro
+      - ./config.docker.json:/app/config.docker.json
     environment:
-      - CONFIG=/app/config.json
+      - CONFIG=/app/config.docker.json
       - WORKER_ID=worker-1
     depends_on:
       - redis

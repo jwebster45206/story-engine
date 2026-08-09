@@ -180,22 +180,18 @@ CONFIG=config.json go run ./cmd/worker
 
 ### Docker Compose
 
-Defaults to `./data` and `./config.docker.json`. Override either when starting compose. Host `CONFIG` is mounted read-only at `/app/config.json`:
-
 ```bash
-# Default
+# Default: ./data and ./config.docker.json
 docker compose up --build -d
 
-# Custom data dir and config
-DATA_DIR=~/Documents/story-engine-scenarios \
-CONFIG=./config.venice.json \
-docker compose up --build -d
+# Custom data directory
+DATA_DIR=~/Documents/story-engine-scenarios docker compose up --build -d
 ```
 
-Edit the mounted config on the host, then recreate the containers so the mount picks up the change (a plain `restart` can keep a stale file bind):
+Edit `config.docker.json` on the host, then restart to reload:
 
 ```bash
-docker compose up -d --force-recreate story-engine-api story-engine-worker
+docker compose restart story-engine-api story-engine-worker
 ```
 
 Use `redis:6379` as `redis_url` in Docker configs (the compose Redis service hostname).
