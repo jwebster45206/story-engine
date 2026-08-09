@@ -50,8 +50,8 @@ func repairTruncated(s string) string {
 			break
 		}
 
-		if strings.HasSuffix(s, ",") {
-			s = s[:len(s)-1]
+		if trimmed := strings.TrimSuffix(s, ","); trimmed != s {
+			s = trimmed
 			continue
 		}
 
@@ -59,9 +59,7 @@ func repairTruncated(s string) string {
 			s = strings.TrimRight(s[:len(s)-1], " \t\r\n")
 			s = trimTrailingString(s)
 			s = strings.TrimRight(s, " \t\r\n")
-			if strings.HasSuffix(s, ",") {
-				s = s[:len(s)-1]
-			}
+			s = strings.TrimSuffix(s, ",")
 			continue
 		}
 
@@ -74,10 +72,7 @@ func repairTruncated(s string) string {
 			break
 		}
 		if strings.HasSuffix(beforeTrimmed, ",") || strings.HasSuffix(beforeTrimmed, "{") {
-			s = beforeTrimmed
-			if strings.HasSuffix(s, ",") {
-				s = s[:len(s)-1]
-			}
+			s = strings.TrimSuffix(beforeTrimmed, ",")
 			continue
 		}
 		break
