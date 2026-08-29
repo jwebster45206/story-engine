@@ -28,7 +28,7 @@ func NewEventsHandler(redisClient *redis.Client, logger *slog.Logger) *EventsHan
 }
 
 // ServeHTTP handles SSE requests for game events
-// GET /v1/events/games/{gameStateID}
+// GET /v1/events/gamestate/{gameStateID}
 func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		h.logger.Warn("Method not allowed for events endpoint",

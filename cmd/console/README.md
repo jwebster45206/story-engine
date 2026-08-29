@@ -13,7 +13,7 @@ A terminal-based user interface for the Story Engine, built with [Charm Bracelet
 
 ### Prerequisites
 
-- Go 1.26 or later
+- Go 1.26.7 or later
 - Running Story Engine API server
 
 ### Configuration
