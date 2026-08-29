@@ -2,10 +2,8 @@ openapi: 3.0.3
 info:
   title: Story Engine API
   description: |
-    A REST API for interactive storytelling and role-playing games powered by Large Language Models.
-    
-    The Story Engine allows you to create and manage interactive story sessions with AI-powered narration,
-    character management, and dynamic game state tracking.
+    Interactive storytelling API. Create a game, subscribe to SSE, then POST chat
+    (`202` + `request_id`); narration arrives as SSE events. API and worker share Redis.
   version: 1.0.0
   contact:
     name: Story Engine
@@ -42,11 +40,12 @@ paths:
 
   /v1/chat:
     post:
-      summary: Send chat message
+      summary: Enqueue chat message
       description: |
-        Send a message to the AI narrator and receive a response. Supports both regular and streaming responses.
-        
-        For streaming responses, set `stream: true` and the response will be sent as Server-Sent Events (SSE).
+        Enqueues a message for the worker. Returns `202` + `request_id`; narration
+        streams on `GET /v1/events/gamestate/{id}` (`request.processing` → `chat.chunk`
+        → `request.completed` or `request.failed`). Max message length 255.
+        Request field `stream` is ignored (deprecated).
       operationId: sendChatMessage
       tags:
         - Chat
@@ -57,18 +56,12 @@ paths:
             schema:
               $ref: '#/components/schemas/ChatRequest'
       responses:
-        '200':
-          description: Chat response (non-streaming)
+        '202':
+          description: Enqueued
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ChatResponse'
-        '200 (streaming)':
-          description: Chat response (streaming)
-          content:
-            text/event-stream:
-              schema:
-                $ref: '#/components/schemas/StreamChunk'
+                $ref: '#/components/schemas/ChatAcceptedResponse'
         '400':
           description: Invalid request
           content:
@@ -82,7 +75,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
-          description: Internal server error
+          description: Enqueue failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/events/gamestate/{id}:
+    get:
+      summary: Subscribe to game events (SSE)
+      description: |
+        SSE stream for a game. Events: `connected`, `request.processing`,
+        `chat.chunk` (`content`, `done`), `request.completed` (`result.message`),
+        `request.failed` (`error`). Keepalives every ~30s. Subscribe before chat.
+      operationId: subscribeGameEvents
+      tags:
+        - Events
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Game state UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: SSE stream (text/event-stream)
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          description: Invalid path or ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed
           content:
             application/json:
               schema:
@@ -574,31 +605,27 @@ components:
         gamestate_id:
           type: string
           format: uuid
-          description: UUID of the game state
         message:
           type: string
-          description: User's message to the narrator
+          maxLength: 255
           example: "I look around the tavern"
         stream:
           type: boolean
-          default: false
-          description: Whether to stream the response using Server-Sent Events
+          deprecated: true
+          description: Ignored; streaming is via SSE
 
-    ChatResponse:
+    ChatAcceptedResponse:
       type: object
+      required:
+        - request_id
+        - message
       properties:
-        gamestate_id:
+        request_id:
           type: string
           format: uuid
-          description: UUID of the game state
         message:
           type: string
-          description: Narrator's response
-        chat_history:
-          type: array
-          items:
-            $ref: '#/components/schemas/ChatMessage'
-          description: Complete chat history
+          example: "Request accepted for processing. Poll game state for updates."
 
     ChatMessage:
       type: object
@@ -609,23 +636,10 @@ components:
         role:
           type: string
           enum: [user, assistant, system]
-          description: Role of the message sender
         content:
           type: string
-          description: Message content
-
-    StreamChunk:
-      type: object
-      properties:
-        content:
-          type: string
-          description: Partial content of the streaming response
-        done:
+        is_story_event:
           type: boolean
-          description: Whether this is the final chunk
-        error:
-          type: string
-          description: Error message if an error occurred
 
     GameState:
       type: object
@@ -1174,7 +1188,9 @@ tags:
   - name: Health
     description: Health check endpoints
   - name: Chat
-    description: Chat and conversation endpoints
+    description: Async chat enqueue
+  - name: Events
+    description: SSE narration and status
   - name: Game State
     description: Game state management
   - name: Scenarios

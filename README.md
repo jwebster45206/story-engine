@@ -14,23 +14,32 @@ Features are geared towards a closed-world / on-rails style of D&D adventure.
 - **Story Events** - For injecting hardcoded narratives into the chat flow.
 
 ## Architecture
-Project includes a Go microservice API and a console app. 
+HTTP API (`cmd/api`) + worker (`cmd/worker`) + Redis (state, queue, locks, SSE). Console under `cmd/console`.
+
+Chat flow: create gamestate → subscribe SSE → `POST /v1/chat` (`202`) → worker streams `chat.chunk` / `request.completed`.
 
 ### Package Organization
 
 ```
+cmd/
+├── api/            # HTTP API entrypoint
+├── worker/         # Async chat / story-event processor
+└── validate/       # Scenario validation CLI
+
 pkg/
-├── state/          # Game state data structures (low-level)
-├── prompts/        # LLM message construction (high-level)
+├── state/          # Game state + delta application
+├── prompts/        # LLM message construction
 ├── scenario/       # Scenario definitions and rules
-├── actor/          # Player characters and NPCs
+├── actor/          # Player characters, NPCs, monsters
 ├── chat/           # Chat message types
+├── queue/          # Queue request models
 └── storage/        # Storage interface
 
 internal/
-└── handlers/       # HTTP request handlers and business logic
-└── services/       # LLM interface and implementations
-└── storage/        # Filesystem and Redis storage implementations
+├── handlers/       # HTTP handlers
+├── worker/         # Queue consumer + chat processor
+├── services/       # LLM providers, registry, queue, SSE events
+└── storage/        # Redis + filesystem implementations
 ```
 
 ### Prompt Builder
@@ -102,13 +111,12 @@ Complete API documentation is available in the OpenAPI specification:
 
 ### Quick Overview
 
-The API provides endpoints for:
-- **Game State Management** - Create, read, update, and delete game sessions
-- **Chat Interaction** - Send messages and receive AI narrator responses (supports streaming)
-- **Scenario Management** - Browse and load story scenarios
-- **Player Characters** - List and retrieve player character definitions
-- **Narrators** - Access narrator personalities and styles
-- **Health Check** - Monitor API status and dependencies
+- **Game State** - Create, read, update, delete sessions
+- **Chat** - Enqueue messages (`202`); narration via SSE
+- **Events** - `GET /v1/events/gamestate/{id}`
+- **Scenarios / PCs / Narrators / Monsters** - Browse content
+- **Providers** - List LLM providers (no API keys)
+- **Health** - API and dependency status
 
 ## Running the Project
 
