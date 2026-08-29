@@ -1,25 +1,22 @@
 # Story Engine
-A lightweight narrative engine for immersive, structured text adventures. Game engine inspired by text adventure games of the 70's and 80's, augmented with a modern LLM's conversational capabilities. 
+A lightweight narrative engine for immersive, structured text adventures. Game engine inspired by text adventure games of the 70's and 80's.
 
 ## Features
 
 Features are geared towards a closed-world / on-rails style of D&D adventure. 
 
-- **Scene-Based Narrative** - Linear or branching scenes, used to tell a story over a series of "acts." Confining information to scenes reduces LLM confusion.
-- **Location & Map System** - Confines the gameworld to a defined set of locations with movement rules. 
+- **Scene-Based Narrative** - Linear or branching scenes, used to tell a story over a series of "acts." 
+- **Location & Map System** - Attempts to confine the gameworld to a defined set of locations with movement rules. 
 - **Item & Inventory Management** - Player can acquire, drop, give and use items.
 - **Player Character System** - Players take the roles of 5e-compatible PC's. PCs are decoupled from scenarios.
 - **NPC System** - Story-scoped NPCs with planned mutable properties. Mutable properties aren't well fleshed out or tested yet.
-- **Monster System (v1)** - Lifecycle-scoped "monsters" for templated enemy creatures
-- **Variables** - Simple vars for tracking story progression. It's relatively easy for an LLM to track these, so they can be combined with conditional logic for powerful game control. 
-- **Story Events** - Ability to inject story events into the chat flow.
+- **Monster System (v1)** - Lifecycle-scoped "monsters" for templated enemy creatures.
+- **Story Events** - For injecting hardcoded narratives into the chat flow.
 
 ## Architecture
 Project includes a Go microservice API and a console app. 
 
 ### Package Organization
-
-The codebase follows a clean architecture with clear separation of concerns:
 
 ```
 pkg/
@@ -40,12 +37,11 @@ internal/
 
 The prompt builder package (`pkg/prompts`) provides a fluent interface for constructing LLM chat messages:
 
-- **Separation of Concerns**: Isolates prompt construction logic from game state management
-- **Fluent Interface**: Chainable methods for composing complex prompts
-- **Automatic Context Assembly**: Combines narrator voice, player character details, scenario rules, game state, and chat history
-- **Story Event Injection**: Seamlessly integrates queued story events into the conversation flow
-- **Contingency Prompts**: Handles conditional prompts based on game state (variables, turn count, scene)
-- **History Windowing**: Manages chat history with configurable limits to control token usage
+- Isolates prompt construction logic from game state management
+- Chainable methods for composing complex prompts
+- Combines narrator voice, player character details, scenario rules, game state, and chat history
+- Handles conditional prompts based on game state (variables, turn count, scene)
+- Manages chat history with configurable limits to control token usage
 
 **Usage Example:**
 ```go
@@ -57,18 +53,7 @@ messages, err := prompts.New().
     Build()
 ```
 
-The builder automatically:
-- Loads narrator personality and style from embedded game state
-- Includes player character details and conditional prompts
-- Adds scenario rules and content rating guidelines
-- Assembles **WORLD STATE** from the current location (full description, exits, items, co-located NPCs and monsters), adjacent location previews, and inline movement rules — see [docs/guide-for-scenarios.md](docs/guide-for-scenarios.md#world-state-prompt-format)
-- Manages chat history with proper windowing
-- Injects story events at the appropriate position
-- Appends final reminders or game-end prompts
-
 ### Storage Interface
-
-The storage layer uses a **public interface** with **private implementations**:
 
 - **Interface (`pkg/storage/`)**: Defines the storage contract for game state, scenarios, narrators, and PCs
 - **Implementation (`internal/storage/`)**: Redis-backed game state persistence and filesystem-backed resource loading
@@ -83,9 +68,7 @@ The storage layer uses a **public interface** with **private implementations**:
 
 ### LLM Interface
 
-The LLM service layer (`internal/services/`) provides an abstraction for Large Language Model integration:
-
-- **Provider Abstraction**: Pluggable architecture supporting multiple LLM providers (Anthropic Claude, VeniceAI)
+- **Provider Abstraction**: Pluggable architecture supporting multiple LLM providers 
 - **Chat Integration**: Handles conversation context and message formatting
 - **Streaming Support**: Real-time response streaming with delta updates
 - **Game State Extraction**: Parses LLM responses to extract game state changes (location, inventory, variables)
@@ -126,8 +109,6 @@ The API provides endpoints for:
 - **Player Characters** - List and retrieve player character definitions
 - **Narrators** - Access narrator personalities and styles
 - **Health Check** - Monitor API status and dependencies
-
-All endpoints return JSON responses with consistent error formatting. 
 
 ## Running the Project
 
