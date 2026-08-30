@@ -90,7 +90,7 @@ func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatReq
 		return nil, fmt.Errorf("failed to build chat messages: %w", err)
 	}
 
-	chatCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	chatCtx, cancel := context.WithTimeout(ctx, LLMRequestTimeout)
 	defer cancel()
 
 	temperature := gs.Temperature
@@ -201,11 +201,11 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 	return streamChan, "", nil
 }
 
-// UpdateGameStateAfterStream updates game state after streaming is complete
-// This should be called by the handler after consuming the stream
-func (p *ChatProcessor) UpdateGameStateAfterStream(gs *state.GameState, userMessage, responseMessage, storyEventPrompt string, isStoryEvent bool) error {
-	ctx := context.Background()
-
+// UpdateGameStateAfterStream updates game state after streaming is complete.
+// This should be called by the worker after consuming the stream.
+// Background delta uses a detached metaCtx so request cancellation does not abort an in-flight reducer;
+// a newer chat for the same game still cancels via metaCancel.
+func (p *ChatProcessor) UpdateGameStateAfterStream(ctx context.Context, gs *state.GameState, userMessage, responseMessage, storyEventPrompt string, isStoryEvent bool) error {
 	// Cancel any in-process gamestate delta for this game state
 	p.metaCancelMu.Lock()
 	if cancel, ok := p.metaCancel[gs.ID]; ok {
@@ -234,7 +234,12 @@ func (p *ChatProcessor) UpdateGameStateAfterStream(gs *state.GameState, userMess
 
 	// Start background gamestate delta update if game is not ended
 	if !gs.IsEnded {
-		go p.syncGameState(metaCtx, gs, userMessage, responseMessage)
+		gsCopy, err := gs.DeepCopy()
+		if err != nil {
+			p.logger.Error("Failed to copy game state for background sync", "error", err, "game_state_id", gs.ID.String())
+		} else {
+			go p.syncGameState(metaCtx, gsCopy, userMessage, responseMessage)
+		}
 	}
 
 	p.logger.Debug("Game state updated after streaming", "game_state_id", gs.ID.String())
@@ -300,7 +305,7 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 		},
 	)
 
-	metaCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	metaCtx, cancel := context.WithTimeout(ctx, DeltaTimeout)
 	defer cancel()
 
 	// Send the gamestate delta request to the LLM (with one retry on error)

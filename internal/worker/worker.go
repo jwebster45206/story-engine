@@ -131,7 +131,7 @@ func (w *Worker) acquireGameLock(gameStateID uuid.UUID) (bool, error) {
 	lockKey := fmt.Sprintf("game-lock:%s", gameStateID.String())
 
 	result, err := w.redisClient.SetArgs(w.ctx, lockKey, w.id, redis.SetArgs{
-		TTL:  30 * time.Second,
+		TTL:  GameLockTTL,
 		Mode: "NX",
 	}).Result()
 	if err != nil {
@@ -172,14 +172,16 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 	)
 
 	start := time.Now()
+	reqCtx, cancel := context.WithTimeout(w.ctx, GameLockTTL)
+	defer cancel()
 
-	gs, err := w.processor.GetGameState(w.ctx, req.GameStateID)
+	gs, err := w.processor.GetGameState(reqCtx, req.GameStateID)
 	if err != nil {
 		w.log.Error("Failed to load game state",
 			"error", err,
 			"request_id", req.RequestID,
 		)
-		if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
+		if pubErr := w.broadcaster.PublishRequestFailed(reqCtx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
 			w.log.Error("Failed to publish failure event", "error", pubErr)
 		}
 		return fmt.Errorf("failed to load game state: %w", err)
@@ -200,7 +202,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 	}
 
 	// Publish processing event with formatted user message
-	if err := w.broadcaster.PublishRequestProcessing(w.ctx, req.GameStateID, req.RequestID, string(req.Type), userMessage); err != nil {
+	if err := w.broadcaster.PublishRequestProcessing(reqCtx, req.GameStateID, req.RequestID, string(req.Type), userMessage); err != nil {
 		w.log.Error("Failed to publish processing event", "error", err)
 		// Don't fail the request just because event publishing failed
 	}
@@ -214,7 +216,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		}
 
 		// Process using streaming ChatProcessor
-		streamChan, storyEventPrompt, err := w.processor.ProcessChatStream(w.ctx, chatReq)
+		streamChan, storyEventPrompt, err := w.processor.ProcessChatStream(reqCtx, chatReq)
 		if err != nil {
 			w.log.Error("Failed to start chat stream",
 				"error", err,
@@ -223,7 +225,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			)
 
 			// Publish failure event
-			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
+			if pubErr := w.broadcaster.PublishRequestFailed(reqCtx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
 				w.log.Error("Failed to publish failure event", "error", pubErr)
 			}
 
@@ -247,7 +249,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			fullMessage += chunk.Content
 
 			// Publish chunk to SSE
-			if err := w.broadcaster.PublishChatChunk(w.ctx, req.GameStateID, req.RequestID, chunk.Content, chunk.Done); err != nil {
+			if err := w.broadcaster.PublishChatChunk(reqCtx, req.GameStateID, req.RequestID, chunk.Content, chunk.Done); err != nil {
 				w.log.Error("Failed to publish chat chunk", "error", err)
 				// Don't fail the stream, just log it
 			}
@@ -259,21 +261,21 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 
 		if streamErr != nil {
 			// Publish failure event
-			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, streamErr.Error()); pubErr != nil {
+			if pubErr := w.broadcaster.PublishRequestFailed(reqCtx, req.GameStateID, req.RequestID, streamErr.Error()); pubErr != nil {
 				w.log.Error("Failed to publish failure event", "error", pubErr)
 			}
 			return fmt.Errorf("failed to process chat request: %w", streamErr)
 		}
 
 		// Update game state with the full streamed message (using pre-formatted userMessage)
-		if err := w.processor.UpdateGameStateAfterStream(gs, userMessage, fullMessage, storyEventPrompt, false); err != nil {
+		if err := w.processor.UpdateGameStateAfterStream(reqCtx, gs, userMessage, fullMessage, storyEventPrompt, false); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
 			)
 
 			// Publish failure event
-			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
+			if pubErr := w.broadcaster.PublishRequestFailed(reqCtx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
 				w.log.Error("Failed to publish failure event", "error", pubErr)
 			}
 
@@ -291,7 +293,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			"message":     fullMessage,
 			"duration_ms": time.Since(start).Milliseconds(),
 		}
-		if err := w.broadcaster.PublishRequestCompleted(w.ctx, req.GameStateID, req.RequestID, result); err != nil {
+		if err := w.broadcaster.PublishRequestCompleted(reqCtx, req.GameStateID, req.RequestID, result); err != nil {
 			w.log.Error("Failed to publish completion event", "error", err)
 		}
 
@@ -306,7 +308,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		}
 
 		// Process using streaming ChatProcessor
-		streamChan, storyEventPrompt, err := w.processor.ProcessChatStream(w.ctx, chatReq)
+		streamChan, storyEventPrompt, err := w.processor.ProcessChatStream(reqCtx, chatReq)
 		if err != nil {
 			w.log.Error("Failed to start story event stream",
 				"error", err,
@@ -315,7 +317,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			)
 
 			// Publish failure event
-			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
+			if pubErr := w.broadcaster.PublishRequestFailed(reqCtx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
 				w.log.Error("Failed to publish failure event", "error", pubErr)
 			}
 
@@ -339,7 +341,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			fullMessage += chunk.Content
 
 			// Publish chunk to SSE
-			if err := w.broadcaster.PublishChatChunk(w.ctx, req.GameStateID, req.RequestID, chunk.Content, chunk.Done); err != nil {
+			if err := w.broadcaster.PublishChatChunk(reqCtx, req.GameStateID, req.RequestID, chunk.Content, chunk.Done); err != nil {
 				w.log.Error("Failed to publish chat chunk", "error", err)
 				// Don't fail the stream, just log it
 			}
@@ -351,14 +353,14 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 
 		if streamErr != nil {
 			// Publish failure event
-			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, streamErr.Error()); pubErr != nil {
+			if pubErr := w.broadcaster.PublishRequestFailed(reqCtx, req.GameStateID, req.RequestID, streamErr.Error()); pubErr != nil {
 				w.log.Error("Failed to publish failure event", "error", pubErr)
 			}
 			return fmt.Errorf("failed to process story event: %w", streamErr)
 		}
 
 		// Load game state to update it
-		gs, err := w.processor.GetGameState(w.ctx, req.GameStateID)
+		gs, err := w.processor.GetGameState(reqCtx, req.GameStateID)
 		if err != nil {
 			w.log.Error("Failed to load game state for update",
 				"error", err,
@@ -366,7 +368,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			)
 
 			// Publish failure event
-			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
+			if pubErr := w.broadcaster.PublishRequestFailed(reqCtx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
 				w.log.Error("Failed to publish failure event", "error", pubErr)
 			}
 
@@ -374,14 +376,14 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		}
 
 		// Update game state with the full streamed message
-		if err := w.processor.UpdateGameStateAfterStream(gs, storyEventMessage, fullMessage, storyEventPrompt, true); err != nil {
+		if err := w.processor.UpdateGameStateAfterStream(reqCtx, gs, storyEventMessage, fullMessage, storyEventPrompt, true); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
 			)
 
 			// Publish failure event
-			if pubErr := w.broadcaster.PublishRequestFailed(w.ctx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
+			if pubErr := w.broadcaster.PublishRequestFailed(reqCtx, req.GameStateID, req.RequestID, err.Error()); pubErr != nil {
 				w.log.Error("Failed to publish failure event", "error", pubErr)
 			}
 
@@ -399,7 +401,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			"message":     fullMessage,
 			"duration_ms": time.Since(start).Milliseconds(),
 		}
-		if err := w.broadcaster.PublishRequestCompleted(w.ctx, req.GameStateID, req.RequestID, result); err != nil {
+		if err := w.broadcaster.PublishRequestCompleted(reqCtx, req.GameStateID, req.RequestID, result); err != nil {
 			w.log.Error("Failed to publish completion event", "error", err)
 		}
 

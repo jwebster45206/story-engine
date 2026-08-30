@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -170,6 +172,11 @@ func (s stubResolver) Get(_ string) (services.LLMService, error) { return s.llm,
 type stubLLMService struct {
 	capturedMessages []chat.ChatMessage
 	capturedTemp     float64
+
+	deltaCalls      int
+	deltaStarted    chan struct{}
+	deltaBeforeJSON string
+	deltaOnce       sync.Once
 }
 
 func (s *stubLLMService) Chat(_ context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error) {
@@ -180,7 +187,17 @@ func (s *stubLLMService) Chat(_ context.Context, messages []chat.ChatMessage, te
 func (s *stubLLMService) ChatStream(_ context.Context, _ []chat.ChatMessage, _ float64) (<-chan services.StreamChunk, error) {
 	return nil, nil
 }
-func (s *stubLLMService) DeltaUpdate(_ context.Context, _ []chat.ChatMessage) (*conditionals.GameStateDelta, string, error) {
+func (s *stubLLMService) DeltaUpdate(_ context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, string, error) {
+	s.deltaCalls++
+	for _, m := range messages {
+		if strings.HasPrefix(m.Content, "BEFORE game state: ") {
+			s.deltaBeforeJSON = strings.TrimPrefix(m.Content, "BEFORE game state: ")
+			break
+		}
+	}
+	if s.deltaStarted != nil {
+		s.deltaOnce.Do(func() { close(s.deltaStarted) })
+	}
 	return nil, "", nil
 }
 
