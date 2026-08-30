@@ -57,7 +57,9 @@ pkg/
 internal/
 ├── handlers/       # HTTP handlers
 ├── worker/         # Queue consumer + chat processor
-├── services/       # LLM providers, registry, queue, SSE
+├── services/       # LLM providers and registry
+├── queue/          # Redis work queue
+├── events/         # Redis pub/sub for SSE
 └── storage/        # Redis + filesystem implementations
 ```
 

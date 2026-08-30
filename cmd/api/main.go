@@ -13,8 +13,8 @@ import (
 	"github.com/jwebster45206/story-engine/internal/handlers"
 	"github.com/jwebster45206/story-engine/internal/logger"
 	"github.com/jwebster45206/story-engine/internal/middleware"
+	"github.com/jwebster45206/story-engine/internal/queue"
 	"github.com/jwebster45206/story-engine/internal/services"
-	"github.com/jwebster45206/story-engine/internal/services/queue"
 	"github.com/jwebster45206/story-engine/internal/storage"
 )
 
