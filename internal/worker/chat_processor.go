@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -115,9 +116,7 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 
 // UpdateGameStateAfterStream updates game state after streaming is complete.
 // This should be called by the worker after consuming the stream.
-func (p *ChatProcessor) UpdateGameStateAfterStream(gs *state.GameState, userMessage, responseMessage string, isStoryEvent bool) error {
-	ctx := context.Background()
-
+func (p *ChatProcessor) UpdateGameStateAfterStream(ctx context.Context, gs *state.GameState, userMessage, responseMessage string, isStoryEvent bool) error {
 	// Cancel any in-process gamestate delta for this game state
 	p.metaCancelMu.Lock()
 	if cancel, ok := p.metaCancel[gs.ID]; ok {
@@ -217,16 +216,13 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 		},
 	)
 
-	metaCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	// Send the gamestate delta request to the LLM (with one retry on error)
+	// Send the gamestate delta request to the LLM
 	var delta *conditionals.GameStateDelta
 	var backendModel string
 	var deltaErr error
 
 	maxAttempts := 2
-	llm, err := p.resolver.Get(gs.Provider)
+	svc, err := p.resolver.Get(gs.Provider)
 	if err != nil {
 		p.logger.Error("Failed to resolve LLM provider for delta", "error", err, "provider", gs.Provider, "game_state_id", gs.ID.String())
 		return
@@ -237,27 +233,31 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 		}
 
 		p.logger.Debug("Sending gamestate delta request to LLM", "game_state_id", gs.ID.String(), "provider", gs.Provider, "attempt", attempt)
-		delta, backendModel, deltaErr = llm.DeltaUpdate(metaCtx, messages)
+		// deltaCtx is the deadline for this DeltaUpdate attempt.
+		deltaCtx, deltaCancel := context.WithTimeout(ctx, LLMRequestTimeout)
+		delta, backendModel, deltaErr = svc.DeltaUpdate(deltaCtx, messages)
+		deltaCancel()
 
-		if deltaErr == nil {
-			p.logger.Debug("Received gamestate delta from LLM", "game_state_id", gs.ID.String(), "delta", delta, "backend_model", backendModel)
-			break
-		}
-
-		// Log error and retry if not the last attempt
-		if attempt < maxAttempts {
+		switch {
+		case errors.Is(deltaErr, context.Canceled) || errors.Is(deltaErr, context.DeadlineExceeded):
+			p.logger.Error("Gamestate delta extraction canceled or timed out", "error", deltaErr, "game_state_id", gs.ID.String(), "attempt", attempt)
+			return
+		case deltaErr != nil && attempt < maxAttempts:
 			p.logger.Warn("Gamestate delta extraction failed, will retry", "error", deltaErr, "game_state_id", gs.ID.String(), "attempt", attempt)
-		} else {
+			continue
+		case deltaErr != nil:
 			p.logger.Error("Failed to get meta extraction response from LLM after retries", "error", deltaErr, "game_state_id", gs.ID.String(), "attempts", maxAttempts)
 			return
 		}
+		p.logger.Debug("Received gamestate delta from LLM", "game_state_id", gs.ID.String(), "delta", delta, "backend_model", backendModel)
+		break
 	}
 
 	if delta == nil {
 		return
 	}
 
-	latestGS, err := p.storage.LoadGameState(metaCtx, gs.ID)
+	latestGS, err := p.storage.LoadGameState(ctx, gs.ID)
 	if err != nil {
 		p.logger.Error("Failed to load latest game state for gamestate delta", "error", err, "game_state_id", gs.ID.String())
 		return
@@ -276,7 +276,7 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 	worker := state.NewDeltaWorker(latestGS, delta, s, p.logger).
 		WithQueue(p.chatQueue).
 		WithStorage(p.storage).
-		WithContext(metaCtx)
+		WithContext(ctx)
 
 	// Apply vars first (before evaluating conditionals)
 	worker.ApplyVars()
@@ -291,7 +291,7 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 	p.applyConditionalsCascade(worker, latestGS.ID)
 
 	// Save the updated game state
-	if err := p.storage.SaveGameState(metaCtx, latestGS.ID, latestGS); err != nil {
+	if err := p.storage.SaveGameState(ctx, latestGS.ID, latestGS); err != nil {
 		p.logger.Error("Failed to save updated game state after meta extraction", "error", err, "game_state_id", latestGS.ID.String())
 		return
 	}
