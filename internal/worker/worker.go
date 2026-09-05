@@ -18,12 +18,11 @@ import (
 const (
 	workerTimeout = 5 * time.Second
 
-	// LLMRequestTimeout is one DeltaUpdate attempt. Matches the HTTP client timeout.
-	LLMRequestTimeout = llm.HTTPClientTimeout
+	// llmRequestTimeout is one DeltaUpdate attempt.
+	llmRequestTimeout = llm.HTTPClientTimeout
 
-	// GameLockTTL is the Redis lock crash ceiling. Must outlive a 60s HTTP stream
-	// plus a Redis save; the lock is taken before the stream starts.
-	GameLockTTL = LLMRequestTimeout + 5*time.Second
+	// gameLockTTL is the Redis lock crash ceiling.
+	gameLockTTL = llmRequestTimeout + 15*time.Second
 )
 
 // Worker processes messages in the chat queue
@@ -139,7 +138,7 @@ func (w *Worker) acquireGameLock(gameStateID uuid.UUID) (bool, error) {
 	lockKey := fmt.Sprintf("game-lock:%s", gameStateID.String())
 
 	result, err := w.redisClient.SetArgs(w.ctx, lockKey, w.id, redis.SetArgs{
-		TTL:  GameLockTTL,
+		TTL:  gameLockTTL,
 		Mode: "NX",
 	}).Result()
 	if err != nil {
@@ -229,7 +228,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			return err
 		}
 
-		if err := w.processor.UpdateGameStateAfterStream(w.ctx, gs, userMessage, fullMessage, false); err != nil {
+		if err := w.processor.UpdateGameStateAfterStream(context.Background(), gs, userMessage, fullMessage, false); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
@@ -274,7 +273,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			return fmt.Errorf("failed to load game state: %w", err)
 		}
 
-		if err := w.processor.UpdateGameStateAfterStream(w.ctx, gs, storyEventMessage, fullMessage, true); err != nil {
+		if err := w.processor.UpdateGameStateAfterStream(context.Background(), gs, storyEventMessage, fullMessage, true); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
@@ -319,6 +318,7 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 
 	var fullMessage string
 	var streamErr error
+	var done bool
 	for chunk := range streamChan {
 		if chunk.Error != nil {
 			streamErr = chunk.Error
@@ -336,11 +336,12 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 		}
 
 		if chunk.Done {
+			done = true
 			break
 		}
 	}
 
-	if streamErr == nil && w.ctx.Err() != nil {
+	if streamErr == nil && !done && w.ctx.Err() != nil {
 		streamErr = w.ctx.Err()
 	}
 	if streamErr != nil {

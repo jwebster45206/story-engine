@@ -234,13 +234,17 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 
 		p.logger.Debug("Sending gamestate delta request to LLM", "game_state_id", gs.ID.String(), "provider", gs.Provider, "attempt", attempt)
 		// deltaCtx is the deadline for this DeltaUpdate attempt.
-		deltaCtx, deltaCancel := context.WithTimeout(ctx, LLMRequestTimeout)
+		deltaCtx, deltaCancel := context.WithTimeout(ctx, llmRequestTimeout)
 		delta, backendModel, deltaErr = svc.DeltaUpdate(deltaCtx, messages)
 		deltaCancel()
 
 		switch {
-		case errors.Is(deltaErr, context.Canceled) || errors.Is(deltaErr, context.DeadlineExceeded):
-			p.logger.Error("Gamestate delta extraction canceled or timed out", "error", deltaErr, "game_state_id", gs.ID.String(), "attempt", attempt)
+		case ctx.Err() != nil:
+			p.logger.Error("Gamestate delta extraction canceled", "error", ctx.Err(), "game_state_id", gs.ID.String(), "attempt", attempt)
+			return
+		case errors.Is(deltaErr, context.DeadlineExceeded):
+			// Attempt already used llmRequestTimeout; HTTP client has the same budget.
+			p.logger.Error("Gamestate delta extraction timed out", "error", deltaErr, "game_state_id", gs.ID.String(), "attempt", attempt)
 			return
 		case deltaErr != nil && attempt < maxAttempts:
 			p.logger.Warn("Gamestate delta extraction failed, will retry", "error", deltaErr, "game_state_id", gs.ID.String(), "attempt", attempt)
