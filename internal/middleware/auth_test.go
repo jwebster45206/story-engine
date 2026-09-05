@@ -8,6 +8,7 @@ import (
 	"testing"
 	"uuid"
 
+	"github.com/jwebster45206/story-engine/internal/auth"
 	"github.com/jwebster45206/story-engine/internal/config"
 )
 
@@ -84,7 +85,7 @@ func TestAPIKey_WrongKey(t *testing.T) {
 
 func TestAPIKey_APIKeyPrincipal(t *testing.T) {
 	h := APIKey(testAuthConfig(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p, ok := PrincipalFrom(r.Context())
+		p, ok := auth.PrincipalFrom(r.Context())
 		if !ok {
 			t.Fatal("missing principal")
 		}
@@ -104,7 +105,7 @@ func TestAPIKey_APIKeyPrincipal(t *testing.T) {
 
 func TestAPIKey_CanonicalForm(t *testing.T) {
 	h := APIKey(testAuthConfig(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := PrincipalFrom(r.Context()); !ok {
+		if _, ok := auth.PrincipalFrom(r.Context()); !ok {
 			t.Fatal("expected api_key principal")
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -115,21 +116,5 @@ func TestAPIKey_CanonicalForm(t *testing.T) {
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204", rr.Code)
-	}
-}
-
-func TestPrincipalCanAccess(t *testing.T) {
-	hashA := config.HashKey(uuid.MustParse(testAPIKey))
-	hashB := config.HashKey(uuid.MustParse("44444444-4444-4444-8444-444444444444"))
-	api := Principal{KeyHash: hashA}
-
-	if !api.CanAccess(hashA) {
-		t.Fatal("owner should access own hash")
-	}
-	if api.CanAccess(hashB) {
-		t.Fatal("api_key must not access another hash")
-	}
-	if api.CanAccess("") {
-		t.Fatal("empty owner hash is not owned by any key")
 	}
 }

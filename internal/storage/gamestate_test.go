@@ -149,8 +149,18 @@ func TestMockStorage_GetOwnerKeyHash(t *testing.T) {
 	}
 
 	gs := state.NewGameState("test_scenario.json", nil, "test-provider", "test_model")
-	gs.OwnerKeyHash = "owner-hash-abc"
 	if err := mockStorage.SaveGameState(ctx, gs.ID, gs); err != nil {
+		t.Fatal(err)
+	}
+	hash, found, err = mockStorage.GetOwnerKeyHash(ctx, gs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found {
+		t.Fatal("save must not create an owner hash")
+	}
+
+	if err := mockStorage.SetOwnerKeyHash(ctx, gs.ID, "owner-hash-abc"); err != nil {
 		t.Fatal(err)
 	}
 	hash, found, err = mockStorage.GetOwnerKeyHash(ctx, gs.ID)

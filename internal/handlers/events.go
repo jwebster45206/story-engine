@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/internal/auth"
 	"github.com/jwebster45206/story-engine/internal/events"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 	"github.com/redis/go-redis/v9"
@@ -71,7 +72,7 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !authorizeGame(w, r, h.storage, gameStateID, h.logger) {
+	if !auth.AuthorizeGame(w, r, h.storage, gameStateID, h.logger) {
 		return
 	}
 

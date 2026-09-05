@@ -15,6 +15,7 @@ import (
 type MockStorage struct {
 	mu         sync.RWMutex
 	gamestates map[uuid.UUID]*state.GameState
+	owners     map[uuid.UUID]string
 	scenarios  map[string]*scenario.Scenario
 	narrators  map[string]*scenario.Narrator
 	pcSpecs    map[string]*actor.PCSpec
@@ -30,6 +31,7 @@ var _ Storage = (*MockStorage)(nil)
 func NewMockStorage() *MockStorage {
 	return &MockStorage{
 		gamestates: make(map[uuid.UUID]*state.GameState),
+		owners:     make(map[uuid.UUID]string),
 		scenarios:  make(map[string]*scenario.Scenario),
 		narrators:  make(map[string]*scenario.Narrator),
 		pcSpecs:    make(map[string]*actor.PCSpec),
@@ -95,18 +97,28 @@ func (m *MockStorage) DeleteGameState(ctx context.Context, id uuid.UUID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.gamestates, id)
+	delete(m.owners, id)
 	return nil
 }
 
-// GetOwnerKeyHash mocks reading the owner hash without loading the blob.
+func (m *MockStorage) SetOwnerKeyHash(ctx context.Context, id uuid.UUID, hash string) error {
+	if hash == "" {
+		return errors.New("owner key hash must not be empty")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.owners[id] = hash
+	return nil
+}
+
 func (m *MockStorage) GetOwnerKeyHash(ctx context.Context, id uuid.UUID) (string, bool, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	gamestate, exists := m.gamestates[id]
-	if !exists {
+	hash, ok := m.owners[id]
+	if !ok {
 		return "", false, nil
 	}
-	return gamestate.OwnerKeyHash, true, nil
+	return hash, true, nil
 }
 
 // ListScenarios mocks listing scenarios

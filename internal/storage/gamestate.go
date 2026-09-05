@@ -37,7 +37,7 @@ func (r *RedisStorage) SaveGameState(ctx context.Context, id uuid.UUID, gs *stat
 
 	pipe := r.client.TxPipeline()
 	pipe.Set(ctx, gamestateKey(id), string(data), gameStateTTL)
-	pipe.Set(ctx, gamestateOwnerKey(id), gs.OwnerKeyHash, gameStateTTL)
+	pipe.Expire(ctx, gamestateOwnerKey(id), gameStateTTL)
 	if _, err := pipe.Exec(ctx); err != nil {
 		r.logger.Error("Failed to save gamestate", "uuid", id, "error", err)
 		return fmt.Errorf("failed to save gamestate: %w", err)
@@ -70,6 +70,17 @@ func (r *RedisStorage) LoadGameState(ctx context.Context, id uuid.UUID) (*state.
 	}
 
 	return &gs, nil
+}
+
+func (r *RedisStorage) SetOwnerKeyHash(ctx context.Context, id uuid.UUID, hash string) error {
+	if hash == "" {
+		return fmt.Errorf("owner key hash must not be empty")
+	}
+	if err := r.client.Set(ctx, gamestateOwnerKey(id), hash, gameStateTTL).Err(); err != nil {
+		r.logger.Error("Failed to save gamestate owner hash", "uuid", id, "error", err)
+		return fmt.Errorf("failed to save gamestate owner hash: %w", err)
+	}
+	return nil
 }
 
 func (r *RedisStorage) GetOwnerKeyHash(ctx context.Context, id uuid.UUID) (string, bool, error) {

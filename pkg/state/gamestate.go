@@ -51,7 +51,6 @@ type GameState struct {
 	ContingencyPrompts []string                     `json:"contingency_prompts,omitempty"`
 	CreatedAt          time.Time                    `json:"created_at"`
 	UpdatedAt          time.Time                    `json:"updated_at"`
-	OwnerKeyHash       string                       `json:"owner_key_hash,omitempty"` // SHA-256 of the creating API key; stripped from HTTP responses
 
 	// JustEntered is true on the first turn after a location change.
 	// Transient: set by Applier when Apply() changes Location,

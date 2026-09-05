@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/internal/auth"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/queue"
 	"github.com/jwebster45206/story-engine/pkg/state"
@@ -86,7 +87,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !authorizeGame(w, r, h.storage, request.GameStateID, h.logger) {
+	if !auth.AuthorizeGame(w, r, h.storage, request.GameStateID, h.logger) {
 		return
 	}
 

@@ -198,11 +198,11 @@ func (s *stubStorage) LoadGameState(_ context.Context, _ uuid.UUID) (*state.Game
 	return s.gs, nil
 }
 func (s *stubStorage) DeleteGameState(_ context.Context, _ uuid.UUID) error { return nil }
+func (s *stubStorage) SetOwnerKeyHash(_ context.Context, _ uuid.UUID, _ string) error {
+	return nil
+}
 func (s *stubStorage) GetOwnerKeyHash(_ context.Context, _ uuid.UUID) (string, bool, error) {
-	if s.gs == nil {
-		return "", false, nil
-	}
-	return s.gs.OwnerKeyHash, true, nil
+	return "", false, nil
 }
 func (s *stubStorage) ListScenarios(_ context.Context) (map[string]string, error) {
 	return nil, nil

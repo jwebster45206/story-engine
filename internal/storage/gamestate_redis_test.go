@@ -31,8 +31,10 @@ func TestRedisStorage_OwnerKeySyncedTTL(t *testing.T) {
 	ctx := context.Background()
 
 	gs := state.NewGameState("test_scenario.json", nil, "test-provider", "test_model")
-	gs.OwnerKeyHash = "owner-hash-abc"
 	if err := store.SaveGameState(ctx, gs.ID, gs); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetOwnerKeyHash(ctx, gs.ID, "owner-hash-abc"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -70,13 +72,40 @@ func TestRedisStorage_OwnerKeySyncedTTL(t *testing.T) {
 	}
 }
 
+func TestRedisStorage_SaveDoesNotChangeOwner(t *testing.T) {
+	store, _ := newTestRedisStorage(t)
+	ctx := context.Background()
+
+	gs := state.NewGameState("test_scenario.json", nil, "test-provider", "test_model")
+	if err := store.SaveGameState(ctx, gs.ID, gs); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetOwnerKeyHash(ctx, gs.ID, "owner-hash-abc"); err != nil {
+		t.Fatal(err)
+	}
+
+	gs.Location = "forest"
+	if err := store.SaveGameState(ctx, gs.ID, gs); err != nil {
+		t.Fatal(err)
+	}
+	hash, found, err := store.GetOwnerKeyHash(ctx, gs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !found || hash != "owner-hash-abc" {
+		t.Fatalf("found=%v hash=%q", found, hash)
+	}
+}
+
 func TestRedisStorage_DeleteRemovesOwnerKey(t *testing.T) {
 	store, _ := newTestRedisStorage(t)
 	ctx := context.Background()
 
 	gs := state.NewGameState("test_scenario.json", nil, "test-provider", "test_model")
-	gs.OwnerKeyHash = "owner-hash-abc"
 	if err := store.SaveGameState(ctx, gs.ID, gs); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetOwnerKeyHash(ctx, gs.ID, "owner-hash-abc"); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.DeleteGameState(ctx, gs.ID); err != nil {

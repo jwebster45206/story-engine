@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
+	"testing"
 	"uuid"
 
 	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/internal/middleware"
+	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 const (
@@ -26,4 +30,14 @@ func testAuthConfig() *config.Config {
 func serveKey(h http.Handler, w http.ResponseWriter, r *http.Request, key string) {
 	r.Header.Set("Authorization", "Bearer "+key)
 	middleware.APIKey(testAuthConfig(), h).ServeHTTP(w, r)
+}
+
+func saveOwned(t *testing.T, store *storage.MockStorage, gs *state.GameState, key string) {
+	t.Helper()
+	if err := store.SaveGameState(context.Background(), gs.ID, gs); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetOwnerKeyHash(context.Background(), gs.ID, testKeyHash(key)); err != nil {
+		t.Fatal(err)
+	}
 }

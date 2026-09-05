@@ -257,10 +257,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 
 	// Create a test game state (nil narrator is fine for tests)
 	testGS := state.NewGameState("FooScenario", nil, "test-provider", "foo_model")
-	testGS.OwnerKeyHash = testKeyHash(testAPIKeyA)
-	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
-		t.Fatalf("Failed to save test game state: %v", err)
-	}
+	saveOwned(t, mockStorage, testGS, testAPIKeyA)
 
 	tests := []struct {
 		name           string
@@ -332,10 +329,7 @@ func TestGameStateHandler_Delete(t *testing.T) {
 
 	// Create a test game state (nil narrator is fine for tests)
 	testGS := state.NewGameState("FooScenario", nil, "test-provider", "foo_model")
-	testGS.OwnerKeyHash = testKeyHash(testAPIKeyA)
-	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
-		t.Fatalf("Failed to save test game state: %v", err)
-	}
+	saveOwned(t, mockStorage, testGS, testAPIKeyA)
 
 	tests := []struct {
 		name           string
@@ -583,17 +577,11 @@ func TestGameStateOwnership(t *testing.T) {
 	if err := json.NewDecoder(strings.NewReader(rawCreate)).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
-	if created.OwnerKeyHash != "" {
-		t.Fatalf("HTTP response leaked owner_key_hash %q", created.OwnerKeyHash)
-	}
 
 	wantHash := testKeyHash(testAPIKeyA)
 	stored, err := mockStorage.LoadGameState(context.Background(), created.ID)
 	if err != nil || stored == nil {
 		t.Fatalf("stored gamestate: %v", err)
-	}
-	if stored.OwnerKeyHash != wantHash {
-		t.Fatalf("stored hash = %q, want %q", stored.OwnerKeyHash, wantHash)
 	}
 	ownerHash, found, err := mockStorage.GetOwnerKeyHash(context.Background(), created.ID)
 	if err != nil || !found || ownerHash != wantHash {
@@ -610,7 +598,7 @@ func TestGameStateOwnership(t *testing.T) {
 		{name: "owner can get", method: http.MethodGet, key: testAPIKeyA, want: http.StatusOK},
 		{name: "other api_key gets 404", method: http.MethodGet, key: testAPIKeyB, want: http.StatusNotFound},
 		{name: "patch cannot change owner", method: http.MethodPatch, body: `{"owner_key_hash":"deadbeef","user_location":"start"}`, key: testAPIKeyA, want: http.StatusOK},
-		{name: "empty owner hash is 404", method: http.MethodGet, key: testAPIKeyA, want: http.StatusNotFound},
+		{name: "missing owner is 404", method: http.MethodGet, key: testAPIKeyA, want: http.StatusNotFound},
 	}
 
 	orphan := state.NewGameState("foo_scenario.json", nil, "foo", "foo_model")
@@ -621,7 +609,7 @@ func TestGameStateOwnership(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			id := created.ID
-			if strings.Contains(tt.name, "empty owner") {
+			if strings.Contains(tt.name, "missing owner") {
 				id = orphan.ID
 			}
 			var body *strings.Reader
@@ -645,12 +633,12 @@ func TestGameStateOwnership(t *testing.T) {
 				t.Fatal("response leaked owner_key_hash")
 			}
 			if tt.name == "patch cannot change owner" {
-				after, err := mockStorage.LoadGameState(context.Background(), created.ID)
+				after, _, err := mockStorage.GetOwnerKeyHash(context.Background(), created.ID)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if after.OwnerKeyHash != wantHash {
-					t.Fatalf("owner hash changed to %q", after.OwnerKeyHash)
+				if after != wantHash {
+					t.Fatalf("owner hash changed to %q", after)
 				}
 			}
 		})
@@ -669,12 +657,12 @@ func TestGameStateOwnership(t *testing.T) {
 		if err := json.NewDecoder(rr.Body).Decode(&gs); err != nil {
 			t.Fatal(err)
 		}
-		storedGS, err := mockStorage.LoadGameState(context.Background(), gs.ID)
+		owner, found, err := mockStorage.GetOwnerKeyHash(context.Background(), gs.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if storedGS.OwnerKeyHash != wantHash {
-			t.Fatalf("hash = %q, want creator hash", storedGS.OwnerKeyHash)
+		if !found || owner != wantHash {
+			t.Fatalf("hash = %q found=%v, want creator hash", owner, found)
 		}
 	})
 }
