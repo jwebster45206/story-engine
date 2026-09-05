@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/llm"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
@@ -24,7 +24,7 @@ type ErrorResponse struct {
 type ProviderCatalog interface {
 	Default() string
 	Names() []string
-	Info(name string) (services.ProviderInfo, bool)
+	Info(name string) (llm.ProviderInfo, bool)
 }
 
 type GameStateHandler struct {

@@ -1,4 +1,4 @@
-package services
+package llm
 
 import (
 	"bufio"
@@ -203,18 +203,6 @@ func (v *VeniceService) getDeltaUpdateResponseFormat() *VeniceResponseFormat {
 			Schema: deltaUpdateSchema(),
 		},
 	}
-}
-
-// Chat generates a chat response using Venice AI
-func (v *VeniceService) Chat(ctx context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error) {
-	content, err := v.chatCompletion(ctx, messages, v.modelName, temperature, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &chat.ChatResponse{
-		Message: content,
-	}, nil
 }
 
 // ChatStream generates a streaming chat response using Venice AI

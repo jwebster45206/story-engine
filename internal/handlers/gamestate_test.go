@@ -11,17 +11,16 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/llm"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
-
 func testCatalog() ProviderCatalog {
 	return &stubCatalog{
 		defaultName: "foo",
-		infos: map[string]services.ProviderInfo{
+		infos: map[string]llm.ProviderInfo{
 			"foo": {Name: "foo", DisplayName: "Foo", Vendor: "venice", Model: "foo_model"},
 			"bar": {Name: "bar", DisplayName: "Bar", Vendor: "anthropic", Model: "bar_model"},
 		},
@@ -30,7 +29,7 @@ func testCatalog() ProviderCatalog {
 
 type stubCatalog struct {
 	defaultName string
-	infos       map[string]services.ProviderInfo
+	infos       map[string]llm.ProviderInfo
 }
 
 func (s *stubCatalog) Default() string { return s.defaultName }
@@ -41,7 +40,7 @@ func (s *stubCatalog) Names() []string {
 	}
 	return names
 }
-func (s *stubCatalog) Info(name string) (services.ProviderInfo, bool) {
+func (s *stubCatalog) Info(name string) (llm.ProviderInfo, bool) {
 	info, ok := s.infos[name]
 	return info, ok
 }

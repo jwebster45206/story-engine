@@ -3,34 +3,53 @@ A lightweight narrative engine for immersive, structured text adventures. Game e
 
 ## Features
 
-Features are geared towards a closed-world / on-rails style of D&D adventure. 
-
-- **Scene-Based Narrative** - Linear or branching scenes, used to tell a story over a series of "acts." 
-- **Location & Map System** - Attempts to confine the gameworld to a defined set of locations with movement rules. 
-- **Item & Inventory Management** - Player can acquire, drop, give and use items.
-- **Player Character System** - Players take the roles of 5e-compatible PC's. PCs are decoupled from scenarios.
-- **NPC System** - Story-scoped NPCs with planned mutable properties. Mutable properties aren't well fleshed out or tested yet.
-- **Monster System (v1)** - Lifecycle-scoped "monsters" for templated enemy creatures.
-- **Story Events** - For injecting hardcoded narratives into the chat flow.
+- **Scenes** — linear or branching acts
+- **Locations & map** — defined world with movement rules
+- **Items & inventory** — acquire, drop, give, use
+- **Player characters** — 5e-compatible PCs, decoupled from scenarios
+- **NPCs** — story-scoped; mutable properties still early
+- **Monsters (v1)** — templated enemy lifecycle
+- **Story events** — inject fixed narrative into the chat flow
 
 ## Architecture
-HTTP API (`cmd/api`) + worker (`cmd/worker`) + Redis (state, queue, locks, SSE). Console under `cmd/console`.
 
-Chat flow: create gamestate → subscribe SSE → `POST /v1/chat` (`202`) → worker streams `chat.chunk` / `request.completed`.
+The Story Engine exposes a REST API for interactive, closed-world adventures. Clients create a game session, subscribe to Server-Sent Events, and send chat turns that a background worker processes with an LLM. Redis holds session state, the request queue, per-game locks, and SSE pub/sub between the API (`cmd/api`) and worker (`cmd/worker`). An optional console TUI lives under `cmd/console`.
 
-### Package Organization
+### Main loop
+
+**Init**
+1. `POST /v1/gamestate` — create a session (scenario, optional PC/narrator/provider).
+2. `GET /v1/events/gamestate/{id}` — subscribe to SSE before chatting.
+
+**Chat loop**
+1. `POST /v1/chat` — enqueue a player message (`202` + `request_id`).
+2. Narration arrives on the SSE stream (`request.processing` → `chat.chunk` → `request.completed` / `request.failed`).
+3. Structured game state (location, inventory, vars, scenes, …) updates in the background via a reducer pass.
+4. Engine-driven story events are also queued and streamed over the same SSE channel.
+
+### LLM layer
+
+Providers are named **vendor + model** entries in config. A **vendor** is a wire protocol implemented in Go; adding a provider is JSON-only. `internal/llm.Registry` maps provider names to `LLMService`:
+
+- `ChatStream` — narrator responses (`model`)
+- `DeltaUpdate` — structured state extraction, often via a cheaper `backend_model`
+
+`pkg/prompts` builds the message lists; the worker calls the registry by the game’s `provider`. List configured providers with `GET /v1/providers`.
+
+### Layout
 
 ```
 cmd/
-├── api/            # HTTP API entrypoint
+├── api/            # HTTP API
 ├── worker/         # Async chat / story-event processor
-└── validate/       # Scenario validation CLI
+├── validate/       # Scenario validation CLI
+└── console/        # Optional TUI client
 
 pkg/
 ├── state/          # Game state + delta application
 ├── prompts/        # LLM message construction
 ├── scenario/       # Scenario definitions and rules
-├── actor/          # Player characters, NPCs, monsters
+├── actor/          # PCs, NPCs, monsters
 ├── chat/           # Chat message types
 ├── queue/          # Queue request models
 └── storage/        # Storage interface
@@ -38,95 +57,17 @@ pkg/
 internal/
 ├── handlers/       # HTTP handlers
 ├── worker/         # Queue consumer + chat processor
-├── services/       # LLM providers, registry, queue, SSE events
+├── llm/            # LLM providers and registry
+├── queue/          # Redis work queue
+├── events/         # Redis pub/sub for SSE
 └── storage/        # Redis + filesystem implementations
 ```
 
-### Prompt Builder
+API: [docs/openapi.yaml](docs/openapi.yaml) — gamestate, chat, events, content browsers, providers, health.
 
-The prompt builder package (`pkg/prompts`) provides a fluent interface for constructing LLM chat messages:
+## Running
 
-- Isolates prompt construction logic from game state management
-- Chainable methods for composing complex prompts
-- Combines narrator voice, player character details, scenario rules, game state, and chat history
-- Handles conditional prompts based on game state (variables, turn count, scene)
-- Manages chat history with configurable limits to control token usage
-
-**Usage Example:**
-```go
-messages, err := prompts.New().
-    WithGameState(gameState).
-    WithScenario(scenario).
-    WithUserMessage(userInput, "user").
-    WithHistoryLimit(20).
-    Build()
-```
-
-### Storage Interface
-
-- **Interface (`pkg/storage/`)**: Defines the storage contract for game state, scenarios, narrators, and PCs
-- **Implementation (`internal/storage/`)**: Redis-backed game state persistence and filesystem-backed resource loading
-- **Session Isolation**: Each game session identified by unique UUID
-- **Embedded Data**: Game states include embedded narrator and player character data for reduced I/O
-
-**Storage Strategy:**
-- **Narrator & PC**: Embedded in game state (loaded once at creation, stored in Redis)
-- **Scenario**: Referenced by filename (loaded from filesystem per request, enables live updates)
-- **Chat History**: Stored in Redis as part of game state
-- **Future Optimization**: Scenario caching planned to reduce filesystem I/O
-
-### LLM Interface
-
-- **Provider Abstraction**: Pluggable architecture supporting multiple LLM providers 
-- **Chat Integration**: Handles conversation context and message formatting
-- **Streaming Support**: Real-time response streaming with delta updates
-- **Game State Extraction**: Parses LLM responses to extract game state changes (location, inventory, variables)
-- **Model Management**: Provider initialization and health checks
-
-### Scenario and Rules
-
-Scenarios define the template and rules for storytelling sessions:
-
-- **Narrative Foundation**: Each scenario provides the story context and setting for gameplay
-- **Character Definitions**: Clear descriptions of main characters and NPCs
-- **LLM Prompt Rules**: Foundational guidelines that shape the AI's storytelling behavior
-- **Conversation Formatting**: Rules for character dialogue presentation (double line breaks, character names with colons)
-- **Game Boundaries**: Guidelines for staying in character and handling player actions
-
-### GameState
-
-GameState is a storytelling session, including conversation history and session metadata. Each game state is uniquely identified by a UUID and contains:
-
-- **Session ID**: Unique identifier for tracking individual gameplay sessions
-- **Chat History**: Complete conversation log between user and AI agent
-- **Serialization**: JSON-based storage format for persistence and retrieval
-
-Game states are created at session start and maintained throughout the storytelling experience.
-
-## API Reference
-
-Complete API documentation is available in the OpenAPI specification:
-
-📖 **[API Documentation](docs/openapi.yaml)** - Full REST API reference with request/response examples
-
-### Quick Overview
-
-- **Game State** - Create, read, update, delete sessions
-- **Chat** - Enqueue messages (`202`); narration via SSE
-- **Events** - `GET /v1/events/gamestate/{id}`
-- **Scenarios / PCs / Narrators / Monsters** - Browse content
-- **Providers** - List LLM providers (no API keys)
-- **Health** - API and dependency status
-
-## Running the Project
-
-### Configuration
-
-Create a JSON configuration file with your service settings:
-
-**Multi-provider config**
-
-Providers are named vendor+model pairings. A vendor is a wire protocol (`anthropic` or `venice`). Adding a provider is JSON-only.
+**Config** — JSON; providers are named vendor+model pairs:
 
 ```json
 {
@@ -154,56 +95,24 @@ Providers are named vendor+model pairings. A vendor is a wire protocol (`anthrop
 }
 ```
 
-List providers via `GET /v1/providers`. Pass `provider` on `POST /v1/gamestate` (defaults to `default_provider`).
-### API Server
 
 ```bash
+# API + worker (same CONFIG)
 CONFIG=config.json go run ./cmd/api
-```
-
-The worker uses the same env var:
-
-```bash
 CONFIG=config.json go run ./cmd/worker
-```
 
-### Docker Compose
-
-```bash
-# Default: ./data and ./config.docker.json
+# Docker Compose (./data + ./config.docker.json; use redis:6379 in Docker configs)
 docker compose up --build -d
-
-# Custom data directory
 DATA_DIR=~/Documents/story-engine-scenarios docker compose up --build -d
-```
-
-Edit `config.docker.json` on the host, then restart to reload:
-
-```bash
 docker compose restart story-engine-api story-engine-worker
-```
 
-Use `redis:6379` as `redis_url` in Docker configs (the compose Redis service hostname).
-
-### Console Client
-
-For detailed setup and usage instructions, see the [Console Client README](cmd/console/README.md).
-
-```bash
-# Run with default API URL (localhost:8080)
+# Console client — see cmd/console/README.md
 go run cmd/console/*.go
-
-# If using custom API URL
 API_BASE_URL=http://localhost:3000 go run cmd/console/*.go
 ```
 
-## Writing Guides
+## Docs
 
-- **Scenario Creation**: [docs/guide-for-scenarios.md](docs/guide-for-scenarios.md) — complete guide on writing scenarios
-- **Player Characters**: [docs/guide-for-pcs.md](docs/guide-for-pcs.md) — creating and customizing player characters
-- **Narrators**: [docs/guide-for-narrators.md](docs/guide-for-narrators.md) — creating custom narrator personalities
-- **Monsters**: [docs/guide-for-monsters.md](docs/guide-for-monsters.md) — creating monster templates and integrating them into scenarios
-
-### Other Docs
-- **API Reference**: [docs/openapi.yaml](docs/openapi.yaml) — full REST API reference
-- **Console Client**: [cmd/console/README.md](cmd/console/README.md) — gameplay client documentation
+- [API (OpenAPI)](docs/openapi.yaml)
+- [Scenarios](docs/guide-for-scenarios.md) · [PCs](docs/guide-for-pcs.md) · [Narrators](docs/guide-for-narrators.md) · [Monsters](docs/guide-for-monsters.md)
+- [Scenario validator](cmd/validate/README.md) · [Console](cmd/console/README.md)

@@ -1,4 +1,4 @@
-package services
+package llm
 
 import (
 	"context"
@@ -45,11 +45,8 @@ func (sc StreamChunk) MarshalJSON() ([]byte, error) {
 
 // LLMService defines the interface for interacting with the LLM API
 type LLMService interface {
-	// Chat generates a chat response using the LLM.
+	// ChatStream generates a streaming chat response using the LLM.
 	// Venice honors temperature; Anthropic does not send it.
-	Chat(ctx context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error)
-
-	// ChatStream generates a streaming chat response using the LLM
 	ChatStream(ctx context.Context, messages []chat.ChatMessage, temperature float64) (<-chan StreamChunk, error)
 
 	DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, string, error)

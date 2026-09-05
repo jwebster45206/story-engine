@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/internal/services/events"
-	"github.com/jwebster45206/story-engine/internal/services/queue"
+	"github.com/jwebster45206/story-engine/internal/events"
+	"github.com/jwebster45206/story-engine/internal/queue"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	queuePkg "github.com/jwebster45206/story-engine/pkg/queue"
 	"github.com/redis/go-redis/v9"
@@ -214,7 +214,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		}
 
 		// Process using streaming ChatProcessor
-		streamChan, storyEventPrompt, err := w.processor.ProcessChatStream(w.ctx, chatReq)
+		streamChan, err := w.processor.ProcessChatStream(w.ctx, chatReq)
 		if err != nil {
 			w.log.Error("Failed to start chat stream",
 				"error", err,
@@ -266,7 +266,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		}
 
 		// Update game state with the full streamed message (using pre-formatted userMessage)
-		if err := w.processor.UpdateGameStateAfterStream(gs, userMessage, fullMessage, storyEventPrompt, false); err != nil {
+		if err := w.processor.UpdateGameStateAfterStream(gs, userMessage, fullMessage, false); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
@@ -306,7 +306,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		}
 
 		// Process using streaming ChatProcessor
-		streamChan, storyEventPrompt, err := w.processor.ProcessChatStream(w.ctx, chatReq)
+		streamChan, err := w.processor.ProcessChatStream(w.ctx, chatReq)
 		if err != nil {
 			w.log.Error("Failed to start story event stream",
 				"error", err,
@@ -374,7 +374,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		}
 
 		// Update game state with the full streamed message
-		if err := w.processor.UpdateGameStateAfterStream(gs, storyEventMessage, fullMessage, storyEventPrompt, true); err != nil {
+		if err := w.processor.UpdateGameStateAfterStream(gs, storyEventMessage, fullMessage, true); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,

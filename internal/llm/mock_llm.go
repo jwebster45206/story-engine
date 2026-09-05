@@ -1,8 +1,7 @@
-package services
+package llm
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"sync"
 
@@ -13,7 +12,7 @@ import (
 
 // MockLLMAPI is a mock implementation of LLMService for testing
 type MockLLMAPI struct {
-	GenerateResponseFunc func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error)
+	GenerateResponseFunc func(ctx context.Context, messages []chat.ChatMessage) (string, error)
 
 	// Track calls for testing
 	GenerateResponseCalls []GenerateResponseCall
@@ -86,8 +85,7 @@ func NewMockLLMAPI() *MockLLMAPI {
 	}
 }
 
-// Chat mocks response generation
-func (m *MockLLMAPI) Chat(ctx context.Context, messages []chat.ChatMessage, _ float64) (*chat.ChatResponse, error) {
+func (m *MockLLMAPI) mockContent(ctx context.Context, messages []chat.ChatMessage) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -106,20 +104,24 @@ func (m *MockLLMAPI) Chat(ctx context.Context, messages []chat.ChatMessage, _ fl
 			promptPrefix = promptPrefix[:50]
 		}
 		if strings.HasPrefix(messages[0].Content, promptPrefix) {
-			return &chat.ChatResponse{
-				Message: `{"location":"Test Location","flags":{"test_flag":true},"inventory":["test item"],"npcs":{"TestNPC":{"name":"TestNPC","type":"test","disposition":"neutral","description":"A test NPC.","important":true}}}`,
-			}, nil
+			return `{"location":"Test Location","flags":{"test_flag":true},"inventory":["test item"],"npcs":{"TestNPC":{"name":"TestNPC","type":"test","disposition":"neutral","description":"A test NPC.","important":true}}}`, nil
 		}
 	}
 
-	return &chat.ChatResponse{
-		Message: "Mock response",
-	}, nil
+	return "Mock response", nil
 }
 
 // ChatStream mocks streaming response generation
 func (m *MockLLMAPI) ChatStream(ctx context.Context, messages []chat.ChatMessage, _ float64) (<-chan StreamChunk, error) {
-	return nil, fmt.Errorf("streaming not implemented for mock LLM")
+	content, err := m.mockContent(ctx, messages)
+	if err != nil {
+		return nil, err
+	}
+
+	ch := make(chan StreamChunk, 1)
+	ch <- StreamChunk{Content: content, Done: true}
+	close(ch)
+	return ch, nil
 }
 
 // Reset clears all call tracking
@@ -129,12 +131,12 @@ func (m *MockLLMAPI) Reset() {
 	m.GenerateResponseCalls = make([]GenerateResponseCall, 0)
 }
 
-// SetGenerateResponseError sets up the mock to return an error on GenerateResponse
+// SetGenerateResponseError sets up the mock to return an error on ChatStream
 func (m *MockLLMAPI) SetGenerateResponseError(err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.GenerateResponseFunc = func(ctx context.Context, messages []chat.ChatMessage) (*chat.ChatResponse, error) {
-		return nil, err
+	m.GenerateResponseFunc = func(ctx context.Context, messages []chat.ChatMessage) (string, error) {
+		return "", err
 	}
 }
 

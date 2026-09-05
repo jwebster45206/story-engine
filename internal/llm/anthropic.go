@@ -1,4 +1,4 @@
-package services
+package llm
 
 import (
 	"bufio"
@@ -138,7 +138,6 @@ func (a *AnthropicService) splitChatMessages(messages []chat.ChatMessage) (strin
 	return systemPrompt, nonSystemMessages
 }
 
-// Chat generates a chat response using Anthropic Claude
 // chatCompletion makes a chat completion request to Anthropic with the specified model.
 // temperature is used only to select DefaultMaxTokens vs BackendMaxTokens; it is never
 // sent to the Anthropic API (sampling params are deprecated on Opus 4.7+).
@@ -231,17 +230,6 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 	}
 
 	return responseText, nil
-}
-
-func (a *AnthropicService) Chat(ctx context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error) {
-	content, err := a.chatCompletion(ctx, messages, a.modelName, temperature, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &chat.ChatResponse{
-		Message: content,
-	}, nil
 }
 
 // ChatStream generates a streaming chat response using Anthropic.

@@ -11,10 +11,10 @@ import (
 
 	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/internal/handlers"
+	"github.com/jwebster45206/story-engine/internal/llm"
 	"github.com/jwebster45206/story-engine/internal/logger"
 	"github.com/jwebster45206/story-engine/internal/middleware"
-	"github.com/jwebster45206/story-engine/internal/services"
-	"github.com/jwebster45206/story-engine/internal/services/queue"
+	"github.com/jwebster45206/story-engine/internal/queue"
 	"github.com/jwebster45206/story-engine/internal/storage"
 )
 
@@ -33,7 +33,7 @@ func main() {
 		"default_provider", cfg.DefaultProvider,
 		"providers", len(cfg.Providers))
 
-	registry, err := services.NewRegistry(cfg, log)
+	registry, err := llm.NewRegistry(cfg, log)
 	if err != nil {
 		log.Error("Failed to initialize LLM providers", "error", err)
 		os.Exit(1)

@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/jwebster45206/story-engine/internal/config"
+	"github.com/jwebster45206/story-engine/internal/llm"
 	"github.com/jwebster45206/story-engine/internal/logger"
-	"github.com/jwebster45206/story-engine/internal/services"
-	"github.com/jwebster45206/story-engine/internal/services/queue"
+	"github.com/jwebster45206/story-engine/internal/queue"
 	"github.com/jwebster45206/story-engine/internal/storage"
 	"github.com/jwebster45206/story-engine/internal/worker"
 	"github.com/redis/go-redis/v9"
@@ -59,7 +59,7 @@ func main() {
 	}
 	log.Info("Storage service initialized successfully")
 
-	registry, err := services.NewRegistry(cfg, log)
+	registry, err := llm.NewRegistry(cfg, log)
 	if err != nil {
 		log.Error("Failed to initialize LLM providers", "error", err)
 		os.Exit(1)
