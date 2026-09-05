@@ -79,15 +79,11 @@ func TestPC_MarshalJSON(t *testing.T) {
 		allAttrs[k] = v
 	}
 
-	actor, err := d20.NewActor(spec.Name).
-		WithHP(spec.HP).
-		WithAC(spec.AC).
-		WithAttributes(allAttrs).
-		WithCombatModifiers(spec.CombatModifiers).
-		Build()
-	if err != nil {
-		t.Fatalf("Failed to build actor: %v", err)
-	}
+	actor := d20.NewActor(spec.Name)
+	actor.MaxHP, actor.HP = spec.HP, spec.HP
+	actor.AC = spec.AC
+	actor.Attributes = allAttrs
+	actor.Modifiers = spec.CombatModifiers
 
 	pc := &PC{
 		Spec:  spec,
@@ -123,7 +119,7 @@ func TestPC_MarshalJSON(t *testing.T) {
 		t.Errorf("Marshaled pronouns = %v, want %q", result["pronouns"], "she/her")
 	}
 
-	// Verify HP comes from Actor.MaxHP()
+	// Verify HP comes from Actor.MaxHP
 	if hp, ok := result["hp"].(float64); !ok || int(hp) != 20 {
 		t.Errorf("Marshaled hp = %v, want %d", result["hp"], 20)
 	}
@@ -262,20 +258,13 @@ func TestPC_MarshalUnmarshalRoundTrip(t *testing.T) {
 		allAttrs[k] = v
 	}
 
-	actor, err := d20.NewActor(spec.Name).
-		WithHP(spec.MaxHP).
-		WithAC(spec.AC).
-		WithAttributes(allAttrs).
-		WithCombatModifiers(spec.CombatModifiers).
-		Build()
-	if err != nil {
-		t.Fatalf("Failed to build actor: %v", err)
-	}
+	actor := d20.NewActor(spec.Name)
+	actor.MaxHP, actor.HP = spec.MaxHP, spec.MaxHP
+	actor.AC = spec.AC
+	actor.Attributes = allAttrs
+	actor.Modifiers = spec.CombatModifiers
 
-	// Set HP to different value
-	if err := actor.SetHP(spec.HP); err != nil {
-		t.Fatalf("Failed to set HP: %v", err)
-	}
+	actor.HP = spec.HP
 
 	originalPC := &PC{
 		Spec:  spec,
@@ -503,14 +492,10 @@ func TestBuildPrompt_WithActor(t *testing.T) {
 		AC:    18,
 	}
 
-	actor, err := d20.NewActor(spec.Name).
-		WithHP(spec.MaxHP).
-		WithAC(spec.AC).
-		WithAttributes(spec.Stats.ToAttributes()).
-		Build()
-	if err != nil {
-		t.Fatalf("Failed to build actor: %v", err)
-	}
+	actor := d20.NewActor(spec.Name)
+	actor.MaxHP, actor.HP = spec.MaxHP, spec.MaxHP
+	actor.AC = spec.AC
+	actor.Attributes = spec.Stats.ToAttributes()
 
 	pc := &PC{
 		Spec:  spec,
