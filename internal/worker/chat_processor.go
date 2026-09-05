@@ -276,23 +276,18 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 		latestGS.IncrementTurnCounters()
 	}
 
-	// Use DeltaWorker to handle all delta application logic
-	worker := state.NewDeltaWorker(latestGS, delta, s, p.logger).
+	applier := state.NewApplier(latestGS, delta, s, p.logger).
 		WithQueue(p.chatQueue).
 		WithStorage(p.storage).
 		WithContext(ctx)
 
-	// Apply vars first (before evaluating conditionals)
-	worker.ApplyVars()
-
-	// Apply the delta from the LLM reducer to the game state
-	if err := worker.Apply(); err != nil {
+	applier.ApplyVars()
+	if err := applier.Apply(); err != nil {
 		p.logger.Error("Failed to apply initial delta", "error", err, "game_state_id", latestGS.ID.String())
 		return
 	}
 
-	// Now recursively evaluate and apply conditionals until none trigger
-	p.applyConditionalsCascade(worker, latestGS.ID)
+	p.applyConditionalsCascade(applier, latestGS.ID)
 
 	// Save the updated game state
 	if err := p.storage.SaveGameState(ctx, latestGS.ID, latestGS); err != nil {
@@ -309,13 +304,13 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 }
 
 // applyConditionalsCascade recursively evaluates and applies conditionals until none trigger
-func (p *ChatProcessor) applyConditionalsCascade(worker *state.DeltaWorker, gameStateID uuid.UUID) {
+func (p *ChatProcessor) applyConditionalsCascade(applier *state.Applier, gameStateID uuid.UUID) {
 	const maxConditionalIterations = 10
 	allTriggeredConditionals := make(map[string]bool) // Track all triggered conditional IDs
 
 	for iteration := range maxConditionalIterations {
 		// Evaluate conditionals based on current game state
-		triggeredConditionals := worker.MergeConditionals()
+		triggeredConditionals := applier.MergeConditionals()
 
 		if len(triggeredConditionals) == 0 {
 			// No new conditionals triggered, we're done
@@ -340,10 +335,9 @@ func (p *ChatProcessor) applyConditionalsCascade(worker *state.DeltaWorker, game
 		}
 
 		// Apply vars from conditionals before applying other changes
-		worker.ApplyVars()
+		applier.ApplyVars()
 
-		// Apply the conditional delta to game state
-		if err := worker.Apply(); err != nil {
+		if err := applier.Apply(); err != nil {
 			p.logger.Error("Failed to apply conditional delta",
 				"error", err,
 				"game_state_id", gameStateID.String(),

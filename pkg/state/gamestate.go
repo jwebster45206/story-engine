@@ -53,7 +53,7 @@ type GameState struct {
 	UpdatedAt          time.Time                    `json:"updated_at"`
 
 	// JustEntered is true on the first turn after a location change.
-	// Transient: set by the delta worker when Apply() changes Location,
+	// Transient: set by Applier when Apply() changes Location,
 	// cleared on the next Apply() that does not change Location. Not
 	// persisted (json:"-") so storage churn stays bounded; the narrator
 	// sees the signal once and then it resets.

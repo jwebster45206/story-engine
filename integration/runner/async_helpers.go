@@ -18,7 +18,7 @@ const (
 	PollInterval = 1 * time.Second
 	// ChatTimeout is max time to wait for chat response to appear
 	ChatTimeout = 30 * time.Second
-	// DeltaTimeout is max time to wait for DeltaWorker to complete
+	// DeltaTimeout is max time to wait for the applier to finish
 	DeltaTimeout = 30 * time.Second
 	// StoryEventTimeout is max time to wait for a story event to trigger
 	StoryEventTimeout = 30 * time.Second
@@ -134,9 +134,8 @@ func PollForChatResponse(ctx context.Context, client *http.Client, baseURL strin
 	}
 }
 
-// PollForDeltaWorkerCompletion polls gamestate until meta fields update (turn_counter or vars change)
-// Returns the final gamestate after DeltaWorker completes
-func PollForDeltaWorkerCompletion(ctx context.Context, client *http.Client, baseURL string, gameStateID uuid.UUID, afterChatState *state.GameState) (*state.GameState, error) {
+// PollForApplier polls gamestate until turn_counter or vars change after a chat turn.
+func PollForApplier(ctx context.Context, client *http.Client, baseURL string, gameStateID uuid.UUID, afterChatState *state.GameState) (*state.GameState, error) {
 	timeout := time.After(DeltaTimeout)
 	ticker := time.NewTicker(PollInterval)
 	defer ticker.Stop()
@@ -149,7 +148,7 @@ func PollForDeltaWorkerCompletion(ctx context.Context, client *http.Client, base
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-timeout:
-			return nil, fmt.Errorf("timeout waiting for DeltaWorker completion (waited %v)", DeltaTimeout)
+			return nil, fmt.Errorf("timeout waiting for applier (waited %v)", DeltaTimeout)
 		case <-ticker.C:
 			gameState, err := GetGameState(ctx, client, baseURL, gameStateID)
 			if err != nil {
@@ -170,7 +169,7 @@ func PollForDeltaWorkerCompletion(ctx context.Context, client *http.Client, base
 
 			// Also check UpdatedAt timestamp as fallback
 			if gameState.UpdatedAt.After(afterChatState.UpdatedAt) {
-				// Wait one more poll cycle to ensure DeltaWorker fully completed
+				// Wait one more poll cycle so the applier can finish its save
 				time.Sleep(PollInterval)
 				finalState, err := GetGameState(ctx, client, baseURL, gameStateID)
 				if err != nil {

@@ -32,10 +32,10 @@ func TestApplyConditionalsCascade_NoConditionals(t *testing.T) {
 	}
 
 	processor := &ChatProcessor{logger: logger}
-	worker := state.NewDeltaWorker(gs, delta, s, logger)
+	applier := state.NewApplier(gs, delta, s, logger)
 
 	// Execute
-	processor.applyConditionalsCascade(worker, gs.ID)
+	processor.applyConditionalsCascade(applier, gs.ID)
 
 	// No conditionals should trigger, function should return cleanly
 	// (This is mainly testing that it doesn't panic or error)
@@ -77,10 +77,10 @@ func TestApplyConditionalsCascade_OneIteration(t *testing.T) {
 	}
 
 	processor := &ChatProcessor{logger: logger}
-	worker := state.NewDeltaWorker(gs, delta, s, logger)
+	applier := state.NewApplier(gs, delta, s, logger)
 
 	// Execute
-	processor.applyConditionalsCascade(worker, gs.ID)
+	processor.applyConditionalsCascade(applier, gs.ID)
 
 	// Verify the conditional triggered and applied
 	if gs.IsEnded != true {
@@ -141,10 +141,10 @@ func TestApplyConditionalsCascade_TwoIterations(t *testing.T) {
 	}
 
 	processor := &ChatProcessor{logger: logger}
-	worker := state.NewDeltaWorker(gs, delta, s, logger)
+	applier := state.NewApplier(gs, delta, s, logger)
 
 	// Execute
-	processor.applyConditionalsCascade(worker, gs.ID)
+	processor.applyConditionalsCascade(applier, gs.ID)
 
 	// Verify both conditionals triggered in cascade
 	if achievement := gs.Vars["achievement_unlocked"]; achievement != "true" {

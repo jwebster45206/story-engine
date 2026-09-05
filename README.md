@@ -24,7 +24,7 @@ The Story Engine exposes a REST API for interactive, closed-world adventures. Cl
 **Chat loop**
 1. `POST /v1/chat` — enqueue a player message (`202` + `request_id`).
 2. Narration arrives on the SSE stream (`request.processing` → `chat.chunk` → `request.completed` / `request.failed`).
-3. Structured game state (location, inventory, vars, scenes, …) updates in the background via a reducer pass.
+3. Structured game state (location, inventory, vars, scenes, …) updates in the background: `DeltaUpdate` extracts a delta, then `state.Applier` applies it.
 4. Engine-driven story events are also queued and streamed over the same SSE channel.
 
 ### LLM layer
@@ -46,7 +46,7 @@ cmd/
 └── console/        # Optional TUI client
 
 pkg/
-├── state/          # Game state + delta application
+├── state/          # Game state + Applier (delta application)
 ├── prompts/        # LLM message construction
 ├── scenario/       # Scenario definitions and rules
 ├── actor/          # PCs, NPCs, monsters
