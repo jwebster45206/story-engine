@@ -72,9 +72,8 @@ type TestResult struct {
 
 // TestJob represents a test suite to be executed by a worker
 type TestJob struct {
-	Name     string
-	Suite    TestSuite
-	CaseFile string
+	Name  string
+	Suite TestSuite
 }
 
 // TestRunResult contains the results of running an entire test suite

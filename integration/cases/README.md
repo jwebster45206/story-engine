@@ -461,7 +461,7 @@ go test -v -tags=integration ./integration/ -run 'TestIntegration/space_'
 go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1' -err exit
 
 # Override scenario
-go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1' -scenario pirate.vars.json
+go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1' -scenario pirate.json
 ```
 
 ## File Naming Conventions

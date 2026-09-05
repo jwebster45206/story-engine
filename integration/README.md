@@ -16,9 +16,6 @@ go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1'
 # Related group (filename prefix)
 go test -v -tags=integration ./integration/ -run 'TestIntegration/space_'
 
-# Same case, different scenario variant
-go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1' -scenario pirate.vars.json
-
 # Repeat a case (flake check)
 go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1' -count=3
 ```
@@ -74,9 +71,9 @@ These tests validate:
       "user_prompt": "What the user types",
       "expect": {
         "location": "Expected Location",
-        "inventory_added": ["new_item"],
+        "inventory": ["item1", "new_item"],
         "response_contains": ["expected", "words"],
-        "turn_increment": 1
+        "turn_counter": 1
       }
     }
   ]
@@ -91,7 +88,7 @@ See `cases/README.md` for seed/step authoring details, including `RESET_GAMESTAT
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-scenario` | "" | Override scenario for all test cases (e.g. `pirate.vars.json`) |
+| `-scenario` | "" | Override scenario for all test cases (e.g. `pirate.json`) |
 | `-err` | `continue` | `continue` (run all steps) or `exit` (stop on first failure) |
 
 Selection is stock `go test -run`. Repeat with `go test -count=N`.
@@ -101,7 +98,7 @@ Selection is stock `go test -run`. Repeat with `go test -count=N`.
 The `-scenario` flag tests the same JSON cases against different scenario variants without duplicating files:
 
 ```bash
-go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1' -scenario pirate.vars.json
+go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1' -scenario pirate.json
 ```
 
 ### Environment Variables
@@ -142,7 +139,7 @@ TEST_TIMEOUT_SECONDS=60 go test -v -tags=integration ./integration/
 | `npc_locations` | NPC positions | `{"Gibbs": "Black Pearl"}` |
 | `response_contains` | Required text (case-insensitive) | `["ship", "deck"]` |
 | `response_regex` | Regex pattern match | `".*treasure.*map.*"` |
-| `game_ended` / `is_ended` | Game completion status | `true` |
+| `is_ended` | Game completion status | `true` |
 | `turn_counter` | Turn count | `3` |
 
 ## Architecture

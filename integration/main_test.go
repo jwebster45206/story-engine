@@ -1,5 +1,4 @@
 //go:build integration
-// +build integration
 
 package integration
 
@@ -18,7 +17,7 @@ import (
 )
 
 var errFlag = flag.String("err", "continue", "Error handling mode: 'continue' (run all steps) or 'exit' (stop on first failure)")
-var scenarioFlag = flag.String("scenario", "", "Override scenario for all test cases (e.g., 'pirate.json', 'pirate.vars.json')")
+var scenarioFlag = flag.String("scenario", "", "Override scenario for all test cases (e.g. pirate.json)")
 
 func TestMain(m *testing.M) {
 	apiBaseURL := os.Getenv("API_BASE_URL")
