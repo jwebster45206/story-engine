@@ -24,10 +24,10 @@ const (
 
 // Event represents a generic event structure
 type Event struct {
-	Type      EventType              `json:"type"`
-	RequestID string                 `json:"request_id,omitempty"`
-	GameID    string                 `json:"game_id,omitempty"`
-	Data      map[string]interface{} `json:"data,omitempty"`
+	Type      EventType      `json:"type"`
+	RequestID string         `json:"request_id,omitempty"`
+	GameID    string         `json:"game_id,omitempty"`
+	Data      map[string]any `json:"data,omitempty"`
 }
 
 // Broadcaster publishes events to Redis Pub/Sub for SSE distribution
@@ -50,7 +50,7 @@ func (b *Broadcaster) PublishRequestQueued(ctx context.Context, gameID uuid.UUID
 		Type:      EventTypeRequestQueued,
 		RequestID: requestID,
 		GameID:    gameID.String(),
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"status": "queued",
 			"type":   requestType,
 		},
@@ -64,7 +64,7 @@ func (b *Broadcaster) PublishRequestProcessing(ctx context.Context, gameID uuid.
 		Type:      EventTypeRequestProcessing,
 		RequestID: requestID,
 		GameID:    gameID.String(),
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"status":       "processing",
 			"type":         requestType,
 			"user_message": userMessage,
@@ -74,12 +74,12 @@ func (b *Broadcaster) PublishRequestProcessing(ctx context.Context, gameID uuid.
 }
 
 // PublishRequestCompleted publishes a request.completed event
-func (b *Broadcaster) PublishRequestCompleted(ctx context.Context, gameID uuid.UUID, requestID string, result map[string]interface{}) error {
+func (b *Broadcaster) PublishRequestCompleted(ctx context.Context, gameID uuid.UUID, requestID string, result map[string]any) error {
 	event := Event{
 		Type:      EventTypeRequestCompleted,
 		RequestID: requestID,
 		GameID:    gameID.String(),
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"status": "completed",
 			"result": result,
 		},
@@ -93,7 +93,7 @@ func (b *Broadcaster) PublishRequestFailed(ctx context.Context, gameID uuid.UUID
 		Type:      EventTypeRequestFailed,
 		RequestID: requestID,
 		GameID:    gameID.String(),
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"status": "failed",
 			"error":  errorMsg,
 		},
@@ -107,7 +107,7 @@ func (b *Broadcaster) PublishChatChunk(ctx context.Context, gameID uuid.UUID, re
 		Type:      EventTypeChatChunk,
 		RequestID: requestID,
 		GameID:    gameID.String(),
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"content": content,
 			"done":    done,
 		},
@@ -120,7 +120,7 @@ func (b *Broadcaster) PublishGameStateUpdated(ctx context.Context, gameID uuid.U
 	event := Event{
 		Type:   EventTypeGameStateUpdated,
 		GameID: gameID.String(),
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"turn":     turn,
 			"location": location,
 		},

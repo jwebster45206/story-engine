@@ -30,7 +30,7 @@ type Runner struct {
 	BaseURL           string
 	Client            *http.Client
 	Timeout           time.Duration
-	Logger            func(format string, args ...interface{})
+	Logger            func(format string, args ...any)
 	ErrorHandlingMode ErrorHandlingMode
 	ScenarioOverride  string // If set, overrides the scenario for all test cases
 }

@@ -11,10 +11,10 @@ import (
 )
 
 type HealthResponse struct {
-	Status     string                 `json:"status"`
-	Timestamp  time.Time              `json:"timestamp"`
-	Service    string                 `json:"service"`
-	Components map[string]interface{} `json:"components"`
+	Status     string         `json:"status"`
+	Timestamp  time.Time      `json:"timestamp"`
+	Service    string         `json:"service"`
+	Components map[string]any `json:"components"`
 }
 
 type HealthHandler struct {
@@ -36,7 +36,7 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	components := make(map[string]interface{})
+	components := make(map[string]any)
 	overallStatus := "healthy"
 
 	// Test storage connection

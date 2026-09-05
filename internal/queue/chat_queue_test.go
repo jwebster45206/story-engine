@@ -150,7 +150,7 @@ func TestChatQueue_RequestQueueDepth(t *testing.T) {
 
 	// Add requests
 	gameStateID := uuid.New()
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		req := &queuePkg.Request{
 			RequestID:   uuid.New().String(),
 			Type:        queuePkg.RequestTypeStoryEvent,
@@ -183,7 +183,7 @@ func TestChatQueue_FIFOOrdering(t *testing.T) {
 
 	// Enqueue requests in order
 	requestIDs := []string{}
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		reqID := uuid.New().String()
 		requestIDs = append(requestIDs, reqID)
 		req := &queuePkg.Request{

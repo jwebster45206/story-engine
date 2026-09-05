@@ -77,7 +77,7 @@ func TestPCHandler_ListPCs(t *testing.T) {
 		t.Errorf("ListPCs() status = %d, want %d", w.Code, http.StatusOK)
 	}
 
-	var pcList []map[string]interface{}
+	var pcList []map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &pcList); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestPCHandler_GetPC(t *testing.T) {
 		t.Errorf("GetPC() status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
 	}
 
-	var pc map[string]interface{}
+	var pc map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &pc); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
@@ -182,7 +182,7 @@ func TestPCHandler_GetPC_Classic(t *testing.T) {
 		t.Errorf("GetPC() status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
 	}
 
-	var pc map[string]interface{}
+	var pc map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &pc); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}

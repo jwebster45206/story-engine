@@ -27,7 +27,7 @@ func (h *NarratorHandler) ListNarrators(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Initialize as empty slice instead of nil
-	narratorList := make([]map[string]interface{}, 0)
+	narratorList := make([]map[string]any, 0)
 	for _, narratorID := range narratorIDs {
 		// Load each narrator to get details
 		narrator, err := h.storage.GetNarrator(r.Context(), narratorID)
@@ -37,7 +37,7 @@ func (h *NarratorHandler) ListNarrators(w http.ResponseWriter, r *http.Request) 
 		}
 
 		// Create a summary object with just the key fields
-		narratorSummary := map[string]interface{}{
+		narratorSummary := map[string]any{
 			"id":          narrator.ID,
 			"name":        narrator.Name,
 			"description": narrator.Description,

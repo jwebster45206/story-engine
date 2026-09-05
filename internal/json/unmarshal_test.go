@@ -35,7 +35,7 @@ func TestUnmarshal(t *testing.T) {
 			wantRepaired: true,
 			wantItems:    1,
 			wantItemName: "ship repair ledger",
-			wantEnded:    boolPtr(false),
+			wantEnded:    new(false),
 		},
 		{
 			name:         "truncated mid-string value",
@@ -48,7 +48,7 @@ func TestUnmarshal(t *testing.T) {
 			input:        `{"user_location": "dock", "game_ended": false,`,
 			wantRepaired: true,
 			wantLocation: "dock",
-			wantEnded:    boolPtr(false),
+			wantEnded:    new(false),
 		},
 		{
 			name:         "truncated after key with no value",
@@ -61,7 +61,7 @@ func TestUnmarshal(t *testing.T) {
 			input:        `{"user_location":"dock","game_ended":false,"item_events":[],"npc_events":[],"set_vars":{}}`,
 			wantRepaired: false,
 			wantLocation: "dock",
-			wantEnded:    boolPtr(false),
+			wantEnded:    new(false),
 		},
 		{
 			name:    "unrepairable garbage",
@@ -123,5 +123,3 @@ func TestRepairTruncated(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
-
-func boolPtr(b bool) *bool { return &b }

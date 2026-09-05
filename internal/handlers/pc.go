@@ -25,7 +25,7 @@ func (h *PCHandler) ListPCs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Initialize as empty slice instead of nil
-	pcList := make([]map[string]interface{}, 0)
+	pcList := make([]map[string]any, 0)
 	for _, pcID := range pcIDs {
 		// Load each PC spec to get details
 		spec, err := h.storage.GetPCSpec(r.Context(), pcID)
@@ -35,7 +35,7 @@ func (h *PCHandler) ListPCs(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Create a summary object with just the key fields
-		pcSummary := map[string]interface{}{
+		pcSummary := map[string]any{
 			"id":       spec.ID,
 			"name":     spec.Name,
 			"class":    spec.Class,

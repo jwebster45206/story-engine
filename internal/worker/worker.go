@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -243,7 +244,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			"duration_ms", time.Since(start).Milliseconds(),
 		)
 
-		result := map[string]interface{}{
+		result := map[string]any{
 			"message":     fullMessage,
 			"duration_ms": time.Since(start).Milliseconds(),
 		}
@@ -288,7 +289,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			"duration_ms", time.Since(start).Milliseconds(),
 		)
 
-		result := map[string]interface{}{
+		result := map[string]any{
 			"message":     fullMessage,
 			"duration_ms": time.Since(start).Milliseconds(),
 		}
@@ -316,7 +317,7 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 		return "", fmt.Errorf("%s: %w", errWrap, err)
 	}
 
-	var fullMessage string
+	var fullMessage strings.Builder
 	var streamErr error
 	var done bool
 	for chunk := range streamChan {
@@ -330,7 +331,7 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 			break
 		}
 
-		fullMessage += chunk.Content
+		fullMessage.WriteString(chunk.Content)
 		if err := w.broadcaster.PublishChatChunk(w.ctx, req.GameStateID, req.RequestID, chunk.Content, chunk.Done); err != nil {
 			w.log.Error("Failed to publish chat chunk", "error", err)
 		}
@@ -348,5 +349,5 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 		w.publishFailed(req.GameStateID, req.RequestID, streamErr.Error())
 		return "", fmt.Errorf("%s: %w", errWrap, streamErr)
 	}
-	return fullMessage, nil
+	return fullMessage.String(), nil
 }

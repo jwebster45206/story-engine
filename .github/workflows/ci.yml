@@ -52,7 +52,7 @@ jobs:
       uses: golangci/golangci-lint-action@v7
       with:
         version: v2.11.3
-        args: --timeout=5m
+        args: --timeout=5m --enable=modernize
     
     - name: Lint Dockerfile
       uses: hadolint/hadolint-action@v3.1.0

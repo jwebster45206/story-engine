@@ -50,7 +50,7 @@ func repairTruncated(s string) string {
 			break
 		}
 
-		if trimmed := strings.TrimSuffix(s, ","); trimmed != s {
+		if trimmed, found := strings.CutSuffix(s, ","); found {
 			s = trimmed
 			continue
 		}

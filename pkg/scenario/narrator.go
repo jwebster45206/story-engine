@@ -1,5 +1,7 @@
 package scenario
 
+import "strings"
+
 // Narrator defines the voice and style of the game narrator
 type Narrator struct {
 	ID          string   `json:"id"`                    // Unique identifier (e.g., "vincent_price", "classic", "comedic")
@@ -15,9 +17,11 @@ func (n *Narrator) GetPromptsAsString() string {
 		return ""
 	}
 
-	result := ""
+	var result strings.Builder
 	for _, prompt := range n.Prompts {
-		result += "- " + prompt + "\n"
+		result.WriteString("- ")
+		result.WriteString(prompt)
+		result.WriteByte('\n')
 	}
-	return result
+	return result.String()
 }

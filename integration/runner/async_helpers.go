@@ -32,7 +32,7 @@ type AsyncChatResponse struct {
 
 // PostChatAsync posts a chat message to the async endpoint and returns the request_id
 func PostChatAsync(ctx context.Context, client *http.Client, baseURL string, gameStateID uuid.UUID, message string) (string, error) {
-	chatReq := map[string]interface{}{
+	chatReq := map[string]any{
 		"gamestate_id": gameStateID.String(),
 		"message":      message,
 	}

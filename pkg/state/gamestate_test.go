@@ -1,6 +1,7 @@
 package state
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -392,25 +393,22 @@ func validateItemSingletons(t *testing.T, normalizedState *GameState, originalSt
 
 	// Verify priority enforcement: items in user inventory should not appear anywhere else
 	for _, userItem := range normalizedState.Inventory {
-		for _, originalUserItem := range originalState.Inventory {
-			if userItem == originalUserItem {
-				// This item was originally in user inventory, so it should stay there
-				// Check that it's been removed from NPCs and locations
-				for npcName, npc := range normalizedState.NPCs {
-					for _, npcItem := range npc.Items {
-						if npcItem == userItem {
-							t.Errorf("Item '%s' should be removed from NPC '%s' because it's in user inventory", userItem, npcName)
-						}
+		if slices.Contains(originalState.Inventory, userItem) {
+			// This item was originally in user inventory, so it should stay there
+			// Check that it's been removed from NPCs and locations
+			for npcName, npc := range normalizedState.NPCs {
+				for _, npcItem := range npc.Items {
+					if npcItem == userItem {
+						t.Errorf("Item '%s' should be removed from NPC '%s' because it's in user inventory", userItem, npcName)
 					}
 				}
-				for locName, location := range normalizedState.WorldLocations {
-					for _, locItem := range location.Items {
-						if locItem == userItem {
-							t.Errorf("Item '%s' should be removed from location '%s' because it's in user inventory", userItem, locName)
-						}
+			}
+			for locName, location := range normalizedState.WorldLocations {
+				for _, locItem := range location.Items {
+					if locItem == userItem {
+						t.Errorf("Item '%s' should be removed from location '%s' because it's in user inventory", userItem, locName)
 					}
 				}
-				break
 			}
 		}
 	}
@@ -649,14 +647,7 @@ func TestGameState_GetContingencyPrompts_WithNPCs(t *testing.T) {
 
 			// Check expected prompts are present
 			for _, expected := range tt.expectedPrompts {
-				found := false
-				for _, prompt := range prompts {
-					if prompt == expected {
-						found = true
-						break
-					}
-				}
-				if !found {
+				if !slices.Contains(prompts, expected) {
 					t.Errorf("Expected prompt not found: %q", expected)
 				}
 			}

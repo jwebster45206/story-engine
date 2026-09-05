@@ -49,7 +49,7 @@ func TestPCSpec_MarshalJSON_WithContingencyPrompts(t *testing.T) {
 	}
 
 	// Verify contingency prompts are in the JSON
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(jsonData, &result); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v", err)
 	}
@@ -59,7 +59,7 @@ func TestPCSpec_MarshalJSON_WithContingencyPrompts(t *testing.T) {
 		t.Error("JSON should contain contingency_prompts field")
 	}
 
-	promptsArray, ok := prompts.([]interface{})
+	promptsArray, ok := prompts.([]any)
 	if !ok || len(promptsArray) != 2 {
 		t.Errorf("contingency_prompts should be an array of length 2, got %v", prompts)
 	}

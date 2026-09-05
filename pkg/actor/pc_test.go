@@ -2,6 +2,7 @@ package actor
 
 import (
 	"encoding/json"
+	"maps"
 	"testing"
 
 	"github.com/jwebster45206/d20"
@@ -75,9 +76,7 @@ func TestPC_MarshalJSON(t *testing.T) {
 
 	// Build Actor
 	allAttrs := spec.Stats.ToAttributes()
-	for k, v := range spec.Attributes {
-		allAttrs[k] = v
-	}
+	maps.Copy(allAttrs, spec.Attributes)
 
 	actor := d20.NewActor(spec.Name)
 	actor.MaxHP, actor.HP = spec.HP, spec.HP
@@ -97,7 +96,7 @@ func TestPC_MarshalJSON(t *testing.T) {
 	}
 
 	// Unmarshal to verify structure
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("Failed to unmarshal result: %v", err)
 	}
@@ -130,7 +129,7 @@ func TestPC_MarshalJSON(t *testing.T) {
 	}
 
 	// Verify stats are preserved
-	stats, ok := result["stats"].(map[string]interface{})
+	stats, ok := result["stats"].(map[string]any)
 	if !ok {
 		t.Fatal("Marshaled stats missing or wrong type")
 	}
@@ -139,7 +138,7 @@ func TestPC_MarshalJSON(t *testing.T) {
 	}
 
 	// Verify attributes don't include core stats
-	attrs, ok := result["attributes"].(map[string]interface{})
+	attrs, ok := result["attributes"].(map[string]any)
 	if !ok {
 		t.Fatal("Marshaled attributes missing or wrong type")
 	}
@@ -151,7 +150,7 @@ func TestPC_MarshalJSON(t *testing.T) {
 	}
 
 	// Verify inventory
-	inv, ok := result["inventory"].([]interface{})
+	inv, ok := result["inventory"].([]any)
 	if !ok {
 		t.Fatal("Marshaled inventory missing or wrong type")
 	}
@@ -187,7 +186,7 @@ func TestPC_MarshalJSON_NilActor(t *testing.T) {
 	}
 
 	// Unmarshal to verify it's valid JSON
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("Failed to unmarshal result: %v", err)
 	}
@@ -254,9 +253,7 @@ func TestPC_MarshalUnmarshalRoundTrip(t *testing.T) {
 
 	// Build Actor
 	allAttrs := spec.Stats.ToAttributes()
-	for k, v := range spec.Attributes {
-		allAttrs[k] = v
-	}
+	maps.Copy(allAttrs, spec.Attributes)
 
 	actor := d20.NewActor(spec.Name)
 	actor.MaxHP, actor.HP = spec.MaxHP, spec.MaxHP
