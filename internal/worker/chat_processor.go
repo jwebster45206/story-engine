@@ -25,8 +25,7 @@ type LLMResolver interface {
 	Get(name string) (services.LLMService, error)
 }
 
-// ChatProcessor handles the core chat processing logic
-// It's used by both the HTTP handler (synchronously) and the worker (asynchronously)
+// ChatProcessor handles chat processing for the worker (streaming + post-stream state updates).
 type ChatProcessor struct {
 	storage      storage.Storage
 	resolver     LLMResolver
@@ -60,8 +59,8 @@ func NewChatProcessor(
 	}
 }
 
-// ProcessChatRequest processes a chat request and returns the response
-func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatRequest) (*chat.ChatResponse, error) {
+// ProcessChatStream processes a streaming chat request
+func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequest) (<-chan services.StreamChunk, error) {
 	// Load game state
 	gs, err := p.storage.LoadGameState(ctx, req.GameStateID)
 	if err != nil {
@@ -79,92 +78,6 @@ func (p *ChatProcessor) ProcessChatRequest(ctx context.Context, req chat.ChatReq
 	}
 
 	// Build chat messages using the prompt builder
-	// Note: req.Message should be pre-formatted with PC name if applicable
-	messages, err := prompts.New().
-		WithGameState(gs).
-		WithScenario(loadedScenario).
-		WithUserMessage(req.Message, chat.ChatRoleUser).
-		WithHistoryLimit(p.historyLimit).
-		Build()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build chat messages: %w", err)
-	}
-
-	chatCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	temperature := gs.Temperature
-	llm, err := p.resolver.Get(gs.Provider)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve LLM provider %q: %w", gs.Provider, err)
-	}
-	p.logger.Debug("Sending chat request to LLM", "game_state_id", gs.ID.String(), "provider", gs.Provider, "messages", messages)
-	response, err := llm.Chat(chatCtx, messages, temperature)
-	if err != nil {
-		return nil, fmt.Errorf("LLM chat failed: %w", err)
-	}
-
-	// Cancel any in-process gamestate delta for this game state
-	p.metaCancelMu.Lock()
-	if cancel, ok := p.metaCancel[gs.ID]; ok {
-		cancel()
-	}
-	metaCtx, metaCancel := context.WithCancel(context.Background())
-	p.metaCancel[gs.ID] = metaCancel
-	p.metaCancelMu.Unlock()
-
-	if !gs.IsEnded {
-		// Make a deep copy for the background goroutine to avoid data races
-		gsCopy, err := gs.DeepCopy()
-		if err != nil {
-			p.logger.Error("Failed to copy game state for background sync", "error", err, "game_state_id", gs.ID.String())
-		} else {
-			// Start background goroutine to update game meta (PromptState)
-			go p.syncGameState(metaCtx, gsCopy, req.Message, response.Message)
-		}
-	}
-
-	// Update game state with new chat message
-	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
-		Role:    chat.ChatRoleUser,
-		Content: req.Message,
-	})
-
-	// Add to game state
-	response.Message = strings.TrimRight(response.Message, "\n")
-	gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
-		Role:    chat.ChatRoleAgent,
-		Content: response.Message,
-	})
-
-	// Save the updated game state
-	if err := p.storage.SaveGameState(ctx, gs.ID, gs); err != nil {
-		return nil, fmt.Errorf("failed to save game state: %w", err)
-	}
-
-	response.GameStateID = gs.ID
-	return response, nil
-}
-
-// ProcessChatStream processes a streaming chat request
-func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequest) (<-chan services.StreamChunk, string, error) {
-	// Load game state
-	gs, err := p.storage.LoadGameState(ctx, req.GameStateID)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to load game state: %w", err)
-	}
-
-	if gs == nil {
-		return nil, "", fmt.Errorf("game state not found: %s", req.GameStateID.String())
-	}
-
-	// Get Scenario for the chat
-	loadedScenario, err := p.storage.GetScenario(ctx, gs.Scenario)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to load scenario: %w", err)
-	}
-
-	// Build chat messages using the prompt builder
 	// req.Message is already formatted with PC name if applicable
 	messages, err := prompts.New().
 		WithGameState(gs).
@@ -173,7 +86,7 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 		WithHistoryLimit(p.historyLimit).
 		Build()
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to build chat messages: %w", err)
+		return nil, fmt.Errorf("failed to build chat messages: %w", err)
 	}
 
 	// Clear story events after consumption
@@ -188,22 +101,21 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 	temperature := gs.Temperature
 	llm, err := p.resolver.Get(gs.Provider)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to resolve LLM provider %q: %w", gs.Provider, err)
+		return nil, fmt.Errorf("failed to resolve LLM provider %q: %w", gs.Provider, err)
 	}
 	p.logger.Debug("Sending streaming chat request to LLM", "game_state_id", gs.ID.String(), "provider", gs.Provider, "messages", messages)
 	streamChan, err := llm.ChatStream(ctx, messages, temperature)
 	if err != nil {
-		return nil, "", fmt.Errorf("LLM chat stream failed: %w", err)
+		return nil, fmt.Errorf("LLM chat stream failed: %w", err)
 	}
 
-	// Return the stream channel and additional context for post-processing
-	// The caller is responsible for consuming the stream and updating game state
-	return streamChan, "", nil
+	// Caller consumes the stream and updates game state
+	return streamChan, nil
 }
 
-// UpdateGameStateAfterStream updates game state after streaming is complete
-// This should be called by the handler after consuming the stream
-func (p *ChatProcessor) UpdateGameStateAfterStream(gs *state.GameState, userMessage, responseMessage, storyEventPrompt string, isStoryEvent bool) error {
+// UpdateGameStateAfterStream updates game state after streaming is complete.
+// This should be called by the worker after consuming the stream.
+func (p *ChatProcessor) UpdateGameStateAfterStream(gs *state.GameState, userMessage, responseMessage string, isStoryEvent bool) error {
 	ctx := context.Background()
 
 	// Cancel any in-process gamestate delta for this game state
@@ -234,7 +146,12 @@ func (p *ChatProcessor) UpdateGameStateAfterStream(gs *state.GameState, userMess
 
 	// Start background gamestate delta update if game is not ended
 	if !gs.IsEnded {
-		go p.syncGameState(metaCtx, gs, userMessage, responseMessage)
+		gsCopy, err := gs.DeepCopy()
+		if err != nil {
+			p.logger.Error("Failed to copy game state for background sync", "error", err, "game_state_id", gs.ID.String())
+		} else {
+			go p.syncGameState(metaCtx, gsCopy, userMessage, responseMessage)
+		}
 	}
 
 	p.logger.Debug("Game state updated after streaming", "game_state_id", gs.ID.String())

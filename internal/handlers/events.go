@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/internal/services/events"
+	"github.com/jwebster45206/story-engine/internal/events"
 	"github.com/redis/go-redis/v9"
 )
 

@@ -177,8 +177,12 @@ func (s *stubLLMService) Chat(_ context.Context, messages []chat.ChatMessage, te
 	s.capturedTemp = temperature
 	return &chat.ChatResponse{Message: "ok"}, nil
 }
-func (s *stubLLMService) ChatStream(_ context.Context, _ []chat.ChatMessage, _ float64) (<-chan services.StreamChunk, error) {
-	return nil, nil
+func (s *stubLLMService) ChatStream(_ context.Context, messages []chat.ChatMessage, temperature float64) (<-chan services.StreamChunk, error) {
+	s.capturedMessages = messages
+	s.capturedTemp = temperature
+	ch := make(chan services.StreamChunk)
+	close(ch)
+	return ch, nil
 }
 func (s *stubLLMService) DeltaUpdate(_ context.Context, _ []chat.ChatMessage) (*conditionals.GameStateDelta, string, error) {
 	return nil, "", nil
@@ -273,17 +277,17 @@ func newTestSetup(historyCount, historyLimit int) (*ChatProcessor, *stubLLMServi
 	return processor, llm, req
 }
 
-// TestProcessChatRequest_HistoryLimitRespected verifies that when ChatHistory contains
+// TestProcessChatStream_HistoryLimitRespected verifies that when ChatHistory contains
 // more messages than the configured limit, only the limited number are sent to the LLM.
-func TestProcessChatRequest_HistoryLimitRespected(t *testing.T) {
+func TestProcessChatStream_HistoryLimitRespected(t *testing.T) {
 	const historyInState = 10 // messages stored in game state
 	const limit = 4           // only last 4 should be forwarded
 
 	processor, llm, req := newTestSetup(historyInState, limit)
 
-	_, err := processor.ProcessChatRequest(context.Background(), req)
+	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
-		t.Fatalf("ProcessChatRequest returned error: %v", err)
+		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
 
 	// Non-system messages = limit history messages + 1 current user message
@@ -294,16 +298,16 @@ func TestProcessChatRequest_HistoryLimitRespected(t *testing.T) {
 	}
 }
 
-// TestProcessChatRequest_HistoryLimitZeroUsesDefault verifies that a zero limit
+// TestProcessChatStream_HistoryLimitZeroUsesDefault verifies that a zero limit
 // falls back to PromptHistoryLimit.
-func TestProcessChatRequest_HistoryLimitZeroUsesDefault(t *testing.T) {
+func TestProcessChatStream_HistoryLimitZeroUsesDefault(t *testing.T) {
 	const historyInState = 20 // more than the default limit of 16
 
 	processor, llm, req := newTestSetup(historyInState, 0) // 0 → default
 
-	_, err := processor.ProcessChatRequest(context.Background(), req)
+	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
-		t.Fatalf("ProcessChatRequest returned error: %v", err)
+		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
 
 	want := PromptHistoryLimit + 1
@@ -317,18 +321,18 @@ func TestProcessChatRequest_HistoryLimitZeroUsesDefault(t *testing.T) {
 // Temperature via GameState (verifies processor passes gs temperature to LLM)
 // ---------------------------------------------------------------------------
 
-func TestProcessChatRequest_UsesDefaultTemperature(t *testing.T) {
+func TestProcessChatStream_UsesDefaultTemperature(t *testing.T) {
 	processor, llm, req := newTestSetup(2, 10)
-	_, err := processor.ProcessChatRequest(context.Background(), req)
+	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
-		t.Fatalf("ProcessChatRequest returned error: %v", err)
+		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
 	if llm.capturedTemp != services.DefaultTemperature {
 		t.Errorf("expected default temperature %f, got %f", services.DefaultTemperature, llm.capturedTemp)
 	}
 }
 
-func TestProcessChatRequest_UsesGameStateTemperature(t *testing.T) {
+func TestProcessChatStream_UsesGameStateTemperature(t *testing.T) {
 	gsID := uuid.New()
 	wantTemp := 0.9
 	gs := &state.GameState{
@@ -349,9 +353,9 @@ func TestProcessChatRequest_UsesGameStateTemperature(t *testing.T) {
 	processor := NewChatProcessor(stor, stubResolver{llm}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "hello"}
 
-	_, err := processor.ProcessChatRequest(context.Background(), req)
+	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
-		t.Fatalf("ProcessChatRequest returned error: %v", err)
+		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
 	if llm.capturedTemp != wantTemp {
 		t.Errorf("expected gamestate temperature %f, got %f", wantTemp, llm.capturedTemp)
