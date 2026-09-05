@@ -1,9 +1,0 @@
-{
-  "name": "Space Disaster - All Counter Tests",
-  "cases": [
-    "space_scene_counter.json",
-    "space_turn_counter.json",
-    "space_min_scene_turns.json",
-    "space_min_turns.json"
-  ]
-}

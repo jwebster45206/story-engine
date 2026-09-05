@@ -229,5 +229,5 @@ go run cmd/validate/main.go data/scenarios/your_scenario.json
 Test monster behavior in integration tests:
 
 ```bash
-go test -tags=integration ./integration -case your_test -v
+go test -tags=integration ./integration -run 'TestIntegration/your_test' -v
 ```

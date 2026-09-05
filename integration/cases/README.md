@@ -49,22 +49,6 @@ This directory contains integration test cases for the story engine. Each test c
 }
 ```
 
-### Rollup Test Format
-
-Rollup tests run multiple test cases in sequence. They can even include other rollups for nested test suites:
-
-```json
-{
-  "name": "Test Suite Name",
-  "description": "Runs multiple related tests",
-  "cases": [
-    "test_case_1.json",
-    "test_case_2.json",
-    "another_rollup.json"
-  ]
-}
-```
-
 ## Seed Game State
 
 The `seed_game_state` sets up the initial conditions before running test steps.
@@ -376,23 +360,11 @@ The `expect` object defines what to validate after a step executes. All checks a
 
 Each test file should validate **one specific feature or behavior**:
 
-- ✅ `dracula_prompt_trigger.json` - Tests variable-based conditional prompt
-- ✅ `dracula_wolves_location.json` - Tests location + min turns conditional
+- ✅ `dracula_scene_cascade.json` - Tests a scene-change cascade
 - ✅ `space_turn_counter.json` - Tests exact turn counter transitions
 - ✅ `pirate_shipwright_vars.json` - Tests variable setting during gameplay
 
-Use rollup files to group related tests:
-
-```json
-{
-  "name": "Dracula Conditionals - All Tests",
-  "cases": [
-    "dracula_prompt_trigger.json",
-    "dracula_wolves_location.json",
-    "dracula_lightning_exact.json"
-  ]
-}
-```
+Group related files with `go test -run` prefixes, e.g. `-run 'TestIntegration/pirate_scene'` or `-run 'TestIntegration/space_'`.
 
 ## Common Patterns
 
@@ -475,41 +447,29 @@ Note: `scene_turn_counter` resets to 0 when scenes change.
 
 ## Running Tests
 
-### Run all tests:
 ```bash
-go test -tags=integration ./integration/... -v
-```
+# Full suite
+go test -v -tags=integration ./integration/
 
-### Run specific test case:
-```bash
-go test -tags=integration ./integration/... -v -case "dracula_prompt_trigger.json"
-```
+# One case (filename without .json)
+go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1'
 
-### Run multiple specific tests:
-```bash
-go test -tags=integration ./integration/... -v -case "test1.json,test2.json,test3.json"
-```
+# Related group
+go test -v -tags=integration ./integration/ -run 'TestIntegration/space_'
 
-### Run with different error handling:
-```bash
-# Stop on first failure
-go test -tags=integration ./integration/... -v -case "my_test.json" -err exit
+# Stop on first failure in a case
+go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1' -err exit
 
-# Continue through all steps (default)
-go test -tags=integration ./integration/... -v -case "my_test.json" -err continue
-```
-
-### Override scenario:
-```bash
-go test -tags=integration ./integration/... -v -case "test.json" -scenario "pirate.vars.json"
+# Override scenario
+go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1' -scenario pirate.json
 ```
 
 ## File Naming Conventions
 
-- **Feature tests**: `feature_aspect.json` (e.g., `dracula_prompt_trigger.json`)
-- **Rollups**: `category_all.json` (e.g., `dracula_conditionals_all.json`)
-- **Keep names lowercase** with underscores
-- **Be descriptive but concise**
+- **Feature tests**: `feature_aspect.json` (e.g., `dracula_scene_cascade.json`)
+- The filename without `.json` is the `go test -run` subtest name
+- Keep names lowercase with underscores
+- Be descriptive but concise
 
 ## Troubleshooting
 
@@ -543,7 +503,7 @@ go test -tags=integration ./integration/... -v -case "test.json" -scenario "pira
 ## Examples
 
 See existing test files for examples:
-- `dracula_prompt_trigger.json` - Variable-based conditional prompt
-- `dracula_wolves_location.json` - Location + minimum turns conditional
+- `dracula_scene_cascade.json` - Scene-change cascade
 - `space_turn_counter.json` - Exact turn counter scene transition
-- `dracula_conditionals_all.json` - Rollup test example
+- `pirate_shipwright_vars.json` - Variable setting during gameplay
+- `story_event_var_trigger.json` - Story event from a var conditional
