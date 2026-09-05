@@ -15,7 +15,7 @@ A lightweight narrative engine for immersive, structured text adventures. Game e
 
 The Story Engine exposes a REST API for interactive, closed-world adventures. Clients create a game session, subscribe to Server-Sent Events, and send chat turns that a background worker processes with an LLM. Redis holds session state, the request queue, per-game locks, and SSE pub/sub between the API (`cmd/api`) and worker (`cmd/worker`). An optional console TUI lives under `cmd/console`.
 
-`/v1` routes require `Authorization: Bearer <key>`. Keys are UUIDs you generate (`uuidgen`) and list in config as `api_keys` (own only the games they create) and `admin_keys` (any gamestate). Copy `config.template.json` and replace `YOUR_UUID_HERE` — the server will not start on the placeholder. Ownership is a SHA-256 hash of the creating key stored on the gamestate; HTTP responses omit it. `/health` is unauthenticated. Rotating an `api_key` orphans its games until the Redis TTL (admins can still reach them).
+`/v1` routes require `Authorization: Bearer <key>`. Keys are UUIDs you generate (`uuidgen`) and list in config as `api_keys` (own only the games they create) and `admin_keys` (any gamestate). Copy `config.template.json` and replace `YOUR_UUID_HERE` — the server will not start on the placeholder. Ownership is a SHA-256 hash of the creating key stored on the gamestate and at Redis key `gamestate-owner:{id}` (same 1h TTL as the session blob). Auth checks the owner key; HTTP responses omit the hash. `/health` is unauthenticated. Rotating an `api_key` orphans its games until the Redis TTL (admins can still reach them).
 
 ### Main loop
 

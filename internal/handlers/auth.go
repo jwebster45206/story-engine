@@ -29,12 +29,31 @@ func encodeGameState(w http.ResponseWriter, gs *state.GameState) error {
 	return json.NewEncoder(w).Encode(&out)
 }
 
-// loadAuthorizedGame returns the gamestate if the caller may access it.
+// authorizeGame reports whether the caller may access the gamestate.
 // Writes 401 when no principal is present, 404 when missing or not owned, 500 on storage errors.
-func loadAuthorizedGame(w http.ResponseWriter, r *http.Request, store storage.Storage, id uuid.UUID, logger *slog.Logger) (*state.GameState, bool) {
+func authorizeGame(w http.ResponseWriter, r *http.Request, store storage.Storage, id uuid.UUID, logger *slog.Logger) bool {
 	p, ok := middleware.PrincipalFrom(r.Context())
 	if !ok {
 		writeJSONError(w, logger, http.StatusUnauthorized, "unauthorized")
+		return false
+	}
+	hash, found, err := store.GetOwnerKeyHash(r.Context(), id)
+	if err != nil {
+		logger.Error("Failed to load game state owner hash", "error", err, "id", id.String())
+		writeJSONError(w, logger, http.StatusInternalServerError, "Failed to load game state")
+		return false
+	}
+	if !found || !p.CanAccess(hash) {
+		writeJSONError(w, logger, http.StatusNotFound, "Game state not found")
+		return false
+	}
+	return true
+}
+
+// loadAuthorizedGame returns the gamestate if the caller may access it.
+// Writes 401 when no principal is present, 404 when missing or not owned, 500 on storage errors.
+func loadAuthorizedGame(w http.ResponseWriter, r *http.Request, store storage.Storage, id uuid.UUID, logger *slog.Logger) (*state.GameState, bool) {
+	if !authorizeGame(w, r, store, id, logger) {
 		return nil, false
 	}
 	gs, err := store.LoadGameState(r.Context(), id)
@@ -43,7 +62,7 @@ func loadAuthorizedGame(w http.ResponseWriter, r *http.Request, store storage.St
 		writeJSONError(w, logger, http.StatusInternalServerError, "Failed to load game state")
 		return nil, false
 	}
-	if gs == nil || !p.CanAccess(gs.OwnerKeyHash) {
+	if gs == nil {
 		writeJSONError(w, logger, http.StatusNotFound, "Game state not found")
 		return nil, false
 	}

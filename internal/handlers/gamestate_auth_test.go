@@ -57,6 +57,10 @@ func TestGameStateOwnership(t *testing.T) {
 	if stored.OwnerKeyHash != testOwnerHashA {
 		t.Fatalf("stored hash = %q, want %q", stored.OwnerKeyHash, testOwnerHashA)
 	}
+	ownerHash, found, err := mockStorage.GetOwnerKeyHash(context.Background(), created.ID)
+	if err != nil || !found || ownerHash != testOwnerHashA {
+		t.Fatalf("owner key hash found=%v hash=%q err=%v", found, ownerHash, err)
+	}
 
 	t.Run("owner can get", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/v1/gamestate/"+created.ID.String(), nil)

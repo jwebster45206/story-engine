@@ -498,7 +498,7 @@ func (h *GameStateHandler) handlePatch(w http.ResponseWriter, r *http.Request, g
 }
 
 func (h *GameStateHandler) handleDelete(w http.ResponseWriter, r *http.Request, gameStateID uuid.UUID) {
-	if _, ok := loadAuthorizedGame(w, r, h.storage, gameStateID, h.logger); !ok {
+	if !authorizeGame(w, r, h.storage, gameStateID, h.logger) {
 		return
 	}
 	if err := h.storage.DeleteGameState(r.Context(), gameStateID); err != nil {

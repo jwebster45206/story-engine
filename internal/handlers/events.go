@@ -72,7 +72,7 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, ok := loadAuthorizedGame(w, r, h.storage, gameStateID, h.logger); !ok {
+	if !authorizeGame(w, r, h.storage, gameStateID, h.logger) {
 		return
 	}
 

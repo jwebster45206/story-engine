@@ -134,3 +134,41 @@ func TestMockStorage_UpdateGameState(t *testing.T) {
 		t.Errorf("Expected inventory with 'potion', got %v", loaded.Inventory)
 	}
 }
+
+func TestMockStorage_GetOwnerKeyHash(t *testing.T) {
+	mockStorage := storage.NewMockStorage()
+	ctx := context.Background()
+
+	id := uuid.New()
+	hash, found, err := mockStorage.GetOwnerKeyHash(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found || hash != "" {
+		t.Fatalf("found=%v hash=%q, want missing", found, hash)
+	}
+
+	gs := state.NewGameState("test_scenario.json", nil, "test-provider", "test_model")
+	gs.OwnerKeyHash = "owner-hash-abc"
+	if err := mockStorage.SaveGameState(ctx, gs.ID, gs); err != nil {
+		t.Fatal(err)
+	}
+	hash, found, err = mockStorage.GetOwnerKeyHash(ctx, gs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !found || hash != "owner-hash-abc" {
+		t.Fatalf("found=%v hash=%q", found, hash)
+	}
+
+	if err := mockStorage.DeleteGameState(ctx, gs.ID); err != nil {
+		t.Fatal(err)
+	}
+	_, found, err = mockStorage.GetOwnerKeyHash(ctx, gs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found {
+		t.Fatal("owner hash should be gone after delete")
+	}
+}

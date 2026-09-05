@@ -98,6 +98,17 @@ func (m *MockStorage) DeleteGameState(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// GetOwnerKeyHash mocks reading the owner hash without loading the blob.
+func (m *MockStorage) GetOwnerKeyHash(ctx context.Context, id uuid.UUID) (string, bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	gamestate, exists := m.gamestates[id]
+	if !exists {
+		return "", false, nil
+	}
+	return gamestate.OwnerKeyHash, true, nil
+}
+
 // ListScenarios mocks listing scenarios
 func (m *MockStorage) ListScenarios(ctx context.Context) (map[string]string, error) {
 	m.mu.RLock()
