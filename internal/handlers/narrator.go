@@ -18,12 +18,11 @@ type NarratorHandler struct {
 }
 
 // ListNarrators lists all available narrator files.
-// TODO: replace http.Error with httperror.Write.
 func (h *NarratorHandler) ListNarrators(w http.ResponseWriter, r *http.Request) {
 	narratorIDs, err := h.storage.ListNarrators(r.Context())
 	if err != nil {
 		h.log.Error("Failed to list narrators", "error", err)
-		http.Error(w, "Failed to list narrators", http.StatusInternalServerError)
+		http.Error(w, "Failed to list narrators", http.StatusInternalServerError) // TODO: httperror.Write
 		return
 	}
 
@@ -49,7 +48,7 @@ func (h *NarratorHandler) ListNarrators(w http.ResponseWriter, r *http.Request) 
 	data, err := json.Marshal(narratorList)
 	if err != nil {
 		h.log.Error("Failed to marshal narrator list", "error", err)
-		http.Error(w, "Failed to process narrator list", http.StatusInternalServerError)
+		http.Error(w, "Failed to process narrator list", http.StatusInternalServerError) // TODO: httperror.Write
 		return
 	}
 
@@ -76,7 +75,7 @@ func (h *NarratorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.handleGet(w, r)
 		}
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed) // TODO: httperror.Write
 	}
 }
 
@@ -85,13 +84,13 @@ func (h *NarratorHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(path)
 
 	if id == "" || id == "/" {
-		http.Error(w, "Narrator ID is required in URL path (e.g., /v1/narrators/vincent_price)", http.StatusBadRequest)
+		http.Error(w, "Narrator ID is required in URL path (e.g., /v1/narrators/vincent_price)", http.StatusBadRequest) // TODO: httperror.Write
 		return
 	}
 
 	// Security: prevent directory traversal
 	if strings.Contains(id, "..") || strings.Contains(id, "/") {
-		http.Error(w, "Invalid narrator ID", http.StatusBadRequest)
+		http.Error(w, "Invalid narrator ID", http.StatusBadRequest) // TODO: httperror.Write
 		return
 	}
 
@@ -99,12 +98,12 @@ func (h *NarratorHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	narrator, err := h.storage.GetNarrator(r.Context(), id)
 	if err != nil {
 		h.log.Error("Failed to load narrator", "error", err, "id", id)
-		http.Error(w, "Failed to load narrator", http.StatusInternalServerError)
+		http.Error(w, "Failed to load narrator", http.StatusInternalServerError) // TODO: httperror.Write
 		return
 	}
 
 	if narrator == nil {
-		http.Error(w, "Narrator not found", http.StatusNotFound)
+		http.Error(w, "Narrator not found", http.StatusNotFound) // TODO: httperror.Write
 		return
 	}
 
@@ -112,7 +111,7 @@ func (h *NarratorHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	data, err := json.Marshal(narrator)
 	if err != nil {
 		h.log.Error("Failed to marshal narrator", "error", err, "id", id)
-		http.Error(w, "Failed to process narrator", http.StatusInternalServerError)
+		http.Error(w, "Failed to process narrator", http.StatusInternalServerError) // TODO: httperror.Write
 		return
 	}
 

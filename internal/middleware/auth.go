@@ -19,8 +19,7 @@ type Principal struct {
 	KeyHash string
 }
 
-// WithPrincipal returns a child context carrying p. Exported for tests that call handlers directly.
-func WithPrincipal(ctx context.Context, p Principal) context.Context {
+func withPrincipal(ctx context.Context, p Principal) context.Context {
 	return context.WithValue(ctx, contextKey{}, p)
 }
 
@@ -62,7 +61,7 @@ func APIKey(cfg *config.Config, next http.Handler) http.Handler {
 			return
 		}
 
-		next.ServeHTTP(w, r.WithContext(WithPrincipal(r.Context(), p)))
+		next.ServeHTTP(w, r.WithContext(withPrincipal(r.Context(), p)))
 	})
 }
 
@@ -102,4 +101,3 @@ func lookupPrincipal(cfg *config.Config, presented string) (Principal, bool) {
 	}
 	return Principal{Admin: admin, KeyHash: h}, true
 }
-

@@ -23,12 +23,11 @@ type providersResponse struct {
 	Providers []any  `json:"providers"`
 }
 
-// TODO: replace ErrorResponse encoding with httperror.Write.
 func (h *ProvidersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "Method not allowed"})
+		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "Method not allowed"}) // TODO: httperror.Write
 		return
 	}
 

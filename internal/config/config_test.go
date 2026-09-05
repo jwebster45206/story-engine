@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"uuid"
 )
 
 const (
@@ -145,70 +146,86 @@ func validProviderJSON(auth string) string {
 	}`
 }
 
-func TestLoad_MissingAuthKeys(t *testing.T) {
-	path := writeConfig(t, `{
+func TestLoadFrom_Auth(t *testing.T) {
+	tests := []struct {
+		name    string
+		raw     string
+		path    string
+		wantErr bool
+		check   func(*testing.T, *Config)
+	}{
+		{
+			name: "missing keys",
+			raw: `{
 		"providers":{"only":{"vendor":"venice","api_key":"k","model":"m"}},
 		"redis_url":"localhost:6379"
-	}`)
-	if _, err := loadFrom(t, path); err == nil {
-		t.Fatal("expected error when no api_keys or admin_keys")
+	}`,
+			wantErr: true,
+		},
+		{
+			name:    "invalid uuid",
+			raw:     validProviderJSON(`"api_keys":["not-a-uuid"]`),
+			wantErr: true,
+		},
+		{
+			name:    "nil uuid",
+			raw:     validProviderJSON(`"api_keys":["00000000-0000-0000-0000-000000000000"]`),
+			wantErr: true,
+		},
+		{
+			name:    "duplicate key",
+			raw:     validProviderJSON(`"api_keys":["` + testAPIUUID + `","` + testAPIUUID + `"]`),
+			wantErr: true,
+		},
+		{
+			name:    "duplicate canonical form",
+			raw:     validProviderJSON(`"api_keys":["` + testAPIUUID + `","{22222222-2222-4222-8222-222222222222}"]`),
+			wantErr: true,
+		},
+		{
+			name:    "key in both lists",
+			raw:     validProviderJSON(`"api_keys":["` + testSharedUUID + `"],"admin_keys":["` + testSharedUUID + `"]`),
+			wantErr: true,
+		},
+		{
+			name: "api key only",
+			raw:  validProviderJSON(`"api_keys":["` + testAPIUUID + `"]`),
+			check: func(t *testing.T, cfg *Config) {
+				if len(cfg.APIKeyHashes) != 1 || len(cfg.AdminKeyHashes) != 0 {
+					t.Fatalf("hashes api=%d admin=%d", len(cfg.APIKeyHashes), len(cfg.AdminKeyHashes))
+				}
+				if cfg.APIKeyHashes[0] != HashKey(uuid.MustParse(testAPIUUID)) {
+					t.Fatal("api key hash mismatch")
+				}
+			},
+		},
+		{
+			name:    "template placeholder",
+			path:    filepath.Join("..", "..", "config.template.json"),
+			wantErr: true,
+		},
 	}
-}
 
-func TestLoad_InvalidUUID(t *testing.T) {
-	path := writeConfig(t, validProviderJSON(`"api_keys":["not-a-uuid"]`))
-	if _, err := loadFrom(t, path); err == nil {
-		t.Fatal("expected error for non-UUID api_key")
-	}
-}
-
-func TestLoad_NilUUID(t *testing.T) {
-	path := writeConfig(t, validProviderJSON(`"api_keys":["00000000-0000-0000-0000-000000000000"]`))
-	if _, err := loadFrom(t, path); err == nil {
-		t.Fatal("expected error for nil UUID")
-	}
-}
-
-func TestLoad_DuplicateKey(t *testing.T) {
-	path := writeConfig(t, validProviderJSON(`"api_keys":["`+testAPIUUID+`","`+testAPIUUID+`"]`))
-	if _, err := loadFrom(t, path); err == nil {
-		t.Fatal("expected error for duplicate api_key")
-	}
-}
-
-func TestLoad_DuplicateCanonicalForm(t *testing.T) {
-	path := writeConfig(t, validProviderJSON(`"api_keys":["`+testAPIUUID+`","{22222222-2222-4222-8222-222222222222}"]`))
-	if _, err := loadFrom(t, path); err == nil {
-		t.Fatal("expected error for duplicate canonical UUID")
-	}
-}
-
-func TestLoad_APIKeyOnly(t *testing.T) {
-	path := writeConfig(t, validProviderJSON(`"api_keys":["`+testAPIUUID+`"]`))
-	cfg, err := loadFrom(t, path)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if len(cfg.APIKeyHashes) != 1 || len(cfg.AdminKeyHashes) != 0 {
-		t.Fatalf("hashes api=%d admin=%d", len(cfg.APIKeyHashes), len(cfg.AdminKeyHashes))
-	}
-	canon, err := CanonicalKey(testAPIUUID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.APIKeyHashes[0] != HashKey(canon) {
-		t.Fatal("api key hash mismatch")
-	}
-}
-
-func TestLoad_KeyInBothLists(t *testing.T) {
-	path := writeConfig(t, validProviderJSON(`"api_keys":["`+testSharedUUID+`"],"admin_keys":["`+testSharedUUID+`"]`))
-	cfg, err := loadFrom(t, path)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if len(cfg.APIKeyHashes) != 1 || len(cfg.AdminKeyHashes) != 1 {
-		t.Fatalf("hashes api=%d admin=%d", len(cfg.APIKeyHashes), len(cfg.AdminKeyHashes))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := tt.path
+			if path == "" {
+				path = writeConfig(t, tt.raw)
+			}
+			cfg, err := loadFrom(t, path)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			if tt.check != nil {
+				tt.check(t, cfg)
+			}
+		})
 	}
 }
 
@@ -217,23 +234,13 @@ func TestCanonicalKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if canon != testAPIUUID {
+	if canon != uuid.MustParse(testAPIUUID) {
 		t.Fatalf("canon = %q", canon)
 	}
 	if _, err := CanonicalKey("not-a-uuid"); err == nil {
 		t.Fatal("expected error")
 	}
-}
-
-func TestCanonicalKey_RejectsPlaceholder(t *testing.T) {
 	if _, err := CanonicalKey("YOUR_UUID_HERE"); err == nil {
 		t.Fatal("placeholder must not parse as a UUID")
-	}
-}
-
-func TestCommittedTemplate_RejectsPlaceholderKeys(t *testing.T) {
-	path := filepath.Join("..", "..", "config.template.json")
-	if _, err := loadFrom(t, path); err == nil {
-		t.Fatal("config.template.json must not load until YOUR_UUID_HERE is replaced")
 	}
 }

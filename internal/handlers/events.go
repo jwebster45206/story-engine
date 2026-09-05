@@ -32,14 +32,13 @@ func NewEventsHandler(redisClient *redis.Client, store storage.Storage, logger *
 
 // ServeHTTP handles SSE requests for game events
 // GET /v1/events/gamestate/{gameStateID}
-// TODO: replace ErrorResponse encoding with httperror.Write.
 func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		h.logger.Warn("Method not allowed for events endpoint",
 			"method", r.Method,
 			"path", r.URL.Path)
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		if err := json.NewEncoder(w).Encode(ErrorResponse{
+		if err := json.NewEncoder(w).Encode(ErrorResponse{ // TODO: httperror.Write
 			Error: "Method not allowed. Only GET is supported.",
 		}); err != nil {
 			h.logger.Error("Failed to encode error response", "error", err)
@@ -52,7 +51,7 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(pathParts) != 4 || pathParts[0] != "v1" || pathParts[1] != "events" || pathParts[2] != "gamestate" {
 		w.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(w).Encode(ErrorResponse{
+		if err := json.NewEncoder(w).Encode(ErrorResponse{ // TODO: httperror.Write
 			Error: "Invalid path. Expected /v1/events/gamestate/{gameStateID}",
 		}); err != nil {
 			h.logger.Error("Failed to encode error response", "error", err)
@@ -64,7 +63,7 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	gameStateID, err := uuid.Parse(gameStateIDStr)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(w).Encode(ErrorResponse{
+		if err := json.NewEncoder(w).Encode(ErrorResponse{ // TODO: httperror.Write
 			Error: "Invalid game state ID format.",
 		}); err != nil {
 			h.logger.Error("Failed to encode error response", "error", err)

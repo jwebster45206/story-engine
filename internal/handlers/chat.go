@@ -37,7 +37,6 @@ type ChatResponse struct {
 }
 
 // ServeHTTP handles HTTP requests for chat by enqueuing them for async processing.
-// TODO: replace ErrorResponse encoding with httperror.Write.
 func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -48,7 +47,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"remote_addr", r.RemoteAddr)
 
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		response := ErrorResponse{
+		response := ErrorResponse{ // TODO: httperror.Write
 			Error: "Method not allowed. Only POST is supported at /v1/chat.",
 		}
 
@@ -65,7 +64,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		h.logger.Warn("Invalid request body", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
-		response := ErrorResponse{
+		response := ErrorResponse{ // TODO: httperror.Write
 			Error: "Invalid request body. Expected JSON with 'message' field.",
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -78,7 +77,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := request.Validate(); err != nil {
 		h.logger.Warn("Invalid chat request", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
-		response := ErrorResponse{
+		response := ErrorResponse{ // TODO: httperror.Write
 			Error: "Invalid request: " + err.Error(),
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -107,7 +106,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := h.chatQueue.EnqueueRequest(r.Context(), queueReq); err != nil {
 		h.logger.Error("Failed to enqueue chat request", "error", err, "request_id", requestID)
 		w.WriteHeader(http.StatusInternalServerError)
-		response := ErrorResponse{
+		response := ErrorResponse{ // TODO: httperror.Write
 			Error: "Failed to enqueue request for processing.",
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {

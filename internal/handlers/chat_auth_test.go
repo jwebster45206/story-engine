@@ -32,7 +32,7 @@ func TestChatHandler_Ownership(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	mockStorage := storage.NewMockStorage()
 	gs := state.NewGameState("foo_scenario.json", nil, "foo", "foo_model")
-	gs.OwnerKeyHash = testOwnerHashA
+	gs.OwnerKeyHash = testKeyHash(testAPIKeyA)
 	if err := mockStorage.SaveGameState(context.Background(), gs.ID, gs); err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestChatHandler_Ownership(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/v1/chat", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, withAPIKey(req, testOwnerHashB))
+		serveKey(handler, rr, req, testAPIKeyB)
 		if rr.Code != http.StatusNotFound {
 			t.Fatalf("status = %d, want 404 body=%s", rr.Code, rr.Body.String())
 		}
@@ -58,7 +58,7 @@ func TestChatHandler_Ownership(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/v1/chat", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, withAPIKey(req, testOwnerHashA))
+		serveKey(handler, rr, req, testAPIKeyA)
 		if rr.Code != http.StatusAccepted {
 			t.Fatalf("status = %d body=%s", rr.Code, rr.Body.String())
 		}
@@ -72,7 +72,7 @@ func TestEventsHandler_OwnershipBeforeSSE(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	mockStorage := storage.NewMockStorage()
 	gs := state.NewGameState("foo_scenario.json", nil, "foo", "foo_model")
-	gs.OwnerKeyHash = testOwnerHashA
+	gs.OwnerKeyHash = testKeyHash(testAPIKeyA)
 	if err := mockStorage.SaveGameState(context.Background(), gs.ID, gs); err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestEventsHandler_OwnershipBeforeSSE(t *testing.T) {
 	handler := NewEventsHandler(nil, mockStorage, logger)
 	req := httptest.NewRequest(http.MethodGet, "/v1/events/gamestate/"+gs.ID.String(), nil)
 	rr := httptest.NewRecorder()
-	handler.ServeHTTP(rr, withAPIKey(req, testOwnerHashB))
+	serveKey(handler, rr, req, testAPIKeyB)
 	if rr.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rr.Code)
 	}

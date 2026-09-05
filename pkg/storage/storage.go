@@ -20,8 +20,6 @@ type Storage interface {
 	SaveGameState(ctx context.Context, id uuid.UUID, gs *state.GameState) error
 	LoadGameState(ctx context.Context, id uuid.UUID) (*state.GameState, error)
 	DeleteGameState(ctx context.Context, id uuid.UUID) error
-	// GetOwnerKeyHash returns the owner hash for a gamestate without loading the blob.
-	// found is false when no owner key exists.
 	GetOwnerKeyHash(ctx context.Context, id uuid.UUID) (hash string, found bool, err error)
 
 	// Scenario operations (filesystem-backed)

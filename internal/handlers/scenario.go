@@ -15,19 +15,18 @@ type ScenarioHandler struct {
 }
 
 // ListScenarios lists all available scenario files.
-// TODO: replace http.Error with httperror.Write.
 func (h *ScenarioHandler) ListScenarios(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	scenarios, err := h.storage.ListScenarios(ctx)
 	if err != nil {
 		h.log.Error("Failed to list scenarios", "error", err)
-		http.Error(w, "Failed to list scenarios", http.StatusInternalServerError)
+		http.Error(w, "Failed to list scenarios", http.StatusInternalServerError) // TODO: httperror.Write
 		return
 	}
 	data, err := json.Marshal(scenarios)
 	if err != nil {
 		h.log.Error("Failed to marshal scenario list", "error", err)
-		http.Error(w, "Failed to process scenario list", http.StatusInternalServerError)
+		http.Error(w, "Failed to process scenario list", http.StatusInternalServerError) // TODO: httperror.Write
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -53,7 +52,7 @@ func (h *ScenarioHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.handleGet(w, r)
 		}
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed) // TODO: httperror.Write
 	}
 }
 
@@ -62,12 +61,12 @@ func (h *ScenarioHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	filename := strings.TrimSpace(path)
 
 	if filename == "" || filename == "/scenarios" {
-		http.Error(w, "filename is required in URL path (e.g., /scenarios/pirate.json)", http.StatusBadRequest)
+		http.Error(w, "filename is required in URL path (e.g., /scenarios/pirate.json)", http.StatusBadRequest) // TODO: httperror.Write
 		return
 	}
 
 	if strings.Contains(filename, "..") || strings.Contains(filename, "/") {
-		http.Error(w, "Invalid filename", http.StatusBadRequest)
+		http.Error(w, "Invalid filename", http.StatusBadRequest) // TODO: httperror.Write
 		return
 	}
 
@@ -75,18 +74,18 @@ func (h *ScenarioHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	scenario, err := h.storage.GetScenario(ctx, filename)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Scenario not found", http.StatusNotFound)
+			http.Error(w, "Scenario not found", http.StatusNotFound) // TODO: httperror.Write
 			return
 		}
 		h.log.Error("Failed to get scenario", "error", err, "filename", filename)
-		http.Error(w, "Failed to retrieve scenario", http.StatusInternalServerError)
+		http.Error(w, "Failed to retrieve scenario", http.StatusInternalServerError) // TODO: httperror.Write
 		return
 	}
 
 	data, err := json.Marshal(scenario)
 	if err != nil {
 		h.log.Error("Failed to marshal scenario", "error", err, "filename", filename)
-		http.Error(w, "Failed to process scenario", http.StatusInternalServerError)
+		http.Error(w, "Failed to process scenario", http.StatusInternalServerError) // TODO: httperror.Write
 		return
 	}
 

@@ -6,22 +6,11 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/jwebster45206/story-engine/internal/httperror"
 	"github.com/jwebster45206/story-engine/internal/middleware"
 	"github.com/jwebster45206/story-engine/pkg/state"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
-
-// TODO: replace with httperror.Write.
-func writeJSONError(w http.ResponseWriter, logger *slog.Logger, status int, msg string) {
-	w.Header().Set("Content-Type", "application/json")
-	if status == http.StatusUnauthorized {
-		w.Header().Set("WWW-Authenticate", "Bearer")
-	}
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(ErrorResponse{Error: msg}); err != nil {
-		logger.Error("Failed to encode error response", "error", err)
-	}
-}
 
 func encodeGameState(w http.ResponseWriter, gs *state.GameState) error {
 	out := *gs
@@ -34,17 +23,17 @@ func encodeGameState(w http.ResponseWriter, gs *state.GameState) error {
 func authorizeGame(w http.ResponseWriter, r *http.Request, store storage.Storage, id uuid.UUID, logger *slog.Logger) bool {
 	p, ok := middleware.PrincipalFrom(r.Context())
 	if !ok {
-		writeJSONError(w, logger, http.StatusUnauthorized, "unauthorized")
+		httperror.Write(w, logger, http.StatusUnauthorized, "unauthorized")
 		return false
 	}
 	hash, found, err := store.GetOwnerKeyHash(r.Context(), id)
 	if err != nil {
 		logger.Error("Failed to load game state owner hash", "error", err, "id", id.String())
-		writeJSONError(w, logger, http.StatusInternalServerError, "Failed to load game state")
+		httperror.Write(w, logger, http.StatusInternalServerError, "Failed to load game state")
 		return false
 	}
 	if !found || !p.CanAccess(hash) {
-		writeJSONError(w, logger, http.StatusNotFound, "Game state not found")
+		httperror.Write(w, logger, http.StatusNotFound, "Game state not found")
 		return false
 	}
 	return true
@@ -59,11 +48,11 @@ func loadAuthorizedGame(w http.ResponseWriter, r *http.Request, store storage.St
 	gs, err := store.LoadGameState(r.Context(), id)
 	if err != nil {
 		logger.Error("Failed to load game state", "error", err, "id", id.String())
-		writeJSONError(w, logger, http.StatusInternalServerError, "Failed to load game state")
+		httperror.Write(w, logger, http.StatusInternalServerError, "Failed to load game state")
 		return nil, false
 	}
 	if gs == nil {
-		writeJSONError(w, logger, http.StatusNotFound, "Game state not found")
+		httperror.Write(w, logger, http.StatusNotFound, "Game state not found")
 		return nil, false
 	}
 	return gs, true
@@ -72,7 +61,7 @@ func loadAuthorizedGame(w http.ResponseWriter, r *http.Request, store storage.St
 func requirePrincipal(w http.ResponseWriter, r *http.Request, logger *slog.Logger) (middleware.Principal, bool) {
 	p, ok := middleware.PrincipalFrom(r.Context())
 	if !ok {
-		writeJSONError(w, logger, http.StatusUnauthorized, "unauthorized")
+		httperror.Write(w, logger, http.StatusUnauthorized, "unauthorized")
 		return middleware.Principal{}, false
 	}
 	return p, true

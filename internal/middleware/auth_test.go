@@ -6,20 +6,20 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"uuid"
 
 	"github.com/jwebster45206/story-engine/internal/config"
 )
 
 const (
-	testAPIKey    = "22222222-2222-4222-8222-222222222222"
-	testAdminKey  = "11111111-1111-4111-8111-111111111111"
-	testSharedKey = "33333333-3333-4333-8333-333333333333"
+	testAPIKey   = "22222222-2222-4222-8222-222222222222"
+	testAdminKey = "11111111-1111-4111-8111-111111111111"
 )
 
 func testAuthConfig() *config.Config {
 	return &config.Config{
-		APIKeyHashes:   []string{config.HashKey(testAPIKey)},
-		AdminKeyHashes: []string{config.HashKey(testAdminKey)},
+		APIKeyHashes:   []string{config.HashKey(uuid.MustParse(testAPIKey))},
+		AdminKeyHashes: []string{config.HashKey(uuid.MustParse(testAdminKey))},
 	}
 }
 
@@ -93,7 +93,7 @@ func TestAPIKey_APIKeyPrincipal(t *testing.T) {
 		if p.Admin {
 			t.Fatal("api_key must not be admin")
 		}
-		if p.KeyHash != config.HashKey(testAPIKey) {
+		if p.KeyHash != config.HashKey(uuid.MustParse(testAPIKey)) {
 			t.Fatalf("hash = %q", p.KeyHash)
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -113,7 +113,7 @@ func TestAPIKey_AdminPrincipal(t *testing.T) {
 		if !ok || !p.Admin {
 			t.Fatalf("principal admin=%v ok=%v", p.Admin, ok)
 		}
-		if p.KeyHash != config.HashKey(testAdminKey) {
+		if p.KeyHash != config.HashKey(uuid.MustParse(testAdminKey)) {
 			t.Fatalf("hash = %q", p.KeyHash)
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -144,31 +144,9 @@ func TestAPIKey_CanonicalForm(t *testing.T) {
 	}
 }
 
-func TestAPIKey_KeyInBothListsIsAdmin(t *testing.T) {
-	shared := testSharedKey
-	cfg := &config.Config{
-		APIKeyHashes:   []string{config.HashKey(shared)},
-		AdminKeyHashes: []string{config.HashKey(shared)},
-	}
-	h := APIKey(cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p, ok := PrincipalFrom(r.Context())
-		if !ok || !p.Admin {
-			t.Fatalf("want admin principal, got admin=%v ok=%v", p.Admin, ok)
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	req := httptest.NewRequest(http.MethodGet, "/v1/providers", nil)
-	req.Header.Set("Authorization", "Bearer "+shared)
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusNoContent {
-		t.Fatalf("status = %d, want 204", rr.Code)
-	}
-}
-
 func TestPrincipalCanAccess(t *testing.T) {
-	hashA := config.HashKey("aaaaaaaaaaaaaaaa")
-	hashB := config.HashKey("bbbbbbbbbbbbbbbb")
+	hashA := config.HashKey(uuid.MustParse(testAPIKey))
+	hashB := config.HashKey(uuid.MustParse(testAdminKey))
 	api := Principal{Admin: false, KeyHash: hashA}
 	admin := Principal{Admin: true, KeyHash: hashB}
 

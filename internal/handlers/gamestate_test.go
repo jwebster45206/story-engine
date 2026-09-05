@@ -549,3 +549,132 @@ func TestGameStateHandler_CreateRulesAndTemperature(t *testing.T) {
 		})
 	}
 }
+
+func TestGameStateOwnership(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	mockStorage := storage.NewMockStorage()
+	mockStorage.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:            "Test Scenario",
+		FileName:        "foo_scenario.json",
+		Story:           "A test scenario",
+		OpeningPrompt:   "Welcome!",
+		OpeningLocation: "start",
+		Locations: map[string]scenario.Location{
+			"start": {Name: "start", Description: "Starting location"},
+		},
+	})
+	handler := NewGameStateHandler(logger, testCatalog(), mockStorage)
+
+	createReq := httptest.NewRequest(http.MethodPost, "/v1/gamestate", strings.NewReader(`{"scenario":"foo_scenario.json"}`))
+	createReq.Header.Set("Content-Type", "application/json")
+	createRR := httptest.NewRecorder()
+	serveKey(handler, createRR, createReq, testAPIKeyA)
+	if createRR.Code != http.StatusCreated {
+		t.Fatalf("create status = %d body=%s", createRR.Code, createRR.Body.String())
+	}
+	rawCreate := createRR.Body.String()
+	if strings.Contains(rawCreate, "owner_key_hash") {
+		t.Fatal("raw create body contains owner_key_hash")
+	}
+
+	var created state.GameState
+	if err := json.NewDecoder(strings.NewReader(rawCreate)).Decode(&created); err != nil {
+		t.Fatal(err)
+	}
+	if created.OwnerKeyHash != "" {
+		t.Fatalf("HTTP response leaked owner_key_hash %q", created.OwnerKeyHash)
+	}
+
+	wantHash := testKeyHash(testAPIKeyA)
+	stored, err := mockStorage.LoadGameState(context.Background(), created.ID)
+	if err != nil || stored == nil {
+		t.Fatalf("stored gamestate: %v", err)
+	}
+	if stored.OwnerKeyHash != wantHash {
+		t.Fatalf("stored hash = %q, want %q", stored.OwnerKeyHash, wantHash)
+	}
+	ownerHash, found, err := mockStorage.GetOwnerKeyHash(context.Background(), created.ID)
+	if err != nil || !found || ownerHash != wantHash {
+		t.Fatalf("owner key hash found=%v hash=%q err=%v", found, ownerHash, err)
+	}
+
+	tests := []struct {
+		name   string
+		method string
+		body   string
+		key    string
+		want   int
+	}{
+		{name: "owner can get", method: http.MethodGet, key: testAPIKeyA, want: http.StatusOK},
+		{name: "other api_key gets 404", method: http.MethodGet, key: testAPIKeyB, want: http.StatusNotFound},
+		{name: "admin can get", method: http.MethodGet, key: testAdminKey, want: http.StatusOK},
+		{name: "patch cannot change owner", method: http.MethodPatch, body: `{"owner_key_hash":"deadbeef","user_location":"start"}`, key: testAPIKeyA, want: http.StatusOK},
+		{name: "empty owner hash api_key 404", method: http.MethodGet, key: testAPIKeyA, want: http.StatusNotFound},
+		{name: "empty owner hash admin 200", method: http.MethodGet, key: testAdminKey, want: http.StatusOK},
+	}
+
+	orphan := state.NewGameState("foo_scenario.json", nil, "foo", "foo_model")
+	if err := mockStorage.SaveGameState(context.Background(), orphan.ID, orphan); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			id := created.ID
+			if strings.Contains(tt.name, "empty owner") {
+				id = orphan.ID
+			}
+			var body *strings.Reader
+			if tt.body != "" {
+				body = strings.NewReader(tt.body)
+			}
+			path := "/v1/gamestate/" + id.String()
+			var req *http.Request
+			if body != nil {
+				req = httptest.NewRequest(tt.method, path, body)
+				req.Header.Set("Content-Type", "application/json")
+			} else {
+				req = httptest.NewRequest(tt.method, path, nil)
+			}
+			rr := httptest.NewRecorder()
+			serveKey(handler, rr, req, tt.key)
+			if rr.Code != tt.want {
+				t.Fatalf("status = %d, want %d body=%s", rr.Code, tt.want, rr.Body.String())
+			}
+			if tt.want == http.StatusOK && strings.Contains(rr.Body.String(), "owner_key_hash") {
+				t.Fatal("response leaked owner_key_hash")
+			}
+			if tt.name == "patch cannot change owner" {
+				after, err := mockStorage.LoadGameState(context.Background(), created.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if after.OwnerKeyHash != wantHash {
+					t.Fatalf("owner hash changed to %q", after.OwnerKeyHash)
+				}
+			}
+		})
+	}
+
+	t.Run("create ignores client owner_key_hash", func(t *testing.T) {
+		body := `{"scenario":"foo_scenario.json","owner_key_hash":"deadbeef"}`
+		req := httptest.NewRequest(http.MethodPost, "/v1/gamestate", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+		serveKey(handler, rr, req, testAPIKeyA)
+		if rr.Code != http.StatusCreated {
+			t.Fatalf("status = %d", rr.Code)
+		}
+		var gs state.GameState
+		if err := json.NewDecoder(rr.Body).Decode(&gs); err != nil {
+			t.Fatal(err)
+		}
+		storedGS, err := mockStorage.LoadGameState(context.Background(), gs.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if storedGS.OwnerKeyHash != wantHash {
+			t.Fatalf("hash = %q, want creator hash", storedGS.OwnerKeyHash)
+		}
+	})
+}
