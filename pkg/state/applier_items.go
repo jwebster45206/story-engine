@@ -21,76 +21,76 @@ type itemEvent = struct {
 }
 
 // handleAcquireItem adds an item to player inventory
-func (dw *DeltaWorker) handleAcquireItem(itemEvent itemEvent) {
-	if !slices.Contains(dw.gs.Inventory, itemEvent.Item) {
-		if dw.gs.Inventory == nil {
-			dw.gs.Inventory = make([]string, 0)
+func (a *Applier) handleAcquireItem(itemEvent itemEvent) {
+	if !slices.Contains(a.gs.Inventory, itemEvent.Item) {
+		if a.gs.Inventory == nil {
+			a.gs.Inventory = make([]string, 0)
 		}
-		dw.gs.Inventory = append(dw.gs.Inventory, itemEvent.Item)
+		a.gs.Inventory = append(a.gs.Inventory, itemEvent.Item)
 	}
 	// Remove from source if specified and not consumed
 	if itemEvent.From != nil && (itemEvent.Consumed == nil || !*itemEvent.Consumed) {
-		dw.removeItemFromSource(itemEvent.Item, itemEvent.From)
+		a.removeItemFromSource(itemEvent.Item, itemEvent.From)
 	}
 }
 
 // handleDropItem removes an item from player inventory
-func (dw *DeltaWorker) handleDropItem(itemEvent itemEvent) {
-	for i, invItem := range dw.gs.Inventory {
+func (a *Applier) handleDropItem(itemEvent itemEvent) {
+	for i, invItem := range a.gs.Inventory {
 		if invItem == itemEvent.Item {
-			dw.gs.Inventory = append(dw.gs.Inventory[:i], dw.gs.Inventory[i+1:]...)
+			a.gs.Inventory = append(a.gs.Inventory[:i], a.gs.Inventory[i+1:]...)
 			break
 		}
 	}
 	// Add to destination if specified
 	if itemEvent.To != nil {
-		dw.addItemToDestination(itemEvent.Item, itemEvent.To)
+		a.addItemToDestination(itemEvent.Item, itemEvent.To)
 	}
 }
 
 // handleGiveItem transfers an item between entities
-func (dw *DeltaWorker) handleGiveItem(itemEvent itemEvent) {
+func (a *Applier) handleGiveItem(itemEvent itemEvent) {
 	// Remove from source
 	if itemEvent.From != nil {
-		dw.removeItemFromSource(itemEvent.Item, itemEvent.From)
+		a.removeItemFromSource(itemEvent.Item, itemEvent.From)
 	} else {
 		// Default to removing from player inventory if no source specified
-		for i, invItem := range dw.gs.Inventory {
+		for i, invItem := range a.gs.Inventory {
 			if invItem == itemEvent.Item {
-				dw.gs.Inventory = append(dw.gs.Inventory[:i], dw.gs.Inventory[i+1:]...)
+				a.gs.Inventory = append(a.gs.Inventory[:i], a.gs.Inventory[i+1:]...)
 				break
 			}
 		}
 	}
 	// Add to destination
 	if itemEvent.To != nil {
-		dw.addItemToDestination(itemEvent.Item, itemEvent.To)
+		a.addItemToDestination(itemEvent.Item, itemEvent.To)
 	}
 }
 
 // handleMoveItem moves an item from one location/entity to another
-func (dw *DeltaWorker) handleMoveItem(itemEvent itemEvent) {
+func (a *Applier) handleMoveItem(itemEvent itemEvent) {
 	// Remove from source
 	if itemEvent.From != nil {
-		dw.removeItemFromSource(itemEvent.Item, itemEvent.From)
+		a.removeItemFromSource(itemEvent.Item, itemEvent.From)
 	}
 	// Add to destination
 	if itemEvent.To != nil {
-		dw.addItemToDestination(itemEvent.Item, itemEvent.To)
+		a.addItemToDestination(itemEvent.Item, itemEvent.To)
 	}
 }
 
 // handleUseItem uses an item and potentially consumes it
-func (dw *DeltaWorker) handleUseItem(itemEvent itemEvent) {
+func (a *Applier) handleUseItem(itemEvent itemEvent) {
 	// If item is consumed, remove it from source
 	if itemEvent.Consumed != nil && *itemEvent.Consumed {
 		if itemEvent.From != nil {
-			dw.removeItemFromSource(itemEvent.Item, itemEvent.From)
+			a.removeItemFromSource(itemEvent.Item, itemEvent.From)
 		} else {
 			// Default to removing from player inventory if no source specified
-			for i, invItem := range dw.gs.Inventory {
+			for i, invItem := range a.gs.Inventory {
 				if invItem == itemEvent.Item {
-					dw.gs.Inventory = append(dw.gs.Inventory[:i], dw.gs.Inventory[i+1:]...)
+					a.gs.Inventory = append(a.gs.Inventory[:i], a.gs.Inventory[i+1:]...)
 					break
 				}
 			}
@@ -99,11 +99,11 @@ func (dw *DeltaWorker) handleUseItem(itemEvent itemEvent) {
 }
 
 // removeItemFromSource removes an item from the specified source
-func (dw *DeltaWorker) removeItemFromSource(item string, from *struct {
+func (a *Applier) removeItemFromSource(item string, from *struct {
 	Type string `json:"type"`
 	Name string `json:"name,omitempty"`
 }) {
-	gs := dw.gs
+	gs := a.gs
 	switch from.Type {
 	case "player":
 		// Remove from player inventory
@@ -160,11 +160,11 @@ func (dw *DeltaWorker) removeItemFromSource(item string, from *struct {
 }
 
 // addItemToDestination adds an item to the specified destination
-func (dw *DeltaWorker) addItemToDestination(item string, to *struct {
+func (a *Applier) addItemToDestination(item string, to *struct {
 	Type string `json:"type"`
 	Name string `json:"name,omitempty"`
 }) {
-	gs := dw.gs
+	gs := a.gs
 	switch to.Type {
 	case "player":
 		// Add to player inventory (check for duplicates)

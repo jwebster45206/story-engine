@@ -8,12 +8,12 @@ import (
 )
 
 // handleNPCEvent processes an NPC state change event
-func (dw *DeltaWorker) handleNPCEvent(event conditionals.NPCEvent) {
+func (a *Applier) handleNPCEvent(event conditionals.NPCEvent) {
 	npcKey := strings.ToLower(strings.TrimSpace(event.NPCID))
-	npc, npcExists := dw.gs.NPCs[npcKey]
+	npc, npcExists := a.gs.NPCs[npcKey]
 	if !npcExists {
 		// Try matching by NPC name
-		for key, n := range dw.gs.NPCs {
+		for key, n := range a.gs.NPCs {
 			if strings.ToLower(n.Name) == npcKey {
 				npcKey = key
 				npc = n
@@ -24,8 +24,8 @@ func (dw *DeltaWorker) handleNPCEvent(event conditionals.NPCEvent) {
 	}
 
 	if !npcExists {
-		if dw.logger != nil {
-			dw.logger.Warn("NPC not found for event",
+		if a.logger != nil {
+			a.logger.Warn("NPC not found for event",
 				"npc_id", event.NPCID)
 		}
 		return
@@ -36,11 +36,11 @@ func (dw *DeltaWorker) handleNPCEvent(event conditionals.NPCEvent) {
 	// Handle location change
 	if event.SetLocation != nil {
 		locationKey := strings.ToLower(strings.TrimSpace(*event.SetLocation))
-		_, locationExists := dw.gs.WorldLocations[locationKey]
+		_, locationExists := a.gs.WorldLocations[locationKey]
 
 		if !locationExists {
 			// Try matching by location name
-			for key, loc := range dw.gs.WorldLocations {
+			for key, loc := range a.gs.WorldLocations {
 				if strings.ToLower(loc.Name) == locationKey {
 					locationKey = key
 					locationExists = true
@@ -54,14 +54,14 @@ func (dw *DeltaWorker) handleNPCEvent(event conditionals.NPCEvent) {
 			npc.Location = locationKey
 			modified = true
 
-			if dw.logger != nil {
-				dw.logger.Info("NPC location changed",
+			if a.logger != nil {
+				a.logger.Info("NPC location changed",
 					"npc", npcKey,
 					"from", oldLocation,
 					"to", locationKey)
 			}
-		} else if dw.logger != nil {
-			dw.logger.Warn("Location not found for NPC event",
+		} else if a.logger != nil {
+			a.logger.Warn("Location not found for NPC event",
 				"npc_id", event.NPCID,
 				"set_location", *event.SetLocation)
 		}
@@ -74,19 +74,19 @@ func (dw *DeltaWorker) handleNPCEvent(event conditionals.NPCEvent) {
 		// Validate following target
 		if following != "" && following != "pc" {
 			// Should be a valid NPC ID
-			_, exists := dw.gs.NPCs[following]
+			_, exists := a.gs.NPCs[following]
 			if !exists {
 				// Try case-insensitive match
 				found := false
-				for key, n := range dw.gs.NPCs {
+				for key, n := range a.gs.NPCs {
 					if strings.EqualFold(n.Name, following) {
 						following = key
 						found = true
 						break
 					}
 				}
-				if !found && dw.logger != nil {
-					dw.logger.Warn("Following target not found",
+				if !found && a.logger != nil {
+					a.logger.Warn("Following target not found",
 						"npc", npcKey,
 						"following", following)
 				}
@@ -96,8 +96,8 @@ func (dw *DeltaWorker) handleNPCEvent(event conditionals.NPCEvent) {
 		npc.Following = following
 		modified = true
 
-		if dw.logger != nil {
-			dw.logger.Info("NPC following changed",
+		if a.logger != nil {
+			a.logger.Info("NPC following changed",
 				"npc", npcKey,
 				"following", following)
 		}
@@ -105,39 +105,39 @@ func (dw *DeltaWorker) handleNPCEvent(event conditionals.NPCEvent) {
 
 	// Save changes
 	if modified {
-		dw.gs.NPCs[npcKey] = npc
+		a.gs.NPCs[npcKey] = npc
 	}
 }
 
 // handleMonsterEvent processes a monster event (spawn or despawn)
-func (dw *DeltaWorker) handleMonsterEvent(event conditionals.MonsterEvent) {
+func (a *Applier) handleMonsterEvent(event conditionals.MonsterEvent) {
 	switch event.Action {
 	case conditionals.MonsterEventSpawn:
-		dw.handleMonsterSpawn(event)
+		a.handleMonsterSpawn(event)
 	case conditionals.MonsterEventDespawn:
-		dw.handleMonsterDespawn(event)
+		a.handleMonsterDespawn(event)
 	default:
-		dw.logger.Warn("Unknown monster event action",
+		a.logger.Warn("Unknown monster event action",
 			"action", event.Action,
 			"instance_id", event.InstanceID)
 	}
 }
 
 // handleMonsterSpawn loads a monster template and spawns an instance
-func (dw *DeltaWorker) handleMonsterSpawn(event conditionals.MonsterEvent) {
+func (a *Applier) handleMonsterSpawn(event conditionals.MonsterEvent) {
 	// Validate storage is available
-	if dw.storage == nil {
-		dw.logger.Error("Cannot spawn monster: storage not configured")
+	if a.storage == nil {
+		a.logger.Error("Cannot spawn monster: storage not configured")
 		return
 	}
 
 	// Normalize location key
 	locationKey := strings.ToLower(strings.TrimSpace(event.Location))
-	_, locationExists := dw.gs.WorldLocations[locationKey]
+	_, locationExists := a.gs.WorldLocations[locationKey]
 
 	if !locationExists {
 		// Try matching by location name
-		for key, loc := range dw.gs.WorldLocations {
+		for key, loc := range a.gs.WorldLocations {
 			if strings.ToLower(loc.Name) == locationKey {
 				locationKey = key
 				locationExists = true
@@ -147,16 +147,16 @@ func (dw *DeltaWorker) handleMonsterSpawn(event conditionals.MonsterEvent) {
 	}
 
 	if !locationExists {
-		dw.logger.Warn("Cannot spawn monster: location not found",
+		a.logger.Warn("Cannot spawn monster: location not found",
 			"instance_id", event.InstanceID,
 			"location", event.Location)
 		return
 	}
 
 	// Load monster template from storage
-	template, err := dw.storage.GetMonster(dw.ctx, event.Template)
+	template, err := a.storage.GetMonster(a.ctx, event.Template)
 	if err != nil {
-		dw.logger.Error("Failed to load monster template",
+		a.logger.Error("Failed to load monster template",
 			"instance_id", event.InstanceID,
 			"template", event.Template,
 			"error", err)
@@ -199,10 +199,10 @@ func (dw *DeltaWorker) handleMonsterSpawn(event conditionals.MonsterEvent) {
 	}
 
 	// Spawn the monster using GameState method
-	monster := dw.gs.SpawnMonster(template, monsterDef)
+	monster := a.gs.SpawnMonster(template, monsterDef)
 
-	if dw.logger != nil {
-		dw.logger.Info("Monster spawned",
+	if a.logger != nil {
+		a.logger.Info("Monster spawned",
 			"instance_id", event.InstanceID,
 			"template", event.Template,
 			"location", locationKey,
@@ -211,10 +211,10 @@ func (dw *DeltaWorker) handleMonsterSpawn(event conditionals.MonsterEvent) {
 }
 
 // handleMonsterDespawn removes a monster instance from the game
-func (dw *DeltaWorker) handleMonsterDespawn(event conditionals.MonsterEvent) {
+func (a *Applier) handleMonsterDespawn(event conditionals.MonsterEvent) {
 	// Check if monster exists before despawning
 	var exists bool
-	for _, loc := range dw.gs.WorldLocations {
+	for _, loc := range a.gs.WorldLocations {
 		if _, found := loc.Monsters[event.InstanceID]; found {
 			exists = true
 			break
@@ -222,21 +222,21 @@ func (dw *DeltaWorker) handleMonsterDespawn(event conditionals.MonsterEvent) {
 	}
 
 	if !exists {
-		dw.logger.Warn("Cannot despawn monster: instance not found", "instance_id", event.InstanceID)
+		a.logger.Warn("Cannot despawn monster: instance not found", "instance_id", event.InstanceID)
 		return
 	}
 
-	dw.gs.DespawnMonster(event.InstanceID)
-	dw.logger.Info("Monster despawned", "instance_id", event.InstanceID)
+	a.gs.DespawnMonster(event.InstanceID)
+	a.logger.Info("Monster despawned", "instance_id", event.InstanceID)
 }
 
 // syncFollowingNPCs updates locations of NPCs that are following other actors
 // This runs AFTER all other delta operations complete to ensure location changes are processed first.
 // It iterates until convergence to correctly handle chained following (e.g. A follows B follows PC).
-func (dw *DeltaWorker) syncFollowingNPCs() {
+func (a *Applier) syncFollowingNPCs() {
 	for {
 		changed := false
-		for npcKey, npc := range dw.gs.NPCs {
+		for npcKey, npc := range a.gs.NPCs {
 			if npc.Following == "" {
 				continue // Not following anyone
 			}
@@ -245,13 +245,13 @@ func (dw *DeltaWorker) syncFollowingNPCs() {
 
 			if npc.Following == "pc" {
 				// Following the player character
-				targetLocation = dw.gs.Location
+				targetLocation = a.gs.Location
 			} else {
 				// Following another NPC
-				followedNPC, exists := dw.gs.NPCs[npc.Following]
+				followedNPC, exists := a.gs.NPCs[npc.Following]
 				if !exists {
 					// Try case-insensitive match
-					for _, n := range dw.gs.NPCs {
+					for _, n := range a.gs.NPCs {
 						if strings.EqualFold(n.Name, npc.Following) {
 							followedNPC = n
 							exists = true
@@ -261,8 +261,8 @@ func (dw *DeltaWorker) syncFollowingNPCs() {
 				}
 
 				if !exists {
-					if dw.logger != nil {
-						dw.logger.Warn("NPC following target not found",
+					if a.logger != nil {
+						a.logger.Warn("NPC following target not found",
 							"npc", npcKey,
 							"following", npc.Following)
 					}
@@ -276,11 +276,11 @@ func (dw *DeltaWorker) syncFollowingNPCs() {
 			if npc.Location != targetLocation {
 				oldLocation := npc.Location
 				npc.Location = targetLocation
-				dw.gs.NPCs[npcKey] = npc
+				a.gs.NPCs[npcKey] = npc
 				changed = true
 
-				if dw.logger != nil {
-					dw.logger.Info("NPC location synced (following)",
+				if a.logger != nil {
+					a.logger.Info("NPC location synced (following)",
 						"npc", npcKey,
 						"from", oldLocation,
 						"to", targetLocation,

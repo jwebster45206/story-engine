@@ -353,10 +353,10 @@ func (r *Runner) executeStep(ctx context.Context, gameStateID uuid.UUID, step Te
 		result.ResponseText = assertedResponse.Content
 		result.IsStoryEventWait = true
 
-		// Poll for DeltaWorker completion
-		postGameState, err := PollForDeltaWorkerCompletion(ctx, r.Client, r.BaseURL, gameStateID, afterChatState)
+		// Poll until the applier has updated state
+		postGameState, err := PollForApplier(ctx, r.Client, r.BaseURL, gameStateID, afterChatState)
 		if err != nil {
-			result.Error = fmt.Errorf("failed to poll for DeltaWorker completion: %w", err)
+			result.Error = fmt.Errorf("failed to poll for applier: %w", err)
 			result.Duration = time.Since(start)
 			return result
 		}
@@ -408,10 +408,10 @@ func (r *Runner) executeStep(ctx context.Context, gameStateID uuid.UUID, step Te
 	}
 	result.ResponseText = assistantResponse
 
-	// Poll for DeltaWorker completion (wait for meta fields to update)
-	postGameState, err := PollForDeltaWorkerCompletion(ctx, r.Client, r.BaseURL, gameStateID, afterChatState)
+	// Poll until turn_counter or vars update (applier finished)
+	postGameState, err := PollForApplier(ctx, r.Client, r.BaseURL, gameStateID, afterChatState)
 	if err != nil {
-		result.Error = fmt.Errorf("failed to poll for DeltaWorker completion: %w", err)
+		result.Error = fmt.Errorf("failed to poll for applier: %w", err)
 		result.Duration = time.Since(start)
 		return result
 	}
