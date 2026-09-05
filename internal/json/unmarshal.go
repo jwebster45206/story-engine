@@ -3,6 +3,7 @@ package json
 
 import (
 	stdjson "encoding/json"
+	"slices"
 	"strings"
 )
 
@@ -83,8 +84,8 @@ func repairTruncated(s string) string {
 	var b strings.Builder
 	b.Grow(len(s) + len(stack))
 	b.WriteString(s)
-	for i := len(stack) - 1; i >= 0; i-- {
-		if stack[i] == '{' {
+	for _, ch := range slices.Backward(stack) {
+		if ch == '{' {
 			b.WriteByte('}')
 		} else {
 			b.WriteByte(']')

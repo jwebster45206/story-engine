@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -76,8 +77,8 @@ func parseDeltaUpdateResponse(responseText string) (*conditionals.GameStateDelta
 			}
 		}
 		endIdx := len(lines)
-		for i := len(lines) - 1; i >= 0; i-- {
-			if strings.HasPrefix(lines[i], "```") && i > 0 {
+		for i, line := range slices.Backward(lines) {
+			if strings.HasPrefix(line, "```") && i > 0 {
 				endIdx = i
 				break
 			}
