@@ -8,8 +8,7 @@ services:
       dockerfile: integration/Dockerfile
     environment:
       - API_BASE_URL=http://story-engine-api:8080
-      - TEST_CONCURRENCY=${TEST_CONCURRENCY:-5}
-      - TEST_TIMEOUT=${TEST_TIMEOUT:-30s}
+      - TEST_TIMEOUT_SECONDS=30
     depends_on:
       story-engine-api:
         condition: service_healthy
