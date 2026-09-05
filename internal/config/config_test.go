@@ -10,8 +10,7 @@ import (
 )
 
 const (
-	testAPIUUID    = "22222222-2222-4222-8222-222222222222"
-	testSharedUUID = "33333333-3333-4333-8333-333333333333"
+	testAPIUUID = "22222222-2222-4222-8222-222222222222"
 )
 
 func writeConfig(t *testing.T, raw string) string {
@@ -39,7 +38,7 @@ func TestLoad_ValidProviders(t *testing.T) {
 			"venice":{"vendor":"venice","api_key":"k2","model":"m2"}
 		},
 		"redis_url":"localhost:6379",
-		"admin_keys":["11111111-1111-4111-8111-111111111111"]
+		"api_keys":["11111111-1111-4111-8111-111111111111"]
 	}`)
 	cfg, err := loadFrom(t, path)
 	if err != nil {
@@ -57,7 +56,7 @@ func TestLoad_SingleProviderImplicitDefault(t *testing.T) {
 	path := writeConfig(t, `{
 		"providers":{"only":{"vendor":"venice","api_key":"k","model":"m"}},
 		"redis_url":"localhost:6379",
-		"admin_keys":["11111111-1111-4111-8111-111111111111"]
+		"api_keys":["11111111-1111-4111-8111-111111111111"]
 	}`)
 	cfg, err := loadFrom(t, path)
 	if err != nil {
@@ -72,7 +71,7 @@ func TestLoad_UnknownVendor(t *testing.T) {
 	path := writeConfig(t, `{
 		"providers":{"x":{"vendor":"groq","api_key":"k","model":"m"}},
 		"redis_url":"localhost:6379",
-		"admin_keys":["11111111-1111-4111-8111-111111111111"]
+		"api_keys":["11111111-1111-4111-8111-111111111111"]
 	}`)
 	if _, err := loadFrom(t, path); err == nil {
 		t.Fatal("expected error for unknown vendor")
@@ -83,7 +82,7 @@ func TestLoad_MissingModel(t *testing.T) {
 	path := writeConfig(t, `{
 		"providers":{"x":{"vendor":"anthropic","api_key":"k"}},
 		"redis_url":"localhost:6379",
-		"admin_keys":["11111111-1111-4111-8111-111111111111"]
+		"api_keys":["11111111-1111-4111-8111-111111111111"]
 	}`)
 	if _, err := loadFrom(t, path); err == nil {
 		t.Fatal("expected error for missing model")
@@ -94,7 +93,7 @@ func TestLoad_MissingAPIKey(t *testing.T) {
 	path := writeConfig(t, `{
 		"providers":{"x":{"vendor":"anthropic","model":"m"}},
 		"redis_url":"localhost:6379",
-		"admin_keys":["11111111-1111-4111-8111-111111111111"]
+		"api_keys":["11111111-1111-4111-8111-111111111111"]
 	}`)
 	if _, err := loadFrom(t, path); err == nil {
 		t.Fatal("expected error for missing api_key")
@@ -108,7 +107,7 @@ func TestLoad_MissingDefaultWithMultipleProviders(t *testing.T) {
 			"b":{"vendor":"venice","api_key":"k","model":"m"}
 		},
 		"redis_url":"localhost:6379",
-		"admin_keys":["11111111-1111-4111-8111-111111111111"]
+		"api_keys":["11111111-1111-4111-8111-111111111111"]
 	}`)
 	if _, err := loadFrom(t, path); err == nil {
 		t.Fatal("expected error when default_provider missing with multiple providers")
@@ -120,7 +119,7 @@ func TestLoad_BadDefaultProvider(t *testing.T) {
 		"default_provider":"missing",
 		"providers":{"a":{"vendor":"anthropic","api_key":"k","model":"m"}},
 		"redis_url":"localhost:6379",
-		"admin_keys":["11111111-1111-4111-8111-111111111111"]
+		"api_keys":["11111111-1111-4111-8111-111111111111"]
 	}`)
 	if _, err := loadFrom(t, path); err == nil {
 		t.Fatal("expected error for unknown default_provider")
@@ -183,16 +182,11 @@ func TestLoadFrom_Auth(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "key in both lists",
-			raw:     validProviderJSON(`"api_keys":["` + testSharedUUID + `"],"admin_keys":["` + testSharedUUID + `"]`),
-			wantErr: true,
-		},
-		{
-			name: "api key only",
+			name: "valid api key",
 			raw:  validProviderJSON(`"api_keys":["` + testAPIUUID + `"]`),
 			check: func(t *testing.T, cfg *Config) {
-				if len(cfg.APIKeyHashes) != 1 || len(cfg.AdminKeyHashes) != 0 {
-					t.Fatalf("hashes api=%d admin=%d", len(cfg.APIKeyHashes), len(cfg.AdminKeyHashes))
+				if len(cfg.APIKeyHashes) != 1 {
+					t.Fatalf("hashes api=%d", len(cfg.APIKeyHashes))
 				}
 				if cfg.APIKeyHashes[0] != HashKey(uuid.MustParse(testAPIUUID)) {
 					t.Fatal("api key hash mismatch")

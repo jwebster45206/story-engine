@@ -75,7 +75,7 @@ func TestGameStateHandler_Create(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json") // This was missing!
 	rr := httptest.NewRecorder()
 
-	serveAdmin(handler, rr, req)
+	serveKey(handler, rr, req, testAPIKeyA)
 
 	// Check status code
 	if rr.Code != http.StatusCreated {
@@ -192,7 +192,7 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
 
-			serveAdmin(handler, rr, req)
+			serveKey(handler, rr, req, testAPIKeyA)
 
 			if rr.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d. Response body: %s", tt.expectedStatus, rr.Code, rr.Body.String())
@@ -257,6 +257,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 
 	// Create a test game state (nil narrator is fine for tests)
 	testGS := state.NewGameState("FooScenario", nil, "test-provider", "foo_model")
+	testGS.OwnerKeyHash = testKeyHash(testAPIKeyA)
 	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
@@ -292,7 +293,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/v1/gamestate/"+tt.gameStateID, nil)
 			rr := httptest.NewRecorder()
 
-			serveAdmin(handler, rr, req)
+			serveKey(handler, rr, req, testAPIKeyA)
 
 			if rr.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tt.expectedStatus, rr.Code)
@@ -331,6 +332,7 @@ func TestGameStateHandler_Delete(t *testing.T) {
 
 	// Create a test game state (nil narrator is fine for tests)
 	testGS := state.NewGameState("FooScenario", nil, "test-provider", "foo_model")
+	testGS.OwnerKeyHash = testKeyHash(testAPIKeyA)
 	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
 		t.Fatalf("Failed to save test game state: %v", err)
 	}
@@ -366,7 +368,7 @@ func TestGameStateHandler_Delete(t *testing.T) {
 			req := httptest.NewRequest(http.MethodDelete, "/v1/gamestate/"+tt.gameStateID, nil)
 			rr := httptest.NewRecorder()
 
-			serveAdmin(handler, rr, req)
+			serveKey(handler, rr, req, testAPIKeyA)
 
 			if rr.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tt.expectedStatus, rr.Code)
@@ -407,7 +409,7 @@ func TestGameStateHandler_MethodNotAllowed(t *testing.T) {
 			req := httptest.NewRequest(method, "/v1/gamestate", nil)
 			rr := httptest.NewRecorder()
 
-			serveAdmin(handler, rr, req)
+			serveKey(handler, rr, req, testAPIKeyA)
 
 			if rr.Code != http.StatusMethodNotAllowed {
 				t.Errorf("Expected status 405 for method %s, got %d", method, rr.Code)
@@ -457,7 +459,7 @@ func TestGameStateHandler_MissingID(t *testing.T) {
 			req := httptest.NewRequest(tt.method, v1Path, nil)
 			rr := httptest.NewRecorder()
 
-			serveAdmin(handler, rr, req)
+			serveKey(handler, rr, req, testAPIKeyA)
 
 			if rr.Code != http.StatusBadRequest {
 				t.Errorf("Expected status 400 for %s without ID, got %d", tt.method, rr.Code)
@@ -528,7 +530,7 @@ func TestGameStateHandler_CreateRulesAndTemperature(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/v1/gamestate", strings.NewReader(tt.requestBody))
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
-			serveAdmin(handler, rr, req)
+			serveKey(handler, rr, req, testAPIKeyA)
 
 			if rr.Code != tt.expectedStatus {
 				t.Fatalf("Expected status %d, got %d. Body: %s", tt.expectedStatus, rr.Code, rr.Body.String())
@@ -607,10 +609,8 @@ func TestGameStateOwnership(t *testing.T) {
 	}{
 		{name: "owner can get", method: http.MethodGet, key: testAPIKeyA, want: http.StatusOK},
 		{name: "other api_key gets 404", method: http.MethodGet, key: testAPIKeyB, want: http.StatusNotFound},
-		{name: "admin can get", method: http.MethodGet, key: testAdminKey, want: http.StatusOK},
 		{name: "patch cannot change owner", method: http.MethodPatch, body: `{"owner_key_hash":"deadbeef","user_location":"start"}`, key: testAPIKeyA, want: http.StatusOK},
-		{name: "empty owner hash api_key 404", method: http.MethodGet, key: testAPIKeyA, want: http.StatusNotFound},
-		{name: "empty owner hash admin 200", method: http.MethodGet, key: testAdminKey, want: http.StatusOK},
+		{name: "empty owner hash is 404", method: http.MethodGet, key: testAPIKeyA, want: http.StatusNotFound},
 	}
 
 	orphan := state.NewGameState("foo_scenario.json", nil, "foo", "foo_model")

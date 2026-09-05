@@ -15,7 +15,6 @@ type contextKey struct{}
 
 // Principal is the authenticated caller attached to the request context.
 type Principal struct {
-	Admin   bool
 	KeyHash string
 }
 
@@ -30,11 +29,8 @@ func PrincipalFrom(ctx context.Context) (Principal, bool) {
 }
 
 // CanAccess reports whether p may operate on a gamestate owned by ownerHash.
-// Admins always can. Empty owner hashes are not owned by any api_key.
+// Empty owner hashes are not owned by any key.
 func (p Principal) CanAccess(ownerHash string) bool {
-	if p.Admin {
-		return true
-	}
 	if ownerHash == "" || p.KeyHash == "" {
 		return false
 	}
@@ -84,20 +80,10 @@ func lookupPrincipal(cfg *config.Config, presented string) (Principal, bool) {
 	}
 	h := config.HashKey(canon)
 	hb := []byte(h)
-	admin := false
-	api := false
-	for _, kh := range cfg.AdminKeyHashes {
-		if subtle.ConstantTimeCompare(hb, []byte(kh)) == 1 {
-			admin = true
-		}
-	}
 	for _, kh := range cfg.APIKeyHashes {
 		if subtle.ConstantTimeCompare(hb, []byte(kh)) == 1 {
-			api = true
+			return Principal{KeyHash: h}, true
 		}
 	}
-	if !admin && !api {
-		return Principal{}, false
-	}
-	return Principal{Admin: admin, KeyHash: h}, true
+	return Principal{}, false
 }

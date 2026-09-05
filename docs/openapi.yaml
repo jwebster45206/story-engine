@@ -5,9 +5,9 @@ info:
     Interactive storytelling API. Create a game, subscribe to SSE, then POST chat
     (`202` + `request_id`); narration arrives as SSE events. API and worker share Redis.
 
-    All `/v1` routes require `Authorization: Bearer <uuid>`. Keys are UUIDs: `admin_keys`
-    may access any gamestate; `api_keys` may only access games they created. `/health` is
-    unauthenticated. Rotating an `api_key` orphans its games until they expire (admins can still reach them).
+    All `/v1` routes require `Authorization: Bearer <uuid>`. Keys are UUIDs listed in
+    `api_keys`; each key may only access games it created. `/health` is unauthenticated.
+    Rotating an `api_key` orphans its games until they expire.
   version: 1.0.0
   contact:
     name: Story Engine
@@ -610,7 +610,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      description: UUID operator key (`api_keys` or `admin_keys` in server config).
+      description: UUID operator key (`api_keys` in server config).
   responses:
     Unauthorized:
       description: Missing or invalid API key

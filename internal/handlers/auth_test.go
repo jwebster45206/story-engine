@@ -9,9 +9,8 @@ import (
 )
 
 const (
-	testAPIKeyA  = "22222222-2222-4222-8222-222222222222"
-	testAPIKeyB  = "44444444-4444-4444-8444-444444444444"
-	testAdminKey = "11111111-1111-4111-8111-111111111111"
+	testAPIKeyA = "22222222-2222-4222-8222-222222222222"
+	testAPIKeyB = "44444444-4444-4444-8444-444444444444"
 )
 
 func testKeyHash(key string) string {
@@ -20,16 +19,11 @@ func testKeyHash(key string) string {
 
 func testAuthConfig() *config.Config {
 	return &config.Config{
-		APIKeyHashes:   []string{testKeyHash(testAPIKeyA), testKeyHash(testAPIKeyB)},
-		AdminKeyHashes: []string{testKeyHash(testAdminKey)},
+		APIKeyHashes: []string{testKeyHash(testAPIKeyA), testKeyHash(testAPIKeyB)},
 	}
 }
 
 func serveKey(h http.Handler, w http.ResponseWriter, r *http.Request, key string) {
 	r.Header.Set("Authorization", "Bearer "+key)
 	middleware.APIKey(testAuthConfig(), h).ServeHTTP(w, r)
-}
-
-func serveAdmin(h http.Handler, w http.ResponseWriter, r *http.Request) {
-	serveKey(h, w, r, testAdminKey)
 }

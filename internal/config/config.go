@@ -41,9 +41,7 @@ type Config struct {
 	RedisURL         string                     `json:"redis_url"`
 	ChatHistoryLimit int                        `json:"chat_history_limit"` // max past messages sent to LLM per request (0 = use default)
 	APIKeys          []uuid.UUID                `json:"api_keys,omitempty"`
-	AdminKeys        []uuid.UUID                `json:"admin_keys,omitempty"`
 	APIKeyHashes     []string                   `json:"-"`
-	AdminKeyHashes   []string                   `json:"-"`
 }
 
 // Load reads configuration from the CONFIG environment variable.
@@ -96,26 +94,10 @@ func (c *Config) validateAuth() error {
 	if err != nil {
 		return err
 	}
-	adminHashes, err := normalizeKeyList("admin_keys", c.AdminKeys)
-	if err != nil {
-		return err
+	if len(apiHashes) == 0 {
+		return fmt.Errorf("api_keys: at least one key is required")
 	}
-	if len(apiHashes)+len(adminHashes) == 0 {
-		return fmt.Errorf("api_keys or admin_keys: at least one key is required")
-	}
-
-	adminSet := make(map[string]struct{}, len(adminHashes))
-	for _, h := range adminHashes {
-		adminSet[h] = struct{}{}
-	}
-	for _, h := range apiHashes {
-		if _, ok := adminSet[h]; ok {
-			return fmt.Errorf("api_keys and admin_keys must not overlap")
-		}
-	}
-
 	c.APIKeyHashes = apiHashes
-	c.AdminKeyHashes = adminHashes
 	return nil
 }
 

@@ -12,14 +12,12 @@ import (
 )
 
 const (
-	testAPIKey   = "22222222-2222-4222-8222-222222222222"
-	testAdminKey = "11111111-1111-4111-8111-111111111111"
+	testAPIKey = "22222222-2222-4222-8222-222222222222"
 )
 
 func testAuthConfig() *config.Config {
 	return &config.Config{
-		APIKeyHashes:   []string{config.HashKey(uuid.MustParse(testAPIKey))},
-		AdminKeyHashes: []string{config.HashKey(uuid.MustParse(testAdminKey))},
+		APIKeyHashes: []string{config.HashKey(uuid.MustParse(testAPIKey))},
 	}
 }
 
@@ -90,9 +88,6 @@ func TestAPIKey_APIKeyPrincipal(t *testing.T) {
 		if !ok {
 			t.Fatal("missing principal")
 		}
-		if p.Admin {
-			t.Fatal("api_key must not be admin")
-		}
 		if p.KeyHash != config.HashKey(uuid.MustParse(testAPIKey)) {
 			t.Fatalf("hash = %q", p.KeyHash)
 		}
@@ -107,30 +102,9 @@ func TestAPIKey_APIKeyPrincipal(t *testing.T) {
 	}
 }
 
-func TestAPIKey_AdminPrincipal(t *testing.T) {
-	h := APIKey(testAuthConfig(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p, ok := PrincipalFrom(r.Context())
-		if !ok || !p.Admin {
-			t.Fatalf("principal admin=%v ok=%v", p.Admin, ok)
-		}
-		if p.KeyHash != config.HashKey(uuid.MustParse(testAdminKey)) {
-			t.Fatalf("hash = %q", p.KeyHash)
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	req := httptest.NewRequest(http.MethodGet, "/v1/scenarios", nil)
-	req.Header.Set("Authorization", "bearer "+testAdminKey)
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusNoContent {
-		t.Fatalf("status = %d, want 204", rr.Code)
-	}
-}
-
 func TestAPIKey_CanonicalForm(t *testing.T) {
 	h := APIKey(testAuthConfig(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p, ok := PrincipalFrom(r.Context())
-		if !ok || p.Admin {
+		if _, ok := PrincipalFrom(r.Context()); !ok {
 			t.Fatal("expected api_key principal")
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -146,9 +120,8 @@ func TestAPIKey_CanonicalForm(t *testing.T) {
 
 func TestPrincipalCanAccess(t *testing.T) {
 	hashA := config.HashKey(uuid.MustParse(testAPIKey))
-	hashB := config.HashKey(uuid.MustParse(testAdminKey))
-	api := Principal{Admin: false, KeyHash: hashA}
-	admin := Principal{Admin: true, KeyHash: hashB}
+	hashB := config.HashKey(uuid.MustParse("44444444-4444-4444-8444-444444444444"))
+	api := Principal{KeyHash: hashA}
 
 	if !api.CanAccess(hashA) {
 		t.Fatal("owner should access own hash")
@@ -157,9 +130,6 @@ func TestPrincipalCanAccess(t *testing.T) {
 		t.Fatal("api_key must not access another hash")
 	}
 	if api.CanAccess("") {
-		t.Fatal("empty owner hash is not owned by api_key")
-	}
-	if !admin.CanAccess(hashA) || !admin.CanAccess("") {
-		t.Fatal("admin should access any hash including empty")
+		t.Fatal("empty owner hash is not owned by any key")
 	}
 }

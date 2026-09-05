@@ -9,7 +9,7 @@ services:
     environment:
       - API_BASE_URL=http://story-engine-api:8080
       - TEST_TIMEOUT_SECONDS=30
-      - STORY_ENGINE_API_KEY=${STORY_ENGINE_API_KEY:?set STORY_ENGINE_API_KEY to a UUID from admin_keys}
+      - STORY_ENGINE_API_KEY=${STORY_ENGINE_API_KEY:?set STORY_ENGINE_API_KEY to a UUID from api_keys}
     depends_on:
       story-engine-api:
         condition: service_healthy

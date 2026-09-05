@@ -7,7 +7,7 @@ Integration tests for the Story Engine that run against a live API and LLM.
 Start the Story Engine API (defaults to `http://localhost:8080`), then:
 
 ```bash
-# Must match an admin_keys entry in the API config (do not commit real keys)
+# Must match an api_keys entry in the API config (do not commit real keys)
 export STORY_ENGINE_API_KEY
 
 # Full suite (each JSON case once)

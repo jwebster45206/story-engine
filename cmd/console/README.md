@@ -18,7 +18,7 @@ A terminal-based user interface for the Story Engine, built with [Charm Bracelet
 
 ### Configuration
 
-The console client needs the API base URL and an API key (`api_keys` or `admin_keys` from server config). By default it connects to `http://localhost:8080`.
+The console client needs the API base URL and an API key (`api_keys` from server config). By default it connects to `http://localhost:8080`.
 
 ```bash
 export STORY_ENGINE_API_KEY=<uuid from your config>

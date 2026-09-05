@@ -15,7 +15,7 @@ A lightweight narrative engine for immersive, structured text adventures. Game e
 
 The Story Engine exposes a REST API for interactive, closed-world adventures. Clients create a game session, subscribe to Server-Sent Events, and send chat turns that a background worker processes with an LLM. Redis holds session state, the request queue, per-game locks, and SSE pub/sub between the API (`cmd/api`) and worker (`cmd/worker`). An optional console TUI lives under `cmd/console`.
 
-`/v1` routes require `Authorization: Bearer <key>`. Keys are UUIDs you generate (`uuidgen`) and list in config as `api_keys` (own only the games they create) and `admin_keys` (any gamestate).
+`/v1` routes require `Authorization: Bearer <key>`. Keys are UUIDs you generate (`uuidgen`) and list in config as `api_keys` (own only the games they create).
 
 ### Main loop
 
@@ -94,7 +94,6 @@ API: [docs/openapi.yaml](docs/openapi.yaml) — gamestate, chat, events, content
     }
   },
   "api_keys": ["YOUR_UUID_HERE"],
-  "admin_keys": ["YOUR_UUID_HERE"],
   "redis_url": "localhost:6379"
 }
 ```
