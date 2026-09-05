@@ -3,12 +3,12 @@ package middleware
 import (
 	"context"
 	"crypto/subtle"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/jwebster45206/story-engine/internal/config"
+	"github.com/jwebster45206/story-engine/internal/httperror"
 )
 
 type contextKey struct{}
@@ -52,13 +52,13 @@ func APIKey(cfg *config.Config, next http.Handler) http.Handler {
 
 		token, ok := bearerToken(r.Header.Get("Authorization"))
 		if !ok {
-			writeUnauthorized(w)
+			httperror.Write(w, slog.Default(), http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
 		p, ok := lookupPrincipal(cfg, token)
 		if !ok {
-			writeUnauthorized(w)
+			httperror.Write(w, slog.Default(), http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
@@ -103,11 +103,3 @@ func lookupPrincipal(cfg *config.Config, presented string) (Principal, bool) {
 	return Principal{Admin: admin, KeyHash: h}, true
 }
 
-func writeUnauthorized(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("WWW-Authenticate", "Bearer")
-	w.WriteHeader(http.StatusUnauthorized)
-	if err := json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"}); err != nil {
-		slog.Error("failed to encode unauthorized response", "error", err)
-	}
-}

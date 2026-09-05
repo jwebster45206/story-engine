@@ -36,7 +36,8 @@ type ChatResponse struct {
 	Message   string `json:"message"`
 }
 
-// ServeHTTP handles HTTP requests for chat by enqueuing them for async processing
+// ServeHTTP handles HTTP requests for chat by enqueuing them for async processing.
+// TODO: replace ErrorResponse encoding with httperror.Write.
 func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

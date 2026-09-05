@@ -15,7 +15,8 @@ type PCHandler struct {
 	storage storage.Storage
 }
 
-// ListPCs lists all available PC files
+// ListPCs lists all available PC files.
+// TODO: replace http.Error with httperror.Write.
 func (h *PCHandler) ListPCs(w http.ResponseWriter, r *http.Request) {
 	pcIDs, err := h.storage.ListPCs(r.Context())
 	if err != nil {

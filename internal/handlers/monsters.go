@@ -21,6 +21,7 @@ func NewMonsterHandler(logger *slog.Logger, storage storage.Storage) *MonsterHan
 	}
 }
 
+// TODO: replace http.Error with httperror.Write.
 func (h *MonsterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:

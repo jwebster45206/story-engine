@@ -11,6 +11,7 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
+// TODO: replace with httperror.Write.
 func writeJSONError(w http.ResponseWriter, logger *slog.Logger, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	if status == http.StatusUnauthorized {

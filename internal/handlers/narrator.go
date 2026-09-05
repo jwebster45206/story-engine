@@ -17,7 +17,8 @@ type NarratorHandler struct {
 	storage storage.Storage
 }
 
-// ListNarrators lists all available narrator files
+// ListNarrators lists all available narrator files.
+// TODO: replace http.Error with httperror.Write.
 func (h *NarratorHandler) ListNarrators(w http.ResponseWriter, r *http.Request) {
 	narratorIDs, err := h.storage.ListNarrators(r.Context())
 	if err != nil {

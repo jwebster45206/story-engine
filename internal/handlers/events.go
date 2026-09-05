@@ -32,6 +32,7 @@ func NewEventsHandler(redisClient *redis.Client, store storage.Storage, logger *
 
 // ServeHTTP handles SSE requests for game events
 // GET /v1/events/gamestate/{gameStateID}
+// TODO: replace ErrorResponse encoding with httperror.Write.
 func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		h.logger.Warn("Method not allowed for events endpoint",

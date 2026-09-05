@@ -16,6 +16,7 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
+// TODO: replace with httperror.Response / httperror.Write.
 type ErrorResponse struct {
 	Error string `json:"error"`
 }

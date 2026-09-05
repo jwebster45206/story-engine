@@ -14,7 +14,8 @@ type ScenarioHandler struct {
 	storage storage.Storage
 }
 
-// ListScenarios lists all available scenario files
+// ListScenarios lists all available scenario files.
+// TODO: replace http.Error with httperror.Write.
 func (h *ScenarioHandler) ListScenarios(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	scenarios, err := h.storage.ListScenarios(ctx)
