@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/llm"
 )
 
 func TestProvidersHandler_List(t *testing.T) {
@@ -30,8 +30,8 @@ func TestProvidersHandler_List(t *testing.T) {
 	}
 
 	var resp struct {
-		Default   string                   `json:"default"`
-		Providers []services.ProviderInfo  `json:"providers"`
+		Default   string             `json:"default"`
+		Providers []llm.ProviderInfo `json:"providers"`
 	}
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Fatal(err)

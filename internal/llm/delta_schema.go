@@ -1,4 +1,4 @@
-package services
+package llm
 
 // deltaUpdateSchema is the shared apply_changes JSON Schema used by every vendor
 // wrapper (Anthropic tool input_schema and Venice response_format.json_schema).

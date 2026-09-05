@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/llm"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
@@ -162,25 +162,20 @@ func TestApplyConditionalsCascade_TwoIterations(t *testing.T) {
 // Stubs
 // ---------------------------------------------------------------------------
 
-// stubLLMService captures the messages slice passed to Chat() and no-ops everything else.
-type stubResolver struct{ llm services.LLMService }
+// stubLLMService captures the messages slice passed to ChatStream() and no-ops everything else.
+type stubResolver struct{ llm llm.LLMService }
 
-func (s stubResolver) Get(_ string) (services.LLMService, error) { return s.llm, nil }
+func (s stubResolver) Get(_ string) (llm.LLMService, error) { return s.llm, nil }
 
 type stubLLMService struct {
 	capturedMessages []chat.ChatMessage
 	capturedTemp     float64
 }
 
-func (s *stubLLMService) Chat(_ context.Context, messages []chat.ChatMessage, temperature float64) (*chat.ChatResponse, error) {
+func (s *stubLLMService) ChatStream(_ context.Context, messages []chat.ChatMessage, temperature float64) (<-chan llm.StreamChunk, error) {
 	s.capturedMessages = messages
 	s.capturedTemp = temperature
-	return &chat.ChatResponse{Message: "ok"}, nil
-}
-func (s *stubLLMService) ChatStream(_ context.Context, messages []chat.ChatMessage, temperature float64) (<-chan services.StreamChunk, error) {
-	s.capturedMessages = messages
-	s.capturedTemp = temperature
-	ch := make(chan services.StreamChunk)
+	ch := make(chan llm.StreamChunk)
 	close(ch)
 	return ch, nil
 }
@@ -322,13 +317,13 @@ func TestProcessChatStream_HistoryLimitZeroUsesDefault(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestProcessChatStream_UsesDefaultTemperature(t *testing.T) {
-	processor, llm, req := newTestSetup(2, 10)
+	processor, stub, req := newTestSetup(2, 10)
 	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
-	if llm.capturedTemp != services.DefaultTemperature {
-		t.Errorf("expected default temperature %f, got %f", services.DefaultTemperature, llm.capturedTemp)
+	if stub.capturedTemp != state.DefaultTemperature {
+		t.Errorf("expected default temperature %f, got %f", state.DefaultTemperature, stub.capturedTemp)
 	}
 }
 

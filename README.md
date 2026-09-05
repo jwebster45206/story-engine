@@ -29,9 +29,9 @@ The Story Engine exposes a REST API for interactive, closed-world adventures. Cl
 
 ### LLM layer
 
-Providers are named **vendor + model** entries in config. A **vendor** is a wire protocol implemented in Go; adding a provider is JSON-only. `internal/services.Registry` maps provider names to `LLMService`:
+Providers are named **vendor + model** entries in config. A **vendor** is a wire protocol implemented in Go; adding a provider is JSON-only. `internal/llm.Registry` maps provider names to `LLMService`:
 
-- `Chat` / `ChatStream` — narrator responses (`model`)
+- `ChatStream` — narrator responses (`model`)
 - `DeltaUpdate` — structured state extraction, often via a cheaper `backend_model`
 
 `pkg/prompts` builds the message lists; the worker calls the registry by the game’s `provider`. List configured providers with `GET /v1/providers`.
@@ -57,7 +57,7 @@ pkg/
 internal/
 ├── handlers/       # HTTP handlers
 ├── worker/         # Queue consumer + chat processor
-├── services/       # LLM providers and registry
+├── llm/            # LLM providers and registry
 ├── queue/          # Redis work queue
 ├── events/         # Redis pub/sub for SSE
 └── storage/        # Redis + filesystem implementations

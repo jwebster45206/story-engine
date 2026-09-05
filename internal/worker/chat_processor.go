@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/internal/services"
+	"github.com/jwebster45206/story-engine/internal/llm"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/prompts"
@@ -20,9 +20,9 @@ import (
 
 const PromptHistoryLimit = 16
 
-// LLMResolver looks up an LLMService by provider name (e.g. *services.Registry).
+// LLMResolver looks up an LLMService by provider name (e.g. *llm.Registry).
 type LLMResolver interface {
-	Get(name string) (services.LLMService, error)
+	Get(name string) (llm.LLMService, error)
 }
 
 // ChatProcessor handles chat processing for the worker (streaming + post-stream state updates).
@@ -60,7 +60,7 @@ func NewChatProcessor(
 }
 
 // ProcessChatStream processes a streaming chat request
-func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequest) (<-chan services.StreamChunk, error) {
+func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequest) (<-chan llm.StreamChunk, error) {
 	// Load game state
 	gs, err := p.storage.LoadGameState(ctx, req.GameStateID)
 	if err != nil {

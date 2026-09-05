@@ -1,4 +1,4 @@
-package services
+package llm
 
 import (
 	"context"
@@ -92,51 +92,6 @@ func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 				t.Errorf("non-system count = %d", len(nonSystemMessages))
 			}
 		})
-	}
-}
-
-func TestAnthropicService_Chat_RequestShape(t *testing.T) {
-	var gotBody map[string]any
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/messages" {
-			t.Errorf("path = %s", r.URL.Path)
-		}
-		if r.Header.Get("x-api-key") != "test-key" {
-			t.Errorf("missing x-api-key")
-		}
-		if r.Header.Get("anthropic-version") != anthropicVersion {
-			t.Errorf("anthropic-version = %s", r.Header.Get("anthropic-version"))
-		}
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"text","text":"hi"}],"model":"claude-test","stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}`))
-	}))
-	defer server.Close()
-
-	svc := NewAnthropicService(anthropicPC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
-	svc.baseURL = server.URL
-	resp, err := svc.Chat(context.Background(), []chat.ChatMessage{
-		{Role: chat.ChatRoleSystem, Content: "sys"},
-		{Role: chat.ChatRoleUser, Content: "Hello", IsStoryEvent: true},
-	}, 0.7)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.Message != "hi" {
-		t.Fatalf("message = %q", resp.Message)
-	}
-	if gotBody["model"] != "claude-test" {
-		t.Fatalf("model = %v", gotBody["model"])
-	}
-	if _, ok := gotBody["temperature"]; ok {
-		t.Fatal("temperature must not be sent to Anthropic")
-	}
-	if gotBody["system"] != "sys" {
-		t.Fatalf("system = %v", gotBody["system"])
-	}
-	raw, _ := json.Marshal(gotBody)
-	if strings.Contains(string(raw), "is_story_event") {
-		t.Fatalf("is_story_event leaked: %s", raw)
 	}
 }
 

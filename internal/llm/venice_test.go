@@ -1,4 +1,4 @@
-package services
+package llm
 
 import (
 	"context"
@@ -39,37 +39,6 @@ func TestNewVeniceService(t *testing.T) {
 	if service.httpClient == nil {
 		t.Error("httpClient nil")
 	}
-}
-
-func TestVeniceService_Chat_RequestShape(t *testing.T) {
-	var gotBody map[string]any
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/chat/completions" {
-			t.Errorf("path = %s", r.URL.Path)
-		}
-		if !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
-			t.Errorf("Authorization = %s", r.Header.Get("Authorization"))
-		}
-		_ = json.NewDecoder(r.Body).Decode(&gotBody)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"hi"},"finish_reason":"stop"}]}`))
-	}))
-	defer server.Close()
-
-	svc := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
-	svc.baseURL = server.URL
-	resp, err := svc.Chat(context.Background(), []chat.ChatMessage{
-		{Role: chat.ChatRoleUser, Content: "Hello", IsStoryEvent: true},
-	}, 0.7)
-	require.NoError(t, err)
-	assert.Equal(t, "hi", resp.Message)
-	assert.Equal(t, "test-model", gotBody["model"])
-	assert.EqualValues(t, 0.7, gotBody["temperature"])
-	raw, _ := json.Marshal(gotBody)
-	assert.NotContains(t, string(raw), "is_story_event")
-	vp, ok := gotBody["venice_parameters"].(map[string]any)
-	require.True(t, ok)
-	assert.Equal(t, false, vp["include_venice_system_prompt"])
 }
 
 func TestVeniceService_ChatStream_SSE(t *testing.T) {
