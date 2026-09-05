@@ -20,7 +20,6 @@ const (
 	ChatTimeout = 30 * time.Second
 	// DeltaTimeout is max time to wait for the applier to finish
 	DeltaTimeout = 30 * time.Second
-	DeltaTimeout = 30 * time.Second
 	// StoryEventTimeout is max time to wait for a story event to trigger
 	StoryEventTimeout = 30 * time.Second
 )
