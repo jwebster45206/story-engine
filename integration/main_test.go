@@ -27,6 +27,9 @@ func TestMain(m *testing.M) {
 
 	fmt.Printf("Running Story Engine Integration Tests\n")
 	fmt.Printf("   API Base URL: %s\n", apiBaseURL)
+	if os.Getenv("STORY_ENGINE_API_KEY") == "" {
+		fmt.Printf("   WARNING: STORY_ENGINE_API_KEY is unset; API calls will 401\n")
+	}
 
 	os.Exit(m.Run())
 }

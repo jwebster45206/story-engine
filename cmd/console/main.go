@@ -11,6 +11,7 @@ import (
 
 type ConsoleConfig struct {
 	APIBaseURL string
+	APIKey     string
 	Timeout    time.Duration
 }
 
@@ -19,13 +20,24 @@ type ErrorResponse struct {
 }
 
 func main() {
+	apiKey := os.Getenv("STORY_ENGINE_API_KEY")
+	if apiKey == "" {
+		fmt.Fprintf(os.Stderr, "STORY_ENGINE_API_KEY is required.\n")
+		os.Exit(1)
+	}
+
 	cfg := &ConsoleConfig{
 		APIBaseURL: getEnv("API_BASE_URL", "http://localhost:8080"),
+		APIKey:     apiKey,
 		Timeout:    0, // No timeout - SSE connections are long-lived, server has 30s keepalive
 	}
 
 	client := &http.Client{
 		Timeout: cfg.Timeout,
+		Transport: &bearerTransport{
+			base: http.DefaultTransport,
+			key:  cfg.APIKey,
+		},
 	}
 
 	if !testConnection(client, cfg.APIBaseURL) {

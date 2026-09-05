@@ -13,16 +13,16 @@ A terminal-based user interface for the Story Engine, built with [Charm Bracelet
 
 ### Prerequisites
 
-- Go 1.26.7 or later
+- Go 1.27.1 or later
 - Running Story Engine API server
 
 ### Configuration
 
-The console client only needs to know where the API server is running. By default, it connects to `http://localhost:8080`.
-
-To use a different API server address:
+The console client needs the API base URL and an API key (`api_keys` or `admin_keys` from server config). By default it connects to `http://localhost:8080`.
 
 ```bash
+export STORY_ENGINE_API_KEY=<uuid from your config>
+# optional:
 export API_BASE_URL=http://your-api-server:8080
 ```
 
@@ -30,10 +30,10 @@ export API_BASE_URL=http://your-api-server:8080
 
 ```bash
 # Run with default API URL (localhost:8080)
-go run cmd/console/*.go
+STORY_ENGINE_API_KEY="$STORY_ENGINE_API_KEY" go run cmd/console/*.go
 
 # Run with custom API URL
-API_BASE_URL=http://your-api-server:8080 go run cmd/console/*.go
+API_BASE_URL=http://your-api-server:8080 STORY_ENGINE_API_KEY="$STORY_ENGINE_API_KEY" go run cmd/console/*.go
 ```
 
 ## How It Works

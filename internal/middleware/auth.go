@@ -1,0 +1,113 @@
+package middleware
+
+import (
+	"context"
+	"crypto/subtle"
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"strings"
+
+	"github.com/jwebster45206/story-engine/internal/config"
+)
+
+type contextKey struct{}
+
+// Principal is the authenticated caller attached to the request context.
+type Principal struct {
+	Admin   bool
+	KeyHash string
+}
+
+// WithPrincipal returns a child context carrying p. Exported for tests that call handlers directly.
+func WithPrincipal(ctx context.Context, p Principal) context.Context {
+	return context.WithValue(ctx, contextKey{}, p)
+}
+
+// PrincipalFrom returns the Principal stored by APIKey middleware.
+func PrincipalFrom(ctx context.Context) (Principal, bool) {
+	p, ok := ctx.Value(contextKey{}).(Principal)
+	return p, ok
+}
+
+// CanAccess reports whether p may operate on a gamestate owned by ownerHash.
+// Admins always can. Empty owner hashes are not owned by any api_key.
+func (p Principal) CanAccess(ownerHash string) bool {
+	if p.Admin {
+		return true
+	}
+	if ownerHash == "" || p.KeyHash == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(p.KeyHash), []byte(ownerHash)) == 1
+}
+
+// APIKey requires a configured Bearer token on all paths except /health.
+func APIKey(cfg *config.Config, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/health" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		token, ok := bearerToken(r.Header.Get("Authorization"))
+		if !ok {
+			writeUnauthorized(w)
+			return
+		}
+
+		p, ok := lookupPrincipal(cfg, token)
+		if !ok {
+			writeUnauthorized(w)
+			return
+		}
+
+		next.ServeHTTP(w, r.WithContext(WithPrincipal(r.Context(), p)))
+	})
+}
+
+func bearerToken(header string) (string, bool) {
+	scheme, rest, found := strings.Cut(header, " ")
+	if !found || !strings.EqualFold(scheme, "Bearer") {
+		return "", false
+	}
+	token := strings.TrimSpace(rest)
+	if token == "" {
+		return "", false
+	}
+	return token, true
+}
+
+func lookupPrincipal(cfg *config.Config, presented string) (Principal, bool) {
+	canon, err := config.CanonicalKey(presented)
+	if err != nil {
+		return Principal{}, false
+	}
+	h := config.HashKey(canon)
+	hb := []byte(h)
+	admin := false
+	api := false
+	for _, kh := range cfg.AdminKeyHashes {
+		if subtle.ConstantTimeCompare(hb, []byte(kh)) == 1 {
+			admin = true
+		}
+	}
+	for _, kh := range cfg.APIKeyHashes {
+		if subtle.ConstantTimeCompare(hb, []byte(kh)) == 1 {
+			api = true
+		}
+	}
+	if !admin && !api {
+		return Principal{}, false
+	}
+	return Principal{Admin: admin, KeyHash: h}, true
+}
+
+func writeUnauthorized(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("WWW-Authenticate", "Bearer")
+	w.WriteHeader(http.StatusUnauthorized)
+	if err := json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"}); err != nil {
+		slog.Error("failed to encode unauthorized response", "error", err)
+	}
+}

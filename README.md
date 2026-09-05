@@ -15,6 +15,8 @@ A lightweight narrative engine for immersive, structured text adventures. Game e
 
 The Story Engine exposes a REST API for interactive, closed-world adventures. Clients create a game session, subscribe to Server-Sent Events, and send chat turns that a background worker processes with an LLM. Redis holds session state, the request queue, per-game locks, and SSE pub/sub between the API (`cmd/api`) and worker (`cmd/worker`). An optional console TUI lives under `cmd/console`.
 
+`/v1` routes require `Authorization: Bearer <key>`. Keys are UUIDs you generate (`uuidgen`) and list in config as `api_keys` (own only the games they create) and `admin_keys` (any gamestate). Copy `config.template.json` and replace `YOUR_UUID_HERE` — the server will not start on the placeholder. Ownership is a SHA-256 hash of the creating key stored on the gamestate; HTTP responses omit it. `/health` is unauthenticated. Rotating an `api_key` orphans its games until the Redis TTL (admins can still reach them).
+
 ### Main loop
 
 **Init**
@@ -91,10 +93,13 @@ API: [docs/openapi.yaml](docs/openapi.yaml) — gamestate, chat, events, content
       "backend_model": "qwen3-4b"
     }
   },
+  "api_keys": ["YOUR_UUID_HERE"],
+  "admin_keys": ["YOUR_UUID_HERE"],
   "redis_url": "localhost:6379"
 }
 ```
 
+Copy `config.template.json` to `config.json` (gitignored) and replace `YOUR_UUID_HERE` with UUIDs you generate (`uuidgen`). The server will not start on the placeholder.
 
 ```bash
 # API + worker (same CONFIG)
@@ -107,8 +112,8 @@ DATA_DIR=~/Documents/story-engine-scenarios docker compose up --build -d
 docker compose restart story-engine-api story-engine-worker
 
 # Console client — see cmd/console/README.md
-go run cmd/console/*.go
-API_BASE_URL=http://localhost:3000 go run cmd/console/*.go
+STORY_ENGINE_API_KEY=<uuid from your config> go run cmd/console/*.go
+API_BASE_URL=http://localhost:8080 STORY_ENGINE_API_KEY=<uuid from your config> go run cmd/console/*.go
 ```
 
 ## Docs

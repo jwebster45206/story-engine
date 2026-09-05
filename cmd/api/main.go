@@ -73,10 +73,10 @@ func main() {
 	healthHandler := handlers.NewHealthHandler(log, storageService)
 	mux.Handle("/health", healthHandler)
 
-	chatHandler := handlers.NewChatHandler(chatQueue, log)
+	chatHandler := handlers.NewChatHandler(chatQueue, storageService, log)
 	mux.Handle("/v1/chat", chatHandler)
 
-	eventsHandler := handlers.NewEventsHandler(redisClient, log)
+	eventsHandler := handlers.NewEventsHandler(redisClient, storageService, log)
 	mux.Handle("/v1/events/gamestate/", eventsHandler)
 
 	gameStateHandler := handlers.NewGameStateHandler(log, registry, storageService)
@@ -102,7 +102,7 @@ func main() {
 	mux.Handle("/v1/monsters", monsterHandler)
 	mux.Handle("/v1/monsters/", monsterHandler)
 
-	handler := middleware.Logger(mux)
+	handler := middleware.Logger(middleware.APIKey(cfg, mux))
 	server := &http.Server{
 		Addr:        ":" + cfg.Port,
 		Handler:     handler,

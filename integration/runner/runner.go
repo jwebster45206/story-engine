@@ -37,9 +37,13 @@ type Runner struct {
 
 // NewRunner creates a new test runner
 func NewRunner(baseURL string) *Runner {
+	client := &http.Client{Timeout: 60 * time.Second}
+	if key := os.Getenv("STORY_ENGINE_API_KEY"); key != "" {
+		client.Transport = &bearerTransport{key: key}
+	}
 	return &Runner{
 		BaseURL:           strings.TrimSuffix(baseURL, "/"),
-		Client:            &http.Client{Timeout: 60 * time.Second},
+		Client:            client,
 		Timeout:           30 * time.Second,
 		ErrorHandlingMode: ErrorHandlingContinue,
 	}

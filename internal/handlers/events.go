@@ -10,19 +10,22 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/events"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 	"github.com/redis/go-redis/v9"
 )
 
 // EventsHandler handles Server-Sent Events (SSE) for real-time game updates
 type EventsHandler struct {
 	redisClient *redis.Client
+	storage     storage.Storage
 	logger      *slog.Logger
 }
 
 // NewEventsHandler creates a new events handler
-func NewEventsHandler(redisClient *redis.Client, logger *slog.Logger) *EventsHandler {
+func NewEventsHandler(redisClient *redis.Client, store storage.Storage, logger *slog.Logger) *EventsHandler {
 	return &EventsHandler{
 		redisClient: redisClient,
+		storage:     store,
 		logger:      logger,
 	}
 }
@@ -65,6 +68,10 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			h.logger.Error("Failed to encode error response", "error", err)
 		}
+		return
+	}
+
+	if _, ok := loadAuthorizedGame(w, r, h.storage, gameStateID, h.logger); !ok {
 		return
 	}
 

@@ -75,7 +75,7 @@ func TestGameStateHandler_Create(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json") // This was missing!
 	rr := httptest.NewRecorder()
 
-	handler.ServeHTTP(rr, req)
+	serveAdmin(handler, rr, req)
 
 	// Check status code
 	if rr.Code != http.StatusCreated {
@@ -192,7 +192,7 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
 
-			handler.ServeHTTP(rr, req)
+			serveAdmin(handler, rr, req)
 
 			if rr.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d. Response body: %s", tt.expectedStatus, rr.Code, rr.Body.String())
@@ -292,7 +292,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/v1/gamestate/"+tt.gameStateID, nil)
 			rr := httptest.NewRecorder()
 
-			handler.ServeHTTP(rr, req)
+			serveAdmin(handler, rr, req)
 
 			if rr.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tt.expectedStatus, rr.Code)
@@ -350,8 +350,8 @@ func TestGameStateHandler_Delete(t *testing.T) {
 		{
 			name:           "non-existent game state",
 			gameStateID:    uuid.New().String(),
-			expectedStatus: http.StatusNoContent,
-			expectError:    false,
+			expectedStatus: http.StatusNotFound,
+			expectError:    true,
 		},
 		{
 			name:           "invalid game state ID format",
@@ -366,7 +366,7 @@ func TestGameStateHandler_Delete(t *testing.T) {
 			req := httptest.NewRequest(http.MethodDelete, "/v1/gamestate/"+tt.gameStateID, nil)
 			rr := httptest.NewRecorder()
 
-			handler.ServeHTTP(rr, req)
+			serveAdmin(handler, rr, req)
 
 			if rr.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tt.expectedStatus, rr.Code)
@@ -407,7 +407,7 @@ func TestGameStateHandler_MethodNotAllowed(t *testing.T) {
 			req := httptest.NewRequest(method, "/v1/gamestate", nil)
 			rr := httptest.NewRecorder()
 
-			handler.ServeHTTP(rr, req)
+			serveAdmin(handler, rr, req)
 
 			if rr.Code != http.StatusMethodNotAllowed {
 				t.Errorf("Expected status 405 for method %s, got %d", method, rr.Code)
@@ -457,7 +457,7 @@ func TestGameStateHandler_MissingID(t *testing.T) {
 			req := httptest.NewRequest(tt.method, v1Path, nil)
 			rr := httptest.NewRecorder()
 
-			handler.ServeHTTP(rr, req)
+			serveAdmin(handler, rr, req)
 
 			if rr.Code != http.StatusBadRequest {
 				t.Errorf("Expected status 400 for %s without ID, got %d", tt.method, rr.Code)
@@ -528,7 +528,7 @@ func TestGameStateHandler_CreateRulesAndTemperature(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/v1/gamestate", strings.NewReader(tt.requestBody))
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
-			handler.ServeHTTP(rr, req)
+			serveAdmin(handler, rr, req)
 
 			if rr.Code != tt.expectedStatus {
 				t.Fatalf("Expected status %d, got %d. Body: %s", tt.expectedStatus, rr.Code, rr.Body.String())

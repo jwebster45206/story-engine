@@ -1,11 +1,14 @@
 package config
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"strings"
+	"uuid"
 )
 
 const (
@@ -37,6 +40,10 @@ type Config struct {
 	DefaultProvider  string                     `json:"default_provider,omitempty"`
 	RedisURL         string                     `json:"redis_url"`
 	ChatHistoryLimit int                        `json:"chat_history_limit"` // max past messages sent to LLM per request (0 = use default)
+	APIKeys          []string                   `json:"api_keys,omitempty"`
+	AdminKeys        []string                   `json:"admin_keys,omitempty"`
+	APIKeyHashes     []string                   `json:"-"`
+	AdminKeyHashes   []string                   `json:"-"`
 }
 
 // Load reads configuration from the CONFIG environment variable.
@@ -60,7 +67,80 @@ func Load() (*Config, error) {
 	if err := config.validateProviders(); err != nil {
 		return nil, err
 	}
+	if err := config.validateAuth(); err != nil {
+		return nil, err
+	}
 	return &config, nil
+}
+
+// CanonicalKey parses s as a UUID and returns the canonical lowercase dashed form.
+// The nil UUID is rejected.
+func CanonicalKey(s string) (string, error) {
+	u, err := uuid.Parse(strings.TrimSpace(s))
+	if err != nil {
+		return "", fmt.Errorf("must be a UUID")
+	}
+	if u == uuid.Nil() {
+		return "", fmt.Errorf("nil UUID is not allowed")
+	}
+	return u.String(), nil
+}
+
+// HashKey returns the SHA-256 hex digest of key. Used for ownership stamps and request matching.
+// Callers should pass CanonicalKey output so equivalent UUID spellings hash the same.
+func HashKey(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:])
+}
+
+func (c *Config) validateAuth() error {
+	apiHashes, err := normalizeKeyList("api_keys", c.APIKeys)
+	if err != nil {
+		return err
+	}
+	adminHashes, err := normalizeKeyList("admin_keys", c.AdminKeys)
+	if err != nil {
+		return err
+	}
+	if len(apiHashes)+len(adminHashes) == 0 {
+		return fmt.Errorf("api_keys or admin_keys: at least one key is required")
+	}
+
+	adminSet := make(map[string]struct{}, len(adminHashes))
+	for _, h := range adminHashes {
+		adminSet[h] = struct{}{}
+	}
+	for _, h := range apiHashes {
+		if _, ok := adminSet[h]; ok {
+			slog.Warn("key appears in both api_keys and admin_keys; treating as admin")
+			break
+		}
+	}
+
+	c.APIKeyHashes = apiHashes
+	c.AdminKeyHashes = adminHashes
+	return nil
+}
+
+func normalizeKeyList(field string, keys []string) ([]string, error) {
+	seen := make(map[string]struct{}, len(keys))
+	hashes := make([]string, 0, len(keys))
+	for i, raw := range keys {
+		key := strings.TrimSpace(raw)
+		if key == "" {
+			return nil, fmt.Errorf("%s[%d]: key must not be empty", field, i)
+		}
+		canon, err := CanonicalKey(key)
+		if err != nil {
+			return nil, fmt.Errorf("%s[%d]: %w", field, i, err)
+		}
+		if _, ok := seen[canon]; ok {
+			return nil, fmt.Errorf("%s: duplicate key", field)
+		}
+		seen[canon] = struct{}{}
+		hashes = append(hashes, HashKey(canon))
+	}
+	return hashes, nil
 }
 
 func (c *Config) validateProviders() error {

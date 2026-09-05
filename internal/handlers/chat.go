@@ -11,18 +11,21 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/queue"
 	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
 // ChatHandler handles chat HTTP requests by enqueuing them for async processing
 type ChatHandler struct {
 	chatQueue state.ChatQueue
+	storage   storage.Storage
 	logger    *slog.Logger
 }
 
 // NewChatHandler creates a new chat handler
-func NewChatHandler(chatQueue state.ChatQueue, logger *slog.Logger) *ChatHandler {
+func NewChatHandler(chatQueue state.ChatQueue, store storage.Storage, logger *slog.Logger) *ChatHandler {
 	return &ChatHandler{
 		chatQueue: chatQueue,
+		storage:   store,
 		logger:    logger,
 	}
 }
@@ -80,6 +83,10 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			h.logger.Error("Error encoding error response", "error", err)
 		}
+		return
+	}
+
+	if _, ok := loadAuthorizedGame(w, r, h.storage, request.GameStateID, h.logger); !ok {
 		return
 	}
 
