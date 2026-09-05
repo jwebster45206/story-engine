@@ -33,6 +33,7 @@ func TestMockStorage_SaveAndLoadGameState(t *testing.T) {
 
 	if loaded == nil {
 		t.Fatal("Expected non-nil gamestate")
+		return
 	}
 
 	if loaded.ID != gs.ID {

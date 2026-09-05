@@ -13,9 +13,6 @@ import (
 
 func TestNew(t *testing.T) {
 	builder := New()
-	if builder == nil {
-		t.Fatal("Expected builder to be created, got nil")
-	}
 	if builder.historyLimit != 20 {
 		t.Errorf("Expected default history limit of 20, got %d", builder.historyLimit)
 	}
