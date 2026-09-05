@@ -38,8 +38,8 @@ github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f h1:Y/CXytFA4m6
 github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f/go.mod h1:vw97MGsxSvLiUE2X8qFplwetxpGLQrlU1Q9AUEIzCaM=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/jwebster45206/d20 v0.4.0 h1:thsTuaKntmS1z1h2IuOCKNoni1w+8LwmTJvcYL/dVJU=
-github.com/jwebster45206/d20 v0.4.0/go.mod h1:ugPjJe6FVkswmGMKelkJKzJ1/Plln7AWN8FOVxGNT6U=
+github.com/jwebster45206/d20 v0.8.1 h1:j68Jtgyr5DkNAafUlSTPBKwvijxrtw1j41QRBERP5bw=
+github.com/jwebster45206/d20 v0.8.1/go.mod h1:cYR3li/cYqaQvL6k8tGKi4qMdph4mQOuTSO1CTE4k10=
 github.com/klauspost/cpuid/v2 v2.2.10 h1:tBs3QSyvjDyFTq3uoc/9xFpCuOsJQFNPiAhYdw2skhE=
 github.com/klauspost/cpuid/v2 v2.2.10/go.mod h1:hqwkgyIinND0mEev00jJYCxPNVRVXFQeu1XKlok6oO0=
 github.com/lucasb-eyer/go-colorful v1.3.0 h1:2/yBRLdWBZKrf7gB40FoiKfAWYQ0lqNcbuQwVHXptag=

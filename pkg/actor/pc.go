@@ -77,22 +77,16 @@ func NewPCFromSpec(spec *PCSpec) (*PC, error) {
 	// Add additional attributes (skills, proficiencies, etc.)
 	maps.Copy(allAttrs, spec.Attributes)
 
-	// Build the actor
-	actor, err := d20.NewActor(spec.ID).
-		WithHP(spec.MaxHP).
-		WithAC(spec.AC).
-		WithAttributes(allAttrs).
-		WithCombatModifiers(spec.CombatModifiers).
-		Build()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build actor: %w", err)
+	actor := d20.NewActor(spec.ID)
+	actor.MaxHP = spec.MaxHP
+	actor.HP = spec.MaxHP
+	actor.AC = spec.AC
+	actor.Attributes = allAttrs
+	if spec.CombatModifiers != nil {
+		actor.Modifiers = maps.Clone(spec.CombatModifiers)
 	}
-
-	// Set current HP if different from max
 	if spec.HP != spec.MaxHP && spec.HP > 0 {
-		if err := actor.SetHP(spec.HP); err != nil {
-			return nil, fmt.Errorf("failed to set HP: %w", err)
-		}
+		actor.HP = spec.HP
 	}
 
 	pc.Actor = actor
@@ -111,12 +105,8 @@ func (pc *PC) MarshalJSON() ([]byte, error) {
 		return json.Marshal(pc.Spec)
 	}
 
-	// Helper to safely get attribute from Actor
 	getAttr := func(key string) int {
-		if val, ok := pc.Actor.Attribute(key); ok {
-			return val
-		}
-		return 0
+		return pc.Actor.Attributes[key]
 	}
 
 	// Create a response struct for serialization
@@ -155,10 +145,9 @@ func (pc *PC) MarshalJSON() ([]byte, error) {
 		Inventory:          pc.Spec.Inventory,
 	}
 
-	// Get current HP state from Actor
-	resp.HP = pc.Actor.HP()
-	resp.MaxHP = pc.Actor.MaxHP()
-	resp.AC = pc.Actor.AC()
+	resp.HP = pc.Actor.HP
+	resp.MaxHP = pc.Actor.MaxHP
+	resp.AC = pc.Actor.AC
 
 	// Rebuild Stats5e from Actor's current attributes
 	resp.Stats = Stats5e{
@@ -171,10 +160,7 @@ func (pc *PC) MarshalJSON() ([]byte, error) {
 	}
 
 	// Get combat modifiers from Actor
-	resp.CombatModifiers = make(map[string]int)
-	for _, mod := range pc.Actor.GetCombatModifiers() {
-		resp.CombatModifiers[mod.Reason] = mod.Value
-	}
+	resp.CombatModifiers = maps.Clone(pc.Actor.Modifiers)
 
 	// Get non-core attributes from Actor
 	resp.Attributes = make(map[string]int)
@@ -184,7 +170,7 @@ func (pc *PC) MarshalJSON() ([]byte, error) {
 	}
 	for key := range pc.Spec.Attributes {
 		if !coreStats[key] {
-			if val, ok := pc.Actor.Attribute(key); ok {
+			if val, ok := pc.Actor.Attributes[key]; ok {
 				resp.Attributes[key] = val
 			}
 		}
