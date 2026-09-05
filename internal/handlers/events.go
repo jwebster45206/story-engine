@@ -102,7 +102,7 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer keepaliveTicker.Stop()
 
 	// Send initial connection event
-	h.sendSSE(w, "connected", map[string]interface{}{
+	h.sendSSE(w, "connected", map[string]any{
 		"game_id": gameStateID.String(),
 		"message": "Connected to event stream",
 	})
@@ -140,7 +140,7 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // sendSSE sends a Server-Sent Event to the client
-func (h *EventsHandler) sendSSE(w http.ResponseWriter, eventType string, data interface{}) {
+func (h *EventsHandler) sendSSE(w http.ResponseWriter, eventType string, data any) {
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		h.logger.Error("Failed to marshal SSE data", "error", err)

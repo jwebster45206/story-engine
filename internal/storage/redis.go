@@ -62,7 +62,7 @@ func (r *RedisStorage) WaitForConnection(ctx context.Context) error {
 	maxRetries := 30
 	retryDelay := 2 * time.Second
 
-	for i := 0; i < maxRetries; i++ {
+	for i := range maxRetries {
 		if err := r.Ping(ctx); err != nil {
 			r.logger.Debug("Redis not ready yet", "error", err, "attempt", i+1)
 

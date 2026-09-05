@@ -281,7 +281,7 @@ func TestBuilder_Build_HistoryWindowing(t *testing.T) {
 	gs.Location = "start"
 
 	// Create more history than the limit
-	for i := 0; i < 15; i++ {
+	for range 15 {
 		gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
 			Role:    chat.ChatRoleUser,
 			Content: "Message",
@@ -528,4 +528,3 @@ func TestBuilder_Build_StrictAndRelaxedShareRulesBlock(t *testing.T) {
 		t.Errorf("NarratorRules block should be identical;\nstrict:\n%s\nrelaxed:\n%s", strictRules, relaxedRules)
 	}
 }
-

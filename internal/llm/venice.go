@@ -79,7 +79,7 @@ type VeniceChatResponse struct {
 		PromptTokens     int `json:"prompt_tokens"`
 		CompletionTokens int `json:"completion_tokens"`
 		TotalTokens      int `json:"total_tokens"`
-	} `json:"usage,omitempty"`
+	} `json:"usage,omitzero"`
 	Error *struct {
 		Message string `json:"message"`
 		Type    string `json:"type"`

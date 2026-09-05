@@ -26,7 +26,7 @@ func TestDeltaWorker_HandleNPCEvent_SetLocation(t *testing.T) {
 		NPCEvents: []conditionals.NPCEvent{
 			{
 				NPCID:       "guard",
-				SetLocation: stringPtr("throne_room"),
+				SetLocation: new("throne_room"),
 			},
 		},
 	}
@@ -62,7 +62,7 @@ func TestDeltaWorker_HandleNPCEvent_SetFollowing(t *testing.T) {
 		NPCEvents: []conditionals.NPCEvent{
 			{
 				NPCID:        "companion",
-				SetFollowing: stringPtr("pc"),
+				SetFollowing: new("pc"),
 			},
 		},
 	}
@@ -102,7 +102,7 @@ func TestDeltaWorker_HandleNPCEvent_ClearFollowing(t *testing.T) {
 		NPCEvents: []conditionals.NPCEvent{
 			{
 				NPCID:        "companion",
-				SetFollowing: stringPtr(""),
+				SetFollowing: new(""),
 			},
 		},
 	}
@@ -138,8 +138,8 @@ func TestDeltaWorker_HandleNPCEvent_CombinedLocationAndFollowing(t *testing.T) {
 		NPCEvents: []conditionals.NPCEvent{
 			{
 				NPCID:        "gibbs",
-				SetLocation:  stringPtr("black_pearl"),
-				SetFollowing: stringPtr("pc"),
+				SetLocation:  new("black_pearl"),
+				SetFollowing: new("pc"),
 			},
 		},
 	}
@@ -176,7 +176,7 @@ func TestDeltaWorker_HandleNPCEvent_InvalidNPC(t *testing.T) {
 		NPCEvents: []conditionals.NPCEvent{
 			{
 				NPCID:       "nonexistent",
-				SetLocation: stringPtr("courtyard"),
+				SetLocation: new("courtyard"),
 			},
 		},
 	}
@@ -210,7 +210,7 @@ func TestDeltaWorker_HandleNPCEvent_InvalidLocation(t *testing.T) {
 		NPCEvents: []conditionals.NPCEvent{
 			{
 				NPCID:       "guard",
-				SetLocation: stringPtr("nonexistent_location"),
+				SetLocation: new("nonexistent_location"),
 			},
 		},
 	}
@@ -245,7 +245,7 @@ func TestDeltaWorker_HandleNPCEvent_InvalidFollowingTarget(t *testing.T) {
 		NPCEvents: []conditionals.NPCEvent{
 			{
 				NPCID:        "companion",
-				SetFollowing: stringPtr("nonexistent_npc"),
+				SetFollowing: new("nonexistent_npc"),
 			},
 		},
 	}
@@ -279,8 +279,8 @@ func TestDeltaWorker_HandleNPCEvent_CaseInsensitiveMatching(t *testing.T) {
 	delta := &conditionals.GameStateDelta{
 		NPCEvents: []conditionals.NPCEvent{
 			{
-				NPCID:       "Royal Guard",            // Match by name
-				SetLocation: stringPtr("Throne Room"), // Match by location name
+				NPCID:       "Royal Guard",      // Match by name
+				SetLocation: new("Throne Room"), // Match by location name
 			},
 		},
 	}
@@ -294,9 +294,4 @@ func TestDeltaWorker_HandleNPCEvent_CaseInsensitiveMatching(t *testing.T) {
 	if gs.NPCs["guard"].Location != "throne_room" {
 		t.Errorf("Expected guard location to be throne_room (case-insensitive match), got %s", gs.NPCs["guard"].Location)
 	}
-}
-
-// Helper function to create string pointers
-func stringPtr(s string) *string {
-	return &s
 }

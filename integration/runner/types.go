@@ -17,7 +17,7 @@ const (
 type TestSuite struct {
 	Name          string          `json:"name"`
 	Scenario      string          `json:"scenario,omitempty"`
-	SeedGameState state.GameState `json:"seed_game_state,omitempty"`
+	SeedGameState state.GameState `json:"seed_game_state,omitzero"`
 	Steps         []TestStep      `json:"steps,omitempty"`
 }
 

@@ -44,7 +44,7 @@ type PCSpec struct {
 	Background         string                           `json:"background,omitempty"`
 	OpeningPrompt      string                           `json:"opening_prompt,omitempty"`      // PC-specific opening text
 	ContingencyPrompts []conditionals.ContingencyPrompt `json:"contingency_prompts,omitempty"` // Conditional prompts for this PC
-	Stats              Stats5e                          `json:"stats,omitempty"`
+	Stats              Stats5e                          `json:"stats,omitzero"`
 	HP                 int                              `json:"hp,omitempty"`     // Current HP (for serialization)
 	MaxHP              int                              `json:"max_hp,omitempty"` // Maximum HP
 	AC                 int                              `json:"ac,omitempty"`

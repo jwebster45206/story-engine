@@ -1,6 +1,7 @@
 package state
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
@@ -234,14 +235,7 @@ func TestGameState_GetContingencyPrompts_WithLocations(t *testing.T) {
 
 			// Check expected prompts are present
 			for _, expected := range tt.expectedPrompts {
-				found := false
-				for _, prompt := range prompts {
-					if prompt == expected {
-						found = true
-						break
-					}
-				}
-				if !found {
+				if !slices.Contains(prompts, expected) {
 					t.Errorf("Expected prompt not found: %q", expected)
 				}
 			}

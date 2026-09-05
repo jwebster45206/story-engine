@@ -185,7 +185,7 @@ func listPCs(client *http.Client, baseURL string) ([]string, map[string]string, 
 	}
 
 	// API returns an array of PC objects, not a map
-	var pcList []map[string]interface{}
+	var pcList []map[string]any
 	if err := json.Unmarshal(body, &pcList); err != nil {
 		return nil, nil, err
 	}
@@ -274,7 +274,7 @@ type ChatResponse struct {
 
 // sendChatAsync sends a chat message and returns the request ID
 func sendChatAsync(client *http.Client, baseURL string, gameStateID uuid.UUID, message string) (string, error) {
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"gamestate_id": gameStateID.String(),
 		"message":      message,
 	}
@@ -319,8 +319,8 @@ func sendChatAsync(client *http.Client, baseURL string, gameStateID uuid.UUID, m
 
 // SSEEvent represents an event from the SSE stream
 type SSEEvent struct {
-	Type string                 `json:"type"`
-	Data map[string]interface{} `json:"data"`
+	Type string         `json:"type"`
+	Data map[string]any `json:"data"`
 }
 
 // listenToSSE connects to the SSE endpoint and streams events to a channel
@@ -370,11 +370,10 @@ func listenToSSE(ctx context.Context, client *http.Client, baseURL string, gameS
 		}
 
 		// Parse SSE format
-		if strings.HasPrefix(line, "event: ") {
-			currentEvent.Type = strings.TrimPrefix(line, "event: ")
-		} else if strings.HasPrefix(line, "data: ") {
-			dataJSON := strings.TrimPrefix(line, "data: ")
-			var data map[string]interface{}
+		if eventType, ok := strings.CutPrefix(line, "event: "); ok {
+			currentEvent.Type = eventType
+		} else if dataJSON, ok := strings.CutPrefix(line, "data: "); ok {
+			var data map[string]any
 			if err := json.Unmarshal([]byte(dataJSON), &data); err == nil {
 				currentEvent.Data = data
 			}

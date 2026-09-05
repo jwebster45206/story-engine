@@ -105,7 +105,7 @@ func TestFilterContingencyPrompts(t *testing.T) {
 				{
 					Prompt: "Show on turn 5",
 					When: &conditionals.ConditionalWhen{
-						TurnCounter: intPtr(5),
+						TurnCounter: new(5),
 					},
 				},
 			},
@@ -120,7 +120,7 @@ func TestFilterContingencyPrompts(t *testing.T) {
 				{
 					Prompt: "Show on turn 5",
 					When: &conditionals.ConditionalWhen{
-						TurnCounter: intPtr(5),
+						TurnCounter: new(5),
 					},
 				},
 			},
@@ -135,7 +135,7 @@ func TestFilterContingencyPrompts(t *testing.T) {
 				{
 					Prompt: "Show after 3 scene turns",
 					When: &conditionals.ConditionalWhen{
-						MinSceneTurns: intPtr(3),
+						MinSceneTurns: new(3),
 					},
 				},
 			},
@@ -150,7 +150,7 @@ func TestFilterContingencyPrompts(t *testing.T) {
 				{
 					Prompt: "Show after 3 scene turns",
 					When: &conditionals.ConditionalWhen{
-						MinSceneTurns: intPtr(3),
+						MinSceneTurns: new(3),
 					},
 				},
 			},
@@ -204,11 +204,6 @@ func TestFilterContingencyPrompts(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Helper function to create int pointers
-func intPtr(i int) *int {
-	return &i
 }
 
 // TestScenario_EvaluateConditionals_WithPrompt tests conditionals with prompt field

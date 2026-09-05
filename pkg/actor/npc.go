@@ -1,6 +1,10 @@
 package actor
 
-import "github.com/jwebster45206/story-engine/pkg/conditionals"
+import (
+	"maps"
+
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
+)
 
 // NPC represents a non-player character in the game.
 // NPCs can be defined inline in a scenario or loaded from a standalone JSON
@@ -12,23 +16,23 @@ type NPC struct {
 	// Leave empty for fully inline NPCs (original behavior, unchanged).
 	TemplateID string `json:"template_id,omitempty"`
 
-	Name        string `json:"name"`
-	Type        string `json:"type"`                  // e.g. "villager", "guard", "merchant"
-	Disposition string `json:"disposition"`           // e.g. "hostile", "neutral", "friendly"
-	Description string `json:"description,omitempty"` // short description or backstory
-	IsImportant bool   `json:"important,omitempty"`   // whether this NPC is important to the story
-	Location    string `json:"location,omitempty"`    // where the NPC is currently located
-	Following   string `json:"following,omitempty"`   // ID of actor being followed ("pc" or NPC ID); empty = not following
-	Items       []string `json:"items,omitempty"`     // items the NPC has or can give
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`                  // e.g. "villager", "guard", "merchant"
+	Disposition string   `json:"disposition"`           // e.g. "hostile", "neutral", "friendly"
+	Description string   `json:"description,omitempty"` // short description or backstory
+	IsImportant bool     `json:"important,omitempty"`   // whether this NPC is important to the story
+	Location    string   `json:"location,omitempty"`    // where the NPC is currently located
+	Following   string   `json:"following,omitempty"`   // ID of actor being followed ("pc" or NPC ID); empty = not following
+	Items       []string `json:"items,omitempty"`       // items the NPC has or can give
 
 	// Actor properties — only populated for standalone NPCs loaded from templates.
 	// These are optional even in standalone files; omit them for purely narrative NPCs.
-	AC               int            `json:"ac,omitempty"`
-	HP               int            `json:"hp,omitempty"`
-	MaxHP            int            `json:"max_hp,omitempty"`
-	Attributes       map[string]int `json:"attributes,omitempty"`        // e.g. {"strength": 14, "dexterity": 12}
-	CombatMods       map[string]int `json:"combat_modifiers,omitempty"`  // e.g. {"sword": 3}
-	DropItemsOnDefeat bool          `json:"drop_items_on_defeat,omitempty"`
+	AC                int            `json:"ac,omitempty"`
+	HP                int            `json:"hp,omitempty"`
+	MaxHP             int            `json:"max_hp,omitempty"`
+	Attributes        map[string]int `json:"attributes,omitempty"`       // e.g. {"strength": 14, "dexterity": 12}
+	CombatMods        map[string]int `json:"combat_modifiers,omitempty"` // e.g. {"sword": 3}
+	DropItemsOnDefeat bool           `json:"drop_items_on_defeat,omitempty"`
 
 	ContingencyPrompts []conditionals.ContingencyPrompt `json:"contingency_prompts,omitempty"` // NPC-specific prompts shown when at player location
 }
@@ -93,17 +97,13 @@ func NewNPCFromTemplate(template *NPC, overrides *NPC) *NPC {
 		if n.Attributes == nil {
 			n.Attributes = make(map[string]int)
 		}
-		for k, v := range overrides.Attributes {
-			n.Attributes[k] = v
-		}
+		maps.Copy(n.Attributes, overrides.Attributes)
 	}
 	if len(overrides.CombatMods) > 0 {
 		if n.CombatMods == nil {
 			n.CombatMods = make(map[string]int)
 		}
-		for k, v := range overrides.CombatMods {
-			n.CombatMods[k] = v
-		}
+		maps.Copy(n.CombatMods, overrides.CombatMods)
 	}
 
 	// Items: overrides replace template items if provided

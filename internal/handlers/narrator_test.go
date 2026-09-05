@@ -47,7 +47,7 @@ func TestNarratorHandler_ListNarrators(t *testing.T) {
 		t.Fatalf("expected status OK, got %v", w.Code)
 	}
 
-	var narrators []map[string]interface{}
+	var narrators []map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &narrators); err != nil {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}

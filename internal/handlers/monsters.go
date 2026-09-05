@@ -42,7 +42,7 @@ func (h *MonsterHandler) ListMonsters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"monsters": monsters,
 	}
 

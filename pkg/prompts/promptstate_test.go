@@ -366,7 +366,7 @@ func TestPromptState_ToString_ExitOrderingIsStable(t *testing.T) {
 	}
 
 	first := ps.ToString()
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		if ps.ToString() != first {
 			t.Fatalf("ToString output is not deterministic across calls")
 		}

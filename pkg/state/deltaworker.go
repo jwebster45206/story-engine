@@ -190,12 +190,7 @@ func (dw *DeltaWorker) hasStoryEventFired(conditionalID string) bool {
 	if dw.gs == nil || dw.gs.FiredStoryEvents == nil {
 		return false
 	}
-	for _, firedID := range dw.gs.FiredStoryEvents {
-		if firedID == conditionalID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(dw.gs.FiredStoryEvents, conditionalID)
 }
 
 // queueStoryEvent queues a single story event for the next turn and marks it as fired
@@ -370,14 +365,7 @@ func (dw *DeltaWorker) Apply() error {
 
 // handleAcquireItem adds an item to player inventory
 func (dw *DeltaWorker) handleAcquireItem(itemEvent itemEvent) {
-	itemExists := false
-	for _, invItem := range dw.gs.Inventory {
-		if invItem == itemEvent.Item {
-			itemExists = true
-			break
-		}
-	}
-	if !itemExists {
+	if !slices.Contains(dw.gs.Inventory, itemEvent.Item) {
 		if dw.gs.Inventory == nil {
 			dw.gs.Inventory = make([]string, 0)
 		}
