@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"github.com/jwebster45206/story-engine/internal/httperror"
 )
 
 type ProvidersHandler struct {
@@ -26,8 +28,7 @@ type providersResponse struct {
 func (h *ProvidersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "Method not allowed"})
+		httperror.Write(w, h.logger, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 

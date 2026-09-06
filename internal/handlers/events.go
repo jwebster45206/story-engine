@@ -11,6 +11,7 @@ import (
 
 	"github.com/jwebster45206/story-engine/internal/auth"
 	"github.com/jwebster45206/story-engine/internal/events"
+	"github.com/jwebster45206/story-engine/internal/httperror"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 	"github.com/redis/go-redis/v9"
 )
@@ -38,12 +39,7 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.logger.Warn("Method not allowed for events endpoint",
 			"method", r.Method,
 			"path", r.URL.Path)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		if err := json.NewEncoder(w).Encode(ErrorResponse{
-			Error: "Method not allowed. Only GET is supported.",
-		}); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusMethodNotAllowed, "Method not allowed. Only GET is supported.")
 		return
 	}
 
@@ -51,24 +47,14 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Expected: /v1/events/gamestate/{gameStateID}
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(pathParts) != 4 || pathParts[0] != "v1" || pathParts[1] != "events" || pathParts[2] != "gamestate" {
-		w.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(w).Encode(ErrorResponse{
-			Error: "Invalid path. Expected /v1/events/gamestate/{gameStateID}",
-		}); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusBadRequest, "Invalid path. Expected /v1/events/gamestate/{gameStateID}")
 		return
 	}
 
 	gameStateIDStr := pathParts[3]
 	gameStateID, err := uuid.Parse(gameStateIDStr)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(w).Encode(ErrorResponse{
-			Error: "Invalid game state ID format.",
-		}); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusBadRequest, "Invalid game state ID format.")
 		return
 	}
 

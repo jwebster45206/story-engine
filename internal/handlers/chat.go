@@ -9,6 +9,7 @@ import (
 	"uuid"
 
 	"github.com/jwebster45206/story-engine/internal/auth"
+	"github.com/jwebster45206/story-engine/internal/httperror"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/queue"
 	"github.com/jwebster45206/story-engine/pkg/state"
@@ -47,43 +48,21 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"path", r.URL.Path,
 			"remote_addr", r.RemoteAddr)
 
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		response := ErrorResponse{
-			Error: "Method not allowed. Only POST is supported at /v1/chat.",
-		}
-
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Error encoding chat error response",
-				"error", err,
-				"method", r.Method,
-				"path", r.URL.Path)
-		}
+		httperror.Write(w, h.logger, http.StatusMethodNotAllowed, "Method not allowed. Only POST is supported at /v1/chat.")
 		return
 	}
 
 	var request chat.ChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		h.logger.Warn("Invalid request body", "error", err)
-		w.WriteHeader(http.StatusBadRequest)
-		response := ErrorResponse{
-			Error: "Invalid request body. Expected JSON with 'message' field.",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Error encoding error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusBadRequest, "Invalid request body. Expected JSON with 'message' field.")
 		return
 	}
 
 	// Validate request
 	if err := request.Validate(); err != nil {
 		h.logger.Warn("Invalid chat request", "error", err)
-		w.WriteHeader(http.StatusBadRequest)
-		response := ErrorResponse{
-			Error: "Invalid request: " + err.Error(),
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Error encoding error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusBadRequest, "Invalid request: "+err.Error())
 		return
 	}
 
@@ -107,13 +86,7 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// before allowing new chat messages (avoids race with queued story events).
 	if err := h.chatQueue.EnqueueRequest(r.Context(), queueReq); err != nil {
 		h.logger.Error("Failed to enqueue chat request", "error", err, "request_id", requestID)
-		w.WriteHeader(http.StatusInternalServerError)
-		response := ErrorResponse{
-			Error: "Failed to enqueue request for processing.",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Error encoding error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusInternalServerError, "Failed to enqueue request for processing.")
 		return
 	}
 
