@@ -75,7 +75,9 @@ func TestIntegration(t *testing.T) {
 				t.Logf(format, args...)
 			}
 			priv, principal := mustJWT(t)
-			testRunner.UseJWT(priv, principal)
+			if err := testRunner.UseJWT(priv, principal); err != nil {
+				t.Fatal(err)
+			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer cancel()

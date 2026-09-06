@@ -15,7 +15,7 @@ A lightweight narrative engine for immersive, structured text adventures. Game e
 
 The Story Engine exposes a REST API for interactive, closed-world adventures. Clients create a game session, subscribe to Server-Sent Events, and send chat turns that a background worker processes with an LLM. Redis holds session state, the request queue, per-game locks, and SSE pub/sub between the API (`cmd/api`) and worker (`cmd/worker`). Treat Redis as trusted infrastructure, not a tenant boundary. An optional console TUI lives under `cmd/console`.
 
-Authenticated HTTP routes require `Authorization: Bearer` with an **ES256** JWT. `sub` is a UUID identifying the caller. The API reads `jwt-ec.pub.pem` from the process working directory. `/health` is unauthenticated. The console and integration runner mint tokens from `jwt-ec.pem` in the same directory (console) or the module root (integration). That local minting is a stand-in for a future auth service.
+Authenticated HTTP routes require `Authorization: Bearer` with an **ES256** JWT.
 
 ### Main loop
 
@@ -99,14 +99,12 @@ API: [docs/openapi.yaml](docs/openapi.yaml) — gamestate, chat, events, content
 }
 ```
 
-Copy `config.template.json` to `config.json` (or `config.docker.json` for Compose) and fill in provider keys. Generate an ES256 keypair in the directory you will launch from (gitignored; Compose bind-mounts the public key into the API):
+Copy `config.template.json` to `config.json` (or `config.docker.json` for Compose) and fill in provider keys. Generate an ES256 keypair in the directory you will launch from (gitignored):
 
 ```bash
-openssl ecparam -name prime256v1 -genkey -noout -out jwt-ec.pem
-openssl ec -in jwt-ec.pem -pubout -out jwt-ec.pub.pem
+openssl ecparam -name prime256v1 -genkey -noout -out auth-key.pem
+openssl ec -in auth-key.pem -pubout -out auth-key.pub.pem
 ```
-
-The API loads `jwt-ec.pub.pem`. The console loads `jwt-ec.pem`. Do not put either file in JSON config.
 
 ```bash
 # API + worker (same CONFIG)

@@ -12,11 +12,11 @@ import (
 )
 
 const (
-	PrivateKeyFile = "jwt-ec.pem"
-	PublicKeyFile  = "jwt-ec.pub.pem"
+	PrivateKeyFile = "auth-key.pem"
+	PublicKeyFile  = "auth-key.pub.pem"
 )
 
-// LoadPrivateKey reads jwt-ec.pem from dir.
+// LoadPrivateKey reads auth-key.pem from dir.
 func LoadPrivateKey(dir string) (*ecdsa.PrivateKey, error) {
 	path := filepath.Join(dir, PrivateKeyFile)
 	b, err := os.ReadFile(path)
@@ -30,7 +30,7 @@ func LoadPrivateKey(dir string) (*ecdsa.PrivateKey, error) {
 	return key, nil
 }
 
-// LoadPublicKey reads jwt-ec.pub.pem from dir.
+// LoadPublicKey reads auth-key.pub.pem from dir.
 func LoadPublicKey(dir string) (*ecdsa.PublicKey, error) {
 	path := filepath.Join(dir, PublicKeyFile)
 	b, err := os.ReadFile(path)

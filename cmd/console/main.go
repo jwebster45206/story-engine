@@ -41,6 +41,17 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
+	// TODO: replace local minting with a token from an auth service.
+	tok, err := auth.NewToken(principal)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+	raw, err := tok.SignedString(priv)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
 
 	cfg := &ConsoleConfig{
 		APIBaseURL: envOr("API_BASE_URL", "http://localhost:8080"),
@@ -50,9 +61,8 @@ func main() {
 	client := &http.Client{
 		Timeout: cfg.Timeout,
 		Transport: &bearerTransport{
-			base:      http.DefaultTransport,
-			key:       priv,
-			principal: principal,
+			base:  http.DefaultTransport,
+			token: raw,
 		},
 	}
 

@@ -31,8 +31,8 @@ go.work.sum
 .env
 
 # Operator ES256 keypair (generate in the launch directory)
-/jwt-ec.pem
-/jwt-ec.pub.pem
+/auth-key.pem
+/auth-key.pub.pem
 
 # Config files with secrets
 config*.json

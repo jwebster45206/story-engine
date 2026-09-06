@@ -9,7 +9,6 @@ services:
     volumes:
       - ${DATA_DIR:-./data}:/app/data
       - ./config.docker.json:/app/config.docker.json
-      - ./jwt-ec.pub.pem:/app/jwt-ec.pub.pem:ro
     environment:
       - CONFIG=/app/config.docker.json
     depends_on:

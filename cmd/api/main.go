@@ -25,18 +25,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log := logger.Setup(cfg)
-
 	dir, err := os.Getwd()
 	if err != nil {
-		log.Error("Failed to resolve working directory", "error", err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 	pub, err := auth.LoadPublicKey(dir)
 	if err != nil {
-		log.Error("Failed to load JWT public key", "error", err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
+
+	log := logger.Setup(cfg)
 
 	log.Info("Starting Story Engine API",
 		"config", os.Getenv("CONFIG"),

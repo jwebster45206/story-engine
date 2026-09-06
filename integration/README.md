@@ -107,16 +107,7 @@ go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1'
 |----------|---------|-------------|
 | `API_BASE_URL` | `http://localhost:8080` | Base URL of the API to test |
 | `TEST_TIMEOUT_SECONDS` | `30` | Timeout per test step in seconds |
-| `STORY_ENGINE_PRINCIPAL` | test UUID | Caller `sub` |
-
-The runner mints an ES256 Bearer JWT on each request. It finds `jwt-ec.pem` by walking up from the test working directory to the module root (`go.mod`). The API must have the matching `jwt-ec.pub.pem` in its working directory.
-
-```bash
-# keys at repo root (same files as console / API)
-go test -v -tags=integration ./integration/
-```
-
-`docker-compose.test.yml` bind-mounts `jwt-ec.pem` into the test runner at the module root. The API service bind-mounts `jwt-ec.pub.pem` (see `docker-compose.yml`). Both files must exist on the host.
+| `STORY_ENGINE_PRINCIPAL` | unset | Optional caller `sub`; a UUID is used if unset |
 
 ```bash
 API_BASE_URL=http://api.example.com:8080 go test -v -tags=integration ./integration/

@@ -9,23 +9,13 @@ import (
 )
 
 type bearerTransport struct {
-	base      http.RoundTripper
-	key       *ecdsa.PrivateKey
-	principal uuid.UUID
+	base  http.RoundTripper
+	token string
 }
 
 func (t *bearerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req = req.Clone(req.Context())
-	// TODO: replace local minting with a token from an auth service.
-	tok, err := auth.NewToken(t.principal)
-	if err != nil {
-		return nil, err
-	}
-	raw, err := tok.SignedString(t.key)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+raw)
+	req.Header.Set("Authorization", "Bearer "+t.token)
 	base := t.base
 	if base == nil {
 		base = http.DefaultTransport
@@ -33,10 +23,19 @@ func (t *bearerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return base.RoundTrip(req)
 }
 
-func (r *Runner) UseJWT(key *ecdsa.PrivateKey, principal uuid.UUID) {
-	r.Client.Transport = &bearerTransport{
-		base:      r.Client.Transport,
-		key:       key,
-		principal: principal,
+func (r *Runner) UseJWT(key *ecdsa.PrivateKey, principal uuid.UUID) error {
+	// TODO: replace local minting with a token from an auth service.
+	tok, err := auth.NewToken(principal)
+	if err != nil {
+		return err
 	}
+	raw, err := tok.SignedString(key)
+	if err != nil {
+		return err
+	}
+	r.Client.Transport = &bearerTransport{
+		base:  r.Client.Transport,
+		token: raw,
+	}
+	return nil
 }

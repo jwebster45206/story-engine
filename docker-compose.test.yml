@@ -15,7 +15,7 @@ services:
         condition: service_healthy
     volumes:
       - ./integration/cases:/app/integration/cases:ro
-      - ./jwt-ec.pem:/app/jwt-ec.pem:ro
+      - ./auth-key.pem:/app/auth-key.pem:ro
     command: ["go", "test", "-tags=integration", "./integration/...", "-v"]
     networks:
       - story-engine-network
