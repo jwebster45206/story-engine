@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/jwebster45206/story-engine/internal/httperror"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
@@ -20,13 +21,13 @@ func (h *ScenarioHandler) ListScenarios(w http.ResponseWriter, r *http.Request) 
 	scenarios, err := h.storage.ListScenarios(ctx)
 	if err != nil {
 		h.log.Error("Failed to list scenarios", "error", err)
-		http.Error(w, "Failed to list scenarios", http.StatusInternalServerError)
+		httperror.Write(w, h.log, http.StatusInternalServerError, "Failed to list scenarios")
 		return
 	}
 	data, err := json.Marshal(scenarios)
 	if err != nil {
 		h.log.Error("Failed to marshal scenario list", "error", err)
-		http.Error(w, "Failed to process scenario list", http.StatusInternalServerError)
+		httperror.Write(w, h.log, http.StatusInternalServerError, "Failed to process scenario list")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -52,7 +53,7 @@ func (h *ScenarioHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.handleGet(w, r)
 		}
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httperror.Write(w, h.log, http.StatusMethodNotAllowed, "Method not allowed")
 	}
 }
 
@@ -61,12 +62,12 @@ func (h *ScenarioHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	filename := strings.TrimSpace(path)
 
 	if filename == "" || filename == "/scenarios" {
-		http.Error(w, "filename is required in URL path (e.g., /scenarios/pirate.json)", http.StatusBadRequest)
+		httperror.Write(w, h.log, http.StatusBadRequest, "filename is required in URL path (e.g., /scenarios/pirate.json)")
 		return
 	}
 
 	if strings.Contains(filename, "..") || strings.Contains(filename, "/") {
-		http.Error(w, "Invalid filename", http.StatusBadRequest)
+		httperror.Write(w, h.log, http.StatusBadRequest, "Invalid filename")
 		return
 	}
 
@@ -74,18 +75,18 @@ func (h *ScenarioHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	scenario, err := h.storage.GetScenario(ctx, filename)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Scenario not found", http.StatusNotFound)
+			httperror.Write(w, h.log, http.StatusNotFound, "Scenario not found")
 			return
 		}
 		h.log.Error("Failed to get scenario", "error", err, "filename", filename)
-		http.Error(w, "Failed to retrieve scenario", http.StatusInternalServerError)
+		httperror.Write(w, h.log, http.StatusInternalServerError, "Failed to retrieve scenario")
 		return
 	}
 
 	data, err := json.Marshal(scenario)
 	if err != nil {
 		h.log.Error("Failed to marshal scenario", "error", err, "filename", filename)
-		http.Error(w, "Failed to process scenario", http.StatusInternalServerError)
+		httperror.Write(w, h.log, http.StatusInternalServerError, "Failed to process scenario")
 		return
 	}
 

@@ -16,6 +16,7 @@ import (
 	"uuid"
 
 	"github.com/jwebster45206/story-engine/internal/auth"
+	"github.com/jwebster45206/story-engine/internal/httperror"
 	"github.com/jwebster45206/story-engine/internal/llm"
 	"github.com/jwebster45206/story-engine/internal/middleware"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
@@ -283,7 +284,7 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 				}
 			} else {
 				// Should be an error response
-				var response ErrorResponse
+				var response httperror.Response
 				if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
 					t.Fatalf("Failed to decode error response: %v", err)
 				}
@@ -345,7 +346,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 			}
 
 			if tt.expectError {
-				var response ErrorResponse
+				var response httperror.Response
 				if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
 					t.Fatalf("Failed to decode error response: %v", err)
 				}
@@ -417,7 +418,7 @@ func TestGameStateHandler_Delete(t *testing.T) {
 			}
 
 			if tt.expectError {
-				var response ErrorResponse
+				var response httperror.Response
 				if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
 					t.Fatalf("Failed to decode error response: %v", err)
 				}
@@ -457,7 +458,7 @@ func TestGameStateHandler_MethodNotAllowed(t *testing.T) {
 				t.Errorf("Expected status 405 for method %s, got %d", method, rr.Code)
 			}
 
-			var response ErrorResponse
+			var response httperror.Response
 			if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
 				t.Fatalf("Failed to decode response: %v", err)
 			}
@@ -507,7 +508,7 @@ func TestGameStateHandler_MissingID(t *testing.T) {
 				t.Errorf("Expected status 400 for %s without ID, got %d", tt.method, rr.Code)
 			}
 
-			var response ErrorResponse
+			var response httperror.Response
 			if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
 				t.Fatalf("Failed to decode response: %v", err)
 			}

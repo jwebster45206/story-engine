@@ -19,10 +19,6 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
 // ProviderCatalog is the slice of the registry that HTTP handlers need.
 type ProviderCatalog interface {
 	Default() string
@@ -78,13 +74,7 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		gameStateID, err = uuid.Parse(idStr)
 		if err != nil {
 			h.logger.Warn("Invalid game state ID", "id", idStr, "error", err)
-			w.WriteHeader(http.StatusBadRequest)
-			response := ErrorResponse{
-				Error: "Invalid game state ID format",
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				h.logger.Error("Failed to encode error response", "error", err)
-			}
+			httperror.Write(w, h.logger, http.StatusBadRequest, "Invalid game state ID format")
 			return
 		}
 	}
@@ -96,26 +86,14 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		if gameStateID == uuid.Nil() {
 			h.logger.Warn("GET request without game state ID")
-			w.WriteHeader(http.StatusBadRequest)
-			response := ErrorResponse{
-				Error: "Game state ID is required for GET requests",
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				h.logger.Error("Failed to encode error response", "error", err)
-			}
+			httperror.Write(w, h.logger, http.StatusBadRequest, "Game state ID is required for GET requests")
 			return
 		}
 		h.handleRead(w, r, gameStateID)
 
 	case http.MethodPatch:
 		if gameStateID == uuid.Nil() {
-			w.WriteHeader(http.StatusBadRequest)
-			response := ErrorResponse{
-				Error: "Game state ID is required for PATCH requests",
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				h.logger.Error("Failed to encode error response", "error", err)
-			}
+			httperror.Write(w, h.logger, http.StatusBadRequest, "Game state ID is required for PATCH requests")
 			return
 		}
 		h.handlePatch(w, r, gameStateID)
@@ -123,26 +101,14 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		if gameStateID == uuid.Nil() {
 			h.logger.Warn("DELETE request without game state ID")
-			w.WriteHeader(http.StatusBadRequest)
-			response := ErrorResponse{
-				Error: "Game state ID is required for DELETE requests",
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				h.logger.Error("Failed to encode error response", "error", err)
-			}
+			httperror.Write(w, h.logger, http.StatusBadRequest, "Game state ID is required for DELETE requests")
 			return
 		}
 		h.handleDelete(w, r, gameStateID)
 
 	default:
 		h.logger.Warn("Method not allowed for game state endpoint", "method", r.Method)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		response := ErrorResponse{
-			Error: "Method not allowed. Supported methods: POST, GET, PATCH, DELETE",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusMethodNotAllowed, "Method not allowed. Supported methods: POST, GET, PATCH, DELETE")
 	}
 }
 
@@ -158,25 +124,13 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	var req state.GameState
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Warn("Invalid JSON in request body", "error", err)
-		w.WriteHeader(http.StatusBadRequest)
-		response := ErrorResponse{
-			Error: "Invalid JSON in request body",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusBadRequest, "Invalid JSON in request body")
 		return
 	}
 
 	if err := req.Validate(); err != nil {
 		h.logger.Warn("Invalid create gamestate request", "error", err)
-		w.WriteHeader(http.StatusBadRequest)
-		response := ErrorResponse{
-			Error: err.Error(),
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusBadRequest, err.Error())
 		return
 	}
 	req.Normalize()
@@ -188,13 +142,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	info, ok := h.catalog.Info(provider)
 	if !ok {
 		h.logger.Warn("Unknown provider on create", "provider", provider)
-		w.WriteHeader(http.StatusBadRequest)
-		response := ErrorResponse{
-			Error: "Unknown provider: " + provider,
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusBadRequest, "Unknown provider: "+provider)
 		return
 	}
 
@@ -202,13 +150,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	s, err := h.storage.GetScenario(r.Context(), req.Scenario)
 	if err != nil {
 		h.logger.Warn("Failed to load scenario", "error", err)
-		w.WriteHeader(http.StatusBadRequest)
-		response := ErrorResponse{
-			Error: "Failed to load scenario: " + err.Error(),
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusBadRequest, "Failed to load scenario: "+err.Error())
 		return
 	}
 
@@ -330,13 +272,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		err = gs.LoadScene(s, s.OpeningScene)
 		if err != nil {
 			h.logger.Warn("Failed to load opening scene", "error", err)
-			w.WriteHeader(http.StatusBadRequest)
-			response := ErrorResponse{
-				Error: "Failed to load opening scene: " + err.Error(),
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				h.logger.Error("Failed to encode error response", "error", err)
-			}
+			httperror.Write(w, h.logger, http.StatusBadRequest, "Failed to load opening scene: "+err.Error())
 			return
 		}
 	}
@@ -398,13 +334,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 
 	if err := h.storage.CreateGameState(r.Context(), gs.ID, gs, p.ID); err != nil {
 		h.logger.Error("Failed to save new game state", "error", err, "id", gs.ID.String())
-		w.WriteHeader(http.StatusInternalServerError)
-		response := ErrorResponse{
-			Error: "Failed to create game state",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusInternalServerError, "Failed to create game state")
 		return
 	}
 
@@ -460,13 +390,7 @@ func (h *GameStateHandler) handlePatch(w http.ResponseWriter, r *http.Request, g
 	var patchData state.GameState
 	if err := json.NewDecoder(r.Body).Decode(&patchData); err != nil {
 		h.logger.Warn("Invalid JSON in PATCH request body", "error", err)
-		w.WriteHeader(http.StatusBadRequest)
-		response := ErrorResponse{
-			Error: "Invalid JSON in request body",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusBadRequest, "Invalid JSON in request body")
 		return
 	}
 
@@ -516,13 +440,7 @@ func (h *GameStateHandler) handlePatch(w http.ResponseWriter, r *http.Request, g
 
 	if err := h.storage.UpdateGameState(r.Context(), gameStateID, &updatedGS); err != nil {
 		h.logger.Error("Failed to save patched game state", "error", err, "id", gameStateID.String())
-		w.WriteHeader(http.StatusInternalServerError)
-		response := ErrorResponse{
-			Error: "Failed to save game state",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusInternalServerError, "Failed to save game state")
 		return
 	}
 
@@ -540,13 +458,7 @@ func (h *GameStateHandler) handleDelete(w http.ResponseWriter, r *http.Request, 
 	}
 	if err := h.storage.DeleteGameState(r.Context(), gameStateID); err != nil {
 		h.logger.Error("Failed to delete game state", "error", err, "id", gameStateID.String())
-		w.WriteHeader(http.StatusInternalServerError)
-		response := ErrorResponse{
-			Error: "Failed to delete game state",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
+		httperror.Write(w, h.logger, http.StatusInternalServerError, "Failed to delete game state")
 		return
 	}
 	h.logger.Debug("Game state deleted successfully", "id", gameStateID.String())

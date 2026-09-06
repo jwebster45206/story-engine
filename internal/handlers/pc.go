@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/jwebster45206/story-engine/internal/httperror"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
@@ -20,7 +21,7 @@ func (h *PCHandler) ListPCs(w http.ResponseWriter, r *http.Request) {
 	pcIDs, err := h.storage.ListPCs(r.Context())
 	if err != nil {
 		h.log.Error("Failed to list PCs", "error", err)
-		http.Error(w, "Failed to list PCs", http.StatusInternalServerError)
+		httperror.Write(w, h.log, http.StatusInternalServerError, "Failed to list PCs")
 		return
 	}
 
@@ -49,7 +50,7 @@ func (h *PCHandler) ListPCs(w http.ResponseWriter, r *http.Request) {
 	data, err := json.Marshal(pcList)
 	if err != nil {
 		h.log.Error("Failed to marshal PC list", "error", err)
-		http.Error(w, "Failed to process PC list", http.StatusInternalServerError)
+		httperror.Write(w, h.log, http.StatusInternalServerError, "Failed to process PC list")
 		return
 	}
 
@@ -76,7 +77,7 @@ func (h *PCHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.handleGet(w, r)
 		}
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httperror.Write(w, h.log, http.StatusMethodNotAllowed, "Method not allowed")
 	}
 }
 
@@ -85,13 +86,13 @@ func (h *PCHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(path)
 
 	if id == "" || id == "/" {
-		http.Error(w, "PC ID is required in URL path (e.g., /v1/pcs/pirate_captain)", http.StatusBadRequest)
+		httperror.Write(w, h.log, http.StatusBadRequest, "PC ID is required in URL path (e.g., /v1/pcs/pirate_captain)")
 		return
 	}
 
 	// Security: prevent directory traversal
 	if strings.Contains(id, "..") || strings.Contains(id, "/") {
-		http.Error(w, "Invalid PC ID", http.StatusBadRequest)
+		httperror.Write(w, h.log, http.StatusBadRequest, "Invalid PC ID")
 		return
 	}
 
@@ -99,11 +100,11 @@ func (h *PCHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	pcSpec, err := h.storage.GetPCSpec(r.Context(), id)
 	if err != nil {
 		if err.Error() == "PC spec not found" {
-			http.Error(w, "PC not found", http.StatusNotFound)
+			httperror.Write(w, h.log, http.StatusNotFound, "PC not found")
 			return
 		}
 		h.log.Error("Failed to load PC spec", "error", err, "id", id)
-		http.Error(w, "Failed to load PC", http.StatusInternalServerError)
+		httperror.Write(w, h.log, http.StatusInternalServerError, "Failed to load PC")
 		return
 	}
 
@@ -111,7 +112,7 @@ func (h *PCHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	loadedPC, err := actor.NewPCFromSpec(pcSpec)
 	if err != nil {
 		h.log.Error("Failed to build PC from spec", "error", err, "id", id)
-		http.Error(w, "Failed to build PC", http.StatusInternalServerError)
+		httperror.Write(w, h.log, http.StatusInternalServerError, "Failed to build PC")
 		return
 	}
 
@@ -119,7 +120,7 @@ func (h *PCHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	data, err := json.Marshal(loadedPC)
 	if err != nil {
 		h.log.Error("Failed to marshal PC", "error", err, "id", id)
-		http.Error(w, "Failed to process PC", http.StatusInternalServerError)
+		httperror.Write(w, h.log, http.StatusInternalServerError, "Failed to process PC")
 		return
 	}
 
