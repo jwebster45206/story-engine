@@ -2,12 +2,16 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"uuid"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
+
+// ErrNotFound is returned when a stored resource does not exist.
+var ErrNotFound = errors.New("not found")
 
 // Storage defines a unified interface for all storage operations
 // This interface combines gamestate persistence (Redis) with resource loading (filesystem)
@@ -21,7 +25,7 @@ type Storage interface {
 	LoadGameState(ctx context.Context, id uuid.UUID) (*state.GameState, error)
 	DeleteGameState(ctx context.Context, id uuid.UUID) error
 	SetOwner(ctx context.Context, id uuid.UUID, owner uuid.UUID) error
-	GetOwner(ctx context.Context, id uuid.UUID) (owner uuid.UUID, found bool, err error)
+	GetOwner(ctx context.Context, id uuid.UUID) (owner uuid.UUID, err error)
 
 	// Scenario operations (filesystem-backed)
 	ListScenarios(ctx context.Context) (map[string]string, error)

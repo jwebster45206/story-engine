@@ -2,10 +2,14 @@ package storage
 
 import (
 	"context"
+	"errors"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 	"uuid"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/jwebster45206/story-engine/pkg/state"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
@@ -132,5 +136,97 @@ func TestMockStorage_UpdateGameState(t *testing.T) {
 
 	if len(loaded.Inventory) != 1 || loaded.Inventory[0] != "potion" {
 		t.Errorf("Expected inventory with 'potion', got %v", loaded.Inventory)
+	}
+}
+
+func newTestRedisStorage(t *testing.T) (*RedisStorage, *miniredis.Miniredis) {
+	t.Helper()
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("miniredis: %v", err)
+	}
+	t.Cleanup(mr.Close)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	store := NewRedisStorage(mr.Addr(), t.TempDir(), logger)
+	t.Cleanup(func() {
+		_ = store.Close()
+	})
+	return store, mr
+}
+
+func TestRedisStorage_Owner(t *testing.T) {
+	store, mr := newTestRedisStorage(t)
+	ctx := t.Context()
+	owner := uuid.MustParse("22222222-2222-4222-8222-222222222222")
+	gs := state.NewGameState("test_scenario.json", nil, "test-provider", "test_model")
+
+	if err := store.SetOwner(ctx, uuid.Nil(), owner); err == nil {
+		t.Fatal("SetOwner with nil id should fail")
+	}
+	if err := store.SetOwner(ctx, gs.ID, uuid.Nil()); err == nil {
+		t.Fatal("SetOwner with nil owner should fail")
+	}
+
+	if err := store.SaveGameState(ctx, gs.ID, gs); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetOwner(ctx, gs.ID, owner); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.GetOwner(ctx, gs.ID)
+	if err != nil || got != owner {
+		t.Fatalf("GetOwner = %v err=%v", got, err)
+	}
+
+	gs.Location = "forest"
+	if err := store.SaveGameState(ctx, gs.ID, gs); err != nil {
+		t.Fatal(err)
+	}
+	got, err = store.GetOwner(ctx, gs.ID)
+	if err != nil || got != owner {
+		t.Fatalf("SaveGameState changed owner: %v err=%v", got, err)
+	}
+
+	blobTTL := mr.TTL(gamestateKey(gs.ID))
+	ownerTTL := mr.TTL(gamestateOwnerKey(gs.ID))
+	if blobTTL != gameStateTTL {
+		t.Fatalf("gamestate TTL = %v, want %v", blobTTL, gameStateTTL)
+	}
+	if ownerTTL != blobTTL {
+		t.Fatalf("owner TTL = %v, blob TTL = %v", ownerTTL, blobTTL)
+	}
+
+	if err := store.DeleteGameState(ctx, gs.ID); err != nil {
+		t.Fatal(err)
+	}
+	_, err = store.GetOwner(ctx, gs.ID)
+	if !errors.Is(err, storage.ErrNotFound) {
+		t.Fatalf("after delete GetOwner err = %v, want ErrNotFound", err)
+	}
+
+	missing := uuid.New()
+	_, err = store.GetOwner(ctx, missing)
+	if !errors.Is(err, storage.ErrNotFound) {
+		t.Fatalf("missing GetOwner err = %v, want ErrNotFound", err)
+	}
+
+	gs2 := state.NewGameState("test_scenario.json", nil, "test-provider", "test_model")
+	if err := store.SaveGameState(ctx, gs2.ID, gs2); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetOwner(ctx, gs2.ID, owner); err != nil {
+		t.Fatal(err)
+	}
+	mr.FastForward(gameStateTTL + time.Second)
+	_, err = store.GetOwner(ctx, gs2.ID)
+	if !errors.Is(err, storage.ErrNotFound) {
+		t.Fatalf("expired GetOwner err = %v, want ErrNotFound", err)
+	}
+	loaded, err := store.LoadGameState(ctx, gs2.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded != nil {
+		t.Fatal("gamestate blob should expire with owner key")
 	}
 }

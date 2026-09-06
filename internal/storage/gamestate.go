@@ -9,6 +9,7 @@ import (
 	"uuid"
 
 	"github.com/jwebster45206/story-engine/pkg/state"
+	"github.com/jwebster45206/story-engine/pkg/storage"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -71,8 +72,8 @@ func (r *RedisStorage) LoadGameState(ctx context.Context, id uuid.UUID) (*state.
 }
 
 func (r *RedisStorage) SetOwner(ctx context.Context, id uuid.UUID, owner uuid.UUID) error {
-	if owner == uuid.Nil() {
-		return fmt.Errorf("owner must not be empty")
+	if id == uuid.Nil() || owner == uuid.Nil() {
+		return fmt.Errorf("id and owner must not be empty")
 	}
 	if err := r.client.Set(ctx, gamestateOwnerKey(id), owner.String(), gameStateTTL).Err(); err != nil {
 		r.logger.Error("Failed to save gamestate owner", "uuid", id, "error", err)
@@ -81,20 +82,20 @@ func (r *RedisStorage) SetOwner(ctx context.Context, id uuid.UUID, owner uuid.UU
 	return nil
 }
 
-func (r *RedisStorage) GetOwner(ctx context.Context, id uuid.UUID) (uuid.UUID, bool, error) {
+func (r *RedisStorage) GetOwner(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
 	cmd := r.client.Get(ctx, gamestateOwnerKey(id))
 	if err := cmd.Err(); err != nil {
 		if errors.Is(err, redis.Nil) {
-			return uuid.Nil(), false, nil
+			return uuid.Nil(), storage.ErrNotFound
 		}
 		r.logger.Error("Failed to load gamestate owner", "uuid", id, "error", err)
-		return uuid.Nil(), false, fmt.Errorf("failed to load gamestate owner: %w", err)
+		return uuid.Nil(), fmt.Errorf("failed to load gamestate owner: %w", err)
 	}
 	owner, err := uuid.Parse(cmd.Val())
 	if err != nil {
-		return uuid.Nil(), false, fmt.Errorf("gamestate owner is not a UUID: %w", err)
+		return uuid.Nil(), fmt.Errorf("gamestate owner is not a UUID: %w", err)
 	}
-	return owner, true, nil
+	return owner, nil
 }
 
 func (r *RedisStorage) DeleteGameState(ctx context.Context, id uuid.UUID) error {

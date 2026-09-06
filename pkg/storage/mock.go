@@ -102,8 +102,8 @@ func (m *MockStorage) DeleteGameState(ctx context.Context, id uuid.UUID) error {
 }
 
 func (m *MockStorage) SetOwner(ctx context.Context, id uuid.UUID, owner uuid.UUID) error {
-	if owner == uuid.Nil() {
-		return errors.New("owner must not be empty")
+	if id == uuid.Nil() || owner == uuid.Nil() {
+		return errors.New("id and owner must not be empty")
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -111,14 +111,14 @@ func (m *MockStorage) SetOwner(ctx context.Context, id uuid.UUID, owner uuid.UUI
 	return nil
 }
 
-func (m *MockStorage) GetOwner(ctx context.Context, id uuid.UUID) (uuid.UUID, bool, error) {
+func (m *MockStorage) GetOwner(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	owner, ok := m.owners[id]
 	if !ok {
-		return uuid.Nil(), false, nil
+		return uuid.Nil(), ErrNotFound
 	}
-	return owner, true, nil
+	return owner, nil
 }
 
 // ListScenarios mocks listing scenarios

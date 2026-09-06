@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/subtle"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -40,15 +39,6 @@ func WithPrincipal(ctx context.Context, p Principal) context.Context {
 func PrincipalFrom(ctx context.Context) (Principal, bool) {
 	p, ok := ctx.Value(contextKey{}).(Principal)
 	return p, ok
-}
-
-// CanAccess reports whether p may operate on a gamestate owned by owner.
-// The nil UUID is not owned by anyone.
-func (p Principal) CanAccess(owner uuid.UUID) bool {
-	if owner == uuid.Nil() || p.ID == uuid.Nil() {
-		return false
-	}
-	return subtle.ConstantTimeCompare([]byte(p.ID.String()), []byte(owner.String())) == 1
 }
 
 // ParseBearer verifies an ES256 JWT and returns the principal from sub.

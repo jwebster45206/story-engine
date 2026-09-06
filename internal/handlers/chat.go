@@ -87,7 +87,8 @@ func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.AuthorizeGame(w, r, h.storage, request.GameStateID, h.logger) {
+	if err := auth.AuthorizeGame(r, h.storage, request.GameStateID); err != nil {
+		writeAuthorizeError(w, h.logger, err)
 		return
 	}
 

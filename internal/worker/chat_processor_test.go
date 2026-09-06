@@ -201,8 +201,8 @@ func (s *stubStorage) DeleteGameState(_ context.Context, _ uuid.UUID) error { re
 func (s *stubStorage) SetOwner(_ context.Context, _ uuid.UUID, _ uuid.UUID) error {
 	return nil
 }
-func (s *stubStorage) GetOwner(_ context.Context, _ uuid.UUID) (uuid.UUID, bool, error) {
-	return uuid.Nil(), false, nil
+func (s *stubStorage) GetOwner(_ context.Context, _ uuid.UUID) (uuid.UUID, error) {
+	return uuid.Nil(), nil
 }
 func (s *stubStorage) ListScenarios(_ context.Context) (map[string]string, error) {
 	return nil, nil

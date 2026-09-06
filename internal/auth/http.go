@@ -1,41 +1,39 @@
 package auth
 
 import (
-	"log/slog"
+	"errors"
 	"net/http"
 	"uuid"
 
-	"github.com/jwebster45206/story-engine/internal/httperror"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
+var (
+	ErrUnauthorized = errors.New("unauthorized")
+	ErrForbidden    = errors.New("forbidden")
+)
+
 // RequirePrincipal returns the caller Principal.
-// Writes 401 when none is present.
-func RequirePrincipal(w http.ResponseWriter, r *http.Request, logger *slog.Logger) (Principal, bool) {
+func RequirePrincipal(r *http.Request) (Principal, error) {
 	p, ok := PrincipalFrom(r.Context())
 	if !ok {
-		httperror.Write(w, logger, http.StatusUnauthorized, "unauthorized")
-		return Principal{}, false
+		return Principal{}, ErrUnauthorized
 	}
-	return p, true
+	return p, nil
 }
 
 // AuthorizeGame reports whether the caller may access the gamestate.
-// Writes 401 when no principal is present, 404 when missing or not owned, 500 on storage errors.
-func AuthorizeGame(w http.ResponseWriter, r *http.Request, store storage.Storage, id uuid.UUID, logger *slog.Logger) bool {
-	p, ok := RequirePrincipal(w, r, logger)
-	if !ok {
-		return false
-	}
-	owner, found, err := store.GetOwner(r.Context(), id)
+func AuthorizeGame(r *http.Request, store storage.Storage, id uuid.UUID) error {
+	p, err := RequirePrincipal(r)
 	if err != nil {
-		logger.Error("Failed to load game state owner", "error", err, "id", id.String())
-		httperror.Write(w, logger, http.StatusInternalServerError, "Failed to load game state")
-		return false
+		return err
 	}
-	if !found || !p.CanAccess(owner) {
-		httperror.Write(w, logger, http.StatusNotFound, "Game state not found")
-		return false
+	owner, err := store.GetOwner(r.Context(), id)
+	if err != nil {
+		return err
 	}
-	return true
+	if p.ID != owner {
+		return ErrForbidden
+	}
+	return nil
 }

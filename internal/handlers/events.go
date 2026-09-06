@@ -72,7 +72,8 @@ func (h *EventsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.AuthorizeGame(w, r, h.storage, gameStateID, h.logger) {
+	if err := auth.AuthorizeGame(r, h.storage, gameStateID); err != nil {
+		writeAuthorizeError(w, h.logger, err)
 		return
 	}
 

@@ -2,7 +2,11 @@ package handlers
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +17,7 @@ import (
 
 	"github.com/jwebster45206/story-engine/internal/auth"
 	"github.com/jwebster45206/story-engine/internal/llm"
+	"github.com/jwebster45206/story-engine/internal/middleware"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 	"github.com/jwebster45206/story-engine/pkg/storage"
@@ -46,18 +51,47 @@ func (s *stubCatalog) Info(name string) (llm.ProviderInfo, bool) {
 	return info, ok
 }
 
-var testOwnerID = uuid.MustParse("22222222-2222-4222-8222-222222222222")
+var (
+	testOwnerID    = uuid.MustParse("22222222-2222-4222-8222-222222222222")
+	testPrincipalA = testOwnerID
+	testPrincipalB = uuid.MustParse("44444444-4444-4444-8444-444444444444")
+)
 
 func withTestPrincipal(r *http.Request) *http.Request {
 	return r.WithContext(auth.WithPrincipal(r.Context(), auth.Principal{ID: testOwnerID}))
 }
 
-func saveOwned(t *testing.T, store *storage.MockStorage, gs *state.GameState, owner uuid.UUID) {
+func testKeyPair(t *testing.T) (*ecdsa.PrivateKey, *ecdsa.PublicKey) {
 	t.Helper()
-	if err := store.SaveGameState(context.Background(), gs.ID, gs); err != nil {
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SetOwner(context.Background(), gs.ID, owner); err != nil {
+	return priv, &priv.PublicKey
+}
+
+func serveJWT(t *testing.T, h http.Handler, pub *ecdsa.PublicKey, w http.ResponseWriter, r *http.Request, raw string) {
+	t.Helper()
+	r.Header.Set("Authorization", "Bearer "+raw)
+	middleware.JWT(pub, h).ServeHTTP(w, r)
+}
+
+func tokenFor(t *testing.T, priv *ecdsa.PrivateKey, id uuid.UUID) string {
+	t.Helper()
+	raw, err := auth.Token(priv, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
+// saveOwned writes a gamestate and stamps its owner so tests can skip POST /gamestate.
+func saveOwned(t *testing.T, ctx context.Context, store *storage.MockStorage, gs *state.GameState, owner uuid.UUID) {
+	t.Helper()
+	if err := store.SaveGameState(ctx, gs.ID, gs); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetOwner(ctx, gs.ID, owner); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -274,7 +308,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 
 	// Create a test game state (nil narrator is fine for tests)
 	testGS := state.NewGameState("FooScenario", nil, "test-provider", "foo_model")
-	saveOwned(t, mockStorage, testGS, testOwnerID)
+	saveOwned(t, t.Context(), mockStorage, testGS, testOwnerID)
 
 	tests := []struct {
 		name           string
@@ -346,7 +380,7 @@ func TestGameStateHandler_Delete(t *testing.T) {
 
 	// Create a test game state (nil narrator is fine for tests)
 	testGS := state.NewGameState("FooScenario", nil, "test-provider", "foo_model")
-	saveOwned(t, mockStorage, testGS, testOwnerID)
+	saveOwned(t, t.Context(), mockStorage, testGS, testOwnerID)
 
 	tests := []struct {
 		name           string
@@ -560,5 +594,82 @@ func TestGameStateHandler_CreateRulesAndTemperature(t *testing.T) {
 				t.Errorf("Temperature = %f, want %f", response.Temperature, tt.wantTemp)
 			}
 		})
+	}
+}
+
+func TestGameStateOwnership(t *testing.T) {
+	mockStorage := storage.NewMockStorage()
+	mockStorage.AddScenario("foo_scenario.json", &scenario.Scenario{
+		Name:            "Test Scenario",
+		FileName:        "foo_scenario.json",
+		Story:           "A test scenario",
+		OpeningPrompt:   "Welcome!",
+		OpeningLocation: "start",
+		Locations: map[string]scenario.Location{
+			"start": {Name: "start", Description: "Starting location"},
+		},
+	})
+	handler := NewGameStateHandler(slog.New(slog.NewTextHandler(io.Discard, nil)), testCatalog(), mockStorage)
+	priv, pub := testKeyPair(t)
+	tokenA := tokenFor(t, priv, testPrincipalA)
+	tokenB := tokenFor(t, priv, testPrincipalB)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/gamestate", strings.NewReader(`{"scenario":"foo_scenario.json"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	serveJWT(t, handler, pub, rr, req, tokenA)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("create status = %d body=%s", rr.Code, rr.Body.String())
+	}
+	var created state.GameState
+	if err := json.NewDecoder(rr.Body).Decode(&created); err != nil {
+		t.Fatal(err)
+	}
+	owner, err := mockStorage.GetOwner(t.Context(), created.ID)
+	if err != nil || owner != testPrincipalA {
+		t.Fatalf("owner = %v err=%v", owner, err)
+	}
+
+	orphan := state.NewGameState("foo_scenario.json", nil, "foo", "foo_model")
+	if err := mockStorage.SaveGameState(t.Context(), orphan.ID, orphan); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+		token  string
+		want   int
+	}{
+		{name: "owner reads", method: http.MethodGet, path: "/v1/gamestate/" + created.ID.String(), token: tokenA, want: http.StatusOK},
+		{name: "other principal 403", method: http.MethodGet, path: "/v1/gamestate/" + created.ID.String(), token: tokenB, want: http.StatusForbidden},
+		{name: "missing owner sidecar 404", method: http.MethodGet, path: "/v1/gamestate/" + orphan.ID.String(), token: tokenA, want: http.StatusNotFound},
+		{name: "owner patches", method: http.MethodPatch, path: "/v1/gamestate/" + created.ID.String(), body: `{"location":"forest"}`, token: tokenA, want: http.StatusOK},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var body *strings.Reader
+			if tt.body != "" {
+				body = strings.NewReader(tt.body)
+			} else {
+				body = strings.NewReader("")
+			}
+			req := httptest.NewRequest(tt.method, tt.path, body)
+			if tt.body != "" {
+				req.Header.Set("Content-Type", "application/json")
+			}
+			rr := httptest.NewRecorder()
+			serveJWT(t, handler, pub, rr, req, tt.token)
+			if rr.Code != tt.want {
+				t.Fatalf("status = %d, want %d body=%s", rr.Code, tt.want, rr.Body.String())
+			}
+		})
+	}
+
+	owner, err = mockStorage.GetOwner(t.Context(), created.ID)
+	if err != nil || owner != testPrincipalA {
+		t.Fatalf("owner after patch = %v err=%v", owner, err)
 	}
 }

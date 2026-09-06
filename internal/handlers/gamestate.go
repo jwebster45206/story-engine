@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -43,18 +44,18 @@ func NewGameStateHandler(logger *slog.Logger, catalog ProviderCatalog, storage s
 	}
 }
 
-func (h *GameStateHandler) loadGame(w http.ResponseWriter, r *http.Request, id uuid.UUID) (*state.GameState, bool) {
-	gs, err := h.storage.LoadGameState(r.Context(), id)
-	if err != nil {
-		h.logger.Error("Failed to load game state", "error", err, "id", id.String())
-		httperror.Write(w, h.logger, http.StatusInternalServerError, "Failed to load game state")
-		return nil, false
+func writeAuthorizeError(w http.ResponseWriter, logger *slog.Logger, err error) {
+	switch {
+	case errors.Is(err, auth.ErrUnauthorized):
+		httperror.Write(w, logger, http.StatusUnauthorized, "unauthorized")
+	case errors.Is(err, auth.ErrForbidden):
+		httperror.Write(w, logger, http.StatusForbidden, "forbidden")
+	case errors.Is(err, storage.ErrNotFound):
+		httperror.Write(w, logger, http.StatusNotFound, "Game state not found")
+	default:
+		logger.Error("failed to authorize game", "error", err)
+		httperror.Write(w, logger, http.StatusInternalServerError, "Failed to load game state")
 	}
-	if gs == nil {
-		httperror.Write(w, h.logger, http.StatusNotFound, "Game state not found")
-		return nil, false
-	}
-	return gs, true
 }
 
 // ServeHTTP handles HTTP requests for game state operations
@@ -148,8 +149,9 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Creating new game state")
 
-	p, ok := auth.RequirePrincipal(w, r, h.logger)
-	if !ok {
+	p, err := auth.RequirePrincipal(r)
+	if err != nil {
+		httperror.Write(w, h.logger, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
@@ -428,11 +430,18 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *GameStateHandler) handleRead(w http.ResponseWriter, r *http.Request, gameStateID uuid.UUID) {
-	if !auth.AuthorizeGame(w, r, h.storage, gameStateID, h.logger) {
+	if err := auth.AuthorizeGame(r, h.storage, gameStateID); err != nil {
+		writeAuthorizeError(w, h.logger, err)
 		return
 	}
-	gs, ok := h.loadGame(w, r, gameStateID)
-	if !ok {
+	gs, err := h.storage.LoadGameState(r.Context(), gameStateID)
+	if err != nil {
+		h.logger.Error("Failed to load game state", "error", err, "id", gameStateID.String())
+		httperror.Write(w, h.logger, http.StatusInternalServerError, "Failed to load game state")
+		return
+	}
+	if gs == nil {
+		httperror.Write(w, h.logger, http.StatusNotFound, "Game state not found")
 		return
 	}
 
@@ -446,11 +455,18 @@ func (h *GameStateHandler) handleRead(w http.ResponseWriter, r *http.Request, ga
 // It doesn't do extensive validation of the update, so use with caution.
 // Integ tests are the current use case.
 func (h *GameStateHandler) handlePatch(w http.ResponseWriter, r *http.Request, gameStateID uuid.UUID) {
-	if !auth.AuthorizeGame(w, r, h.storage, gameStateID, h.logger) {
+	if err := auth.AuthorizeGame(r, h.storage, gameStateID); err != nil {
+		writeAuthorizeError(w, h.logger, err)
 		return
 	}
-	existingGS, ok := h.loadGame(w, r, gameStateID)
-	if !ok {
+	existingGS, err := h.storage.LoadGameState(r.Context(), gameStateID)
+	if err != nil {
+		h.logger.Error("Failed to load game state", "error", err, "id", gameStateID.String())
+		httperror.Write(w, h.logger, http.StatusInternalServerError, "Failed to load game state")
+		return
+	}
+	if existingGS == nil {
+		httperror.Write(w, h.logger, http.StatusNotFound, "Game state not found")
 		return
 	}
 
@@ -532,7 +548,8 @@ func (h *GameStateHandler) handlePatch(w http.ResponseWriter, r *http.Request, g
 }
 
 func (h *GameStateHandler) handleDelete(w http.ResponseWriter, r *http.Request, gameStateID uuid.UUID) {
-	if !auth.AuthorizeGame(w, r, h.storage, gameStateID, h.logger) {
+	if err := auth.AuthorizeGame(r, h.storage, gameStateID); err != nil {
+		writeAuthorizeError(w, h.logger, err)
 		return
 	}
 	if err := h.storage.DeleteGameState(r.Context(), gameStateID); err != nil {
