@@ -107,7 +107,6 @@ go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1'
 |----------|---------|-------------|
 | `API_BASE_URL` | `http://localhost:8080` | Base URL of the API to test |
 | `TEST_TIMEOUT_SECONDS` | `30` | Timeout per test step in seconds |
-| `STORY_ENGINE_PRINCIPAL` | unset | Optional caller `sub`; a UUID is used if unset |
 
 ```bash
 API_BASE_URL=http://api.example.com:8080 go test -v -tags=integration ./integration/

@@ -35,7 +35,6 @@ WORKDIR /app
 # Copy binaries from builder stage
 COPY --from=builder /app/api .
 COPY --from=builder /app/worker .
-COPY auth-key.pub.pem .
 
 # Note: config and scenario data are mounted as volumes in docker-compose.yml
 # This allows live editing without rebuilding the image

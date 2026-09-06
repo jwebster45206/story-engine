@@ -4,7 +4,6 @@ package integration
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"flag"
 	"fmt"
 	"os"
@@ -74,10 +73,7 @@ func TestIntegration(t *testing.T) {
 			testRunner.Logger = func(format string, args ...interface{}) {
 				t.Logf(format, args...)
 			}
-			priv, principal := mustJWT(t)
-			if err := testRunner.UseJWT(priv, principal); err != nil {
-				t.Fatal(err)
-			}
+			testRunner.Client.Transport = auth.Bearer(mustJWT(t))
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer cancel()
@@ -124,33 +120,15 @@ func getIntEnv(name string, defaultValue int) int {
 	return val
 }
 
-func mustJWT(t *testing.T) (*ecdsa.PrivateKey, uuid.UUID) {
+func mustJWT(t *testing.T) string {
 	t.Helper()
-	dir, err := os.Getwd()
+	key, err := auth.LoadPrivateKey("..")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			break
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			t.Fatal("go.mod not found")
-		}
-		dir = parent
-	}
-	key, err := auth.LoadPrivateKey(dir)
+	raw, err := auth.Token(key, uuid.MustParse("22222222-2222-4222-8222-222222222222"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw := strings.TrimSpace(os.Getenv("STORY_ENGINE_PRINCIPAL"))
-	if raw == "" {
-		return key, uuid.MustParse("22222222-2222-4222-8222-222222222222")
-	}
-	id, err := uuid.Parse(raw)
-	if err != nil || id == uuid.Nil {
-		t.Fatal("STORY_ENGINE_PRINCIPAL must be a non-nil UUID")
-	}
-	return key, id
+	return raw
 }

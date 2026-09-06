@@ -1,11 +1,9 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -23,9 +21,6 @@ type ErrorResponse struct {
 }
 
 func main() {
-	principalFlag := flag.String("principal", "", "principal UUID (or STORY_ENGINE_PRINCIPAL); generated if unset")
-	flag.Parse()
-
 	dir, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "working directory: %v\n", err)
@@ -36,34 +31,20 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	principal, err := loadPrincipal(*principalFlag)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	// TODO: replace local minting with a token from an auth service.
-	tok, err := auth.NewToken(principal)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	raw, err := tok.SignedString(priv)
+	raw, err := auth.Token(priv, uuid.New())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
 	cfg := &ConsoleConfig{
-		APIBaseURL: envOr("API_BASE_URL", "http://localhost:8080"),
+		APIBaseURL: getEnv("API_BASE_URL", "http://localhost:8080"),
 		Timeout:    0, // No timeout - SSE connections are long-lived, server has 30s keepalive
 	}
 
 	client := &http.Client{
-		Timeout: cfg.Timeout,
-		Transport: &bearerTransport{
-			base:  http.DefaultTransport,
-			token: raw,
-		},
+		Timeout:   cfg.Timeout,
+		Transport: auth.Bearer(raw),
 	}
 
 	if !testConnection(client, cfg.APIBaseURL) {
@@ -81,25 +62,7 @@ func main() {
 	}
 }
 
-func loadPrincipal(flagVal string) (uuid.UUID, error) {
-	raw := strings.TrimSpace(flagVal)
-	if raw == "" {
-		raw = strings.TrimSpace(os.Getenv("STORY_ENGINE_PRINCIPAL"))
-	}
-	if raw == "" {
-		return uuid.New(), nil
-	}
-	id, err := uuid.Parse(raw)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("principal: must be a UUID")
-	}
-	if id == uuid.Nil {
-		return uuid.Nil, fmt.Errorf("principal: nil UUID is not allowed")
-	}
-	return id, nil
-}
-
-func envOr(key, defaultValue string) string {
+func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
 	}

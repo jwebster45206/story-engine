@@ -8,13 +8,20 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
-const tokenTTL = time.Hour
+const (
+	tokenTTL       = time.Hour
+	privateKeyFile = "auth-key.pem"
+	publicKeyFile  = "auth-key.pub.pem"
+)
 
 type contextKey struct{}
 
@@ -64,41 +71,101 @@ func ParseBearer(pub *ecdsa.PublicKey, tokenString string) (Principal, error) {
 	return Principal{ID: id}, nil
 }
 
-// NewToken signs an ES256 JWT for principal. Local-issuer helper.
-func NewToken(principal uuid.UUID) (*jwt.Token, error) {
+// Token signs an ES256 JWT for principal. Local-issuer helper.
+func Token(key *ecdsa.PrivateKey, principal uuid.UUID) (string, error) {
+	if key == nil {
+		return "", fmt.Errorf("missing private key")
+	}
 	if principal == uuid.Nil {
-		return nil, fmt.Errorf("nil UUID is not allowed")
+		return "", fmt.Errorf("nil UUID is not allowed")
 	}
 	now := time.Now()
-	return jwt.NewWithClaims(jwt.SigningMethodES256, jwt.RegisteredClaims{
+	tok := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.RegisteredClaims{
 		Subject:   principal.String(),
 		IssuedAt:  jwt.NewNumericDate(now),
 		ExpiresAt: jwt.NewNumericDate(now.Add(tokenTTL)),
-	}), nil
+	})
+	return tok.SignedString(key)
 }
 
-// ParseES256PrivateKey parses a PEM-encoded EC private key (SEC1 or PKCS#8).
-func ParseES256PrivateKey(pemStr string) (*ecdsa.PrivateKey, error) {
-	block, _ := pem.Decode([]byte(pemStr))
+// LoadPrivateKey reads auth-key.pem from dir.
+func LoadPrivateKey(dir string) (*ecdsa.PrivateKey, error) {
+	path := filepath.Join(dir, privateKeyFile)
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	key, err := parsePrivateKey(b)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return key, nil
+}
+
+// LoadPublicKey reads auth-key.pub.pem from dir.
+func LoadPublicKey(dir string) (*ecdsa.PublicKey, error) {
+	path := filepath.Join(dir, publicKeyFile)
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	key, err := parsePublicKey(b)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return key, nil
+}
+
+func parsePrivateKey(pemBytes []byte) (*ecdsa.PrivateKey, error) {
+	block, _ := pem.Decode(pemBytes)
 	if block == nil {
 		return nil, fmt.Errorf("must be a PEM-encoded private key")
 	}
-	var key *ecdsa.PrivateKey
-	if parsed, err := x509.ParseECPrivateKey(block.Bytes); err == nil {
-		key = parsed
-	} else {
-		raw, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-		if err != nil {
-			return nil, fmt.Errorf("private key: %w", err)
-		}
-		ec, ok := raw.(*ecdsa.PrivateKey)
-		if !ok {
-			return nil, fmt.Errorf("private key must be ECDSA")
-		}
-		key = ec
+	key, err := x509.ParseECPrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
 	}
 	if key.Curve != elliptic.P256() {
-		return nil, fmt.Errorf("private key must use P-256")
+		return nil, fmt.Errorf("must use P-256")
 	}
 	return key, nil
+}
+
+func parsePublicKey(pemBytes []byte) (*ecdsa.PublicKey, error) {
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		return nil, fmt.Errorf("must be a PEM-encoded public key")
+	}
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	ec, ok := pub.(*ecdsa.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("must be an ECDSA public key")
+	}
+	if ec.Curve != elliptic.P256() {
+		return nil, fmt.Errorf("must use P-256")
+	}
+	return ec, nil
+}
+
+type bearerTransport struct {
+	base  http.RoundTripper
+	token string
+}
+
+// Bearer returns a RoundTripper that sets Authorization: Bearer on each request.
+func Bearer(token string) http.RoundTripper {
+	return &bearerTransport{base: http.DefaultTransport, token: token}
+}
+
+func (t *bearerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set("Authorization", "Bearer "+t.token)
+	base := t.base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	return base.RoundTrip(req)
 }

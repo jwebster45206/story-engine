@@ -18,29 +18,20 @@ A terminal-based user interface for the Story Engine, built with [Charm Bracelet
 
 ### Configuration
 
-The console needs the API base URL and `auth-key.pem` in the launch directory (same pair as the API’s `auth-key.pub.pem`). The process exits if the private key is missing.
+The console needs `auth-key.pem` in the working directory (see the [root README](../../README.md) for key generation). The process exits if the private key is missing.
 
-| Flag / env | Default |
-|------------|---------|
-| `--principal` / `STORY_ENGINE_PRINCIPAL` | generated UUID if unset |
+| Env | Default |
+|-----|---------|
 | `API_BASE_URL` | `http://localhost:8080` |
 
-Each request is sent with `Authorization: Bearer` and an ES256 JWT (`sub` = principal). This local minting is a stand-in for a token from an auth service.
-
-Generate a keypair in the launch directory (same commands as the [root README](../../README.md)):
-
-```bash
-openssl ecparam -name prime256v1 -genkey -noout -out auth-key.pem
-openssl ec -in auth-key.pem -pubout -out auth-key.pub.pem
-```
+Each request is sent with `Authorization: Bearer` and an ES256 JWT.
 
 ### Running the Client
 
 ```bash
 go run ./cmd/console
 
-API_BASE_URL=http://your-api-server:8080 go run ./cmd/console \
-  --principal=22222222-2222-4222-8222-222222222222
+API_BASE_URL=http://your-api-server:8080 go run ./cmd/console
 ```
 
 ## How It Works

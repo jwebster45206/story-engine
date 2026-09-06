@@ -81,11 +81,7 @@ func TestParseBearer(t *testing.T) {
 	}
 	noneTok := base64.RawURLEncoding.EncodeToString(header) + "." + base64.RawURLEncoding.EncodeToString(payload) + "."
 
-	tok, err := NewToken(id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	valid, err := tok.SignedString(priv)
+	valid, err := Token(priv, id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,8 +151,9 @@ func TestParseBearer(t *testing.T) {
 	}
 }
 
-func TestNewToken_NilPrincipal(t *testing.T) {
-	if _, err := NewToken(uuid.Nil); err == nil {
+func TestToken_NilPrincipal(t *testing.T) {
+	priv, _ := testKeys(t)
+	if _, err := Token(priv, uuid.Nil); err == nil {
 		t.Fatal("expected error")
 	}
 }
@@ -164,10 +161,10 @@ func TestNewToken_NilPrincipal(t *testing.T) {
 func TestLoadKeys(t *testing.T) {
 	priv, pub := testKeys(t)
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, PrivateKeyFile), privatePEM(t, priv), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, privateKeyFile), privatePEM(t, priv), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, PublicKeyFile), publicPEM(t, pub), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, publicKeyFile), publicPEM(t, pub), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	gotPriv, err := LoadPrivateKey(dir)

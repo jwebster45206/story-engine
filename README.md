@@ -13,7 +13,7 @@ A lightweight narrative engine for immersive, structured text adventures. Game e
 
 ## Architecture
 
-The Story Engine exposes a REST API for interactive, closed-world adventures. Clients create a game session, subscribe to Server-Sent Events, and send chat turns that a background worker processes with an LLM. Redis holds session state, the request queue, per-game locks, and SSE pub/sub between the API (`cmd/api`) and worker (`cmd/worker`). Treat Redis as trusted infrastructure, not a tenant boundary. An optional console TUI lives under `cmd/console`.
+The Story Engine exposes a REST API for interactive, closed-world adventures. Clients create a game session, subscribe to Server-Sent Events, and send chat turns that a background worker processes with an LLM. Redis holds session state, the request queue, per-game locks, and SSE pub/sub between the API (`cmd/api`) and worker (`cmd/worker`). An optional console TUI lives under `cmd/console`.
 
 Authenticated HTTP routes require `Authorization: Bearer` with an **ES256** JWT.
 

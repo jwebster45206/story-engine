@@ -9,6 +9,7 @@ services:
     volumes:
       - ${DATA_DIR:-./data}:/app/data
       - ./config.docker.json:/app/config.docker.json
+      - ./auth-key.pub.pem:/app/auth-key.pub.pem:ro
     environment:
       - CONFIG=/app/config.docker.json
     depends_on:

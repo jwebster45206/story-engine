@@ -18,12 +18,10 @@ func JWT(pub *ecdsa.PublicKey, next http.Handler) http.Handler {
 			return
 		}
 
-		token, ok := bearerToken(r.Header.Get("Authorization"))
-		if !ok {
-			httperror.Write(w, slog.Default(), http.StatusUnauthorized, "unauthorized")
-			return
+		var token string
+		if scheme, rest, ok := strings.Cut(r.Header.Get("Authorization"), " "); ok && strings.EqualFold(scheme, "Bearer") {
+			token = strings.TrimSpace(rest)
 		}
-
 		p, err := auth.ParseBearer(pub, token)
 		if err != nil {
 			httperror.Write(w, slog.Default(), http.StatusUnauthorized, "unauthorized")
@@ -32,16 +30,4 @@ func JWT(pub *ecdsa.PublicKey, next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r.WithContext(auth.WithPrincipal(r.Context(), p)))
 	})
-}
-
-func bearerToken(header string) (string, bool) {
-	scheme, rest, found := strings.Cut(header, " ")
-	if !found || !strings.EqualFold(scheme, "Bearer") {
-		return "", false
-	}
-	token := strings.TrimSpace(rest)
-	if token == "" {
-		return "", false
-	}
-	return token, true
 }
