@@ -191,13 +191,19 @@ type stubStorage struct {
 
 func (s *stubStorage) Ping(_ context.Context) error { return nil }
 func (s *stubStorage) Close() error                 { return nil }
-func (s *stubStorage) SaveGameState(_ context.Context, _ uuid.UUID, _ *state.GameState) error {
+func (s *stubStorage) CreateGameState(_ context.Context, _ uuid.UUID, _ *state.GameState, _ uuid.UUID) error {
+	return nil
+}
+func (s *stubStorage) UpdateGameState(_ context.Context, _ uuid.UUID, _ *state.GameState) error {
 	return nil
 }
 func (s *stubStorage) LoadGameState(_ context.Context, _ uuid.UUID) (*state.GameState, error) {
 	return s.gs, nil
 }
 func (s *stubStorage) DeleteGameState(_ context.Context, _ uuid.UUID) error { return nil }
+func (s *stubStorage) GetOwner(_ context.Context, _ uuid.UUID) (uuid.UUID, error) {
+	return uuid.Nil(), nil
+}
 func (s *stubStorage) ListScenarios(_ context.Context) (map[string]string, error) {
 	return nil, nil
 }

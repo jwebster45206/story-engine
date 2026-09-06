@@ -72,6 +72,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller does not own this game session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '405':
           description: Method not allowed
           content:
@@ -112,6 +118,12 @@ paths:
                 type: string
         '400':
           description: Invalid path or ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller does not own this game session
           content:
             application/json:
               schema:
@@ -213,6 +225,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller does not own this game session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Game state not found
           content:
@@ -262,6 +280,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller does not own this game session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Game state not found
           content:
@@ -294,6 +318,18 @@ paths:
           description: Game state deleted successfully
         '400':
           description: Invalid game state ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller does not own this game session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game state not found
           content:
             application/json:
               schema:
@@ -577,7 +613,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: ES256 JWT. `sub` is a UUID identifying the caller. `exp` is required.
+      description: ES256 JWT. `sub` is a UUID identifying the caller and owns created game sessions. `exp` is required.
   schemas:
     HealthResponse:
       type: object
