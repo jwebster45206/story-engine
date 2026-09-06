@@ -4,8 +4,8 @@ import (
 	"maps"
 	"slices"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/queue"
 	"github.com/jwebster45206/story-engine/pkg/scenario"

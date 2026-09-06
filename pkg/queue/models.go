@@ -3,8 +3,7 @@ package queue
 import (
 	"encoding/json"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 // RequestType identifies the type of request in the queue
