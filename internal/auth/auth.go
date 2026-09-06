@@ -14,6 +14,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const tokenTTL = time.Hour
+
 type contextKey struct{}
 
 // Principal is the authenticated caller attached to the request context.
@@ -33,7 +35,7 @@ func PrincipalFrom(ctx context.Context) (Principal, bool) {
 }
 
 // ParseBearer verifies an ES256 JWT and returns the principal from sub.
-// exp is required. The nil UUID is rejected.
+// The nil UUID is rejected.
 func ParseBearer(pub *ecdsa.PublicKey, tokenString string) (Principal, error) {
 	if pub == nil {
 		return Principal{}, fmt.Errorf("missing public key")
@@ -62,26 +64,17 @@ func ParseBearer(pub *ecdsa.PublicKey, tokenString string) (Principal, error) {
 	return Principal{ID: id}, nil
 }
 
-// Mint signs an ES256 JWT for principal. Local-issuer helper for the console,
-// integration tests, and unit tests. The API process only verifies tokens.
-// TODO: replace console/integration minting with an auth-service token.
-func Mint(key *ecdsa.PrivateKey, principal uuid.UUID, ttl time.Duration) (string, error) {
-	if key == nil {
-		return "", fmt.Errorf("missing private key")
-	}
+// NewToken signs an ES256 JWT for principal. Local-issuer helper.
+func NewToken(principal uuid.UUID) (*jwt.Token, error) {
 	if principal == uuid.Nil {
-		return "", fmt.Errorf("nil UUID is not allowed")
-	}
-	if ttl <= 0 {
-		return "", fmt.Errorf("ttl must be positive")
+		return nil, fmt.Errorf("nil UUID is not allowed")
 	}
 	now := time.Now()
-	tok := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.RegisteredClaims{
+	return jwt.NewWithClaims(jwt.SigningMethodES256, jwt.RegisteredClaims{
 		Subject:   principal.String(),
 		IssuedAt:  jwt.NewNumericDate(now),
-		ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
-	})
-	return tok.SignedString(key)
+		ExpiresAt: jwt.NewNumericDate(now.Add(tokenTTL)),
+	}), nil
 }
 
 // ParseES256PrivateKey parses a PEM-encoded EC private key (SEC1 or PKCS#8).

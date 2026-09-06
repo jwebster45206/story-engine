@@ -124,30 +124,26 @@ func getIntEnv(name string, defaultValue int) int {
 
 func mustJWT(t *testing.T) (*ecdsa.PrivateKey, uuid.UUID) {
 	t.Helper()
-	pemStr := os.Getenv("STORY_ENGINE_JWT_PRIVATE_KEY")
-	if pemStr == "" {
-		path := os.Getenv("STORY_ENGINE_JWT_PRIVATE_KEY_FILE")
-		if path == "" {
-			for _, c := range []string{
-				"internal/auth/testdata/ec-p256.pem",
-				"../internal/auth/testdata/ec-p256.pem",
-			} {
-				if _, err := os.Stat(c); err == nil {
-					path = c
-					break
-				}
+	path := os.Getenv("STORY_ENGINE_JWT_KEY")
+	if path == "" {
+		for _, c := range []string{
+			"internal/auth/testdata/ec-p256.pem",
+			"../internal/auth/testdata/ec-p256.pem",
+		} {
+			if _, err := os.Stat(c); err == nil {
+				path = c
+				break
 			}
 		}
-		if path == "" {
-			t.Fatal("ES256 private key is required (STORY_ENGINE_JWT_PRIVATE_KEY_FILE or STORY_ENGINE_JWT_PRIVATE_KEY)")
-		}
-		b, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("jwt private key file: %v", err)
-		}
-		pemStr = string(b)
 	}
-	key, err := auth.ParseES256PrivateKey(pemStr)
+	if path == "" {
+		t.Fatal("ES256 private key is required (STORY_ENGINE_JWT_KEY)")
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("jwt private key file: %v", err)
+	}
+	key, err := auth.ParseES256PrivateKey(string(b))
 	if err != nil {
 		t.Fatalf("jwt private key: %v", err)
 	}

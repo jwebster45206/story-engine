@@ -38,124 +38,119 @@ func testKeys(t *testing.T) (*ecdsa.PrivateKey, *ecdsa.PublicKey) {
 	return priv, pub
 }
 
-func TestParseBearer_OK(t *testing.T) {
-	priv, pub := testKeys(t)
-	id := uuid.MustParse("22222222-2222-4222-8222-222222222222")
-	tok, err := Mint(priv, id, time.Hour)
+func signClaims(t *testing.T, method jwt.SigningMethod, key any, claims jwt.RegisteredClaims) string {
+	t.Helper()
+	raw, err := jwt.NewWithClaims(method, claims).SignedString(key)
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := ParseBearer(pub, tok)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if p.ID != id {
-		t.Fatalf("id = %v, want %v", p.ID, id)
-	}
+	return raw
 }
 
-func TestParseBearer_Expired(t *testing.T) {
+func TestParseBearer(t *testing.T) {
 	priv, pub := testKeys(t)
 	id := uuid.MustParse("22222222-2222-4222-8222-222222222222")
-	now := time.Now().Add(-2 * time.Hour)
-	raw, err := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.RegisteredClaims{
+	now := time.Now()
+	validClaims := jwt.RegisteredClaims{
 		Subject:   id.String(),
 		IssuedAt:  jwt.NewNumericDate(now),
 		ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour)),
-	}).SignedString(priv)
+	}
+
+	other, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ParseBearer(pub, raw); err == nil {
-		t.Fatal("expected error for expired token")
-	}
-}
 
-func TestParseBearer_MissingExp(t *testing.T) {
-	priv, pub := testKeys(t)
-	id := uuid.MustParse("22222222-2222-4222-8222-222222222222")
-	raw, err := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.RegisteredClaims{
-		Subject:  id.String(),
-		IssuedAt: jwt.NewNumericDate(time.Now()),
-	}).SignedString(priv)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ParseBearer(pub, raw); err == nil {
-		t.Fatal("expected error when exp is missing")
-	}
-}
-
-func TestParseBearer_NilSubject(t *testing.T) {
-	priv, pub := testKeys(t)
-	raw, err := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.RegisteredClaims{
-		Subject:   uuid.Nil.String(),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-	}).SignedString(priv)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ParseBearer(pub, raw); err == nil {
-		t.Fatal("expected error for nil UUID sub")
-	}
-}
-
-func TestParseBearer_RejectHS256(t *testing.T) {
-	_, pub := testKeys(t)
-	id := uuid.MustParse("22222222-2222-4222-8222-222222222222")
-	raw, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-		Subject:   id.String(),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-	}).SignedString([]byte("not-the-ec-key"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ParseBearer(pub, raw); err == nil {
-		t.Fatal("expected error for HS256")
-	}
-}
-
-func TestParseBearer_RejectNone(t *testing.T) {
-	_, pub := testKeys(t)
-	id := uuid.MustParse("22222222-2222-4222-8222-222222222222")
 	header, err := json.Marshal(map[string]string{"alg": "none", "typ": "JWT"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	payload, err := json.Marshal(map[string]any{
 		"sub": id.String(),
-		"exp": time.Now().Add(time.Hour).Unix(),
+		"exp": now.Add(time.Hour).Unix(),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	tok := base64.RawURLEncoding.EncodeToString(header) + "." + base64.RawURLEncoding.EncodeToString(payload) + "."
-	if _, err := ParseBearer(pub, tok); err == nil {
-		t.Fatal("expected error for alg none")
-	}
-}
+	noneTok := base64.RawURLEncoding.EncodeToString(header) + "." + base64.RawURLEncoding.EncodeToString(payload) + "."
 
-func TestParseBearer_WrongKey(t *testing.T) {
-	_, pub := testKeys(t)
-	other, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	tok, err := NewToken(id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	id := uuid.MustParse("22222222-2222-4222-8222-222222222222")
-	tok, err := Mint(other, id, time.Hour)
+	valid, err := tok.SignedString(priv)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ParseBearer(pub, tok); err == nil {
-		t.Fatal("expected error for wrong key")
+
+	tests := []struct {
+		name    string
+		token   string
+		want    uuid.UUID
+		wantErr bool
+	}{
+		{name: "valid", token: valid, want: id},
+		{
+			name: "expired",
+			token: signClaims(t, jwt.SigningMethodES256, priv, jwt.RegisteredClaims{
+				Subject:   id.String(),
+				IssuedAt:  jwt.NewNumericDate(now.Add(-2 * time.Hour)),
+				ExpiresAt: jwt.NewNumericDate(now.Add(-time.Hour)),
+			}),
+			wantErr: true,
+		},
+		{
+			name: "missing exp",
+			token: signClaims(t, jwt.SigningMethodES256, priv, jwt.RegisteredClaims{
+				Subject:  id.String(),
+				IssuedAt: jwt.NewNumericDate(now),
+			}),
+			wantErr: true,
+		},
+		{
+			name: "nil subject",
+			token: signClaims(t, jwt.SigningMethodES256, priv, jwt.RegisteredClaims{
+				Subject:   uuid.Nil.String(),
+				IssuedAt:  jwt.NewNumericDate(now),
+				ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour)),
+			}),
+			wantErr: true,
+		},
+		{
+			name:    "hs256",
+			token:   signClaims(t, jwt.SigningMethodHS256, []byte("not-the-ec-key"), validClaims),
+			wantErr: true,
+		},
+		{name: "alg none", token: noneTok, wantErr: true},
+		{
+			name:    "wrong key",
+			token:   signClaims(t, jwt.SigningMethodES256, other, validClaims),
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p, err := ParseBearer(pub, tt.token)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if p.ID != tt.want {
+				t.Fatalf("id = %v, want %v", p.ID, tt.want)
+			}
+		})
 	}
 }
 
-func TestMint_RejectsNilPrincipal(t *testing.T) {
-	priv, _ := testKeys(t)
-	if _, err := Mint(priv, uuid.Nil, time.Hour); err == nil {
+func TestNewToken_NilPrincipal(t *testing.T) {
+	if _, err := NewToken(uuid.Nil); err == nil {
 		t.Fatal("expected error")
 	}
 }

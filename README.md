@@ -120,8 +120,8 @@ DATA_DIR=~/Documents/story-engine-scenarios docker compose up --build -d
 docker compose restart story-engine-api story-engine-worker
 
 # Console client — see cmd/console/README.md
-go run ./cmd/console --jwt-private-key-file=jwt-ec.pem
-API_BASE_URL=http://localhost:3000 go run ./cmd/console --jwt-private-key-file=jwt-ec.pem
+go run ./cmd/console --jwt-key=jwt-ec.pem
+API_BASE_URL=http://localhost:3000 go run ./cmd/console --jwt-key=jwt-ec.pem
 ```
 
 ## Docs

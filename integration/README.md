@@ -107,15 +107,14 @@ go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1'
 |----------|---------|-------------|
 | `API_BASE_URL` | `http://localhost:8080` | Base URL of the API to test |
 | `TEST_TIMEOUT_SECONDS` | `30` | Timeout per test step in seconds |
-| `STORY_ENGINE_JWT_PRIVATE_KEY_FILE` | testdata PEM | ES256 private key file (must match the API `jwt_public_key`) |
-| `STORY_ENGINE_JWT_PRIVATE_KEY` | | PEM contents (alternative to a file) |
+| `STORY_ENGINE_JWT_KEY` | testdata PEM | ES256 private key file (must match the API `jwt_public_key`) |
 | `STORY_ENGINE_PRINCIPAL` | test UUID | Caller `sub`; generated testdata principal if unset |
 
 The runner mints an ES256 Bearer JWT on each request. The API config in use (`config.json` / `config.docker.json`) must contain the matching public key. For the committed test keypair:
 
 ```bash
 # jwt_public_key in API config = internal/auth/testdata/ec-p256.pub.pem
-STORY_ENGINE_JWT_PRIVATE_KEY_FILE=internal/auth/testdata/ec-p256.pem \
+STORY_ENGINE_JWT_KEY=internal/auth/testdata/ec-p256.pem \
   go test -v -tags=integration ./integration/
 ```
 

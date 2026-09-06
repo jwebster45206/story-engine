@@ -4,9 +4,6 @@ info:
   description: |
     Interactive storytelling API. Create a game, subscribe to SSE, then POST chat
     (`202` + `request_id`); narration arrives as SSE events. API and worker share Redis.
-
-    Authenticated routes require `Authorization: Bearer` with an ES256 JWT. `sub` must be
-    a non-nil UUID (the caller). `exp` is required. `/health` is unauthenticated.
   version: 1.0.0
   contact:
     name: Story Engine

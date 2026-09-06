@@ -9,7 +9,7 @@ services:
     environment:
       - API_BASE_URL=http://story-engine-api:8080
       - TEST_TIMEOUT_SECONDS=30
-      - STORY_ENGINE_JWT_PRIVATE_KEY_FILE=/app/internal/auth/testdata/ec-p256.pem
+      - STORY_ENGINE_JWT_KEY=/app/internal/auth/testdata/ec-p256.pem
       - STORY_ENGINE_PRINCIPAL=22222222-2222-4222-8222-222222222222
     depends_on:
       story-engine-api:

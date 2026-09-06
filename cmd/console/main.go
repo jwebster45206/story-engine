@@ -24,7 +24,7 @@ type ErrorResponse struct {
 }
 
 func main() {
-	jwtKeyFile := flag.String("jwt-private-key-file", "", "PEM file for the ES256 private key (or STORY_ENGINE_JWT_PRIVATE_KEY_FILE)")
+	jwtKeyFile := flag.String("jwt-key", "", "PEM file for the ES256 private key (or STORY_ENGINE_JWT_KEY)")
 	principalFlag := flag.String("principal", "", "principal UUID (or STORY_ENGINE_PRINCIPAL); generated if unset")
 	flag.Parse()
 
@@ -33,13 +33,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	principal, generated, err := loadPrincipal(*principalFlag)
+	principal, err := loadPrincipal(*principalFlag)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
-	}
-	if generated {
-		fmt.Fprintf(os.Stderr, "generated principal %s (set --principal or STORY_ENGINE_PRINCIPAL to reuse)\n", principal)
 	}
 
 	cfg := &ConsoleConfig{
@@ -74,44 +71,38 @@ func main() {
 func loadConsolePrivateKey(fileFlag string) (*ecdsa.PrivateKey, error) {
 	path := fileFlag
 	if path == "" {
-		path = os.Getenv("STORY_ENGINE_JWT_PRIVATE_KEY_FILE")
+		path = os.Getenv("STORY_ENGINE_JWT_KEY")
 	}
-	var pemStr string
-	switch {
-	case path != "":
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("jwt private key file: %w", err)
-		}
-		pemStr = string(b)
-	case os.Getenv("STORY_ENGINE_JWT_PRIVATE_KEY") != "":
-		pemStr = os.Getenv("STORY_ENGINE_JWT_PRIVATE_KEY")
-	default:
-		return nil, fmt.Errorf("ES256 private key is required (--jwt-private-key-file, STORY_ENGINE_JWT_PRIVATE_KEY_FILE, or STORY_ENGINE_JWT_PRIVATE_KEY)")
+	if path == "" {
+		return nil, fmt.Errorf("ES256 private key is required (--jwt-key or STORY_ENGINE_JWT_KEY)")
 	}
-	key, err := auth.ParseES256PrivateKey(pemStr)
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("jwt private key file: %w", err)
+	}
+	key, err := auth.ParseES256PrivateKey(string(b))
 	if err != nil {
 		return nil, fmt.Errorf("jwt private key: %w", err)
 	}
 	return key, nil
 }
 
-func loadPrincipal(flagVal string) (uuid.UUID, bool, error) {
+func loadPrincipal(flagVal string) (uuid.UUID, error) {
 	raw := strings.TrimSpace(flagVal)
 	if raw == "" {
 		raw = strings.TrimSpace(os.Getenv("STORY_ENGINE_PRINCIPAL"))
 	}
 	if raw == "" {
-		return uuid.New(), true, nil
+		return uuid.New(), nil
 	}
 	id, err := uuid.Parse(raw)
 	if err != nil {
-		return uuid.Nil, false, fmt.Errorf("principal: must be a UUID")
+		return uuid.Nil, fmt.Errorf("principal: must be a UUID")
 	}
 	if id == uuid.Nil {
-		return uuid.Nil, false, fmt.Errorf("principal: nil UUID is not allowed")
+		return uuid.Nil, fmt.Errorf("principal: nil UUID is not allowed")
 	}
-	return id, false, nil
+	return id, nil
 }
 
 func envOr(key, defaultValue string) string {

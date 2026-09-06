@@ -22,9 +22,8 @@ The console needs the API base URL and an ES256 **private** key matching the eng
 
 | Flag | Env | Default |
 |------|-----|---------|
-| `--jwt-private-key-file` | `STORY_ENGINE_JWT_PRIVATE_KEY_FILE` | required unless `STORY_ENGINE_JWT_PRIVATE_KEY` is set |
-| | `STORY_ENGINE_JWT_PRIVATE_KEY` | PEM contents (alternative to a file) |
-| `--principal` | `STORY_ENGINE_PRINCIPAL` | generated UUID (printed to stderr; not persisted) |
+| `--jwt-key` | `STORY_ENGINE_JWT_KEY` | required (PEM file path) |
+| `--principal` | `STORY_ENGINE_PRINCIPAL` | generated UUID if unset |
 | | `API_BASE_URL` | `http://localhost:8080` |
 
 Each request is sent with `Authorization: Bearer` and a freshly minted ES256 JWT (`sub` = principal, `exp` ~1h). This local minting is a stand-in for a token from an auth service.
@@ -41,10 +40,10 @@ Put the public PEM in the engine config. Pass the private key to the console.
 ### Running the Client
 
 ```bash
-go run ./cmd/console --jwt-private-key-file=jwt-ec.pem
+go run ./cmd/console --jwt-key=jwt-ec.pem
 
 API_BASE_URL=http://your-api-server:8080 go run ./cmd/console \
-  --jwt-private-key-file=jwt-ec.pem \
+  --jwt-key=jwt-ec.pem \
   --principal=22222222-2222-4222-8222-222222222222
 ```
 

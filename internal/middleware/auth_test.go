@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/auth"
@@ -37,11 +36,15 @@ func testToken(t *testing.T, id uuid.UUID) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tok, err := auth.Mint(priv, id, time.Hour)
+	tok, err := auth.NewToken(id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return tok
+	raw, err := tok.SignedString(priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
 }
 
 func TestJWT_HealthExempt(t *testing.T) {

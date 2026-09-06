@@ -66,19 +66,12 @@ func Load() (*Config, error) {
 	if err := config.validateProviders(); err != nil {
 		return nil, err
 	}
-	if err := config.validateAuth(); err != nil {
+	pub, err := ParseES256PublicKey(config.JWTPublicKeyPEM)
+	if err != nil {
 		return nil, err
 	}
+	config.JWTPublicKey = pub
 	return &config, nil
-}
-
-func (c *Config) validateAuth() error {
-	pub, err := ParseES256PublicKey(c.JWTPublicKeyPEM)
-	if err != nil {
-		return err
-	}
-	c.JWTPublicKey = pub
-	return nil
 }
 
 // ParseES256PublicKey parses a PEM-encoded PKIX P-256 ECDSA public key.
