@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"uuid"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/auth"
 )
 

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/integration/runner"
 	"github.com/jwebster45206/story-engine/internal/auth"
 )

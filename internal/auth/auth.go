@@ -12,9 +12,9 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"uuid"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 const (
@@ -65,7 +65,7 @@ func ParseBearer(pub *ecdsa.PublicKey, tokenString string) (Principal, error) {
 	if err != nil {
 		return Principal{}, fmt.Errorf("sub must be a UUID")
 	}
-	if id == uuid.Nil {
+	if id == uuid.Nil() {
 		return Principal{}, fmt.Errorf("nil UUID is not allowed")
 	}
 	return Principal{ID: id}, nil
@@ -76,7 +76,7 @@ func Token(key *ecdsa.PrivateKey, principal uuid.UUID) (string, error) {
 	if key == nil {
 		return "", fmt.Errorf("missing private key")
 	}
-	if principal == uuid.Nil {
+	if principal == uuid.Nil() {
 		return "", fmt.Errorf("nil UUID is not allowed")
 	}
 	now := time.Now()

@@ -12,9 +12,9 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+	"uuid"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 func testKeys(t *testing.T) (*ecdsa.PrivateKey, *ecdsa.PublicKey) {
@@ -113,7 +113,7 @@ func TestParseBearer(t *testing.T) {
 		{
 			name: "nil subject",
 			token: signClaims(t, jwt.SigningMethodES256, priv, jwt.RegisteredClaims{
-				Subject:   uuid.Nil.String(),
+				Subject:   uuid.Nil().String(),
 				IssuedAt:  jwt.NewNumericDate(now),
 				ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour)),
 			}),
@@ -153,7 +153,7 @@ func TestParseBearer(t *testing.T) {
 
 func TestToken_NilPrincipal(t *testing.T) {
 	priv, _ := testKeys(t)
-	if _, err := Token(priv, uuid.Nil); err == nil {
+	if _, err := Token(priv, uuid.Nil()); err == nil {
 		t.Fatal("expected error")
 	}
 }
