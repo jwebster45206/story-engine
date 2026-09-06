@@ -4,8 +4,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,24 +19,29 @@ import (
 
 func testKeys(t *testing.T) (*ecdsa.PrivateKey, *ecdsa.PublicKey) {
 	t.Helper()
-	dir := filepath.Join("testdata")
-	privPEM, err := os.ReadFile(filepath.Join(dir, "ec-p256.pem"))
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pubPEM, err := os.ReadFile(filepath.Join(dir, "ec-p256.pub.pem"))
+	return priv, &priv.PublicKey
+}
+
+func privatePEM(t *testing.T, key *ecdsa.PrivateKey) []byte {
+	t.Helper()
+	der, err := x509.MarshalECPrivateKey(key)
 	if err != nil {
 		t.Fatal(err)
 	}
-	priv, err := ParseES256PrivateKey(string(privPEM))
+	return pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der})
+}
+
+func publicPEM(t *testing.T, key *ecdsa.PublicKey) []byte {
+	t.Helper()
+	der, err := x509.MarshalPKIXPublicKey(key)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pub, err := ParseES256PublicKey(string(pubPEM))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return priv, pub
+	return pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})
 }
 
 func signClaims(t *testing.T, method jwt.SigningMethod, key any, claims jwt.RegisteredClaims) string {
@@ -155,26 +162,27 @@ func TestNewToken_NilPrincipal(t *testing.T) {
 }
 
 func TestLoadKeys(t *testing.T) {
-	privPEM, err := os.ReadFile(filepath.Join("testdata", "ec-p256.pem"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	pubPEM, err := os.ReadFile(filepath.Join("testdata", "ec-p256.pub.pem"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	priv, pub := testKeys(t)
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, PrivateKeyFile), privPEM, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, PrivateKeyFile), privatePEM(t, priv), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, PublicKeyFile), pubPEM, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, PublicKeyFile), publicPEM(t, pub), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := LoadPrivateKey(dir); err != nil {
+	gotPriv, err := LoadPrivateKey(dir)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := LoadPublicKey(dir); err != nil {
+	gotPub, err := LoadPublicKey(dir)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if !gotPriv.Equal(priv) {
+		t.Fatal("loaded private key does not match")
+	}
+	if !gotPub.Equal(pub) {
+		t.Fatal("loaded public key does not match")
 	}
 }
 

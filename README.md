@@ -106,7 +106,7 @@ openssl ecparam -name prime256v1 -genkey -noout -out jwt-ec.pem
 openssl ec -in jwt-ec.pem -pubout -out jwt-ec.pub.pem
 ```
 
-The API loads `jwt-ec.pub.pem`. The console loads `jwt-ec.pem`. Do not put either file in JSON config. A test-only pair lives at `internal/auth/testdata/` — do not use it in production.
+The API loads `jwt-ec.pub.pem`. The console loads `jwt-ec.pem`. Do not put either file in JSON config.
 
 ```bash
 # API + worker (same CONFIG)
