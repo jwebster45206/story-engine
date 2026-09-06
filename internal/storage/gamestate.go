@@ -76,7 +76,6 @@ func (r *RedisStorage) SetOwner(ctx context.Context, id uuid.UUID, owner uuid.UU
 		return fmt.Errorf("id and owner must not be empty")
 	}
 	if err := r.client.Set(ctx, gamestateOwnerKey(id), owner.String(), gameStateTTL).Err(); err != nil {
-		r.logger.Error("Failed to save gamestate owner", "uuid", id, "error", err)
 		return fmt.Errorf("failed to save gamestate owner: %w", err)
 	}
 	return nil
@@ -88,7 +87,6 @@ func (r *RedisStorage) GetOwner(ctx context.Context, id uuid.UUID) (uuid.UUID, e
 		if errors.Is(err, redis.Nil) {
 			return uuid.Nil(), storage.ErrNotFound
 		}
-		r.logger.Error("Failed to load gamestate owner", "uuid", id, "error", err)
 		return uuid.Nil(), fmt.Errorf("failed to load gamestate owner: %w", err)
 	}
 	owner, err := uuid.Parse(cmd.Val())
