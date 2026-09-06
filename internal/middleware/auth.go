@@ -1,17 +1,17 @@
 package middleware
 
 import (
+	"crypto/ecdsa"
 	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/jwebster45206/story-engine/internal/auth"
-	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/internal/httperror"
 )
 
 // JWT requires a valid ES256 Bearer token on all paths except /health.
-func JWT(cfg *config.Config, next http.Handler) http.Handler {
+func JWT(pub *ecdsa.PublicKey, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
 			next.ServeHTTP(w, r)
@@ -24,7 +24,7 @@ func JWT(cfg *config.Config, next http.Handler) http.Handler {
 			return
 		}
 
-		p, err := auth.ParseBearer(cfg.JWTPublicKey, token)
+		p, err := auth.ParseBearer(pub, token)
 		if err != nil {
 			httperror.Write(w, slog.Default(), http.StatusUnauthorized, "unauthorized")
 			return

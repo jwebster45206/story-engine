@@ -9,46 +9,12 @@ import (
 
 func writeConfig(t *testing.T, raw string) string {
 	t.Helper()
-	return writeConfigRaw(t, withJWTKey(t, raw))
-}
-
-func writeConfigRaw(t *testing.T, raw string) string {
-	t.Helper()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 	if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 	return path
-}
-
-func testJWTPublicKey(t *testing.T) string {
-	t.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "auth", "testdata", "ec-p256.pub.pem"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(b)
-}
-
-func withJWTKey(t *testing.T, raw string) string {
-	t.Helper()
-	var m map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(raw), &m); err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := m["jwt_public_key"]; !ok {
-		b, err := json.Marshal(testJWTPublicKey(t))
-		if err != nil {
-			t.Fatal(err)
-		}
-		m["jwt_public_key"] = b
-	}
-	out, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(out)
 }
 
 func loadFrom(t *testing.T, path string) (*Config, error) {
@@ -155,47 +121,5 @@ func TestProviderConfigJSONRoundTrip(t *testing.T) {
 	}
 	if pc.BackendModel != "b" || pc.DisplayName != "D" {
 		t.Fatalf("unexpected %#v", pc)
-	}
-}
-
-func TestLoad_MissingJWTPublicKey(t *testing.T) {
-	path := writeConfigRaw(t, `{
-		"providers":{"only":{"vendor":"venice","api_key":"k","model":"m"}},
-		"redis_url":"localhost:6379"
-	}`)
-	if _, err := loadFrom(t, path); err == nil {
-		t.Fatal("expected error when jwt_public_key is missing")
-	}
-}
-
-func TestLoad_InvalidJWTPublicKey(t *testing.T) {
-	path := writeConfigRaw(t, `{
-		"providers":{"only":{"vendor":"venice","api_key":"k","model":"m"}},
-		"redis_url":"localhost:6379",
-		"jwt_public_key":"YOUR_ES256_PUBLIC_KEY_PEM_HERE"
-	}`)
-	if _, err := loadFrom(t, path); err == nil {
-		t.Fatal("expected error for placeholder jwt_public_key")
-	}
-}
-
-func TestLoad_ValidJWTPublicKey(t *testing.T) {
-	path := writeConfig(t, `{
-		"providers":{"only":{"vendor":"venice","api_key":"k","model":"m"}},
-		"redis_url":"localhost:6379"
-	}`)
-	cfg, err := loadFrom(t, path)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if cfg.JWTPublicKey == nil {
-		t.Fatal("expected parsed JWT public key")
-	}
-}
-
-func TestCommittedTemplate_RejectsPlaceholderKey(t *testing.T) {
-	path := filepath.Join("..", "..", "config.template.json")
-	if _, err := loadFrom(t, path); err == nil {
-		t.Fatal("config.template.json must not load until jwt_public_key is a real PEM")
 	}
 }

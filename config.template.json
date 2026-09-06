@@ -20,6 +20,5 @@
     }
   },
   "redis_url": "localhost:6379",
-  "chat_history_limit": 6,
-  "jwt_public_key": "YOUR_ES256_PUBLIC_KEY_PEM_HERE"
+  "chat_history_limit": 6
 }

@@ -18,32 +18,28 @@ A terminal-based user interface for the Story Engine, built with [Charm Bracelet
 
 ### Configuration
 
-The console needs the API base URL and an ES256 **private** key matching the engine’s `jwt_public_key`. Flags win over env. The process exits if no private key is set.
+The console needs the API base URL and `jwt-ec.pem` in the launch directory (same pair as the API’s `jwt-ec.pub.pem`). The process exits if the private key is missing.
 
-| Flag | Env | Default |
-|------|-----|---------|
-| `--jwt-key` | `STORY_ENGINE_JWT_KEY` | required (PEM file path) |
-| `--principal` | `STORY_ENGINE_PRINCIPAL` | generated UUID if unset |
-| | `API_BASE_URL` | `http://localhost:8080` |
+| Flag / env | Default |
+|------------|---------|
+| `--principal` / `STORY_ENGINE_PRINCIPAL` | generated UUID if unset |
+| `API_BASE_URL` | `http://localhost:8080` |
 
-Each request is sent with `Authorization: Bearer` and a freshly minted ES256 JWT (`sub` = principal, `exp` ~1h). This local minting is a stand-in for a token from an auth service.
+Each request is sent with `Authorization: Bearer` and a freshly minted ES256 JWT (`sub` = principal). This local minting is a stand-in for a token from an auth service.
 
-Generate a keypair (same commands as the [root README](../../README.md)):
+Generate a keypair in the launch directory (same commands as the [root README](../../README.md)):
 
 ```bash
 openssl ecparam -name prime256v1 -genkey -noout -out jwt-ec.pem
 openssl ec -in jwt-ec.pem -pubout -out jwt-ec.pub.pem
 ```
 
-Put the public PEM in the engine config. Pass the private key to the console.
-
 ### Running the Client
 
 ```bash
-go run ./cmd/console --jwt-key=jwt-ec.pem
+go run ./cmd/console
 
 API_BASE_URL=http://your-api-server:8080 go run ./cmd/console \
-  --jwt-key=jwt-ec.pem \
   --principal=22222222-2222-4222-8222-222222222222
 ```
 

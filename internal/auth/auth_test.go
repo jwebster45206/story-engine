@@ -13,7 +13,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/jwebster45206/story-engine/internal/config"
 )
 
 func testKeys(t *testing.T) (*ecdsa.PrivateKey, *ecdsa.PublicKey) {
@@ -31,7 +30,7 @@ func testKeys(t *testing.T) (*ecdsa.PrivateKey, *ecdsa.PublicKey) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pub, err := config.ParseES256PublicKey(string(pubPEM))
+	pub, err := ParseES256PublicKey(string(pubPEM))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,6 +150,36 @@ func TestParseBearer(t *testing.T) {
 
 func TestNewToken_NilPrincipal(t *testing.T) {
 	if _, err := NewToken(uuid.Nil); err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestLoadKeys(t *testing.T) {
+	privPEM, err := os.ReadFile(filepath.Join("testdata", "ec-p256.pem"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pubPEM, err := os.ReadFile(filepath.Join("testdata", "ec-p256.pub.pem"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, PrivateKeyFile), privPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, PublicKeyFile), pubPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadPrivateKey(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadPublicKey(dir); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLoadPublicKey_Missing(t *testing.T) {
+	if _, err := LoadPublicKey(t.TempDir()); err == nil {
 		t.Fatal("expected error")
 	}
 }

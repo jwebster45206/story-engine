@@ -30,6 +30,10 @@ go.work.sum
 # env file
 .env
 
+# Operator ES256 keypair (generate in the launch directory)
+/jwt-ec.pem
+/jwt-ec.pub.pem
+
 # Config files with secrets
 config*.json
 !config.template.json

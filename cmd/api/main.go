@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jwebster45206/story-engine/internal/auth"
 	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/internal/handlers"
 	"github.com/jwebster45206/story-engine/internal/llm"
@@ -25,6 +26,17 @@ func main() {
 	}
 
 	log := logger.Setup(cfg)
+
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Error("Failed to resolve working directory", "error", err)
+		os.Exit(1)
+	}
+	pub, err := auth.LoadPublicKey(dir)
+	if err != nil {
+		log.Error("Failed to load JWT public key", "error", err)
+		os.Exit(1)
+	}
 
 	log.Info("Starting Story Engine API",
 		"config", os.Getenv("CONFIG"),
@@ -102,7 +114,7 @@ func main() {
 	mux.Handle("/v1/monsters", monsterHandler)
 	mux.Handle("/v1/monsters/", monsterHandler)
 
-	handler := middleware.Logger(middleware.JWT(cfg, mux))
+	handler := middleware.Logger(middleware.JWT(pub, mux))
 	server := &http.Server{
 		Addr:        ":" + cfg.Port,
 		Handler:     handler,

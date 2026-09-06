@@ -107,18 +107,16 @@ go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1'
 |----------|---------|-------------|
 | `API_BASE_URL` | `http://localhost:8080` | Base URL of the API to test |
 | `TEST_TIMEOUT_SECONDS` | `30` | Timeout per test step in seconds |
-| `STORY_ENGINE_JWT_KEY` | testdata PEM | ES256 private key file (must match the API `jwt_public_key`) |
-| `STORY_ENGINE_PRINCIPAL` | test UUID | Caller `sub`; generated testdata principal if unset |
+| `STORY_ENGINE_PRINCIPAL` | test UUID | Caller `sub` |
 
-The runner mints an ES256 Bearer JWT on each request. The API config in use (`config.json` / `config.docker.json`) must contain the matching public key. For the committed test keypair:
+The runner mints an ES256 Bearer JWT on each request. It finds `jwt-ec.pem` by walking up from the test working directory to the module root (`go.mod`). The API must have the matching `jwt-ec.pub.pem` in its working directory.
 
 ```bash
-# jwt_public_key in API config = internal/auth/testdata/ec-p256.pub.pem
-STORY_ENGINE_JWT_KEY=internal/auth/testdata/ec-p256.pem \
-  go test -v -tags=integration ./integration/
+# keys at repo root (same files as console / API)
+go test -v -tags=integration ./integration/
 ```
 
-`docker-compose.test.yml` sets the private-key file and principal on the test runner. The API service still reads `config.docker.json`; put the testdata public key there when using this compose file.
+`docker-compose.test.yml` bind-mounts `jwt-ec.pem` into the test runner at the module root. The API service bind-mounts `jwt-ec.pub.pem` (see `docker-compose.yml`). Both files must exist on the host.
 
 ```bash
 API_BASE_URL=http://api.example.com:8080 go test -v -tags=integration ./integration/

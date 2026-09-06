@@ -15,7 +15,7 @@ A lightweight narrative engine for immersive, structured text adventures. Game e
 
 The Story Engine exposes a REST API for interactive, closed-world adventures. Clients create a game session, subscribe to Server-Sent Events, and send chat turns that a background worker processes with an LLM. Redis holds session state, the request queue, per-game locks, and SSE pub/sub between the API (`cmd/api`) and worker (`cmd/worker`). Treat Redis as trusted infrastructure, not a tenant boundary. An optional console TUI lives under `cmd/console`.
 
-Authenticated HTTP routes require `Authorization: Bearer` with an **ES256** JWT. `sub` is a UUID identifying the caller; `exp` is required. The engine holds only the matching public key (`jwt_public_key` in config). `/health` is unauthenticated. The console and integration runner mint tokens locally from a private key; that is a stand-in for a future auth service.
+Authenticated HTTP routes require `Authorization: Bearer` with an **ES256** JWT. `sub` is a UUID identifying the caller. The API reads `jwt-ec.pub.pem` from the process working directory. `/health` is unauthenticated. The console and integration runner mint tokens from `jwt-ec.pem` in the same directory (console) or the module root (integration). That local minting is a stand-in for a future auth service.
 
 ### Main loop
 
@@ -95,19 +95,18 @@ API: [docs/openapi.yaml](docs/openapi.yaml) — gamestate, chat, events, content
       "backend_model": "qwen3-4b"
     }
   },
-  "redis_url": "localhost:6379",
-  "jwt_public_key": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+  "redis_url": "localhost:6379"
 }
 ```
 
-Copy `config.template.json` to `config.json` (or `config.docker.json` for Compose) and fill in provider keys plus `jwt_public_key`. The API and worker both load this file and refuse to start without a valid P-256 public key. Generate an ES256 keypair:
+Copy `config.template.json` to `config.json` (or `config.docker.json` for Compose) and fill in provider keys. Generate an ES256 keypair in the directory you will launch from (gitignored; Compose bind-mounts the public key into the API):
 
 ```bash
 openssl ecparam -name prime256v1 -genkey -noout -out jwt-ec.pem
 openssl ec -in jwt-ec.pem -pubout -out jwt-ec.pub.pem
 ```
 
-Put the contents of `jwt-ec.pub.pem` in `jwt_public_key` (JSON-escape newlines). Keep the private key out of the engine config; pass it to the console or integration runner. A test-only pair lives at `internal/auth/testdata/` — do not use it in production.
+The API loads `jwt-ec.pub.pem`. The console loads `jwt-ec.pem`. Do not put either file in JSON config. A test-only pair lives at `internal/auth/testdata/` — do not use it in production.
 
 ```bash
 # API + worker (same CONFIG)
@@ -120,8 +119,8 @@ DATA_DIR=~/Documents/story-engine-scenarios docker compose up --build -d
 docker compose restart story-engine-api story-engine-worker
 
 # Console client — see cmd/console/README.md
-go run ./cmd/console --jwt-key=jwt-ec.pem
-API_BASE_URL=http://localhost:3000 go run ./cmd/console --jwt-key=jwt-ec.pem
+go run ./cmd/console
+API_BASE_URL=http://localhost:3000 go run ./cmd/console
 ```
 
 ## Docs

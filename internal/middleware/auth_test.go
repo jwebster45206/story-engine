@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,20 +11,19 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/auth"
-	"github.com/jwebster45206/story-engine/internal/config"
 )
 
-func testJWTConfig(t *testing.T) *config.Config {
+func testPub(t *testing.T) *ecdsa.PublicKey {
 	t.Helper()
 	pubPEM, err := os.ReadFile(filepath.Join("..", "auth", "testdata", "ec-p256.pub.pem"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	pub, err := config.ParseES256PublicKey(string(pubPEM))
+	pub, err := auth.ParseES256PublicKey(string(pubPEM))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &config.Config{JWTPublicKey: pub}
+	return pub
 }
 
 func testToken(t *testing.T, id uuid.UUID) string {
@@ -51,7 +51,7 @@ func TestJWT_HealthExempt(t *testing.T) {
 	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	h := JWT(testJWTConfig(t), ok)
+	h := JWT(testPub(t), ok)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -61,7 +61,7 @@ func TestJWT_HealthExempt(t *testing.T) {
 }
 
 func TestJWT_MissingHeader(t *testing.T) {
-	h := JWT(testJWTConfig(t), http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	h := JWT(testPub(t), http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("next should not run")
 	}))
 	req := httptest.NewRequest(http.MethodGet, "/v1/scenarios", nil)
@@ -76,7 +76,7 @@ func TestJWT_MissingHeader(t *testing.T) {
 }
 
 func TestJWT_BadScheme(t *testing.T) {
-	h := JWT(testJWTConfig(t), http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	h := JWT(testPub(t), http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("next should not run")
 	}))
 	req := httptest.NewRequest(http.MethodGet, "/v1/scenarios", nil)
@@ -89,7 +89,7 @@ func TestJWT_BadScheme(t *testing.T) {
 }
 
 func TestJWT_BadToken(t *testing.T) {
-	h := JWT(testJWTConfig(t), http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	h := JWT(testPub(t), http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("next should not run")
 	}))
 	req := httptest.NewRequest(http.MethodGet, "/v1/scenarios", nil)
@@ -110,7 +110,7 @@ func TestJWT_BadToken(t *testing.T) {
 
 func TestJWT_Principal(t *testing.T) {
 	id := uuid.MustParse("22222222-2222-4222-8222-222222222222")
-	h := JWT(testJWTConfig(t), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := JWT(testPub(t), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p, ok := auth.PrincipalFrom(r.Context())
 		if !ok {
 			t.Fatal("missing principal")

@@ -124,28 +124,23 @@ func getIntEnv(name string, defaultValue int) int {
 
 func mustJWT(t *testing.T) (*ecdsa.PrivateKey, uuid.UUID) {
 	t.Helper()
-	path := os.Getenv("STORY_ENGINE_JWT_KEY")
-	if path == "" {
-		for _, c := range []string{
-			"internal/auth/testdata/ec-p256.pem",
-			"../internal/auth/testdata/ec-p256.pem",
-		} {
-			if _, err := os.Stat(c); err == nil {
-				path = c
-				break
-			}
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			break
 		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatal("go.mod not found")
+		}
+		dir = parent
 	}
-	if path == "" {
-		t.Fatal("ES256 private key is required (STORY_ENGINE_JWT_KEY)")
-	}
-	b, err := os.ReadFile(path)
+	key, err := auth.LoadPrivateKey(dir)
 	if err != nil {
-		t.Fatalf("jwt private key file: %v", err)
-	}
-	key, err := auth.ParseES256PrivateKey(string(b))
-	if err != nil {
-		t.Fatalf("jwt private key: %v", err)
+		t.Fatal(err)
 	}
 	raw := strings.TrimSpace(os.Getenv("STORY_ENGINE_PRINCIPAL"))
 	if raw == "" {

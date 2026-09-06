@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/ecdsa"
 	"flag"
 	"fmt"
 	"net/http"
@@ -24,11 +23,15 @@ type ErrorResponse struct {
 }
 
 func main() {
-	jwtKeyFile := flag.String("jwt-key", "", "PEM file for the ES256 private key (or STORY_ENGINE_JWT_KEY)")
 	principalFlag := flag.String("principal", "", "principal UUID (or STORY_ENGINE_PRINCIPAL); generated if unset")
 	flag.Parse()
 
-	priv, err := loadConsolePrivateKey(*jwtKeyFile)
+	dir, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "working directory: %v\n", err)
+		os.Exit(1)
+	}
+	priv, err := auth.LoadPrivateKey(dir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
@@ -66,25 +69,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
 		os.Exit(1)
 	}
-}
-
-func loadConsolePrivateKey(fileFlag string) (*ecdsa.PrivateKey, error) {
-	path := fileFlag
-	if path == "" {
-		path = os.Getenv("STORY_ENGINE_JWT_KEY")
-	}
-	if path == "" {
-		return nil, fmt.Errorf("ES256 private key is required (--jwt-key or STORY_ENGINE_JWT_KEY)")
-	}
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("jwt private key file: %w", err)
-	}
-	key, err := auth.ParseES256PrivateKey(string(b))
-	if err != nil {
-		return nil, fmt.Errorf("jwt private key: %w", err)
-	}
-	return key, nil
 }
 
 func loadPrincipal(flagVal string) (uuid.UUID, error) {
