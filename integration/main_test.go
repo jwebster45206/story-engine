@@ -4,6 +4,7 @@ package integration
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"flag"
 	"fmt"
 	"os"
@@ -13,7 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/integration/runner"
+	"github.com/jwebster45206/story-engine/internal/auth"
 )
 
 var errFlag = flag.String("err", "continue", "Error handling mode: 'continue' (run all steps) or 'exit' (stop on first failure)")
@@ -71,6 +74,8 @@ func TestIntegration(t *testing.T) {
 			testRunner.Logger = func(format string, args ...interface{}) {
 				t.Logf(format, args...)
 			}
+			priv, principal := mustJWT(t)
+			testRunner.UseJWT(priv, principal)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer cancel()
@@ -115,4 +120,44 @@ func getIntEnv(name string, defaultValue int) int {
 	}
 
 	return val
+}
+
+func mustJWT(t *testing.T) (*ecdsa.PrivateKey, uuid.UUID) {
+	t.Helper()
+	pemStr := os.Getenv("STORY_ENGINE_JWT_PRIVATE_KEY")
+	if pemStr == "" {
+		path := os.Getenv("STORY_ENGINE_JWT_PRIVATE_KEY_FILE")
+		if path == "" {
+			for _, c := range []string{
+				"internal/auth/testdata/ec-p256.pem",
+				"../internal/auth/testdata/ec-p256.pem",
+			} {
+				if _, err := os.Stat(c); err == nil {
+					path = c
+					break
+				}
+			}
+		}
+		if path == "" {
+			t.Fatal("ES256 private key is required (STORY_ENGINE_JWT_PRIVATE_KEY_FILE or STORY_ENGINE_JWT_PRIVATE_KEY)")
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("jwt private key file: %v", err)
+		}
+		pemStr = string(b)
+	}
+	key, err := auth.ParseES256PrivateKey(pemStr)
+	if err != nil {
+		t.Fatalf("jwt private key: %v", err)
+	}
+	raw := strings.TrimSpace(os.Getenv("STORY_ENGINE_PRINCIPAL"))
+	if raw == "" {
+		return key, uuid.MustParse("22222222-2222-4222-8222-222222222222")
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil || id == uuid.Nil {
+		t.Fatal("STORY_ENGINE_PRINCIPAL must be a non-nil UUID")
+	}
+	return key, id
 }

@@ -8,6 +8,7 @@ require (
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/jwebster45206/d20 v0.8.1
 	github.com/muesli/reflow v0.3.0
 	github.com/redis/go-redis/v9 v9.21.0

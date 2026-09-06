@@ -102,7 +102,7 @@ func main() {
 	mux.Handle("/v1/monsters", monsterHandler)
 	mux.Handle("/v1/monsters/", monsterHandler)
 
-	handler := middleware.Logger(mux)
+	handler := middleware.Logger(middleware.JWT(cfg, mux))
 	server := &http.Server{
 		Addr:        ":" + cfg.Port,
 		Handler:     handler,

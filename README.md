@@ -13,7 +13,9 @@ A lightweight narrative engine for immersive, structured text adventures. Game e
 
 ## Architecture
 
-The Story Engine exposes a REST API for interactive, closed-world adventures. Clients create a game session, subscribe to Server-Sent Events, and send chat turns that a background worker processes with an LLM. Redis holds session state, the request queue, per-game locks, and SSE pub/sub between the API (`cmd/api`) and worker (`cmd/worker`). An optional console TUI lives under `cmd/console`.
+The Story Engine exposes a REST API for interactive, closed-world adventures. Clients create a game session, subscribe to Server-Sent Events, and send chat turns that a background worker processes with an LLM. Redis holds session state, the request queue, per-game locks, and SSE pub/sub between the API (`cmd/api`) and worker (`cmd/worker`). Treat Redis as trusted infrastructure, not a tenant boundary. An optional console TUI lives under `cmd/console`.
+
+Authenticated HTTP routes require `Authorization: Bearer` with an **ES256** JWT. `sub` is a UUID identifying the caller; `exp` is required. The engine holds only the matching public key (`jwt_public_key` in config). `/health` is unauthenticated. The console and integration runner mint tokens locally from a private key; that is a stand-in for a future auth service.
 
 ### Main loop
 
@@ -55,7 +57,9 @@ pkg/
 └── storage/        # Storage interface
 
 internal/
+├── auth/           # JWT principal, verify, local mint helper
 ├── handlers/       # HTTP handlers
+├── middleware/     # Logger + JWT gate
 ├── worker/         # Queue consumer + chat processor
 ├── llm/            # LLM providers and registry
 ├── queue/          # Redis work queue
@@ -91,10 +95,19 @@ API: [docs/openapi.yaml](docs/openapi.yaml) — gamestate, chat, events, content
       "backend_model": "qwen3-4b"
     }
   },
-  "redis_url": "localhost:6379"
+  "redis_url": "localhost:6379",
+  "jwt_public_key": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
 }
 ```
 
+Copy `config.template.json` to `config.json` (or `config.docker.json` for Compose) and fill in provider keys plus `jwt_public_key`. The API and worker both load this file and refuse to start without a valid P-256 public key. Generate an ES256 keypair:
+
+```bash
+openssl ecparam -name prime256v1 -genkey -noout -out jwt-ec.pem
+openssl ec -in jwt-ec.pem -pubout -out jwt-ec.pub.pem
+```
+
+Put the contents of `jwt-ec.pub.pem` in `jwt_public_key` (JSON-escape newlines). Keep the private key out of the engine config; pass it to the console or integration runner. A test-only pair lives at `internal/auth/testdata/` — do not use it in production.
 
 ```bash
 # API + worker (same CONFIG)
@@ -107,8 +120,8 @@ DATA_DIR=~/Documents/story-engine-scenarios docker compose up --build -d
 docker compose restart story-engine-api story-engine-worker
 
 # Console client — see cmd/console/README.md
-go run cmd/console/*.go
-API_BASE_URL=http://localhost:3000 go run cmd/console/*.go
+go run ./cmd/console --jwt-private-key-file=jwt-ec.pem
+API_BASE_URL=http://localhost:3000 go run ./cmd/console --jwt-private-key-file=jwt-ec.pem
 ```
 
 ## Docs

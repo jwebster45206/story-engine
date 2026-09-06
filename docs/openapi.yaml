@@ -4,6 +4,9 @@ info:
   description: |
     Interactive storytelling API. Create a game, subscribe to SSE, then POST chat
     (`202` + `request_id`); narration arrives as SSE events. API and worker share Redis.
+
+    Authenticated routes require `Authorization: Bearer` with an ES256 JWT. `sub` must be
+    a non-nil UUID (the caller). `exp` is required. `/health` is unauthenticated.
   version: 1.0.0
   contact:
     name: Story Engine
@@ -16,6 +19,9 @@ servers:
   - url: http://localhost:8080
     description: Local development server
 
+security:
+  - bearerAuth: []
+
 paths:
   /health:
     get:
@@ -24,6 +30,7 @@ paths:
       operationId: getHealth
       tags:
         - Health
+      security: []
       responses:
         '200':
           description: Service is healthy
@@ -568,6 +575,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: ES256 JWT. `sub` is a UUID identifying the caller. `exp` is required.
   schemas:
     HealthResponse:
       type: object

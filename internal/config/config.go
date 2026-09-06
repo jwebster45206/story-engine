@@ -1,7 +1,11 @@
 package config
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"log/slog"
 	"os"
@@ -37,6 +41,8 @@ type Config struct {
 	DefaultProvider  string                     `json:"default_provider,omitempty"`
 	RedisURL         string                     `json:"redis_url"`
 	ChatHistoryLimit int                        `json:"chat_history_limit"` // max past messages sent to LLM per request (0 = use default)
+	JWTPublicKeyPEM  string                     `json:"jwt_public_key"`
+	JWTPublicKey     *ecdsa.PublicKey           `json:"-"`
 }
 
 // Load reads configuration from the CONFIG environment variable.
@@ -60,7 +66,43 @@ func Load() (*Config, error) {
 	if err := config.validateProviders(); err != nil {
 		return nil, err
 	}
+	if err := config.validateAuth(); err != nil {
+		return nil, err
+	}
 	return &config, nil
+}
+
+func (c *Config) validateAuth() error {
+	pub, err := ParseES256PublicKey(c.JWTPublicKeyPEM)
+	if err != nil {
+		return err
+	}
+	c.JWTPublicKey = pub
+	return nil
+}
+
+// ParseES256PublicKey parses a PEM-encoded PKIX P-256 ECDSA public key.
+func ParseES256PublicKey(pemStr string) (*ecdsa.PublicKey, error) {
+	pemStr = strings.TrimSpace(pemStr)
+	if pemStr == "" {
+		return nil, fmt.Errorf("jwt_public_key is required")
+	}
+	block, _ := pem.Decode([]byte(pemStr))
+	if block == nil {
+		return nil, fmt.Errorf("jwt_public_key: must be a PEM-encoded public key")
+	}
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("jwt_public_key: %w", err)
+	}
+	ec, ok := pub.(*ecdsa.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("jwt_public_key: must be an ECDSA public key")
+	}
+	if ec.Curve != elliptic.P256() {
+		return nil, fmt.Errorf("jwt_public_key: must use P-256")
+	}
+	return ec, nil
 }
 
 func (c *Config) validateProviders() error {
