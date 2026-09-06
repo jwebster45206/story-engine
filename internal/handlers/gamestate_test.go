@@ -11,6 +11,7 @@ import (
 	"testing"
 	"uuid"
 
+	"github.com/jwebster45206/story-engine/internal/auth"
 	"github.com/jwebster45206/story-engine/internal/llm"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
@@ -45,6 +46,22 @@ func (s *stubCatalog) Info(name string) (llm.ProviderInfo, bool) {
 	return info, ok
 }
 
+var testOwnerID = uuid.MustParse("22222222-2222-4222-8222-222222222222")
+
+func withTestPrincipal(r *http.Request) *http.Request {
+	return r.WithContext(auth.WithPrincipal(r.Context(), auth.Principal{ID: testOwnerID}))
+}
+
+func saveOwned(t *testing.T, store *storage.MockStorage, gs *state.GameState, owner uuid.UUID) {
+	t.Helper()
+	if err := store.SaveGameState(context.Background(), gs.ID, gs); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetOwner(context.Background(), gs.ID, owner); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestGameStateHandler_Create(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelError, // Reduce noise in tests
@@ -75,7 +92,7 @@ func TestGameStateHandler_Create(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json") // This was missing!
 	rr := httptest.NewRecorder()
 
-	handler.ServeHTTP(rr, req)
+	handler.ServeHTTP(rr, withTestPrincipal(req))
 
 	// Check status code
 	if rr.Code != http.StatusCreated {
@@ -192,7 +209,7 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
 
-			handler.ServeHTTP(rr, req)
+			handler.ServeHTTP(rr, withTestPrincipal(req))
 
 			if rr.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d. Response body: %s", tt.expectedStatus, rr.Code, rr.Body.String())
@@ -257,9 +274,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 
 	// Create a test game state (nil narrator is fine for tests)
 	testGS := state.NewGameState("FooScenario", nil, "test-provider", "foo_model")
-	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
-		t.Fatalf("Failed to save test game state: %v", err)
-	}
+	saveOwned(t, mockStorage, testGS, testOwnerID)
 
 	tests := []struct {
 		name           string
@@ -292,7 +307,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/v1/gamestate/"+tt.gameStateID, nil)
 			rr := httptest.NewRecorder()
 
-			handler.ServeHTTP(rr, req)
+			handler.ServeHTTP(rr, withTestPrincipal(req))
 
 			if rr.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tt.expectedStatus, rr.Code)
@@ -331,9 +346,7 @@ func TestGameStateHandler_Delete(t *testing.T) {
 
 	// Create a test game state (nil narrator is fine for tests)
 	testGS := state.NewGameState("FooScenario", nil, "test-provider", "foo_model")
-	if err := mockStorage.SaveGameState(context.Background(), testGS.ID, testGS); err != nil {
-		t.Fatalf("Failed to save test game state: %v", err)
-	}
+	saveOwned(t, mockStorage, testGS, testOwnerID)
 
 	tests := []struct {
 		name           string
@@ -350,8 +363,8 @@ func TestGameStateHandler_Delete(t *testing.T) {
 		{
 			name:           "non-existent game state",
 			gameStateID:    uuid.New().String(),
-			expectedStatus: http.StatusNoContent,
-			expectError:    false,
+			expectedStatus: http.StatusNotFound,
+			expectError:    true,
 		},
 		{
 			name:           "invalid game state ID format",
@@ -366,7 +379,7 @@ func TestGameStateHandler_Delete(t *testing.T) {
 			req := httptest.NewRequest(http.MethodDelete, "/v1/gamestate/"+tt.gameStateID, nil)
 			rr := httptest.NewRecorder()
 
-			handler.ServeHTTP(rr, req)
+			handler.ServeHTTP(rr, withTestPrincipal(req))
 
 			if rr.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tt.expectedStatus, rr.Code)
@@ -528,7 +541,7 @@ func TestGameStateHandler_CreateRulesAndTemperature(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/v1/gamestate", strings.NewReader(tt.requestBody))
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
-			handler.ServeHTTP(rr, req)
+			handler.ServeHTTP(rr, withTestPrincipal(req))
 
 			if rr.Code != tt.expectedStatus {
 				t.Fatalf("Expected status %d, got %d. Body: %s", tt.expectedStatus, rr.Code, rr.Body.String())

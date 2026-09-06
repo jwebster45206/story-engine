@@ -577,7 +577,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: ES256 JWT. `sub` is a UUID identifying the caller. `exp` is required.
+      description: ES256 JWT. `sub` is a UUID identifying the caller and owns created game sessions. `exp` is required.
   schemas:
     HealthResponse:
       type: object

@@ -20,6 +20,8 @@ type Storage interface {
 	SaveGameState(ctx context.Context, id uuid.UUID, gs *state.GameState) error
 	LoadGameState(ctx context.Context, id uuid.UUID) (*state.GameState, error)
 	DeleteGameState(ctx context.Context, id uuid.UUID) error
+	SetOwner(ctx context.Context, id uuid.UUID, owner uuid.UUID) error
+	GetOwner(ctx context.Context, id uuid.UUID) (owner uuid.UUID, found bool, err error)
 
 	// Scenario operations (filesystem-backed)
 	ListScenarios(ctx context.Context) (map[string]string, error)

@@ -83,10 +83,10 @@ func main() {
 	healthHandler := handlers.NewHealthHandler(log, storageService)
 	mux.Handle("/health", healthHandler)
 
-	chatHandler := handlers.NewChatHandler(chatQueue, log)
+	chatHandler := handlers.NewChatHandler(chatQueue, storageService, log)
 	mux.Handle("/v1/chat", chatHandler)
 
-	eventsHandler := handlers.NewEventsHandler(redisClient, log)
+	eventsHandler := handlers.NewEventsHandler(redisClient, storageService, log)
 	mux.Handle("/v1/events/gamestate/", eventsHandler)
 
 	gameStateHandler := handlers.NewGameStateHandler(log, registry, storageService)

@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 	"uuid"
@@ -11,23 +12,31 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const gameStateTTL = time.Hour
+
+func gamestateKey(id uuid.UUID) string {
+	return "gamestate:" + id.String()
+}
+
+func gamestateOwnerKey(id uuid.UUID) string {
+	return "gamestate-owner:" + id.String()
+}
+
 // GameState operations (Redis-backed)
 
 func (r *RedisStorage) SaveGameState(ctx context.Context, id uuid.UUID, gs *state.GameState) error {
-	// Update the UpdatedAt timestamp
 	gs.UpdatedAt = time.Now()
 
-	// Marshal gamestate to JSON
 	data, err := json.Marshal(gs)
 	if err != nil {
 		r.logger.Error("Failed to marshal gamestate", "uuid", id, "error", err)
 		return fmt.Errorf("failed to marshal gamestate: %w", err)
 	}
 
-	// Use gamestate: prefix for gamestate keys
-	key := "gamestate:" + id.String()
-	cmd := r.client.Set(ctx, key, string(data), time.Hour)
-	if err := cmd.Err(); err != nil {
+	pipe := r.client.TxPipeline()
+	pipe.Set(ctx, gamestateKey(id), string(data), gameStateTTL)
+	pipe.Expire(ctx, gamestateOwnerKey(id), gameStateTTL)
+	if _, err := pipe.Exec(ctx); err != nil {
 		r.logger.Error("Failed to save gamestate", "uuid", id, "error", err)
 		return fmt.Errorf("failed to save gamestate: %w", err)
 	}
@@ -36,12 +45,11 @@ func (r *RedisStorage) SaveGameState(ctx context.Context, id uuid.UUID, gs *stat
 }
 
 func (r *RedisStorage) LoadGameState(ctx context.Context, id uuid.UUID) (*state.GameState, error) {
-	key := "gamestate:" + id.String()
-	cmd := r.client.Get(ctx, key)
+	cmd := r.client.Get(ctx, gamestateKey(id))
 	if err := cmd.Err(); err != nil {
 		if err == redis.Nil {
 			r.logger.Warn("Gamestate not found", "uuid", id)
-			return nil, nil // Return nil for not found
+			return nil, nil
 		}
 		r.logger.Error("Failed to load gamestate", "uuid", id, "error", err)
 		return nil, fmt.Errorf("failed to load gamestate: %w", err)
@@ -62,9 +70,35 @@ func (r *RedisStorage) LoadGameState(ctx context.Context, id uuid.UUID) (*state.
 	return &gs, nil
 }
 
+func (r *RedisStorage) SetOwner(ctx context.Context, id uuid.UUID, owner uuid.UUID) error {
+	if owner == uuid.Nil() {
+		return fmt.Errorf("owner must not be empty")
+	}
+	if err := r.client.Set(ctx, gamestateOwnerKey(id), owner.String(), gameStateTTL).Err(); err != nil {
+		r.logger.Error("Failed to save gamestate owner", "uuid", id, "error", err)
+		return fmt.Errorf("failed to save gamestate owner: %w", err)
+	}
+	return nil
+}
+
+func (r *RedisStorage) GetOwner(ctx context.Context, id uuid.UUID) (uuid.UUID, bool, error) {
+	cmd := r.client.Get(ctx, gamestateOwnerKey(id))
+	if err := cmd.Err(); err != nil {
+		if errors.Is(err, redis.Nil) {
+			return uuid.Nil(), false, nil
+		}
+		r.logger.Error("Failed to load gamestate owner", "uuid", id, "error", err)
+		return uuid.Nil(), false, fmt.Errorf("failed to load gamestate owner: %w", err)
+	}
+	owner, err := uuid.Parse(cmd.Val())
+	if err != nil {
+		return uuid.Nil(), false, fmt.Errorf("gamestate owner is not a UUID: %w", err)
+	}
+	return owner, true, nil
+}
+
 func (r *RedisStorage) DeleteGameState(ctx context.Context, id uuid.UUID) error {
-	key := "gamestate:" + id.String()
-	cmd := r.client.Del(ctx, key)
+	cmd := r.client.Del(ctx, gamestateKey(id), gamestateOwnerKey(id))
 	if err := cmd.Err(); err != nil {
 		r.logger.Error("Failed to delete gamestate", "uuid", id, "error", err)
 		return fmt.Errorf("failed to delete gamestate: %w", err)

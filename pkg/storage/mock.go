@@ -15,6 +15,7 @@ import (
 type MockStorage struct {
 	mu         sync.RWMutex
 	gamestates map[uuid.UUID]*state.GameState
+	owners     map[uuid.UUID]uuid.UUID
 	scenarios  map[string]*scenario.Scenario
 	narrators  map[string]*scenario.Narrator
 	pcSpecs    map[string]*actor.PCSpec
@@ -30,6 +31,7 @@ var _ Storage = (*MockStorage)(nil)
 func NewMockStorage() *MockStorage {
 	return &MockStorage{
 		gamestates: make(map[uuid.UUID]*state.GameState),
+		owners:     make(map[uuid.UUID]uuid.UUID),
 		scenarios:  make(map[string]*scenario.Scenario),
 		narrators:  make(map[string]*scenario.Narrator),
 		pcSpecs:    make(map[string]*actor.PCSpec),
@@ -95,7 +97,28 @@ func (m *MockStorage) DeleteGameState(ctx context.Context, id uuid.UUID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.gamestates, id)
+	delete(m.owners, id)
 	return nil
+}
+
+func (m *MockStorage) SetOwner(ctx context.Context, id uuid.UUID, owner uuid.UUID) error {
+	if owner == uuid.Nil() {
+		return errors.New("owner must not be empty")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.owners[id] = owner
+	return nil
+}
+
+func (m *MockStorage) GetOwner(ctx context.Context, id uuid.UUID) (uuid.UUID, bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	owner, ok := m.owners[id]
+	if !ok {
+		return uuid.Nil(), false, nil
+	}
+	return owner, true, nil
 }
 
 // ListScenarios mocks listing scenarios
