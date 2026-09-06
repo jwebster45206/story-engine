@@ -18,22 +18,20 @@ A terminal-based user interface for the Story Engine, built with [Charm Bracelet
 
 ### Configuration
 
-The console client only needs to know where the API server is running. By default, it connects to `http://localhost:8080`.
+The console needs `auth-key.pem` in the working directory (see the [root README](../../README.md) for key generation). The process exits if the private key is missing.
 
-To use a different API server address:
+| Env | Default |
+|-----|---------|
+| `API_BASE_URL` | `http://localhost:8080` |
 
-```bash
-export API_BASE_URL=http://your-api-server:8080
-```
+Each request is sent with `Authorization: Bearer` and an ES256 JWT.
 
 ### Running the Client
 
 ```bash
-# Run with default API URL (localhost:8080)
-go run cmd/console/*.go
+go run ./cmd/console
 
-# Run with custom API URL
-API_BASE_URL=http://your-api-server:8080 go run cmd/console/*.go
+API_BASE_URL=http://your-api-server:8080 go run ./cmd/console
 ```
 
 ## How It Works

@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jwebster45206/story-engine/internal/auth"
 	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/internal/handlers"
 	"github.com/jwebster45206/story-engine/internal/llm"
@@ -20,6 +21,15 @@ import (
 
 func main() {
 	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	pub, err := auth.LoadPublicKey(dir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -102,7 +112,7 @@ func main() {
 	mux.Handle("/v1/monsters", monsterHandler)
 	mux.Handle("/v1/monsters/", monsterHandler)
 
-	handler := middleware.Logger(mux)
+	handler := middleware.Logger(middleware.JWT(pub, mux))
 	server := &http.Server{
 		Addr:        ":" + cfg.Port,
 		Handler:     handler,

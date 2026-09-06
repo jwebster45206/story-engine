@@ -12,8 +12,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"uuid"
 
 	"github.com/jwebster45206/story-engine/integration/runner"
+	"github.com/jwebster45206/story-engine/internal/auth"
 )
 
 var errFlag = flag.String("err", "continue", "Error handling mode: 'continue' (run all steps) or 'exit' (stop on first failure)")
@@ -71,6 +73,7 @@ func TestIntegration(t *testing.T) {
 			testRunner.Logger = func(format string, args ...interface{}) {
 				t.Logf(format, args...)
 			}
+			testRunner.Client.Transport = auth.Bearer(mustJWT(t))
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer cancel()
@@ -115,4 +118,17 @@ func getIntEnv(name string, defaultValue int) int {
 	}
 
 	return val
+}
+
+func mustJWT(t *testing.T) string {
+	t.Helper()
+	key, err := auth.LoadPrivateKey("..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := auth.Token(key, uuid.MustParse("22222222-2222-4222-8222-222222222222"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
 }

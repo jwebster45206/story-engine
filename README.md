@@ -15,6 +15,8 @@ A lightweight narrative engine for immersive, structured text adventures. Game e
 
 The Story Engine exposes a REST API for interactive, closed-world adventures. Clients create a game session, subscribe to Server-Sent Events, and send chat turns that a background worker processes with an LLM. Redis holds session state, the request queue, per-game locks, and SSE pub/sub between the API (`cmd/api`) and worker (`cmd/worker`). An optional console TUI lives under `cmd/console`.
 
+Authenticated HTTP routes require `Authorization: Bearer` with an **ES256** JWT.
+
 ### Main loop
 
 **Init**
@@ -55,7 +57,9 @@ pkg/
 └── storage/        # Storage interface
 
 internal/
+├── auth/           # JWT principal, verify, local mint helper
 ├── handlers/       # HTTP handlers
+├── middleware/     # Logger + JWT gate
 ├── worker/         # Queue consumer + chat processor
 ├── llm/            # LLM providers and registry
 ├── queue/          # Redis work queue
@@ -95,6 +99,12 @@ API: [docs/openapi.yaml](docs/openapi.yaml) — gamestate, chat, events, content
 }
 ```
 
+Copy `config.template.json` to `config.json` (or `config.docker.json` for Compose) and fill in provider keys. Generate an ES256 keypair in the directory you will launch from (gitignored):
+
+```bash
+openssl ecparam -name prime256v1 -genkey -noout -out auth-key.pem
+openssl ec -in auth-key.pem -pubout -out auth-key.pub.pem
+```
 
 ```bash
 # API + worker (same CONFIG)
@@ -107,8 +117,8 @@ DATA_DIR=~/Documents/story-engine-scenarios docker compose up --build -d
 docker compose restart story-engine-api story-engine-worker
 
 # Console client — see cmd/console/README.md
-go run cmd/console/*.go
-API_BASE_URL=http://localhost:3000 go run cmd/console/*.go
+go run ./cmd/console
+API_BASE_URL=http://localhost:3000 go run ./cmd/console
 ```
 
 ## Docs
