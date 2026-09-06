@@ -28,11 +28,11 @@ func AuthorizeGame(r *http.Request, store storage.Storage, id uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	owner, err := store.GetOwner(r.Context(), id)
+	ownerID, err := store.GetOwner(r.Context(), id)
 	if err != nil {
 		return err
 	}
-	if p.ID != owner {
+	if p.ID != ownerID {
 		return ErrForbidden
 	}
 	return nil

@@ -25,7 +25,25 @@ func gamestateOwnerKey(id uuid.UUID) string {
 
 // GameState operations (Redis-backed)
 
-func (r *RedisStorage) SaveGameState(ctx context.Context, id uuid.UUID, gs *state.GameState) error {
+func (r *RedisStorage) CreateGameState(ctx context.Context, id uuid.UUID, gs *state.GameState, ownerID uuid.UUID) error {
+	if id == uuid.Nil() || ownerID == uuid.Nil() {
+		return fmt.Errorf("id and ownerID must not be empty")
+	}
+	gs.UpdatedAt = time.Now()
+	data, err := json.Marshal(gs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal gamestate: %w", err)
+	}
+	pipe := r.client.TxPipeline()
+	pipe.Set(ctx, gamestateKey(id), string(data), gameStateTTL)
+	pipe.Set(ctx, gamestateOwnerKey(id), ownerID.String(), gameStateTTL)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return fmt.Errorf("failed to create gamestate: %w", err)
+	}
+	return nil
+}
+
+func (r *RedisStorage) UpdateGameState(ctx context.Context, id uuid.UUID, gs *state.GameState) error {
 	gs.UpdatedAt = time.Now()
 
 	data, err := json.Marshal(gs)
@@ -71,16 +89,6 @@ func (r *RedisStorage) LoadGameState(ctx context.Context, id uuid.UUID) (*state.
 	return &gs, nil
 }
 
-func (r *RedisStorage) SetOwner(ctx context.Context, id uuid.UUID, owner uuid.UUID) error {
-	if id == uuid.Nil() || owner == uuid.Nil() {
-		return fmt.Errorf("id and owner must not be empty")
-	}
-	if err := r.client.Set(ctx, gamestateOwnerKey(id), owner.String(), gameStateTTL).Err(); err != nil {
-		return fmt.Errorf("failed to save gamestate owner: %w", err)
-	}
-	return nil
-}
-
 func (r *RedisStorage) GetOwner(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
 	cmd := r.client.Get(ctx, gamestateOwnerKey(id))
 	if err := cmd.Err(); err != nil {
@@ -89,11 +97,11 @@ func (r *RedisStorage) GetOwner(ctx context.Context, id uuid.UUID) (uuid.UUID, e
 		}
 		return uuid.Nil(), fmt.Errorf("failed to load gamestate owner: %w", err)
 	}
-	owner, err := uuid.Parse(cmd.Val())
+	ownerID, err := uuid.Parse(cmd.Val())
 	if err != nil {
 		return uuid.Nil(), fmt.Errorf("gamestate owner is not a UUID: %w", err)
 	}
-	return owner, nil
+	return ownerID, nil
 }
 
 func (r *RedisStorage) DeleteGameState(ctx context.Context, id uuid.UUID) error {

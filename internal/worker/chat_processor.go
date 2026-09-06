@@ -139,7 +139,7 @@ func (p *ChatProcessor) UpdateGameStateAfterStream(ctx context.Context, gs *stat
 		Content: responseMessage,
 	})
 
-	if err := p.storage.SaveGameState(ctx, gs.ID, gs); err != nil {
+	if err := p.storage.UpdateGameState(ctx, gs.ID, gs); err != nil {
 		return fmt.Errorf("failed to save game state after streaming: %w", err)
 	}
 
@@ -290,7 +290,7 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 	p.applyConditionalsCascade(applier, latestGS.ID)
 
 	// Save the updated game state
-	if err := p.storage.SaveGameState(ctx, latestGS.ID, latestGS); err != nil {
+	if err := p.storage.UpdateGameState(ctx, latestGS.ID, latestGS); err != nil {
 		p.logger.Error("Failed to save updated game state after meta extraction", "error", err, "game_state_id", latestGS.ID.String())
 		return
 	}

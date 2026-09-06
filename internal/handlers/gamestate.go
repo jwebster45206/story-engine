@@ -396,22 +396,8 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		gs.WorldLocations[locName] = loc
 	}
 
-	if err := h.storage.SaveGameState(r.Context(), gs.ID, gs); err != nil {
+	if err := h.storage.CreateGameState(r.Context(), gs.ID, gs, p.ID); err != nil {
 		h.logger.Error("Failed to save new game state", "error", err, "id", gs.ID.String())
-		w.WriteHeader(http.StatusInternalServerError)
-		response := ErrorResponse{
-			Error: "Failed to create game state",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("Failed to encode error response", "error", err)
-		}
-		return
-	}
-	if err := h.storage.SetOwner(r.Context(), gs.ID, p.ID); err != nil {
-		h.logger.Error("Failed to save game state owner", "error", err, "id", gs.ID.String())
-		if delErr := h.storage.DeleteGameState(r.Context(), gs.ID); delErr != nil {
-			h.logger.Error("Failed to roll back game state after owner error", "error", delErr, "id", gs.ID.String())
-		}
 		w.WriteHeader(http.StatusInternalServerError)
 		response := ErrorResponse{
 			Error: "Failed to create game state",
@@ -528,7 +514,7 @@ func (h *GameStateHandler) handlePatch(w http.ResponseWriter, r *http.Request, g
 		updatedGS.IsEnded = patchData.IsEnded
 	}
 
-	if err := h.storage.SaveGameState(r.Context(), gameStateID, &updatedGS); err != nil {
+	if err := h.storage.UpdateGameState(r.Context(), gameStateID, &updatedGS); err != nil {
 		h.logger.Error("Failed to save patched game state", "error", err, "id", gameStateID.String())
 		w.WriteHeader(http.StatusInternalServerError)
 		response := ErrorResponse{

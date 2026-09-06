@@ -70,14 +70,27 @@ func (m *MockStorage) Close() error {
 	return nil
 }
 
-// SaveGameState mocks saving a gamestate
-func (m *MockStorage) SaveGameState(ctx context.Context, id uuid.UUID, gamestate *state.GameState) error {
-	if gamestate == nil {
+func (m *MockStorage) CreateGameState(ctx context.Context, id uuid.UUID, gs *state.GameState, ownerID uuid.UUID) error {
+	if id == uuid.Nil() || ownerID == uuid.Nil() {
+		return errors.New("id and ownerID must not be empty")
+	}
+	if gs == nil {
 		return errors.New("gamestate cannot be nil")
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.gamestates[id] = gamestate
+	m.gamestates[id] = gs
+	m.owners[id] = ownerID
+	return nil
+}
+
+func (m *MockStorage) UpdateGameState(ctx context.Context, id uuid.UUID, gs *state.GameState) error {
+	if gs == nil {
+		return errors.New("gamestate cannot be nil")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.gamestates[id] = gs
 	return nil
 }
 
@@ -101,24 +114,14 @@ func (m *MockStorage) DeleteGameState(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (m *MockStorage) SetOwner(ctx context.Context, id uuid.UUID, owner uuid.UUID) error {
-	if id == uuid.Nil() || owner == uuid.Nil() {
-		return errors.New("id and owner must not be empty")
-	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.owners[id] = owner
-	return nil
-}
-
 func (m *MockStorage) GetOwner(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	owner, ok := m.owners[id]
+	ownerID, ok := m.owners[id]
 	if !ok {
 		return uuid.Nil(), ErrNotFound
 	}
-	return owner, nil
+	return ownerID, nil
 }
 
 // ListScenarios mocks listing scenarios

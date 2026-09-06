@@ -86,12 +86,9 @@ func tokenFor(t *testing.T, priv *ecdsa.PrivateKey, id uuid.UUID) string {
 }
 
 // saveOwned writes a gamestate and stamps its owner so tests can skip POST /gamestate.
-func saveOwned(t *testing.T, ctx context.Context, store *storage.MockStorage, gs *state.GameState, owner uuid.UUID) {
+func saveOwned(t *testing.T, ctx context.Context, store *storage.MockStorage, gs *state.GameState, ownerID uuid.UUID) {
 	t.Helper()
-	if err := store.SaveGameState(ctx, gs.ID, gs); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.SetOwner(ctx, gs.ID, owner); err != nil {
+	if err := store.CreateGameState(ctx, gs.ID, gs, ownerID); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -625,13 +622,13 @@ func TestGameStateOwnership(t *testing.T) {
 	if err := json.NewDecoder(rr.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
-	owner, err := mockStorage.GetOwner(t.Context(), created.ID)
-	if err != nil || owner != testPrincipalA {
-		t.Fatalf("owner = %v err=%v", owner, err)
+	ownerID, err := mockStorage.GetOwner(t.Context(), created.ID)
+	if err != nil || ownerID != testPrincipalA {
+		t.Fatalf("ownerID = %v err=%v", ownerID, err)
 	}
 
 	orphan := state.NewGameState("foo_scenario.json", nil, "foo", "foo_model")
-	if err := mockStorage.SaveGameState(t.Context(), orphan.ID, orphan); err != nil {
+	if err := mockStorage.UpdateGameState(t.Context(), orphan.ID, orphan); err != nil {
 		t.Fatal(err)
 	}
 
@@ -647,6 +644,8 @@ func TestGameStateOwnership(t *testing.T) {
 		{name: "other principal 403", method: http.MethodGet, path: "/v1/gamestate/" + created.ID.String(), token: tokenB, want: http.StatusForbidden},
 		{name: "missing owner sidecar 404", method: http.MethodGet, path: "/v1/gamestate/" + orphan.ID.String(), token: tokenA, want: http.StatusNotFound},
 		{name: "owner patches", method: http.MethodPatch, path: "/v1/gamestate/" + created.ID.String(), body: `{"location":"forest"}`, token: tokenA, want: http.StatusOK},
+		{name: "other principal patch 403", method: http.MethodPatch, path: "/v1/gamestate/" + created.ID.String(), body: `{"location":"cave"}`, token: tokenB, want: http.StatusForbidden},
+		{name: "other principal delete 403", method: http.MethodDelete, path: "/v1/gamestate/" + created.ID.String(), token: tokenB, want: http.StatusForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -668,8 +667,8 @@ func TestGameStateOwnership(t *testing.T) {
 		})
 	}
 
-	owner, err = mockStorage.GetOwner(t.Context(), created.ID)
-	if err != nil || owner != testPrincipalA {
-		t.Fatalf("owner after patch = %v err=%v", owner, err)
+	ownerID, err = mockStorage.GetOwner(t.Context(), created.ID)
+	if err != nil || ownerID != testPrincipalA {
+		t.Fatalf("ownerID after patch = %v err=%v", ownerID, err)
 	}
 }

@@ -34,8 +34,6 @@ func TestChatHandler_Ownership(t *testing.T) {
 	gs := state.NewGameState("foo_scenario.json", nil, "foo", "foo_model")
 	saveOwned(t, t.Context(), mockStorage, gs, testPrincipalA)
 
-	q := &stubChatQueue{}
-	handler := NewChatHandler(q, mockStorage, logger)
 	priv, pub := testKeyPair(t)
 	body := `{"gamestate_id":"` + gs.ID.String() + `","message":"look around"}`
 
@@ -50,6 +48,8 @@ func TestChatHandler_Ownership(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			q := &stubChatQueue{}
+			handler := NewChatHandler(q, mockStorage, logger)
 			req := httptest.NewRequest(http.MethodPost, "/v1/chat", strings.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()

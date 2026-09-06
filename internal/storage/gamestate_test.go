@@ -24,7 +24,7 @@ func TestMockStorage_SaveAndLoadGameState(t *testing.T) {
 	gs.Inventory = []string{"sword", "shield"}
 
 	// Save it
-	err := mockStorage.SaveGameState(ctx, gs.ID, gs)
+	err := mockStorage.UpdateGameState(ctx, gs.ID, gs)
 	if err != nil {
 		t.Fatalf("Failed to save gamestate: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestMockStorage_DeleteGameState(t *testing.T) {
 
 	// Create and save a gamestate
 	gs := state.NewGameState("test_scenario.json", nil, "test-provider", "test_model")
-	err := mockStorage.SaveGameState(ctx, gs.ID, gs)
+	err := mockStorage.UpdateGameState(ctx, gs.ID, gs)
 	if err != nil {
 		t.Fatalf("Failed to save gamestate: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestMockStorage_UpdateGameState(t *testing.T) {
 	// Create and save initial gamestate
 	gs := state.NewGameState("test_scenario.json", nil, "test-provider", "test_model")
 	gs.Location = "start"
-	err := mockStorage.SaveGameState(ctx, gs.ID, gs)
+	err := mockStorage.UpdateGameState(ctx, gs.ID, gs)
 	if err != nil {
 		t.Fatalf("Failed to save initial gamestate: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestMockStorage_UpdateGameState(t *testing.T) {
 	gs.Inventory = append(gs.Inventory, "potion")
 	time.Sleep(10 * time.Millisecond) // Ensure UpdatedAt will be different
 
-	err = mockStorage.SaveGameState(ctx, gs.ID, gs)
+	err = mockStorage.UpdateGameState(ctx, gs.ID, gs)
 	if err != nil {
 		t.Fatalf("Failed to update gamestate: %v", err)
 	}
@@ -157,34 +157,31 @@ func newTestRedisStorage(t *testing.T) (*RedisStorage, *miniredis.Miniredis) {
 func TestRedisStorage_Owner(t *testing.T) {
 	store, mr := newTestRedisStorage(t)
 	ctx := t.Context()
-	owner := uuid.MustParse("22222222-2222-4222-8222-222222222222")
+	ownerID := uuid.MustParse("22222222-2222-4222-8222-222222222222")
 	gs := state.NewGameState("test_scenario.json", nil, "test-provider", "test_model")
 
-	if err := store.SetOwner(ctx, uuid.Nil(), owner); err == nil {
-		t.Fatal("SetOwner with nil id should fail")
+	if err := store.CreateGameState(ctx, uuid.Nil(), gs, ownerID); err == nil {
+		t.Fatal("CreateGameState with nil id should fail")
 	}
-	if err := store.SetOwner(ctx, gs.ID, uuid.Nil()); err == nil {
-		t.Fatal("SetOwner with nil owner should fail")
+	if err := store.CreateGameState(ctx, gs.ID, gs, uuid.Nil()); err == nil {
+		t.Fatal("CreateGameState with nil ownerID should fail")
 	}
 
-	if err := store.SaveGameState(ctx, gs.ID, gs); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.SetOwner(ctx, gs.ID, owner); err != nil {
+	if err := store.CreateGameState(ctx, gs.ID, gs, ownerID); err != nil {
 		t.Fatal(err)
 	}
 	got, err := store.GetOwner(ctx, gs.ID)
-	if err != nil || got != owner {
+	if err != nil || got != ownerID {
 		t.Fatalf("GetOwner = %v err=%v", got, err)
 	}
 
 	gs.Location = "forest"
-	if err := store.SaveGameState(ctx, gs.ID, gs); err != nil {
+	if err := store.UpdateGameState(ctx, gs.ID, gs); err != nil {
 		t.Fatal(err)
 	}
 	got, err = store.GetOwner(ctx, gs.ID)
-	if err != nil || got != owner {
-		t.Fatalf("SaveGameState changed owner: %v err=%v", got, err)
+	if err != nil || got != ownerID {
+		t.Fatalf("UpdateGameState changed owner: %v err=%v", got, err)
 	}
 
 	blobTTL := mr.TTL(gamestateKey(gs.ID))
@@ -211,10 +208,7 @@ func TestRedisStorage_Owner(t *testing.T) {
 	}
 
 	gs2 := state.NewGameState("test_scenario.json", nil, "test-provider", "test_model")
-	if err := store.SaveGameState(ctx, gs2.ID, gs2); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.SetOwner(ctx, gs2.ID, owner); err != nil {
+	if err := store.CreateGameState(ctx, gs2.ID, gs2, ownerID); err != nil {
 		t.Fatal(err)
 	}
 	mr.FastForward(gameStateTTL + time.Second)
