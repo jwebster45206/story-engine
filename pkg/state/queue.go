@@ -2,8 +2,8 @@ package state
 
 import (
 	"context"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/pkg/queue"
 )
 

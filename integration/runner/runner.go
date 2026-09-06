@@ -14,8 +14,7 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/jwebster45206/story-engine/pkg/state"
 )

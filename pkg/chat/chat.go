@@ -3,8 +3,7 @@ package chat
 import (
 	"fmt"
 	"strings"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 const MaxMessageLength = 255
@@ -61,7 +60,7 @@ func (cr *ChatRequest) Validate() error {
 	if len(cr.Message) > MaxMessageLength {
 		return fmt.Errorf("message exceeds maximum length of %d characters", MaxMessageLength)
 	}
-	if cr.GameStateID == uuid.Nil {
+	if cr.GameStateID == uuid.Nil() {
 		return fmt.Errorf("game state ID cannot be empty")
 	}
 	return nil

@@ -9,10 +9,9 @@ import (
 	"os"
 	"strings"
 	"time"
+	"uuid"
 
 	"github.com/atotto/clipboard"
-
-	"github.com/google/uuid"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"

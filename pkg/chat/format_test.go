@@ -2,8 +2,7 @@ package chat
 
 import (
 	"testing"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 func TestFormatWithPCName(t *testing.T) {

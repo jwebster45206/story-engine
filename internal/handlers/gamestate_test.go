@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/llm"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
@@ -94,7 +94,7 @@ func TestGameStateHandler_Create(t *testing.T) {
 	}
 
 	// Validate response
-	if response.ID == uuid.Nil {
+	if response.ID == uuid.Nil() {
 		t.Error("Expected non-nil game state ID")
 	}
 	if response.Rules != state.RulesStrict {
@@ -206,7 +206,7 @@ func TestGameStateHandler_CreateWithOverrides(t *testing.T) {
 				}
 
 				// Validate response
-				if response.ID == uuid.Nil {
+				if response.ID == uuid.Nil() {
 					t.Error("Expected non-nil game state ID")
 				}
 
@@ -313,7 +313,7 @@ func TestGameStateHandler_Read(t *testing.T) {
 					t.Fatalf("Failed to decode response: %v", err)
 				}
 
-				if response.ID == uuid.Nil {
+				if response.ID == uuid.Nil() {
 					t.Error("Expected valid game state ID in response")
 				}
 			}

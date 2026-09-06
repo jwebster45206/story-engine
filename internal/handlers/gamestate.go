@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/jwebster45206/story-engine/internal/llm"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/chat"
@@ -77,7 +77,7 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handleCreate(w, r)
 
 	case http.MethodGet:
-		if gameStateID == uuid.Nil {
+		if gameStateID == uuid.Nil() {
 			h.logger.Warn("GET request without game state ID")
 			w.WriteHeader(http.StatusBadRequest)
 			response := ErrorResponse{
@@ -91,7 +91,7 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handleRead(w, r, gameStateID)
 
 	case http.MethodPatch:
-		if gameStateID == uuid.Nil {
+		if gameStateID == uuid.Nil() {
 			w.WriteHeader(http.StatusBadRequest)
 			response := ErrorResponse{
 				Error: "Game state ID is required for PATCH requests",
@@ -104,7 +104,7 @@ func (h *GameStateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handlePatch(w, r, gameStateID)
 
 	case http.MethodDelete:
-		if gameStateID == uuid.Nil {
+		if gameStateID == uuid.Nil() {
 			h.logger.Warn("DELETE request without game state ID")
 			w.WriteHeader(http.StatusBadRequest)
 			response := ErrorResponse{
