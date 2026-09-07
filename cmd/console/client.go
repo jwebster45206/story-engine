@@ -1,21 +1,22 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"sort"
-	"strings"
 	"uuid"
 
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
+
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
 
 func testConnection(client *http.Client, baseURL string) bool {
 	resp, err := client.Get(baseURL + "/health")
@@ -315,74 +316,4 @@ func sendChatAsync(client *http.Client, baseURL string, gameStateID uuid.UUID, m
 	}
 
 	return chatResp.RequestID, nil
-}
-
-// SSEEvent represents an event from the SSE stream
-type SSEEvent struct {
-	Type string         `json:"type"`
-	Data map[string]any `json:"data"`
-}
-
-// listenToSSE connects to the SSE endpoint and streams events to a channel
-func listenToSSE(ctx context.Context, client *http.Client, baseURL string, gameStateID uuid.UUID, eventChan chan<- SSEEvent) error {
-	url := fmt.Sprintf("%s/v1/events/gamestate/%s", baseURL, gameStateID.String())
-
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("Cache-Control", "no-cache")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to connect to SSE: %w", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("SSE connection failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	scanner := bufio.NewScanner(resp.Body)
-	var currentEvent SSEEvent
-
-	for scanner.Scan() {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
-		line := scanner.Text()
-
-		if line == "" {
-			// Empty line signals end of event
-			if currentEvent.Type != "" {
-				eventChan <- currentEvent
-				currentEvent = SSEEvent{}
-			}
-			continue
-		}
-
-		// Parse SSE format
-		if eventType, ok := strings.CutPrefix(line, "event: "); ok {
-			currentEvent.Type = eventType
-		} else if dataJSON, ok := strings.CutPrefix(line, "data: "); ok {
-			var data map[string]any
-			if err := json.Unmarshal([]byte(dataJSON), &data); err == nil {
-				currentEvent.Data = data
-			}
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("error reading SSE stream: %w", err)
-	}
-
-	return nil
 }

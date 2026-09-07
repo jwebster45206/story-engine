@@ -16,10 +16,6 @@ type ConsoleConfig struct {
 	Timeout    time.Duration
 }
 
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
 func main() {
 	dir, err := os.Getwd()
 	if err != nil {
