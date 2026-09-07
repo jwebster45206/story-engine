@@ -154,6 +154,17 @@ type sseEventMsg struct {
 	event SSEEvent
 }
 
+// sseDisconnectedMsg is sent when the SSE channel closes (stream dropped or
+// listenToSSE returned). Stale messages are ignored via gameID.
+type sseDisconnectedMsg struct {
+	gameID uuid.UUID
+}
+
+// sseReconnectMsg fires after a short backoff to open a new stream.
+type sseReconnectMsg struct {
+	gameID uuid.UUID
+}
+
 type chatErrorMsg struct {
 	err error
 }

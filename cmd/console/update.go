@@ -13,6 +13,15 @@ import (
 )
 
 func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Stream lifecycle must run even while a modal is open, or a dropped
+	// connection during quit/new-game confirm would never reconnect.
+	switch msg := msg.(type) {
+	case sseDisconnectedMsg:
+		return m.handleSSEDisconnected(msg)
+	case sseReconnectMsg:
+		return m.handleSSEReconnect(msg)
+	}
+
 	// Handle scenario modal first
 	if m.showScenarioModal {
 		return m.updateScenarioModal(msg)
@@ -453,14 +462,43 @@ func (m ConsoleUI) refreshGameState() tea.Cmd {
 }
 
 func (m ConsoleUI) consumeSSEEvents(events <-chan SSEEvent) tea.Cmd {
+	gameID := m.sseGameID
 	return func() tea.Msg {
 		event, ok := <-events
 		if !ok {
-			// Channel closed
-			return nil
+			return sseDisconnectedMsg{gameID: gameID}
 		}
 		return sseEventMsg{event: event}
 	}
+}
+
+func (m ConsoleUI) handleSSEDisconnected(msg sseDisconnectedMsg) (tea.Model, tea.Cmd) {
+	if msg.gameID != m.sseGameID || m.gameState == nil || m.gameState.ID != msg.gameID {
+		return m, nil
+	}
+	wasWaiting := m.loading || m.isStreaming
+	m.loading = false
+	m.isStreaming = false
+	if wasWaiting {
+		m.gameState.ChatHistory = append(m.gameState.ChatHistory, chat.ChatMessage{
+			Role:    "system",
+			Content: errorStyle.Render("Error: lost connection to event stream; try sending again"),
+		})
+		m.writeChatContent()
+		if !m.userPinned {
+			m.chatViewport.GotoBottom()
+		}
+	}
+	return m, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
+		return sseReconnectMsg(msg)
+	})
+}
+
+func (m ConsoleUI) handleSSEReconnect(msg sseReconnectMsg) (tea.Model, tea.Cmd) {
+	if m.gameState == nil || m.gameState.ID != msg.gameID {
+		return m, nil
+	}
+	return m, m.startSSE()
 }
 
 func (m ConsoleUI) loadScenarios() tea.Cmd {

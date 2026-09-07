@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"uuid"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // SSEEvent represents an event from the SSE stream
@@ -25,6 +27,28 @@ func (m *ConsoleUI) stopSSE() {
 	}
 	m.eventChan = nil
 	m.sseGameID = uuid.Nil()
+}
+
+// startSSE opens a new event stream for the current game and returns a command
+// that consumes it. stopSSE is called first so a prior listener is cancelled.
+func (m *ConsoleUI) startSSE() tea.Cmd {
+	if m.gameState == nil || m.client == nil || m.config == nil {
+		return nil
+	}
+	m.stopSSE()
+	ctx, cancel := context.WithCancel(context.Background())
+	m.sseCancel = cancel
+	id := m.gameState.ID
+	m.sseGameID = id
+	eventChan := make(chan SSEEvent, 10)
+	m.eventChan = eventChan
+	client := m.client
+	baseURL := m.config.APIBaseURL
+	go func() {
+		_ = listenToSSE(ctx, client, baseURL, id, eventChan)
+		close(eventChan)
+	}()
+	return m.consumeSSEEvents(eventChan)
 }
 
 // feedSSELine consumes one SSE wire line. A blank line completes the current

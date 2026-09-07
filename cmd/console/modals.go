@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -188,20 +187,7 @@ func (m ConsoleUI) handleGameStateCreated(msg gameStateCreatedMsg) (tea.Model, t
 	m.textarea.Focus() // Ensure textarea gets focus when modal closes
 	m.ready = true
 
-	m.stopSSE()
-	ctx, cancel := context.WithCancel(context.Background())
-	m.sseCancel = cancel
-	id := m.gameState.ID
-	m.sseGameID = id
-	eventChan := make(chan SSEEvent, 10)
-	m.eventChan = eventChan
-	client := m.client
-	baseURL := m.config.APIBaseURL
-	go func() {
-		_ = listenToSSE(ctx, client, baseURL, id, eventChan)
-		close(eventChan)
-	}()
-	return m, tea.Batch(textarea.Blink, m.consumeSSEEvents(eventChan))
+	return m, tea.Batch(textarea.Blink, m.startSSE())
 }
 
 func (m ConsoleUI) updatePlayStyleModal(msg tea.Msg) (tea.Model, tea.Cmd) {
