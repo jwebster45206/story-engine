@@ -287,6 +287,9 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case sseEventMsg:
+		if msg.event.GameID != m.sseGameID {
+			return m, nil
+		}
 		// Handle SSE events from the async request processing
 		switch msg.event.Type {
 		case "request.processing":
