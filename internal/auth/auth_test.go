@@ -177,7 +177,7 @@ func TestTokenTTL(t *testing.T) {
 	if !ok || !tok.Valid {
 		t.Fatal("invalid token")
 	}
-	got := claims.ExpiresAt.Time.Sub(claims.IssuedAt.Time)
+	got := claims.ExpiresAt.Sub(claims.IssuedAt.Time)
 	if got < ttl-time.Second || got > ttl+time.Second {
 		t.Fatalf("ttl = %v, want %v", got, ttl)
 	}
