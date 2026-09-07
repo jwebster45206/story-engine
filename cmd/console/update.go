@@ -490,7 +490,7 @@ func (m ConsoleUI) handleSSEDisconnected(msg sseDisconnectedMsg) (tea.Model, tea
 		}
 	}
 	return m, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
-		return sseReconnectMsg{gameID: msg.gameID}
+		return sseReconnectMsg(msg)
 	})
 }
 
