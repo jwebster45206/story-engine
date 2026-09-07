@@ -118,7 +118,7 @@ docker compose restart story-engine-api story-engine-worker
 
 # Console client — see cmd/console/README.md
 go run ./cmd/console
-API_BASE_URL=http://localhost:3000 go run ./cmd/console
+API_BASE_URL=http://localhost:8080 go run ./cmd/console
 ```
 
 ## Docs
