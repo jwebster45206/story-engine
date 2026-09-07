@@ -86,13 +86,6 @@ API: [docs/openapi.yaml](docs/openapi.yaml) — gamestate, chat, events, content
       "api_key": "sk-ant-api03-...",
       "model": "claude-sonnet-4-6",
       "backend_model": "claude-haiku-4-5"
-    },
-    "venice": {
-      "vendor": "venice",
-      "display_name": "Venice Uncensored",
-      "api_key": "your_venice_api_key_here",
-      "model": "venice-uncensored-role-play",
-      "backend_model": "qwen3-4b"
     }
   },
   "redis_url": "localhost:6379"

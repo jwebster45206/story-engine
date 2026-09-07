@@ -60,6 +60,3 @@ jobs:
         dockerfile: Dockerfile
         failure-threshold: error
  
-#   security:
-#     runs-on: ubuntu-latest
-#     steps: TODO
