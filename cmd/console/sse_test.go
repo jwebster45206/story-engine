@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 	"uuid"
+
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 func TestFeedSSELine_CompletesEvent(t *testing.T) {
@@ -191,5 +193,133 @@ func TestParseSSEStream_CancelMidStream(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("parseSSEStream hung after cancel")
+	}
+}
+
+func TestConsumeSSEEvents_ClosedChannel(t *testing.T) {
+	id := uuid.New()
+	m := newTestUI()
+	m.sseGameID = id
+	ch := make(chan SSEEvent)
+	close(ch)
+
+	msg := m.consumeSSEEvents(ch)()
+	got, ok := msg.(sseDisconnectedMsg)
+	if !ok {
+		t.Fatalf("got %T, want sseDisconnectedMsg", msg)
+	}
+	if got.gameID != id {
+		t.Fatalf("gameID = %v, want %v", got.gameID, id)
+	}
+}
+
+func TestConsumeSSEEvents_Event(t *testing.T) {
+	id := uuid.New()
+	m := newTestUI()
+	m.sseGameID = id
+	ch := make(chan SSEEvent, 1)
+	ch <- SSEEvent{Type: "connected", GameID: id}
+
+	msg := m.consumeSSEEvents(ch)()
+	got, ok := msg.(sseEventMsg)
+	if !ok {
+		t.Fatalf("got %T, want sseEventMsg", msg)
+	}
+	if got.event.Type != "connected" {
+		t.Fatalf("Type = %q, want connected", got.event.Type)
+	}
+}
+
+func TestUpdate_SSEDisconnectedUnsticksLoading(t *testing.T) {
+	id := uuid.New()
+	m := newTestUI()
+	m.showScenarioModal = false
+	m.sseGameID = id
+	m.loading = true
+	m.isStreaming = true
+	m.gameState = &state.GameState{ID: id}
+
+	model, cmd := m.Update(sseDisconnectedMsg{gameID: id})
+	ui := model.(ConsoleUI)
+	if ui.loading || ui.isStreaming {
+		t.Fatal("loading/isStreaming should clear so Enter works again")
+	}
+	if cmd == nil {
+		t.Fatal("expected reconnect tick")
+	}
+	if len(ui.gameState.ChatHistory) != 1 {
+		t.Fatalf("ChatHistory len = %d, want 1 system error", len(ui.gameState.ChatHistory))
+	}
+	if ui.gameState.ChatHistory[0].Role != "system" {
+		t.Fatalf("role = %q, want system", ui.gameState.ChatHistory[0].Role)
+	}
+	if !strings.Contains(ui.gameState.ChatHistory[0].Content, "lost connection") {
+		t.Fatalf("content = %q, want lost connection", ui.gameState.ChatHistory[0].Content)
+	}
+}
+
+func TestUpdate_SSEDisconnectedIdleIsSilent(t *testing.T) {
+	id := uuid.New()
+	m := newTestUI()
+	m.showScenarioModal = false
+	m.sseGameID = id
+	m.gameState = &state.GameState{ID: id}
+
+	model, cmd := m.Update(sseDisconnectedMsg{gameID: id})
+	ui := model.(ConsoleUI)
+	if cmd == nil {
+		t.Fatal("expected reconnect tick")
+	}
+	if len(ui.gameState.ChatHistory) != 0 {
+		t.Fatalf("idle disconnect should not append chat, got %d", len(ui.gameState.ChatHistory))
+	}
+}
+
+func TestUpdate_SSEDisconnectedIgnoresStaleGame(t *testing.T) {
+	id := uuid.New()
+	m := newTestUI()
+	m.showScenarioModal = false
+	m.sseGameID = id
+	m.loading = true
+	m.gameState = &state.GameState{ID: id}
+
+	model, cmd := m.Update(sseDisconnectedMsg{gameID: uuid.New()})
+	ui := model.(ConsoleUI)
+	if !ui.loading {
+		t.Fatal("stale disconnect should not clear loading")
+	}
+	if cmd != nil {
+		t.Fatal("stale disconnect should not reconnect")
+	}
+}
+
+func TestUpdate_SSEDisconnectedDuringQuitModal(t *testing.T) {
+	id := uuid.New()
+	m := newTestUI()
+	m.showScenarioModal = false
+	m.showQuitModal = true
+	m.sseGameID = id
+	m.loading = true
+	m.gameState = &state.GameState{ID: id}
+
+	model, cmd := m.Update(sseDisconnectedMsg{gameID: id})
+	ui := model.(ConsoleUI)
+	if ui.loading {
+		t.Fatal("quit modal must not swallow SSE disconnect")
+	}
+	if cmd == nil {
+		t.Fatal("expected reconnect tick")
+	}
+}
+
+func TestUpdate_SSEReconnectSkippedWithoutGame(t *testing.T) {
+	id := uuid.New()
+	m := newTestUI()
+	m.showScenarioModal = false
+	m.gameState = nil
+
+	_, cmd := m.Update(sseReconnectMsg{gameID: id})
+	if cmd != nil {
+		t.Fatal("reconnect without a game should be a no-op")
 	}
 }
