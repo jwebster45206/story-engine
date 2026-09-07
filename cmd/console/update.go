@@ -77,7 +77,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Update metadata panel content as well
 			if m.gameState != nil {
-				m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
+				m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
 			}
 		}
 
@@ -99,7 +99,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.gameState != nil {
 				_ = clipboard.WriteAll(m.gameState.ID.String())
 				// Optionally append a tiny notice to metadata (non-intrusive)
-				m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
+				m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
 			}
 			return m, nil
 
@@ -137,13 +137,6 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Clear any previous errors when attempting a new chat
 			m.err = nil
 
-			// Apply profanity filtering based on the scenario's content rating
-			input = m.profanityFilter.FilterText(input, m.contentRating)
-
-			if strings.HasPrefix(input, "/") {
-				return m.handleCommand(input)
-			}
-
 			// Prevent multiple messages after game end
 			if m.gameState != nil && m.gameState.IsEnded && m.finalMessageSent {
 				return m, nil
@@ -161,9 +154,6 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Don't add user message here - it will be added when we receive the request.processing event
 			// This allows us to handle external chat messages as well
-
-			// Record the start time for latency tracking
-			m.chatRequestStartTime = time.Now()
 
 			return m, tea.Batch(m.sendChatMessage(input), progressTick())
 		}
@@ -267,13 +257,13 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if msg.gameState.IsEnded {
 					m.pollingActive = false
 					m.mergeServerGameState(msg.gameState)
-					m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
+					m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
 				} else if m.pollingActive && msg.gameState.UpdatedAt.After(m.pollingStartedAt) {
 					// Check if we got an updated timestamp and should stop active polling
 					m.pollingActive = false
 					// Apply the full updated gamestate
 					m.mergeServerGameState(msg.gameState)
-					m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
+					m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
 				} else {
 					// Just refresh metadata fields to avoid reordering chat mid-turn
 					m.gameState.ID = msg.gameState.ID
@@ -290,7 +280,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.gameState.IsEnded = msg.gameState.IsEnded
 					m.gameState.ContingencyPrompts = msg.gameState.ContingencyPrompts
 					m.gameState.UpdatedAt = msg.gameState.UpdatedAt
-					m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
+					m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
 				}
 			}
 		}
@@ -349,12 +339,6 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.isStreaming = false
 			m.loading = false
 
-			// Calculate latency
-			if !m.chatRequestStartTime.IsZero() {
-				m.lastChatLatency = time.Since(m.chatRequestStartTime).Seconds()
-				m.chatLatencies = append(m.chatLatencies, m.lastChatLatency)
-			}
-
 			// Start polling now that request is complete (only if game hasn't ended)
 			var startPollingCmd tea.Cmd
 			if m.gameState != nil && !m.gameState.IsEnded {
@@ -368,7 +352,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			// Update metadata to show polling indicator
-			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
 
 			// Continue consuming SSE events while also refreshing gamestate
 			var sseCmd tea.Cmd
@@ -422,7 +406,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gameStateMsg:
 		if msg.err == nil && msg.gameState != nil {
 			m.mergeServerGameState(msg.gameState)
-			m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
 			if m.forceRerender {
 				m.forceRerender = false
 				m.writeChatContent()

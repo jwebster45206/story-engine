@@ -10,31 +10,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func (m ConsoleUI) handleCommand(input string) (tea.Model, tea.Cmd) {
-	cmd := strings.ToLower(strings.TrimSpace(input))
-
-	switch cmd {
-	case "/vars":
-		var varsText strings.Builder
-		varsText.WriteString(titleStyle.Render("Variables:") + "\n")
-		if len(m.gameState.Vars) == 0 {
-			varsText.WriteString("No variables are set.\n")
-		} else {
-			for k, v := range m.gameState.Vars {
-				fmt.Fprintf(&varsText, "• %s = %v\n", k, v)
-			}
-		}
-		varsText.WriteString("\n")
-
-		currentContent := m.chatViewport.View()
-		m.chatViewport.SetContent(currentContent + varsText.String())
-		m.chatViewport.GotoBottom()
-	}
-
-	m.textarea.Reset()
-	return m, nil
-}
-
 func (m ConsoleUI) handleExport() (ConsoleUI, tea.Cmd) {
 	if m.gameState == nil {
 		// Show error in chat if no game state exists

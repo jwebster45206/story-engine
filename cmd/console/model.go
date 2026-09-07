@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/state"
-	"github.com/jwebster45206/story-engine/pkg/textfilter"
 )
 
 const (
@@ -33,18 +32,6 @@ var playStyles = []playStyle{
 
 const defaultPlayStyleIndex = 2
 
-// calculateAverageLatency computes the average latency from a slice of latencies
-func calculateAverageLatency(latencies []float64) float64 {
-	if len(latencies) == 0 {
-		return 0
-	}
-	sum := 0.0
-	for _, latency := range latencies {
-		sum += latency
-	}
-	return sum / float64(len(latencies))
-}
-
 // ConsoleUI is the BubbleTea model that runs the UI.
 // https://github.com/charmbracelet/bubbletea
 type ConsoleUI struct {
@@ -66,7 +53,6 @@ type ConsoleUI struct {
 	scenarioMap       map[string]string
 	selectedScenario  int
 	loadingScenarios  bool
-	contentRating     string
 
 	// PC selection state
 	showPCModal          bool
@@ -92,9 +78,6 @@ type ConsoleUI struct {
 	selectedRules      string
 	selectedTemp       float64
 
-	// Profanity filter for family-friendly content
-	profanityFilter *textfilter.ProfanityFilter
-
 	// Quit confirmation state
 	showQuitModal bool
 
@@ -116,11 +99,6 @@ type ConsoleUI struct {
 
 	// Game ending state
 	finalMessageSent bool // whether we've already sent the final message after game end
-
-	// Chat latency tracking
-	chatRequestStartTime time.Time // timestamp when the last chat request was sent
-	lastChatLatency      float64   // latency of the last chat request in seconds
-	chatLatencies        []float64 // all chat latencies for the session
 
 	// Pending user messages not yet confirmed in server game state
 	// Pending user messages awaiting server echo (assistant responses are applied when streaming completes)
@@ -175,68 +153,6 @@ type sseEventMsg struct {
 type chatErrorMsg struct {
 	err error
 }
-
-var (
-	chatPanelStyle = lipgloss.NewStyle().
-			PaddingTop(2).
-			PaddingBottom(1).
-			PaddingLeft(3).
-			PaddingRight(0)
-
-	metaPanelStyle = lipgloss.NewStyle().
-			PaddingTop(2).
-			PaddingBottom(0).
-			PaddingLeft(0).
-			PaddingRight(2)
-
-	titleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("205")). // pink
-			Bold(true)
-
-	speakerStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("212")). // purple
-			Bold(true)
-
-	narratorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("86")) // green
-
-	metaStyle = narratorStyle // copy narrator style for now
-
-	userStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("39")) // teal
-
-	errorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("203")) // lighter red/pink for better visibility on black
-
-	loadingStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("214")) // yellow
-
-	promptStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240")) // dark grey
-
-	modalStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("62")).
-			Padding(1, 2).
-			Background(lipgloss.Color("235")).
-			Foreground(lipgloss.Color("255"))
-
-	modalTitleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("205")).
-			Bold(true).
-			Align(lipgloss.Center)
-
-	modalItemStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("255"))
-
-	modalSelectedItemStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("0")).
-				Background(lipgloss.Color("205")).
-				Bold(true)
-)
-
-var separatorStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("240")) // dark grey
 
 type providersLoadedMsg struct {
 	defaultProvider string
@@ -301,7 +217,6 @@ func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 		loadingScenarios:  true,
 		selectedScenario:  0,
 		selectedPlayStyle: defaultPlayStyleIndex,
-		profanityFilter:   textfilter.NewProfanityFilter(),
 	}
 }
 

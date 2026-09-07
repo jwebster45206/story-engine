@@ -63,13 +63,12 @@ func (m ConsoleUI) updateScenarioModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.scenarios) > 0 {
 				scenarioName := m.scenarios[m.selectedScenario]
 				scenarioFile := m.scenarioMap[scenarioName]
-				// First fetch scenario details to get the content rating
+				// Fetch scenario details for the default PC
 				s, err := getScenario(m.client, m.config.APIBaseURL, scenarioFile)
 				if err != nil {
 					m.err = fmt.Errorf("failed to fetch scenario details: %w", err)
 					return m, nil
 				}
-				m.contentRating = s.Rating
 				m.selectedScenarioFile = scenarioFile
 				// Store the default PC ID from the scenario
 				m.defaultPCID = s.DefaultPC
@@ -185,7 +184,7 @@ func (m ConsoleUI) handleGameStateCreated(msg gameStateCreatedMsg) (tea.Model, t
 	}
 	// Use display name instead of raw file name
 	m.chatViewport.SetContent(writeInitialContent(m.gameState, m.scenarioDisplayName(), m.chatViewport.Width-6))
-	m.metaViewport.SetContent(writeSidebar(m.gameState, m.metaViewport.Width, m.scenarioDisplayName(), m.pollingActive, m.chatLatencies))
+	m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
 	m.textarea.Focus() // Ensure textarea gets focus when modal closes
 	m.ready = true
 
@@ -463,10 +462,6 @@ func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
 	m.pollingActive = false
 	m.pollingStartedAt = time.Time{}
 	m.finalMessageSent = false
-	// Reset latency tracking
-	m.lastChatLatency = 0
-	m.chatLatencies = nil
-	m.chatRequestStartTime = time.Time{}
 	m.err = nil // Clear any stale errors when starting new game
 	return m, m.loadScenarios()
 }

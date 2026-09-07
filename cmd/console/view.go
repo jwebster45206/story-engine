@@ -9,14 +9,88 @@ import (
 	"github.com/muesli/reflow/wordwrap"
 )
 
+const (
+	sidebarCastle = " _   |>  _\n" +
+		"[_]--'--[_]   STORY ENGINE\n" +
+		"|'|\"\"`\"\"|'|   LLM-Powered Text\n" +
+		"| | /^\\ | |   Adventure Game\n" +
+		"|_|_|I|_|_|  "
+
+	sidebarCommands = "• Ctrl+C: Quit\n" +
+		"• Ctrl+N: New Game\n" +
+		"• Ctrl+E: Export Chat\n" +
+		"• Ctrl+S: Save State\n" +
+		"• Ctrl+R: Re-render\n"
+)
+
+var (
+	chatPanelStyle = lipgloss.NewStyle().
+			PaddingTop(2).
+			PaddingBottom(1).
+			PaddingLeft(3).
+			PaddingRight(0)
+
+	metaPanelStyle = lipgloss.NewStyle().
+			PaddingTop(2).
+			PaddingBottom(0).
+			PaddingLeft(0).
+			PaddingRight(2)
+
+	titleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("205")). // pink
+			Bold(true)
+
+	speakerStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("212")). // purple
+			Bold(true)
+
+	narratorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("86")) // green
+
+	metaStyle = narratorStyle // copy narrator style for now
+
+	userStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("39")) // teal
+
+	errorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("203")) // lighter red/pink for better visibility on black
+
+	loadingStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("214")) // yellow
+
+	promptStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("240")) // dark grey
+
+	modalStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("62")).
+			Padding(1, 2).
+			Background(lipgloss.Color("235")).
+			Foreground(lipgloss.Color("255"))
+
+	modalTitleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("205")).
+			Bold(true).
+			Align(lipgloss.Center)
+
+	modalItemStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("255"))
+
+	modalSelectedItemStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("0")).
+				Background(lipgloss.Color("205")).
+				Bold(true)
+
+	separatorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("240")) // dark grey
+)
+
 func writeInitialContent(gs *state.GameState, scenarioName string, chatWidth int) string {
 	var content strings.Builder
 	content.WriteString("Welcome to " + titleStyle.Render(scenarioName) + "...\n\n")
-	// content.WriteString("Type your messages below to interact with the story.\n\n")
 	content.WriteString(separatorStyle.Render(strings.Repeat("─ ", chatWidth/2-6)) + "\n\n")
 
 	if gs != nil && len(gs.ChatHistory) > 0 {
-		// Use the same formatting as writeChatContent for consistency
 		formattedMsg := formatNarratorResponse(gs.ChatHistory[0].Content, chatWidth)
 		content.WriteString(formattedMsg + "\n\n")
 	}
@@ -37,17 +111,10 @@ func (m *ConsoleUI) scenarioDisplayName() string {
 	return file // fallback to file name
 }
 
-func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollingActive bool, chatLatencies []float64) string {
+func writeSidebar(gs *state.GameState, scenarioDisplay string, pollingActive bool) string {
 	var content strings.Builder
 
-	//castle := " _   |>  _\n[_]--'--[_]\n|'|\"\"`\"\"|'|\n| | /^\\ | |\n|_|_|I|_|_|"
-	castle := " _   |>  _\n"
-	castle += "[_]--'--[_]   STORY ENGINE\n"
-	castle += "|'|\"\"`\"\"|'|   LLM-Powered Text\n"
-	castle += "| | /^\\ | |   Adventure Game\n"
-	castle += "|_|_|I|_|_|  "
-
-	content.WriteString("\n" + titleStyle.Render(castle) + "\n\n")
+	content.WriteString("\n" + titleStyle.Render(sidebarCastle) + "\n\n")
 
 	content.WriteString(scenarioDisplay + "\n")
 	if gs.SceneName != "" {
@@ -55,7 +122,6 @@ func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollin
 		content.WriteString(gs.SceneName + "\n")
 	}
 	content.WriteString(metaStyle.Render("Location: "))
-	// Display location name instead of key
 	if loc, ok := gs.WorldLocations[gs.Location]; ok && loc.Name != "" {
 		content.WriteString(loc.Name + "\n")
 	} else {
@@ -75,11 +141,7 @@ func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollin
 
 	content.WriteString("\n")
 	content.WriteString(metaStyle.Render("Commands:") + "\n")
-	content.WriteString("• Ctrl+C: Quit\n")
-	content.WriteString("• Ctrl+N: New Game\n")
-	content.WriteString("• Ctrl+E: Export Chat\n")
-	content.WriteString("• Ctrl+S: Save State\n")
-	content.WriteString("• Ctrl+R: Re-render\n")
+	content.WriteString(sidebarCommands)
 
 	if gs.IsEnded {
 		content.WriteString("\n" + titleStyle.Render("GAME ENDED") + "\n")
@@ -89,29 +151,11 @@ func writeSidebar(gs *state.GameState, width int, scenarioDisplay string, pollin
 		content.WriteString("\n" + loadingStyle.Render("Syncing game state...") + "\n")
 	}
 
-	// chat latency
-	if len(chatLatencies) > 0 {
-		lastChatLatency := chatLatencies[len(chatLatencies)-1]
-		content.WriteString("\n" + promptStyle.Render(fmt.Sprintf("Last Chat: %.3fs", lastChatLatency)) + "\n")
-		avgLatency := calculateAverageLatency(chatLatencies)
-		content.WriteString(promptStyle.Render(fmt.Sprintf("Avg Chat: %.3fs", avgLatency)) + "\n")
-	}
-
 	content.WriteString("\n")
 	if gs.Provider != "" {
 		content.WriteString(promptStyle.Render(gs.Provider) + "\n")
 	}
 	content.WriteString(promptStyle.Render(gs.ModelName) + "\n\n")
-	// width = max(8, width) // min width of 8
-
-	// // Format the UUID to wrap nicely
-	// idStr := gs.ID.String()
-	// wrappedIDLines := smartWrap(idStr, width)
-	// for _, line := range wrappedIDLines {
-	// 	content.WriteString(promptStyle.Render(line) + "\n")
-	// }
-	// content.WriteString("\n")
-
 	content.WriteString(promptStyle.Render("© 2025 Joseph Webster"))
 
 	return content.String()
