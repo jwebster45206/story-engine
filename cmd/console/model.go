@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"time"
+	"uuid"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -110,7 +112,9 @@ type ConsoleUI struct {
 	streamingMessageIdx int    // index of the message being streamed in ChatHistory
 
 	// SSE event channel for async request updates
-	eventChan <-chan SSEEvent // channel for receiving SSE events from the server
+	eventChan <-chan SSEEvent    // channel for receiving SSE events from the server
+	sseCancel context.CancelFunc // cancels the in-flight SSE request
+	sseGameID uuid.UUID          // game ID the current SSE listener is subscribed to
 
 	// Force a full chat re-render on next gameStateMsg (used by Ctrl+R)
 	forceRerender bool

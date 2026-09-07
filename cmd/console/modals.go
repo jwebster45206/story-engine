@@ -188,14 +188,17 @@ func (m ConsoleUI) handleGameStateCreated(msg gameStateCreatedMsg) (tea.Model, t
 	m.textarea.Focus() // Ensure textarea gets focus when modal closes
 	m.ready = true
 
-	// Start SSE listener for this game
+	m.stopSSE()
+	ctx, cancel := context.WithCancel(context.Background())
+	m.sseCancel = cancel
+	id := m.gameState.ID
+	m.sseGameID = id
 	eventChan := make(chan SSEEvent, 10)
 	m.eventChan = eventChan
+	client := m.client
+	baseURL := m.config.APIBaseURL
 	go func() {
-		ctx := context.Background()
-		// listenToSSE blocks until connection closes or error occurs
-		// When it returns, just close the channel gracefully
-		_ = listenToSSE(ctx, m.client, m.config.APIBaseURL, m.gameState.ID, eventChan)
+		_ = listenToSSE(ctx, client, baseURL, id, eventChan)
 		close(eventChan)
 	}()
 	return m, tea.Batch(textarea.Blink, m.consumeSSEEvents(eventChan))
@@ -367,12 +370,15 @@ func (m ConsoleUI) updateQuitModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
+			m.stopSSE()
 			return m, tea.Quit
 		case tea.KeyEnter:
+			m.stopSSE()
 			return m, tea.Quit
 		default:
 			switch msg.String() {
 			case "y", "Y":
+				m.stopSSE()
 				return m, tea.Quit
 			case "n", "N":
 				m.showQuitModal = false
@@ -423,6 +429,7 @@ func (m ConsoleUI) updateNewGameModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // startNewGame resets state and returns to scenario selection, reloading scenarios
 func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
+	m.stopSSE()
 	m.gameState = nil
 	m.pendingUserMessages = nil
 	m.chatViewport.SetContent("")

@@ -13,8 +13,18 @@ import (
 
 // SSEEvent represents an event from the SSE stream
 type SSEEvent struct {
-	Type string         `json:"type"`
-	Data map[string]any `json:"data"`
+	Type   string         `json:"type"`
+	Data   map[string]any `json:"data"`
+	GameID uuid.UUID
+}
+
+func (m *ConsoleUI) stopSSE() {
+	if m.sseCancel != nil {
+		m.sseCancel()
+		m.sseCancel = nil
+	}
+	m.eventChan = nil
+	m.sseGameID = uuid.Nil()
 }
 
 // feedSSELine consumes one SSE wire line. A blank line completes the current
@@ -69,10 +79,10 @@ func listenToSSE(ctx context.Context, client *http.Client, baseURL string, gameS
 		return fmt.Errorf("SSE connection failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	return parseSSEStream(ctx, resp.Body, eventChan)
+	return parseSSEStream(ctx, resp.Body, gameStateID, eventChan)
 }
 
-func parseSSEStream(ctx context.Context, r io.Reader, eventChan chan<- SSEEvent) error {
+func parseSSEStream(ctx context.Context, r io.Reader, gameStateID uuid.UUID, eventChan chan<- SSEEvent) error {
 	scanner := bufio.NewScanner(r)
 	var current SSEEvent
 
@@ -85,7 +95,12 @@ func parseSSEStream(ctx context.Context, r io.Reader, eventChan chan<- SSEEvent)
 
 		next, complete := feedSSELine(current, scanner.Text())
 		if complete != nil {
-			eventChan <- *complete
+			complete.GameID = gameStateID
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case eventChan <- *complete:
+			}
 		}
 		current = next
 	}
