@@ -71,8 +71,13 @@ func ParseBearer(pub *ecdsa.PublicKey, tokenString string) (Principal, error) {
 	return Principal{ID: id}, nil
 }
 
-// Token signs an ES256 JWT for principal. Local-issuer helper.
+// Token signs an ES256 JWT for principal with the default TTL. Local-issuer helper.
 func Token(key *ecdsa.PrivateKey, principal uuid.UUID) (string, error) {
+	return TokenTTL(key, principal, tokenTTL)
+}
+
+// TokenTTL signs an ES256 JWT for principal that expires after ttl.
+func TokenTTL(key *ecdsa.PrivateKey, principal uuid.UUID, ttl time.Duration) (string, error) {
 	if key == nil {
 		return "", fmt.Errorf("missing private key")
 	}
@@ -83,7 +88,7 @@ func Token(key *ecdsa.PrivateKey, principal uuid.UUID) (string, error) {
 	tok := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.RegisteredClaims{
 		Subject:   principal.String(),
 		IssuedAt:  jwt.NewNumericDate(now),
-		ExpiresAt: jwt.NewNumericDate(now.Add(tokenTTL)),
+		ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 	})
 	return tok.SignedString(key)
 }

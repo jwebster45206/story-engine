@@ -24,7 +24,7 @@ The console needs `auth-key.pem` in the working directory (see the [root README]
 |-----|---------|
 | `API_BASE_URL` | `http://localhost:8080` |
 
-Each request is sent with `Authorization: Bearer` and an ES256 JWT.
+Each request is sent with `Authorization: Bearer` and an ES256 JWT. The token is minted once at startup (8 hour expiry) and is not refreshed; the console is not designed for extended play.
 
 ### Running the Client
 

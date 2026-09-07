@@ -11,6 +11,8 @@ import (
 	"github.com/jwebster45206/story-engine/internal/auth"
 )
 
+const consoleTokenTTL = 8 * time.Hour
+
 type ConsoleConfig struct {
 	APIBaseURL string
 	Timeout    time.Duration
@@ -27,7 +29,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	raw, err := auth.Token(priv, uuid.New())
+	raw, err := auth.TokenTTL(priv, uuid.New(), consoleTokenTTL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
