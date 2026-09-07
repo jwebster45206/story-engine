@@ -9,14 +9,11 @@ import (
 	"sort"
 	"uuid"
 
+	"github.com/jwebster45206/story-engine/internal/httperror"
 	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
-
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
 
 func testConnection(client *http.Client, baseURL string) bool {
 	resp, err := client.Get(baseURL + "/health")
@@ -44,7 +41,7 @@ func getGameState(client *http.Client, baseURL string, gameStateID uuid.UUID) (*
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		var errorResp ErrorResponse
+		var errorResp httperror.Response
 		if err := json.Unmarshal(body, &errorResp); err != nil {
 			return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 		}
@@ -92,7 +89,7 @@ func createGameState(client *http.Client, baseURL string, scenarioFile string, p
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		var errorResp ErrorResponse
+		var errorResp httperror.Response
 		if err := json.Unmarshal(body, &errorResp); err != nil {
 			return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 		}
@@ -153,7 +150,7 @@ func getScenario(client *http.Client, baseURL string, scenarioFile string) (*sce
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		var errorResp ErrorResponse
+		var errorResp httperror.Response
 		if err := json.Unmarshal(body, &errorResp); err != nil {
 			return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 		}
@@ -303,7 +300,7 @@ func sendChatAsync(client *http.Client, baseURL string, gameStateID uuid.UUID, m
 	}
 
 	if resp.StatusCode != http.StatusAccepted {
-		var errorResp ErrorResponse
+		var errorResp httperror.Response
 		if err := json.Unmarshal(body, &errorResp); err != nil {
 			return "", fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 		}
