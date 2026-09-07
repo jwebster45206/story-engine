@@ -1,13 +1,13 @@
 # Console Client
 
-A terminal-based user interface for the Story Engine, built with [Charm Bracelet's](https://charm.sh/) Bubble Tea framework. The console client provides an immersive text adventure experience directly in your terminal.
+A terminal UI for the Story Engine, built with [Charm Bracelet's](https://charm.sh/) Bubble Tea framework.
 
 ## Features
 
-- **Real-time Chat**: Send messages and receive AI-generated responses
-- **Game State Display**: View current game information, variables, and session details
-- **Responsive Layout**: Automatically adjusts to terminal size
-- **Keyboard Navigation**: Full keyboard support with intuitive controls
+- **Chat**: Send messages and receive streamed narrator responses
+- **Game State**: Inventory, location, scene, and turn in the right pane
+- **Responsive Layout**: Adjusts to terminal size
+- **Keyboard Navigation**: Full keyboard support
 
 ## Setup
 
@@ -24,7 +24,7 @@ The console needs `auth-key.pem` in the working directory (see the [root README]
 |-----|---------|
 | `API_BASE_URL` | `http://localhost:8080` |
 
-Each request is sent with `Authorization: Bearer` and an ES256 JWT.
+Each request is sent with `Authorization: Bearer` and an ES256 JWT. The token is minted once at startup (8 hour expiry) and is not refreshed; the console is not designed for extended play.
 
 ### Running the Client
 
@@ -38,13 +38,13 @@ API_BASE_URL=http://your-api-server:8080 go run ./cmd/console
 
 ### Startup Flow
 
-1. **Scenario Selection**: On startup, the client displays a modal with available scenarios
-2. **Game Creation**: After selecting a scenario, a new game state is created via the API
-3. **Chat Interface**: The main interface loads with the scenario's opening narrative
+1. Select scenario, character, play style, and provider (provider picker is skipped when only one is configured)
+2. A game state is created via the API
+3. The main interface loads with the opening narrative
 
 ### User Interface
 
-The console client uses a split-pane layout:
+Split-pane layout:
 
 **Left Panel (Chat)**:
 - Story narrative and conversation history
@@ -57,17 +57,17 @@ The console client uses a split-pane layout:
 
 ### Message Flow
 
-1. User types message and presses Enter
-2. Message is sent to the Story Engine API
-3. AI processes the message within the scenario context
-4. Response is formatted and displayed in the chat panel
-5. Game state is automatically refreshed
+1. User types a message and presses Enter
+2. The client posts to `/v1/chat` and listens on the game's SSE stream
+3. Chunks render as they arrive; game state refreshes when the request completes
 
 ### Keyboard Shortcuts
 
-- **Ctrl+C** or **Esc**: Quit the application
-- **Ctrl+N**: Start a new game (resets to scenario selection)
-- **Ctrl+E**: Export chat history to markdown file
+- **Ctrl+C** or **Esc**: Confirm quit
+- **Ctrl+N**: Confirm new game (returns to scenario selection)
+- **Ctrl+E**: Export chat history to markdown
+- **Ctrl+S**: Save game state JSON
+- **Ctrl+R**: Refresh game state from the server
 - **Ctrl+Y**: Copy game state ID to clipboard
 - **Ctrl+Z**: Clear the text input field
 - **Enter**: Send message

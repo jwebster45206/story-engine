@@ -158,6 +158,31 @@ func TestToken_NilPrincipal(t *testing.T) {
 	}
 }
 
+func TestTokenTTL(t *testing.T) {
+	priv, pub := testKeys(t)
+	id := uuid.MustParse("22222222-2222-4222-8222-222222222222")
+	ttl := 8 * time.Hour
+	raw, err := TokenTTL(priv, id, ttl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parser := jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodES256.Alg()}))
+	tok, err := parser.ParseWithClaims(raw, &jwt.RegisteredClaims{}, func(*jwt.Token) (any, error) {
+		return pub, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims, ok := tok.Claims.(*jwt.RegisteredClaims)
+	if !ok || !tok.Valid {
+		t.Fatal("invalid token")
+	}
+	got := claims.ExpiresAt.Sub(claims.IssuedAt.Time)
+	if got < ttl-time.Second || got > ttl+time.Second {
+		t.Fatalf("ttl = %v, want %v", got, ttl)
+	}
+}
+
 func TestLoadKeys(t *testing.T) {
 	priv, pub := testKeys(t)
 	dir := t.TempDir()
