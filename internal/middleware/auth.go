@@ -10,10 +10,11 @@ import (
 	"github.com/jwebster45206/story-engine/internal/httperror"
 )
 
-// JWT requires a valid ES256 Bearer token on all paths except /health.
+// JWT requires a valid ES256 Bearer token on all paths except /health and /metrics.
 func JWT(pub *ecdsa.PublicKey, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/health" {
+		switch r.URL.Path {
+		case "/health", "/metrics":
 			next.ServeHTTP(w, r)
 			return
 		}

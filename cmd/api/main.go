@@ -17,6 +17,7 @@ import (
 	"github.com/jwebster45206/story-engine/internal/middleware"
 	"github.com/jwebster45206/story-engine/internal/queue"
 	"github.com/jwebster45206/story-engine/internal/storage"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -82,6 +83,7 @@ func main() {
 
 	healthHandler := handlers.NewHealthHandler(log, storageService)
 	mux.Handle("/health", healthHandler)
+	mux.Handle("/metrics", promhttp.Handler())
 
 	chatHandler := handlers.NewChatHandler(chatQueue, storageService, log)
 	mux.Handle("/v1/chat", chatHandler)
@@ -112,7 +114,7 @@ func main() {
 	mux.Handle("/v1/monsters", monsterHandler)
 	mux.Handle("/v1/monsters/", monsterHandler)
 
-	handler := middleware.Logger(middleware.JWT(pub, mux))
+	handler := middleware.Logger(middleware.Metrics(middleware.JWT(pub, mux)))
 	server := &http.Server{
 		Addr:        ":" + cfg.Port,
 		Handler:     handler,
