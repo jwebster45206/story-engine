@@ -21,34 +21,6 @@ func testKeyPair(t *testing.T) (*ecdsa.PrivateKey, *ecdsa.PublicKey) {
 	return priv, &priv.PublicKey
 }
 
-func TestJWT_HealthExempt(t *testing.T) {
-	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-	_, pub := testKeyPair(t)
-	h := JWT(pub, ok)
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rr.Code)
-	}
-}
-
-func TestJWT_MetricsExempt(t *testing.T) {
-	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-	_, pub := testKeyPair(t)
-	h := JWT(pub, ok)
-	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rr.Code)
-	}
-}
-
 func TestJWT_Unauthorized(t *testing.T) {
 	_, pub := testKeyPair(t)
 	h := JWT(pub, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {

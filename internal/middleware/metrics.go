@@ -1,17 +1,16 @@
 package middleware
 
 import (
+	"crypto/ecdsa"
 	"net/http"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type httpMetrics struct {
-	inFlight prometheus.Gauge
+	inFlight *prometheus.GaugeVec
 	requests *prometheus.CounterVec
 	duration *prometheus.HistogramVec
 }
@@ -19,85 +18,56 @@ type httpMetrics struct {
 func newHTTPMetrics(reg prometheus.Registerer) *httpMetrics {
 	factory := promauto.With(reg)
 	return new(httpMetrics{
-		inFlight: factory.NewGauge(prometheus.GaugeOpts{
+		inFlight: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "http_requests_in_flight",
 			Help: "HTTP requests currently being processed.",
-		}),
+		}, []string{"handler"}),
 		requests: factory.NewCounterVec(prometheus.CounterOpts{
 			Name: "http_requests_total",
 			Help: "Total HTTP requests completed.",
-		}, []string{"method", "code", "handler"}),
+		}, []string{"code", "method", "handler"}),
 		duration: factory.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "http_request_duration_seconds",
 			Help:    "HTTP request duration in seconds.",
 			Buckets: prometheus.DefBuckets,
-		}, []string{"method", "code", "handler"}),
+		}, []string{"code", "method", "handler"}),
 	})
 }
 
 var defaultHTTPMetrics = newHTTPMetrics(prometheus.DefaultRegisterer)
 
-// Metrics records HTTP RED metrics. SSE (handler=events) is counted in-flight
-// only so connection lifetime does not poison request duration.
-func Metrics(next http.Handler) http.Handler {
-	return defaultHTTPMetrics.Handler(next)
+// Instrument records RED metrics for next. The handler label is the name
+// given at registration, not the request path.
+func Instrument(name string, next http.Handler) http.Handler {
+	return defaultHTTPMetrics.instrument(name, next)
 }
 
-func (m *httpMetrics) Handler(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handler := routeLabel(r.URL.Path)
-		if handler == "metrics" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		m.inFlight.Inc()
-		defer m.inFlight.Dec()
-
-		if handler == "events" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		start := time.Now()
-		wrapped := new(responseWriter{
-			ResponseWriter: w,
-			statusCode:     http.StatusOK,
-		})
-		next.ServeHTTP(wrapped, r)
-		labels := prometheus.Labels{
-			"method":  r.Method,
-			"code":    strconv.Itoa(wrapped.statusCode),
-			"handler": handler,
-		}
-		m.requests.With(labels).Inc()
-		m.duration.With(labels).Observe(time.Since(start).Seconds())
-	})
+// Protected is Instrument around JWT so 401s are labeled with name.
+func Protected(name string, pub *ecdsa.PublicKey, next http.Handler) http.Handler {
+	return Instrument(name, JWT(pub, next))
 }
 
-func routeLabel(path string) string {
-	switch {
-	case path == "/health":
-		return "health"
-	case path == "/metrics":
-		return "metrics"
-	case path == "/v1/chat" || strings.HasPrefix(path, "/v1/chat/"):
-		return "chat"
-	case strings.HasPrefix(path, "/v1/events/"):
-		return "events"
-	case path == "/v1/gamestate" || strings.HasPrefix(path, "/v1/gamestate/"):
-		return "gamestate"
-	case path == "/v1/providers" || strings.HasPrefix(path, "/v1/providers/"):
-		return "providers"
-	case path == "/v1/scenarios" || strings.HasPrefix(path, "/v1/scenarios/"):
-		return "scenarios"
-	case path == "/v1/pcs" || strings.HasPrefix(path, "/v1/pcs/"):
-		return "pcs"
-	case path == "/v1/narrators" || strings.HasPrefix(path, "/v1/narrators/"):
-		return "narrators"
-	case path == "/v1/monsters" || strings.HasPrefix(path, "/v1/monsters/"):
-		return "monsters"
-	default:
-		return "other"
-	}
+// ProtectedSSE is JWT plus in-flight and request count for the events
+// handler. Duration is omitted so SSE session length does not poison API p99.
+func ProtectedSSE(pub *ecdsa.PublicKey, next http.Handler) http.Handler {
+	return defaultHTTPMetrics.instrumentSSE(JWT(pub, next))
+}
+
+func (m *httpMetrics) instrument(name string, next http.Handler) http.Handler {
+	labels := prometheus.Labels{"handler": name}
+	return promhttp.InstrumentHandlerDuration(
+		m.duration.MustCurryWith(labels),
+		promhttp.InstrumentHandlerCounter(
+			m.requests.MustCurryWith(labels),
+			promhttp.InstrumentHandlerInFlight(m.inFlight.With(labels), next),
+		),
+	)
+}
+
+func (m *httpMetrics) instrumentSSE(next http.Handler) http.Handler {
+	labels := prometheus.Labels{"handler": "events"}
+	return promhttp.InstrumentHandlerCounter(
+		m.requests.MustCurryWith(labels),
+		promhttp.InstrumentHandlerInFlight(m.inFlight.With(labels), next),
+	)
 }
