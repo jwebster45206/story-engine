@@ -17,6 +17,7 @@ import (
 	"github.com/jwebster45206/story-engine/internal/middleware"
 	"github.com/jwebster45206/story-engine/internal/queue"
 	"github.com/jwebster45206/story-engine/internal/storage"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -80,39 +81,35 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	healthHandler := handlers.NewHealthHandler(log, storageService)
-	mux.Handle("/health", healthHandler)
+	mux.Handle("/health", middleware.Instrument("health", handlers.NewHealthHandler(log, storageService)))
+	mux.Handle("/metrics", promhttp.Handler())
 
-	chatHandler := handlers.NewChatHandler(chatQueue, storageService, log)
-	mux.Handle("/v1/chat", chatHandler)
+	mux.Handle("/v1/chat", middleware.Protected("chat", pub, handlers.NewChatHandler(chatQueue, storageService, log)))
+	mux.Handle("/v1/events/gamestate/", middleware.ProtectedSSE(pub, handlers.NewEventsHandler(redisClient, storageService, log)))
 
-	eventsHandler := handlers.NewEventsHandler(redisClient, storageService, log)
-	mux.Handle("/v1/events/gamestate/", eventsHandler)
+	gameState := middleware.Protected("gamestate", pub, handlers.NewGameStateHandler(log, registry, storageService))
+	mux.Handle("/v1/gamestate", gameState)
+	mux.Handle("/v1/gamestate/", gameState)
 
-	gameStateHandler := handlers.NewGameStateHandler(log, registry, storageService)
-	mux.Handle("/v1/gamestate", gameStateHandler)
-	mux.Handle("/v1/gamestate/", gameStateHandler)
+	mux.Handle("/v1/providers", middleware.Protected("providers", pub, handlers.NewProvidersHandler(log, registry)))
 
-	providersHandler := handlers.NewProvidersHandler(log, registry)
-	mux.Handle("/v1/providers", providersHandler)
+	scenarios := middleware.Protected("scenarios", pub, handlers.NewScenarioHandler(log, storageService))
+	mux.Handle("/v1/scenarios", scenarios)
+	mux.Handle("/v1/scenarios/", scenarios)
 
-	scenarioHandler := handlers.NewScenarioHandler(log, storageService)
-	mux.Handle("/v1/scenarios", scenarioHandler)
-	mux.Handle("/v1/scenarios/", scenarioHandler)
+	pcs := middleware.Protected("pcs", pub, handlers.NewPCHandler(log, storageService))
+	mux.Handle("/v1/pcs", pcs)
+	mux.Handle("/v1/pcs/", pcs)
 
-	pcHandler := handlers.NewPCHandler(log, storageService)
-	mux.Handle("/v1/pcs", pcHandler)
-	mux.Handle("/v1/pcs/", pcHandler)
+	narrators := middleware.Protected("narrators", pub, handlers.NewNarratorHandler(log, storageService))
+	mux.Handle("/v1/narrators", narrators)
+	mux.Handle("/v1/narrators/", narrators)
 
-	narratorHandler := handlers.NewNarratorHandler(log, storageService)
-	mux.Handle("/v1/narrators", narratorHandler)
-	mux.Handle("/v1/narrators/", narratorHandler)
+	monsters := middleware.Protected("monsters", pub, handlers.NewMonsterHandler(log, storageService))
+	mux.Handle("/v1/monsters", monsters)
+	mux.Handle("/v1/monsters/", monsters)
 
-	monsterHandler := handlers.NewMonsterHandler(log, storageService)
-	mux.Handle("/v1/monsters", monsterHandler)
-	mux.Handle("/v1/monsters/", monsterHandler)
-
-	handler := middleware.Logger(middleware.JWT(pub, mux))
+	handler := middleware.Logger(mux)
 	server := &http.Server{
 		Addr:        ":" + cfg.Port,
 		Handler:     handler,

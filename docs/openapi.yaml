@@ -20,28 +20,6 @@ security:
   - bearerAuth: []
 
 paths:
-  /health:
-    get:
-      summary: Health check
-      description: Returns the health status of the API and its dependencies
-      operationId: getHealth
-      tags:
-        - Health
-      security: []
-      responses:
-        '200':
-          description: Service is healthy
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HealthResponse'
-        '503':
-          description: Service is degraded or unhealthy
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HealthResponse'
-
   /v1/chat:
     post:
       summary: Enqueue chat message
@@ -615,33 +593,6 @@ components:
       bearerFormat: JWT
       description: ES256 JWT. `sub` is a UUID identifying the caller and owns created game sessions. `exp` is required.
   schemas:
-    HealthResponse:
-      type: object
-      required:
-        - status
-        - timestamp
-        - service
-        - components
-      properties:
-        status:
-          type: string
-          enum: [healthy, degraded]
-          description: Overall health status
-        timestamp:
-          type: string
-          format: date-time
-          description: Timestamp of the health check
-        service:
-          type: string
-          example: "story-engine"
-          description: Service name
-        components:
-          type: object
-          additionalProperties: true
-          description: Health status of individual components
-          example:
-            storage: "healthy"
-
     ChatRequest:
       type: object
       required:
@@ -1231,8 +1182,6 @@ components:
           example: "Invalid request body"
 
 tags:
-  - name: Health
-    description: Health check endpoints
   - name: Chat
     description: Async chat enqueue
   - name: Events
