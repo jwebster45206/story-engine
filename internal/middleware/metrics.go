@@ -20,7 +20,7 @@ func newHTTPMetrics(reg prometheus.Registerer) *httpMetrics {
 	return new(httpMetrics{
 		inFlight: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "http_requests_in_flight",
-			Help: "HTTP requests currently being processed.",
+			Help: "HTTP requests currently being processed, including SSE.",
 		}, []string{"handler"}),
 		requests: factory.NewCounterVec(prometheus.CounterOpts{
 			Name: "http_requests_total",
@@ -36,8 +36,8 @@ func newHTTPMetrics(reg prometheus.Registerer) *httpMetrics {
 
 var defaultHTTPMetrics = newHTTPMetrics(prometheus.DefaultRegisterer)
 
-// Instrument records RED metrics for next. The handler label is the name
-// given at registration, not the request path.
+// Instrument records request, error, and duration metrics for next. The
+// handler label is the name given at registration, not the request path.
 func Instrument(name string, next http.Handler) http.Handler {
 	return defaultHTTPMetrics.instrument(name, next)
 }
