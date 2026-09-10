@@ -37,8 +37,8 @@ type GameState struct {
 	Rules              RulesMode                    `json:"rules,omitempty"`              // "strict" (default) or "relaxed"
 	Temperature        float64                      `json:"temperature,omitempty"`        // LLM sampling temperature (0.0-1.0)
 	Narrator           *scenario.Narrator           `json:"narrator,omitempty"`           // Embedded narrator for this game session (loaded once at creation)
-	PC                 *character.PC                    `json:"pc,omitempty"`                 // Player Character for this game session
-	NPCs               map[string]character.NPC         `json:"npcs,omitempty"`               // All NPCs in the game world
+	PC                 *character.PC                `json:"pc,omitempty"`                 // Player Character for this game session
+	NPCs               map[string]character.NPC     `json:"npcs,omitempty"`               // All NPCs in the game world
 	WorldLocations     map[string]scenario.Location `json:"locations,omitempty"`          // Current locations in the game world
 	Location           string                       `json:"user_location,omitempty"`      // Current location in the game world
 	Inventory          []string                     `json:"user_inventory,omitempty"`     // User's inventory items

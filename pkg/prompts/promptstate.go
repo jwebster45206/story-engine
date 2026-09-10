@@ -14,8 +14,8 @@ import (
 // for LLM context. For background processing, Vars are also populated.
 type PromptState struct {
 	SceneName        string                       `json:"scene_name,omitempty"`         // Current scene name
-	NPCs             map[string]character.NPC         `json:"npcs,omitempty"`               // Map of key NPCs
-	Monsters         map[string]character.Monster     `json:"monsters,omitempty"`           // Monsters at current location
+	NPCs             map[string]character.NPC     `json:"npcs,omitempty"`               // Map of key NPCs
+	Monsters         map[string]character.Monster `json:"monsters,omitempty"`           // Monsters at current location
 	WorldLocations   map[string]scenario.Location `json:"locations,omitempty"`          // Current locations in the game world
 	Location         string                       `json:"user_location,omitempty"`      // User's current location
 	Inventory        []string                     `json:"user_inventory,omitempty"`     // Inventory items

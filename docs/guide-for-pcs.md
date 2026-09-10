@@ -491,13 +491,6 @@ The filename (without `.json`) becomes the PC's ID, overriding any `"id"` field 
 - `pirate_captain.json` → ID is `"pirate_captain"`
 - `elven_ranger.json` → ID is `"elven_ranger"`
 
-### Runtime Behavior
-When a PC is loaded:
-1. The spec is parsed from JSON
-2. A `d20.Actor` is built with all stats and modifiers
-3. The Actor is used for any combat or skill checks
-4. The Spec is used for narrative and API responses
-
 ### Connecting PCs to Scenarios
 Scenarios can specify a default PC using the `"default_pc"` field:
 ```json

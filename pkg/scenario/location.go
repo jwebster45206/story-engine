@@ -13,7 +13,7 @@ type Location struct {
 	Exits              map[string]string                `json:"exits,omitempty"`               // Direction → Location Key
 	BlockedExits       map[string]string                `json:"blocked_exits,omitempty"`       // Direction → Reason for blocking
 	Items              []string                         `json:"items,omitempty"`               // Items that can be found in this location
-	Monsters           map[string]*character.Monster        `json:"monsters,omitempty"`            // Active monster instances at this location (instance ID → Monster)
+	Monsters           map[string]*character.Monster    `json:"monsters,omitempty"`            // Active monster instances at this location (instance ID → Monster)
 	IsImportant        bool                             `json:"important,omitempty"`           // whether this location is important to always show
 	ContingencyPrompts []conditionals.ContingencyPrompt `json:"contingency_prompts,omitempty"` // Location-specific prompts shown when at player location
 }

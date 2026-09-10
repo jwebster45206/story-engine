@@ -13,7 +13,7 @@ Inline NPCs (defined entirely inside a scenario's `"npcs"` map) are still fully
 supported and unchanged. Use standalone templates when you want to:
 
 - **Reuse a character** across multiple scenarios without copy-pasting definitions.
-- **Give an NPC actor properties** (HP, AC, combat stats) for a richer gameplay
+- **Give an NPC combat stats** (HP, AC) for a richer gameplay
   experience — e.g., a villain who can be fought.
 - **Keep scenarios lean** — scenarios only need to supply the instance-specific
   bits (starting location, a disposition override) while the character definition
@@ -36,7 +36,7 @@ Each NPC template is a JSON file named `{template_id}.json`.
 }
 ```
 
-### Full template (with actor properties)
+### Full template (with combat stats)
 
 ```json
 {
@@ -97,11 +97,11 @@ inline definition.
 
 ---
 
-## Actor properties
+## Combat stats
 
-Actor properties (`ac`, `hp`, `max_hp`, `attributes`, `combat_modifiers`,
+Combat stats (`ac`, `hp`, `max_hp`, `attributes`, `combat_modifiers`,
 `drop_items_on_defeat`) are **optional**. A template without them is perfectly
-valid — it's just a reusable narrative character. Actor stats appear in the
+valid — it's just a reusable narrative character. Combat stats appear in the
 prompt output alongside those of monsters when present.
 
 See `docs/guide-for-scenarios.md` for the complete NPC reference.

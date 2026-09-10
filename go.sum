@@ -43,10 +43,6 @@ github.com/golang-jwt/jwt/v5 v5.3.0 h1:pv4AsKCKKZuqlgs5sUmn4x8UlGa0kEVt/puTpKx9v
 github.com/golang-jwt/jwt/v5 v5.3.0/go.mod h1:fxCRLWMO43lRc8nhHWY6LGqRcf+1gQWArsqaEUEa5bE=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
-github.com/jwebster45206/d20 v0.8.1 h1:j68Jtgyr5DkNAafUlSTPBKwvijxrtw1j41QRBERP5bw=
-github.com/jwebster45206/d20 v0.8.1/go.mod h1:cYR3li/cYqaQvL6k8tGKi4qMdph4mQOuTSO1CTE4k10=
-github.com/jwebster45206/d20 v0.9.0 h1:Nsp/2BB/uJV6pEl/bluDww+jDf9TTQ1E3zUP9IJY5vI=
-github.com/jwebster45206/d20 v0.9.0/go.mod h1:cYR3li/cYqaQvL6k8tGKi4qMdph4mQOuTSO1CTE4k10=
 github.com/klauspost/compress v1.18.0 h1:c/Cqfb0r+Yi+JtIEq73FWXVkRonBlf0CRNYc8Zttxdo=
 github.com/klauspost/compress v1.18.0/go.mod h1:2Pp+KzxcywXVXMr50+X0Q/Lsb43OQHYWRCY2AiWywWQ=
 github.com/klauspost/cpuid/v2 v2.2.10 h1:tBs3QSyvjDyFTq3uoc/9xFpCuOsJQFNPiAhYdw2skhE=

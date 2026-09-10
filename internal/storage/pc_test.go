@@ -12,7 +12,7 @@ func TestMockStorage_AddAndGetPC(t *testing.T) {
 	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
-	// Add a test PC spec
+	// Add a test PC
 	testPC := &character.PC{
 		ID:    "warrior",
 		Name:  "Brave Warrior",
@@ -36,7 +36,7 @@ func TestMockStorage_AddAndGetPC(t *testing.T) {
 	// Get it back by ID
 	loaded, err := mockStorage.GetPC(ctx, "warrior")
 	if err != nil {
-		t.Fatalf("Failed to get PC spec by ID: %v", err)
+		t.Fatalf("Failed to get PC by ID: %v", err)
 	}
 
 	if loaded.ID != "warrior" {
@@ -58,7 +58,7 @@ func TestMockStorage_AddAndGetPC(t *testing.T) {
 	// Get it back by ID
 	loaded2, err := mockStorage.GetPC(ctx, "warrior")
 	if err != nil {
-		t.Fatalf("Failed to get PC spec by ID: %v", err)
+		t.Fatalf("Failed to get PC by ID: %v", err)
 	}
 
 	if loaded2.ID != "warrior" {
@@ -66,7 +66,7 @@ func TestMockStorage_AddAndGetPC(t *testing.T) {
 	}
 }
 
-func TestMockStorage_GetNonExistentPCSpec(t *testing.T) {
+func TestMockStorage_GetNonExistentPC(t *testing.T) {
 	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
