@@ -3,7 +3,7 @@ package scenario
 import (
 	"strings"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
@@ -17,7 +17,7 @@ type Scenario struct {
 	DefaultPC        string               `json:"default_pc,omitempty"`        // Default PC for this scenario
 	Locations        map[string]Location  `json:"locations,omitempty"`         // Map of location names to Location objects
 	Inventory        []string             `json:"inventory,omitempty"`         // Potential inventory items throughout the scenario
-	NPCs             map[string]actor.NPC `json:"npcs,omitempty"`              // Map of NPC names to their data
+	NPCs             map[string]character.NPC `json:"npcs,omitempty"`              // Map of NPC names to their data
 	Scenes           map[string]Scene     `json:"scenes"`                      // Map of scene names to Scene objectsOpeningPrompt    string              `json:"opening_prompt,omitempty"`    // Initial prompt to start the scenario
 	OpeningPrompt    string               `json:"opening_prompt,omitempty"`    // Initial prompt to start the scenario
 	OpeningLocation  string               `json:"opening_location,omitempty"`  // Initial location for the user

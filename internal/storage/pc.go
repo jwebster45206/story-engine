@@ -7,12 +7,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 )
 
-// PC operations (filesystem-backed, returns PCSpec only)
+// PC operations (filesystem-backed)
 
-func (r *RedisStorage) GetPCSpec(ctx context.Context, pcID string) (*actor.PCSpec, error) {
+func (r *RedisStorage) GetPC(ctx context.Context, pcID string) (*character.PC, error) {
 	// Construct the full path internally
 	path := filepath.Join(r.dataDir, "pcs", pcID+".json")
 
@@ -21,15 +21,15 @@ func (r *RedisStorage) GetPCSpec(ctx context.Context, pcID string) (*actor.PCSpe
 		return nil, fmt.Errorf("failed to read PC file: %w", err)
 	}
 
-	var spec actor.PCSpec
-	if err := json.Unmarshal(data, &spec); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal PC spec: %w", err)
+	var pc character.PC
+	if err := json.Unmarshal(data, &pc); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal PC: %w", err)
 	}
 
 	// Ensure ID is set from the parameter
-	spec.ID = pcID
+	pc.ID = pcID
 
-	return &spec, nil
+	return &pc, nil
 }
 
 func (r *RedisStorage) ListPCs(ctx context.Context) ([]string, error) {

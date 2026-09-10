@@ -27,8 +27,8 @@ func (m ConsoleUI) handleExport() (ConsoleUI, tea.Cmd) {
 	}
 
 	pcName := "unknown_pc"
-	if m.gameState.PC != nil && m.gameState.PC.Spec.Name != "" {
-		pcName = sanitizeFilename(m.gameState.PC.Spec.Name)
+	if m.gameState.PC != nil && m.gameState.PC.Name != "" {
+		pcName = sanitizeFilename(m.gameState.PC.Name)
 	}
 
 	timestamp := time.Now().Format("20060102_150405")
@@ -52,8 +52,8 @@ func (m ConsoleUI) handleExport() (ConsoleUI, tea.Cmd) {
 
 	// Get character name for bolding
 	charName := ""
-	if m.gameState.PC != nil && m.gameState.PC.Spec.Name != "" {
-		charName = m.gameState.PC.Spec.Name
+	if m.gameState.PC != nil && m.gameState.PC.Name != "" {
+		charName = m.gameState.PC.Name
 	}
 
 	// Header with metadata
@@ -122,8 +122,8 @@ func (m ConsoleUI) handleSave() (ConsoleUI, tea.Cmd) {
 	}
 
 	pcName := "unknown_pc"
-	if m.gameState.PC != nil && m.gameState.PC.Spec != nil && m.gameState.PC.Spec.Name != "" {
-		pcName = sanitizeFilename(m.gameState.PC.Spec.Name)
+	if m.gameState.PC != nil && m.gameState.PC.Name != "" {
+		pcName = sanitizeFilename(m.gameState.PC.Name)
 	}
 
 	timestamp := time.Now().Format("20060102_150405")

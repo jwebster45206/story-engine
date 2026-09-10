@@ -1,4 +1,4 @@
-package actor
+package character
 
 import (
 	"maps"
@@ -22,10 +22,10 @@ type NPC struct {
 	Description string   `json:"description,omitempty"` // short description or backstory
 	IsImportant bool     `json:"important,omitempty"`   // whether this NPC is important to the story
 	Location    string   `json:"location,omitempty"`    // where the NPC is currently located
-	Following   string   `json:"following,omitempty"`   // ID of actor being followed ("pc" or NPC ID); empty = not following
+	Following   string   `json:"following,omitempty"`   // ID of character being followed ("pc" or NPC ID); empty = not following
 	Items       []string `json:"items,omitempty"`       // items the NPC has or can give
 
-	// Actor properties — only populated for standalone NPCs loaded from templates.
+	// Combat stats — only populated for standalone NPCs loaded from templates.
 	// These are optional even in standalone files; omit them for purely narrative NPCs.
 	AC                int            `json:"ac,omitempty"`
 	HP                int            `json:"hp,omitempty"`
@@ -81,7 +81,7 @@ func NewNPCFromTemplate(template *NPC, overrides *NPC) *NPC {
 		n.DropItemsOnDefeat = true
 	}
 
-	// Numeric actor property overrides
+	// Numeric combat-stat overrides
 	if overrides.AC != 0 {
 		n.AC = overrides.AC
 	}
@@ -125,7 +125,7 @@ func NewNPCFromTemplate(template *NPC, overrides *NPC) *NPC {
 }
 
 // TakeDamage reduces the NPC's HP by the specified amount (floor: 0).
-// Only meaningful for standalone NPCs with actor properties (HP > 0).
+// Only meaningful for standalone NPCs with combat stats (HP > 0).
 func (n *NPC) TakeDamage(amount int) {
 	if amount <= 0 {
 		return
@@ -137,7 +137,7 @@ func (n *NPC) TakeDamage(amount int) {
 }
 
 // Heal increases the NPC's HP by the specified amount (ceiling: MaxHP).
-// Only meaningful for standalone NPCs with actor properties (MaxHP > 0).
+// Only meaningful for standalone NPCs with combat stats (MaxHP > 0).
 func (n *NPC) Heal(amount int) {
 	if amount <= 0 {
 		return

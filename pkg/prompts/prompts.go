@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
@@ -145,7 +145,7 @@ const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe fo
 
 // BuildSystemPrompt constructs the system prompt with narrator and PC prompts injected.
 // mode selects the base ruleset (strict or relaxed). pc is optional - pass nil if no PC.
-func BuildSystemPrompt(narrator *scenario.Narrator, pc *actor.PC, mode state.RulesMode) string {
+func BuildSystemPrompt(narrator *scenario.Narrator, pc *character.PC, mode state.RulesMode) string {
 	narratorPrompts := ""
 	narratorName := "the narrator"
 	if narrator != nil {
@@ -154,7 +154,7 @@ func BuildSystemPrompt(narrator *scenario.Narrator, pc *actor.PC, mode state.Rul
 	}
 	pcPrompt := ""
 	if pc != nil {
-		pcPrompt = actor.BuildPrompt(pc)
+		pcPrompt = character.BuildPrompt(pc)
 	}
 	rs := GetRuleSet(mode)
 	return fmt.Sprintf(systemPromptTemplate,

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/jwebster45206/story-engine/internal/httperror"
-	"github.com/jwebster45206/story-engine/pkg/actor"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
@@ -28,21 +27,20 @@ func (h *PCHandler) ListPCs(w http.ResponseWriter, r *http.Request) {
 	// Initialize as empty slice instead of nil
 	pcList := make([]map[string]any, 0)
 	for _, pcID := range pcIDs {
-		// Load each PC spec to get details
-		spec, err := h.storage.GetPCSpec(r.Context(), pcID)
+		pc, err := h.storage.GetPC(r.Context(), pcID)
 		if err != nil {
-			h.log.Warn("Failed to load PC spec", "error", err, "id", pcID)
+			h.log.Warn("Failed to load PC", "error", err, "id", pcID)
 			continue
 		}
 
 		// Create a summary object with just the key fields
 		pcSummary := map[string]any{
-			"id":       spec.ID,
-			"name":     spec.Name,
-			"class":    spec.Class,
-			"level":    spec.Level,
-			"race":     spec.Race,
-			"pronouns": spec.Pronouns,
+			"id":       pc.ID,
+			"name":     pc.Name,
+			"class":    pc.Class,
+			"level":    pc.Level,
+			"race":     pc.Race,
+			"pronouns": pc.Pronouns,
 		}
 		pcList = append(pcList, pcSummary)
 	}
@@ -96,28 +94,18 @@ func (h *PCHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Load the PC spec by ID (storage handles path construction)
-	pcSpec, err := h.storage.GetPCSpec(r.Context(), id)
+	pc, err := h.storage.GetPC(r.Context(), id)
 	if err != nil {
 		if err.Error() == "PC spec not found" {
 			httperror.Write(w, h.log, http.StatusNotFound, "PC not found")
 			return
 		}
-		h.log.Error("Failed to load PC spec", "error", err, "id", id)
+		h.log.Error("Failed to load PC", "error", err, "id", id)
 		httperror.Write(w, h.log, http.StatusInternalServerError, "Failed to load PC")
 		return
 	}
 
-	// Build the PC from the spec
-	loadedPC, err := actor.NewPCFromSpec(pcSpec)
-	if err != nil {
-		h.log.Error("Failed to build PC from spec", "error", err, "id", id)
-		httperror.Write(w, h.log, http.StatusInternalServerError, "Failed to build PC")
-		return
-	}
-
-	// Marshal the PC (uses custom MarshalJSON that reads from Actor)
-	data, err := json.Marshal(loadedPC)
+	data, err := json.Marshal(pc)
 	if err != nil {
 		h.log.Error("Failed to marshal PC", "error", err, "id", id)
 		httperror.Write(w, h.log, http.StatusInternalServerError, "Failed to process PC")

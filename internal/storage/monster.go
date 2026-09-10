@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 )
 
-func (r *RedisStorage) GetMonster(ctx context.Context, templateID string) (*actor.Monster, error) {
+func (r *RedisStorage) GetMonster(ctx context.Context, templateID string) (*character.Monster, error) {
 	path := filepath.Join(r.dataDir, "monsters", templateID+".json")
 	r.logger.Debug("Loading monster template", "templateID", templateID, "full_path", path)
 
@@ -25,7 +25,7 @@ func (r *RedisStorage) GetMonster(ctx context.Context, templateID string) (*acto
 		return nil, fmt.Errorf("failed to read monster template file: %w", err)
 	}
 
-	var m actor.Monster
+	var m character.Monster
 	if err := json.Unmarshal(file, &m); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal monster template: %w", err)
 	}
@@ -53,7 +53,7 @@ func (r *RedisStorage) ListMonsters(ctx context.Context) (map[string]string, err
 			return nil
 		}
 
-		var m actor.Monster
+		var m character.Monster
 		if err := json.Unmarshal(file, &m); err != nil {
 			r.logger.Warn("Failed to unmarshal monster file", "path", path, "error", err)
 			return nil

@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
@@ -307,7 +307,7 @@ func isValidScenarioFilename(name string) bool {
 }
 
 // validateLocationMonsters validates monsters in a location
-func (v *ScenarioValidator) validateLocationMonsters(monsters map[string]*actor.Monster, locationID string, context string) {
+func (v *ScenarioValidator) validateLocationMonsters(monsters map[string]*character.Monster, locationID string, context string) {
 	for instanceID, monster := range monsters {
 		// Validate instance ID format
 		v.validateIDFormat(fmt.Sprintf("monster instance ID in location %s (%s)", locationID, context), instanceID)

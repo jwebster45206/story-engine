@@ -4,22 +4,22 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
-func TestMockStorage_AddAndGetPCSpec(t *testing.T) {
+func TestMockStorage_AddAndGetPC(t *testing.T) {
 	mockStorage := storage.NewMockStorage()
 	ctx := context.Background()
 
 	// Add a test PC spec
-	testPC := &actor.PCSpec{
+	testPC := &character.PC{
 		ID:    "warrior",
 		Name:  "Brave Warrior",
 		Class: "fighter",
 		Level: 5,
 		Race:  "human",
-		Stats: actor.Stats5e{
+		Stats: character.Stats5e{
 			Strength:     18,
 			Dexterity:    14,
 			Constitution: 16,
@@ -31,10 +31,10 @@ func TestMockStorage_AddAndGetPCSpec(t *testing.T) {
 		MaxHP: 45,
 	}
 
-	mockStorage.AddPCSpec("warrior", testPC)
+	mockStorage.AddPC("warrior", testPC)
 
 	// Get it back by ID
-	loaded, err := mockStorage.GetPCSpec(ctx, "warrior")
+	loaded, err := mockStorage.GetPC(ctx, "warrior")
 	if err != nil {
 		t.Fatalf("Failed to get PC spec by ID: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestMockStorage_AddAndGetPCSpec(t *testing.T) {
 	}
 
 	// Get it back by ID
-	loaded2, err := mockStorage.GetPCSpec(ctx, "warrior")
+	loaded2, err := mockStorage.GetPC(ctx, "warrior")
 	if err != nil {
 		t.Fatalf("Failed to get PC spec by ID: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestMockStorage_GetNonExistentPCSpec(t *testing.T) {
 	ctx := context.Background()
 
 	// Try to get a non-existent PC
-	_, err := mockStorage.GetPCSpec(ctx, "nonexistent")
+	_, err := mockStorage.GetPC(ctx, "nonexistent")
 	if err == nil {
 		t.Error("Expected error for non-existent PC")
 	}
@@ -86,17 +86,17 @@ func TestMockStorage_ListPCs(t *testing.T) {
 	ctx := context.Background()
 
 	// Add multiple PCs
-	mockStorage.AddPCSpec("warrior", &actor.PCSpec{
+	mockStorage.AddPC("warrior", &character.PC{
 		ID:    "warrior",
 		Name:  "Brave Warrior",
 		Class: "fighter",
 	})
-	mockStorage.AddPCSpec("mage", &actor.PCSpec{
+	mockStorage.AddPC("mage", &character.PC{
 		ID:    "mage",
 		Name:  "Wise Mage",
 		Class: "wizard",
 	})
-	mockStorage.AddPCSpec("rogue", &actor.PCSpec{
+	mockStorage.AddPC("rogue", &character.PC{
 		ID:    "rogue",
 		Name:  "Sneaky Rogue",
 		Class: "rogue",
@@ -149,14 +149,14 @@ func TestMockStorage_PCIDHandling(t *testing.T) {
 	ctx := context.Background()
 
 	// Add PC with simple ID
-	testPC := &actor.PCSpec{
+	testPC := &character.PC{
 		ID:    "test_hero",
 		Name:  "Test Hero",
 		Class: "paladin",
 		HP:    30,
 		MaxHP: 30,
 	}
-	mockStorage.AddPCSpec("test_hero", testPC)
+	mockStorage.AddPC("test_hero", testPC)
 
 	// Test various ID formats (only simple IDs should work now)
 	testCases := []struct {
@@ -169,7 +169,7 @@ func TestMockStorage_PCIDHandling(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		loaded, err := mockStorage.GetPCSpec(ctx, tc.id)
+		loaded, err := mockStorage.GetPC(ctx, tc.id)
 		if tc.shouldExist {
 			if err != nil {
 				t.Errorf("Failed to get PC with ID %q: %v", tc.id, err)

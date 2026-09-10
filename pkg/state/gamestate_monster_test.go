@@ -3,7 +3,7 @@ package state
 import (
 	"testing"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
@@ -13,8 +13,8 @@ func TestSpawnMonster(t *testing.T) {
 			"cellar": {Name: "Cellar"},
 		},
 	}
-	template := &actor.Monster{Name: "Rat", AC: 12, MaxHP: 9}
-	monsterDef := &actor.Monster{ID: "rat_1", TemplateID: "giant_rat", Location: "cellar"}
+	template := &character.Monster{Name: "Rat", AC: 12, MaxHP: 9}
+	monsterDef := &character.Monster{ID: "rat_1", TemplateID: "giant_rat", Location: "cellar"}
 	m := gs.SpawnMonster(template, monsterDef)
 	if m == nil {
 		t.Fatal("SpawnMonster returned nil")
@@ -26,10 +26,10 @@ func TestSpawnMonster(t *testing.T) {
 }
 
 func TestDespawnMonster(t *testing.T) {
-	rat := &actor.Monster{ID: "rat_1", Location: "cellar"}
+	rat := &character.Monster{ID: "rat_1", Location: "cellar"}
 	gs := &GameState{
 		WorldLocations: map[string]scenario.Location{
-			"cellar": {Name: "Cellar", Monsters: map[string]*actor.Monster{"rat_1": rat}},
+			"cellar": {Name: "Cellar", Monsters: map[string]*character.Monster{"rat_1": rat}},
 		},
 	}
 	gs.DespawnMonster("rat_1")

@@ -3,7 +3,7 @@ package state
 import (
 	"strings"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
@@ -164,7 +164,7 @@ func (a *Applier) handleMonsterSpawn(event conditionals.MonsterEvent) {
 	}
 
 	// Build monster definition from event (contains ID, location, and any overrides)
-	monsterDef := &actor.Monster{
+	monsterDef := &character.Monster{
 		ID:         event.InstanceID,
 		TemplateID: event.Template,
 		Location:   locationKey,
@@ -230,7 +230,7 @@ func (a *Applier) handleMonsterDespawn(event conditionals.MonsterEvent) {
 	a.logger.Info("Monster despawned", "instance_id", event.InstanceID)
 }
 
-// syncFollowingNPCs updates locations of NPCs that are following other actors
+// syncFollowingNPCs updates locations of NPCs that are following other characters
 // This runs AFTER all other delta operations complete to ensure location changes are processed first.
 // It iterates until convergence to correctly handle chained following (e.g. A follows B follows PC).
 func (a *Applier) syncFollowingNPCs() {
