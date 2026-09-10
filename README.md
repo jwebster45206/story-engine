@@ -35,14 +35,21 @@ An optional console TUI lives under `cmd/console`.
 
 Each turn calls an LLM twice: a narrator that streams to the player, then a (often cheaper) model that extracts structured game changes. Named providers in config pick the vendor and those two models; the game stores the provider name.
 
+### Authentication
+
+Protected routes take an ES256 JWT (`Authorization: Bearer`). The API validates it and scopes the request to `sub` — a random UUID today, a user id once a standalone auth service exists. Until then, the console and `cmd/token` mint tokens from `auth-key.pem`; the API verifies with the matching public key.
+
 ### Binaries
 
 ```
 cmd/
 ├── api/            # HTTP API
-├── worker/         # Async chat / story-event processor
-├── validate/       # Scenario validation CLI
-└── console/        # Optional TUI client
+├── console/        # Optional TUI client
+├── token/          # Token generation util
+├── validate/       # Util for scenario validation
+└── worker/         # Async chat / story-event processor
+
+
 ```
 
 ## Running the Service
