@@ -6,7 +6,7 @@ import (
 	"sync"
 	"uuid"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -18,9 +18,9 @@ type MockStorage struct {
 	owners     map[uuid.UUID]uuid.UUID
 	scenarios  map[string]*scenario.Scenario
 	narrators  map[string]*scenario.Narrator
-	pcSpecs    map[string]*actor.PCSpec
-	monsters   map[string]*actor.Monster
-	npcs       map[string]*actor.NPC
+	pcs        map[string]*character.PC
+	monsters   map[string]*character.Monster
+	npcs       map[string]*character.NPC
 	pingError  error
 }
 
@@ -34,9 +34,9 @@ func NewMockStorage() *MockStorage {
 		owners:     make(map[uuid.UUID]uuid.UUID),
 		scenarios:  make(map[string]*scenario.Scenario),
 		narrators:  make(map[string]*scenario.Narrator),
-		pcSpecs:    make(map[string]*actor.PCSpec),
-		monsters:   make(map[string]*actor.Monster),
-		npcs:       make(map[string]*actor.NPC),
+		pcs:        make(map[string]*character.PC),
+		monsters:   make(map[string]*character.Monster),
+		npcs:       make(map[string]*character.NPC),
 	}
 }
 
@@ -191,16 +191,16 @@ func (m *MockStorage) AddNarrator(narratorID string, n *scenario.Narrator) {
 	m.narrators[narratorID] = n
 }
 
-// GetPCSpec mocks getting a PC spec by ID
-func (m *MockStorage) GetPCSpec(ctx context.Context, pcID string) (*actor.PCSpec, error) {
+// GetPC mocks getting a PC by ID
+func (m *MockStorage) GetPC(ctx context.Context, pcID string) (*character.PC, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	spec, exists := m.pcSpecs[pcID]
+	pc, exists := m.pcs[pcID]
 	if !exists {
 		return nil, errors.New("PC spec not found")
 	}
-	return spec, nil
+	return pc, nil
 }
 
 // ListPCs mocks listing PCs
@@ -208,22 +208,22 @@ func (m *MockStorage) ListPCs(ctx context.Context) ([]string, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	result := make([]string, 0, len(m.pcSpecs))
-	for id := range m.pcSpecs {
+	result := make([]string, 0, len(m.pcs))
+	for id := range m.pcs {
 		result = append(result, id)
 	}
 	return result, nil
 }
 
-// AddPCSpec adds a PC spec to the mock storage (for testing)
-func (m *MockStorage) AddPCSpec(pcID string, spec *actor.PCSpec) {
+// AddPC adds a PC to the mock storage (for testing)
+func (m *MockStorage) AddPC(pcID string, pc *character.PC) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.pcSpecs[pcID] = spec
+	m.pcs[pcID] = pc
 }
 
 // GetMonster mocks getting a monster template by ID
-func (m *MockStorage) GetMonster(ctx context.Context, templateID string) (*actor.Monster, error) {
+func (m *MockStorage) GetMonster(ctx context.Context, templateID string) (*character.Monster, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -247,14 +247,14 @@ func (m *MockStorage) ListMonsters(ctx context.Context) (map[string]string, erro
 }
 
 // AddMonster adds a monster template to the mock storage (for testing)
-func (m *MockStorage) AddMonster(templateID string, monster *actor.Monster) {
+func (m *MockStorage) AddMonster(templateID string, monster *character.Monster) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.monsters[templateID] = monster
 }
 
 // GetNPC mocks getting an NPC template by ID
-func (m *MockStorage) GetNPC(ctx context.Context, templateID string) (*actor.NPC, error) {
+func (m *MockStorage) GetNPC(ctx context.Context, templateID string) (*character.NPC, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -278,7 +278,7 @@ func (m *MockStorage) ListNPCs(ctx context.Context) (map[string]string, error) {
 }
 
 // AddNPC adds an NPC template to the mock storage (for testing)
-func (m *MockStorage) AddNPC(templateID string, npc *actor.NPC) {
+func (m *MockStorage) AddNPC(templateID string, npc *character.NPC) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.npcs[templateID] = npc

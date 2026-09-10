@@ -5,7 +5,7 @@ import (
 	"errors"
 	"uuid"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -35,19 +35,17 @@ type Storage interface {
 	GetNarrator(ctx context.Context, narratorID string) (*scenario.Narrator, error)
 	ListNarrators(ctx context.Context) ([]string, error)
 
-	// PC operations (filesystem-backed, returns PCSpec not PC)
-	// GetPCSpec loads a PC spec from storage but does NOT construct the d20.Actor
-	// Use actor.NewPCFromSpec to build the full PC from the returned spec
-	GetPCSpec(ctx context.Context, pcID string) (*actor.PCSpec, error)
+	// PC operations (filesystem-backed)
+	GetPC(ctx context.Context, pcID string) (*character.PC, error)
 	ListPCs(ctx context.Context) ([]string, error)
 
 	// Monster operations (filesystem-backed, returns Monster template)
-	// Use actor.NewMonster to create instances from the template
-	GetMonster(ctx context.Context, templateID string) (*actor.Monster, error)
+	// Use character.NewMonster to create instances from the template
+	GetMonster(ctx context.Context, templateID string) (*character.Monster, error)
 	ListMonsters(ctx context.Context) (map[string]string, error) // map[name]templateID
 
 	// NPC operations (filesystem-backed, returns NPC template from data/npcs/)
-	// Use actor.NewNPCFromTemplate to merge template with scenario overrides
-	GetNPC(ctx context.Context, templateID string) (*actor.NPC, error)
+	// Use character.NewNPCFromTemplate to merge template with scenario overrides
+	GetNPC(ctx context.Context, templateID string) (*character.NPC, error)
 	ListNPCs(ctx context.Context) (map[string]string, error) // map[name]templateID
 }

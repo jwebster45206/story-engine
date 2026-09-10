@@ -10,7 +10,7 @@ import (
 	"uuid"
 
 	"github.com/jwebster45206/story-engine/internal/httperror"
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -63,7 +63,7 @@ func createGameState(client *http.Client, baseURL string, scenarioFile string, p
 		Temperature: temperature,
 	}
 	if pcID != "" {
-		req.PC = &actor.PC{Spec: &actor.PCSpec{ID: pcID}}
+		req.PC = &character.PC{ID: pcID}
 	}
 
 	jsonData, err := json.Marshal(req)

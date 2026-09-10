@@ -202,8 +202,8 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 	case queuePkg.RequestTypeChat:
 		// Format message with PC name prefix if available
 		userMessage = req.Message
-		if gs.PC != nil && gs.PC.Spec != nil && gs.PC.Spec.Name != "" {
-			userMessage = chat.FormatWithPCName(req.Message, gs.PC.Spec.Name)
+		if gs.PC != nil && gs.PC.Name != "" {
+			userMessage = chat.FormatWithPCName(req.Message, gs.PC.Name)
 		}
 	case queuePkg.RequestTypeStoryEvent:
 		userMessage = req.EventPrompt

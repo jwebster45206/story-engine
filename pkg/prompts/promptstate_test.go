@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
@@ -119,7 +119,7 @@ func TestPromptState_ToString_WithNPCsHere(t *testing.T) {
 				Description: "A bustling marketplace.",
 			},
 		},
-		NPCs: map[string]actor.NPC{
+		NPCs: map[string]character.NPC{
 			"merchant": {
 				Name:        "Greedy Merchant",
 				Disposition: "neutral",
@@ -150,7 +150,7 @@ func TestPromptState_ToString_NPCsElsewhere(t *testing.T) {
 				Name: "Sleepy Mermaid",
 			},
 		},
-		NPCs: map[string]actor.NPC{
+		NPCs: map[string]character.NPC{
 			"calypso": {
 				Name:        "Calypso",
 				Description: "A bartender known for her enchanting stories.",
@@ -207,7 +207,7 @@ func TestPromptState_ToString_Comprehensive(t *testing.T) {
 				Preview:     "The cargo hold below decks.",
 			},
 		},
-		NPCs: map[string]actor.NPC{
+		NPCs: map[string]character.NPC{
 			"captain": {
 				Name:        "Captain Blackbeard",
 				Disposition: "hostile",
@@ -216,7 +216,7 @@ func TestPromptState_ToString_Comprehensive(t *testing.T) {
 				Items:       []string{"cutlass", "pistol"},
 			},
 		},
-		Monsters: map[string]actor.Monster{
+		Monsters: map[string]character.Monster{
 			"rat1": {
 				ID: "rat1", Name: "Giant Rat", AC: 12, HP: 7, MaxHP: 7,
 				Description: "A massive rat with matted fur.",
@@ -388,7 +388,7 @@ func TestPromptState_ToString_WithMonstersHere(t *testing.T) {
 		WorldLocations: map[string]scenario.Location{
 			"dungeon": {Name: "Dark Dungeon", Description: "A dank chamber."},
 		},
-		Monsters: map[string]actor.Monster{
+		Monsters: map[string]character.Monster{
 			"rat1": {
 				ID: "rat1", Name: "Giant Rat", AC: 12, HP: 9, MaxHP: 9,
 				Description: "A filthy, red-eyed rodent the size of a dog.",

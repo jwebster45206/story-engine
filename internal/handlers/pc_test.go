@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
 
@@ -17,14 +17,14 @@ func TestPCHandler_ListPCs(t *testing.T) {
 	mockStorage := storage.NewMockStorage()
 
 	// Add test PC specs with just IDs - MockStorage will handle path matching
-	mockStorage.AddPCSpec("pirate_captain", &actor.PCSpec{
+	mockStorage.AddPC("pirate_captain", &character.PC{
 		ID:       "pirate_captain",
 		Name:     "Captain Jack Sparrow",
 		Class:    "rogue",
 		Level:    5,
 		Race:     "human",
 		Pronouns: "he/him",
-		Stats: actor.Stats5e{
+		Stats: character.Stats5e{
 			Strength:     10,
 			Dexterity:    18,
 			Constitution: 12,
@@ -33,14 +33,14 @@ func TestPCHandler_ListPCs(t *testing.T) {
 			Charisma:     16,
 		},
 	})
-	mockStorage.AddPCSpec("classic", &actor.PCSpec{
+	mockStorage.AddPC("classic", &character.PC{
 		ID:       "classic",
 		Name:     "Adventurer",
 		Class:    "fighter",
 		Level:    1,
 		Race:     "human",
 		Pronouns: "they/them",
-		Stats: actor.Stats5e{
+		Stats: character.Stats5e{
 			Strength:     15,
 			Dexterity:    14,
 			Constitution: 13,
@@ -49,14 +49,14 @@ func TestPCHandler_ListPCs(t *testing.T) {
 			Charisma:     8,
 		},
 	})
-	mockStorage.AddPCSpec("alexandra_kane", &actor.PCSpec{
+	mockStorage.AddPC("alexandra_kane", &character.PC{
 		ID:       "alexandra_kane",
 		Name:     "Alexandra Kane",
 		Class:    "wizard",
 		Level:    3,
 		Race:     "elf",
 		Pronouns: "she/her",
-		Stats: actor.Stats5e{
+		Stats: character.Stats5e{
 			Strength:     8,
 			Dexterity:    14,
 			Constitution: 10,
@@ -113,14 +113,14 @@ func TestPCHandler_ListPCs(t *testing.T) {
 func TestPCHandler_GetPC(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	mockStorage := storage.NewMockStorage()
-	mockStorage.AddPCSpec("pirate_captain", &actor.PCSpec{
+	mockStorage.AddPC("pirate_captain", &character.PC{
 		ID:    "pirate_captain",
 		Name:  "Captain Jack Sparrow",
 		Class: "rogue",
 		Level: 5,
 		HP:    35,
 		MaxHP: 35,
-		Stats: actor.Stats5e{
+		Stats: character.Stats5e{
 			Strength:  10,
 			Dexterity: 18,
 		},
@@ -162,7 +162,7 @@ func TestPCHandler_GetPC(t *testing.T) {
 func TestPCHandler_GetPC_Classic(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	mockStorage := storage.NewMockStorage()
-	mockStorage.AddPCSpec("classic", &actor.PCSpec{
+	mockStorage.AddPC("classic", &character.PC{
 		ID:    "classic",
 		Name:  "Adventurer",
 		Class: "fighter",
@@ -261,7 +261,7 @@ func TestPCHandler_MethodNotAllowed(t *testing.T) {
 func TestPCHandler_ListPCs_WithTrailingSlash(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	mockStorage := storage.NewMockStorage()
-	mockStorage.AddPCSpec("test_pc", &actor.PCSpec{
+	mockStorage.AddPC("test_pc", &character.PC{
 		ID:   "test_pc",
 		Name: "Test PC",
 	})

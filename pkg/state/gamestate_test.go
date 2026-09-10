@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
@@ -70,12 +70,10 @@ func TestGameState_GetContingencyPrompts(t *testing.T) {
 			name: "PC-level prompts included",
 			gameState: &GameState{
 				ContingencyPrompts: []string{"Scenario prompt"},
-				PC: &actor.PC{
-					Spec: &actor.PCSpec{
-						ContingencyPrompts: []conditionals.ContingencyPrompt{
-							{Prompt: "PC prompt 1"},
-							{Prompt: "PC prompt 2"},
-						},
+				PC: &character.PC{
+					ContingencyPrompts: []conditionals.ContingencyPrompt{
+						{Prompt: "PC prompt 1"},
+						{Prompt: "PC prompt 2"},
 					},
 				},
 			},
@@ -88,19 +86,17 @@ func TestGameState_GetContingencyPrompts(t *testing.T) {
 				Vars:               map[string]string{"has_sword": "true"},
 				TurnCounter:        15,
 				ContingencyPrompts: []string{},
-				PC: &actor.PC{
-					Spec: &actor.PCSpec{
-						ContingencyPrompts: []conditionals.ContingencyPrompt{
-							{Prompt: "PC is always brave"},
-							{
-								Prompt: "PC is confident with sword",
-								When:   &conditionals.ConditionalWhen{Vars: map[string]string{"has_sword": "true"}},
-							},
-							{
-								Prompt: "PC is tired after many turns",
-								When: &conditionals.ConditionalWhen{
-									MinTurns: func() *int { i := 20; return &i }(),
-								},
+				PC: &character.PC{
+					ContingencyPrompts: []conditionals.ContingencyPrompt{
+						{Prompt: "PC is always brave"},
+						{
+							Prompt: "PC is confident with sword",
+							When:   &conditionals.ConditionalWhen{Vars: map[string]string{"has_sword": "true"}},
+						},
+						{
+							Prompt: "PC is tired after many turns",
+							When: &conditionals.ConditionalWhen{
+								MinTurns: func() *int { i := 20; return &i }(),
 							},
 						},
 					},
@@ -114,11 +110,9 @@ func TestGameState_GetContingencyPrompts(t *testing.T) {
 			gameState: &GameState{
 				SceneName:          "test_scene",
 				ContingencyPrompts: []string{"Gamestate custom prompt"},
-				PC: &actor.PC{
-					Spec: &actor.PCSpec{
-						ContingencyPrompts: []conditionals.ContingencyPrompt{
-							{Prompt: "PC prompt"},
-						},
+				PC: &character.PC{
+					ContingencyPrompts: []conditionals.ContingencyPrompt{
+						{Prompt: "PC prompt"},
 					},
 				},
 			},
@@ -174,7 +168,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "no duplicates",
 			gameState: &GameState{
 				Inventory: []string{"sword", "shield"},
-				NPCs: map[string]actor.NPC{
+				NPCs: map[string]character.NPC{
 					"guard":    {Items: []string{"key", "armor"}},
 					"merchant": {Items: []string{"potion", "gold"}},
 				},
@@ -198,7 +192,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "user inventory takes priority over NPCs",
 			gameState: &GameState{
 				Inventory: []string{"sword", "key"},
-				NPCs: map[string]actor.NPC{
+				NPCs: map[string]character.NPC{
 					"guard":    {Items: []string{"key", "armor", "sword"}},
 					"merchant": {Items: []string{"potion", "key"}},
 				},
@@ -220,7 +214,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "user inventory takes priority over locations",
 			gameState: &GameState{
 				Inventory: []string{"sword", "gem"},
-				NPCs: map[string]actor.NPC{
+				NPCs: map[string]character.NPC{
 					"guard": {Items: []string{"key", "armor"}},
 				},
 				WorldLocations: map[string]scenario.Location{
@@ -242,7 +236,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "NPC items take priority over locations",
 			gameState: &GameState{
 				Inventory: []string{"sword"},
-				NPCs: map[string]actor.NPC{
+				NPCs: map[string]character.NPC{
 					"guard":    {Items: []string{"key", "armor"}},
 					"merchant": {Items: []string{"potion", "gem"}},
 				},
@@ -266,7 +260,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "complex scenario with all priorities",
 			gameState: &GameState{
 				Inventory: []string{"legendary_sword", "master_key"},
-				NPCs: map[string]actor.NPC{
+				NPCs: map[string]character.NPC{
 					"guard":    {Items: []string{"iron_key", "chain_mail", "legendary_sword"}},
 					"merchant": {Items: []string{"health_potion", "master_key", "gold_coin"}},
 					"wizard":   {Items: []string{"spell_book", "iron_key"}},
@@ -285,7 +279,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "empty collections",
 			gameState: &GameState{
 				Inventory:      []string{},
-				NPCs:           map[string]actor.NPC{},
+				NPCs:           map[string]character.NPC{},
 				WorldLocations: map[string]scenario.Location{},
 			},
 			expectedInventory: []string{},
@@ -475,7 +469,7 @@ func TestGameState_GetContingencyPrompts_WithNPCs(t *testing.T) {
 			name: "NPC at same location shows prompts",
 			gameState: &GameState{
 				Location: "tavern",
-				NPCs: map[string]actor.NPC{
+				NPCs: map[string]character.NPC{
 					"bartender": {
 						Name:     "Bartender",
 						Location: "tavern",
@@ -498,7 +492,7 @@ func TestGameState_GetContingencyPrompts_WithNPCs(t *testing.T) {
 			name: "NPC at different location does not show prompts",
 			gameState: &GameState{
 				Location: "market",
-				NPCs: map[string]actor.NPC{
+				NPCs: map[string]character.NPC{
 					"bartender": {
 						Name:     "Bartender",
 						Location: "tavern",
@@ -523,7 +517,7 @@ func TestGameState_GetContingencyPrompts_WithNPCs(t *testing.T) {
 					"met_bartender": "true",
 					"bar_tab_paid":  "false",
 				},
-				NPCs: map[string]actor.NPC{
+				NPCs: map[string]character.NPC{
 					"bartender": {
 						Name:     "Bartender",
 						Location: "tavern",
@@ -570,7 +564,7 @@ func TestGameState_GetContingencyPrompts_WithNPCs(t *testing.T) {
 			name: "Multiple NPCs at same location",
 			gameState: &GameState{
 				Location: "market",
-				NPCs: map[string]actor.NPC{
+				NPCs: map[string]character.NPC{
 					"merchant": {
 						Name:     "Merchant",
 						Location: "market",
@@ -610,7 +604,7 @@ func TestGameState_GetContingencyPrompts_WithNPCs(t *testing.T) {
 			gameState: &GameState{
 				Location:  "tavern",
 				SceneName: "opening",
-				NPCs: map[string]actor.NPC{
+				NPCs: map[string]character.NPC{
 					"bartender": {
 						Name:     "Bartender",
 						Location: "tavern",
@@ -747,7 +741,7 @@ func TestGameState_Normalize(t *testing.T) {
 			input: GameState{
 				Scenario: "pirate_adventure",
 				Narrator: &scenario.Narrator{ID: "epic"},
-				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "jack_sparrow"}},
+				PC:       &character.PC{ID: "jack_sparrow"},
 			},
 			expectedScenario: "pirate_adventure.json",
 			expectedNarrator: "epic",
@@ -760,7 +754,7 @@ func TestGameState_Normalize(t *testing.T) {
 			input: GameState{
 				Scenario:    "pirate_adventure.json",
 				Narrator:    &scenario.Narrator{ID: "comedic"},
-				PC:          &actor.PC{Spec: &actor.PCSpec{ID: "custom_hero"}},
+				PC:          &character.PC{ID: "custom_hero"},
 				Rules:       RulesRelaxed,
 				Temperature: 0.8,
 			},
@@ -775,7 +769,7 @@ func TestGameState_Normalize(t *testing.T) {
 			input: GameState{
 				Scenario: "PirateAdventure",
 				Narrator: &scenario.Narrator{ID: "Epic Narrator"},
-				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "Jack Sparrow"}},
+				PC:       &character.PC{ID: "Jack Sparrow"},
 			},
 			expectedScenario: "pirateadventure.json",
 			expectedNarrator: "epic_narrator",
@@ -788,7 +782,7 @@ func TestGameState_Normalize(t *testing.T) {
 			input: GameState{
 				Scenario: "pirate-adventure",
 				Narrator: &scenario.Narrator{ID: "epic-narrator"},
-				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "jack-sparrow"}},
+				PC:       &character.PC{ID: "jack-sparrow"},
 			},
 			expectedScenario: "pirate_adventure.json",
 			expectedNarrator: "epic_narrator",
@@ -801,7 +795,7 @@ func TestGameState_Normalize(t *testing.T) {
 			input: GameState{
 				Scenario: "Pirate Adventure!",
 				Narrator: &scenario.Narrator{ID: "Epic.Narrator"},
-				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "Jack@Sparrow"}},
+				PC:       &character.PC{ID: "Jack@Sparrow"},
 			},
 			expectedScenario: "pirate_adventure.json",
 			expectedNarrator: "epic.narrator",
@@ -814,7 +808,7 @@ func TestGameState_Normalize(t *testing.T) {
 			input: GameState{
 				Scenario: "pirate_adventure.json",
 				Narrator: &scenario.Narrator{ID: "epic_narrator"},
-				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "jack_sparrow"}},
+				PC:       &character.PC{ID: "jack_sparrow"},
 			},
 			expectedScenario: "pirate_adventure.json",
 			expectedNarrator: "epic_narrator",
@@ -838,7 +832,7 @@ func TestGameState_Normalize(t *testing.T) {
 			input: GameState{
 				Scenario: "pirate_adventure",
 				Narrator: &scenario.Narrator{ID: "epic.json"},
-				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "jack_sparrow.json"}},
+				PC:       &character.PC{ID: "jack_sparrow.json"},
 			},
 			expectedScenario: "pirate_adventure.json",
 			expectedNarrator: "epic",
@@ -851,7 +845,7 @@ func TestGameState_Normalize(t *testing.T) {
 			input: GameState{
 				Scenario: "pirate_adventure",
 				Narrator: &scenario.Narrator{ID: "Epic.JSON"},
-				PC:       &actor.PC{Spec: &actor.PCSpec{ID: "Jack.JSON"}},
+				PC:       &character.PC{ID: "Jack.JSON"},
 			},
 			expectedScenario: "pirate_adventure.json",
 			expectedNarrator: "epic",
@@ -877,11 +871,11 @@ func TestGameState_Normalize(t *testing.T) {
 				t.Errorf("Narrator.ID: expected %q, got %q", tt.expectedNarrator, gotNarrator)
 			}
 			gotPC := ""
-			if gs.PC != nil && gs.PC.Spec != nil {
-				gotPC = gs.PC.Spec.ID
+			if gs.PC != nil {
+				gotPC = gs.PC.ID
 			}
 			if gotPC != tt.expectedPC {
-				t.Errorf("PC.Spec.ID: expected %q, got %q", tt.expectedPC, gotPC)
+				t.Errorf("PC.ID: expected %q, got %q", tt.expectedPC, gotPC)
 			}
 			if gs.Rules != tt.expectedRules {
 				t.Errorf("Rules: expected %q, got %q", tt.expectedRules, gs.Rules)

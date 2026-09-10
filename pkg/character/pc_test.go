@@ -1,11 +1,10 @@
-package actor
+package character
 
 import (
 	"encoding/json"
-	"maps"
 	"testing"
 
-	"github.com/jwebster45206/d20"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
 func TestStats5e_ToAttributes(t *testing.T) {
@@ -42,8 +41,7 @@ func TestStats5e_ToAttributes(t *testing.T) {
 }
 
 func TestPC_MarshalJSON(t *testing.T) {
-	// Create a test PC
-	spec := &PCSpec{
+	pc := &PC{
 		ID:          "test_pc",
 		Name:        "Test Character",
 		Class:       "Rogue",
@@ -74,61 +72,36 @@ func TestPC_MarshalJSON(t *testing.T) {
 		Inventory: []string{"dagger", "thieves' tools"},
 	}
 
-	// Build Actor
-	allAttrs := spec.Stats.ToAttributes()
-	maps.Copy(allAttrs, spec.Attributes)
-
-	actor := d20.NewActor(spec.Name)
-	actor.MaxHP, actor.HP = spec.HP, spec.HP
-	actor.AC = spec.AC
-	actor.Attributes = allAttrs
-	actor.Modifiers = spec.CombatModifiers
-
-	pc := &PC{
-		Spec:  spec,
-		Actor: actor,
-	}
-
-	// Marshal to JSON
 	data, err := json.Marshal(pc)
 	if err != nil {
 		t.Fatalf("MarshalJSON() error = %v", err)
 	}
 
-	// Unmarshal to verify structure
 	var result map[string]any
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("Failed to unmarshal result: %v", err)
 	}
 
-	// Verify key fields
 	if result["id"] != "test_pc" {
 		t.Errorf("Marshaled id = %v, want %q", result["id"], "test_pc")
 	}
-
 	if result["name"] != "Test Character" {
 		t.Errorf("Marshaled name = %v, want %q", result["name"], "Test Character")
 	}
-
 	if result["class"] != "Rogue" {
 		t.Errorf("Marshaled class = %v, want %q", result["class"], "Rogue")
 	}
-
 	if result["pronouns"] != "she/her" {
 		t.Errorf("Marshaled pronouns = %v, want %q", result["pronouns"], "she/her")
 	}
 
-	// Verify HP comes from Actor.MaxHP
 	if hp, ok := result["hp"].(float64); !ok || int(hp) != 20 {
 		t.Errorf("Marshaled hp = %v, want %d", result["hp"], 20)
 	}
-
-	// Verify AC comes from Actor
 	if ac, ok := result["ac"].(float64); !ok || int(ac) != 15 {
 		t.Errorf("Marshaled ac = %v, want %d", result["ac"], 15)
 	}
 
-	// Verify stats are preserved
 	stats, ok := result["stats"].(map[string]any)
 	if !ok {
 		t.Fatal("Marshaled stats missing or wrong type")
@@ -137,7 +110,6 @@ func TestPC_MarshalJSON(t *testing.T) {
 		t.Errorf("Marshaled stats.strength = %v, want %d", stats["strength"], 10)
 	}
 
-	// Verify attributes don't include core stats
 	attrs, ok := result["attributes"].(map[string]any)
 	if !ok {
 		t.Fatal("Marshaled attributes missing or wrong type")
@@ -149,7 +121,6 @@ func TestPC_MarshalJSON(t *testing.T) {
 		t.Errorf("Marshaled attributes.stealth = %v, want %d", attrs["stealth"], 7)
 	}
 
-	// Verify inventory
 	inv, ok := result["inventory"].([]any)
 	if !ok {
 		t.Fatal("Marshaled inventory missing or wrong type")
@@ -159,67 +130,19 @@ func TestPC_MarshalJSON(t *testing.T) {
 	}
 }
 
-func TestPC_MarshalJSON_NilActor(t *testing.T) {
-	// Test marshaling a PC with nil Actor (should not panic)
-	spec := &PCSpec{
-		ID:          "test_pc",
-		Name:        "Test Character",
-		Class:       "Fighter",
-		Level:       1,
-		Race:        "Human",
-		Pronouns:    "he/him",
-		Description: "A test character",
-		HP:          10,
-		MaxHP:       10,
-		AC:          16,
-	}
-
-	pc := &PC{
-		Spec:  spec,
-		Actor: nil, // Explicitly nil
-	}
-
-	// This should not panic
-	data, err := json.Marshal(pc)
-	if err != nil {
-		t.Fatalf("MarshalJSON() with nil Actor error = %v", err)
-	}
-
-	// Unmarshal to verify it's valid JSON
-	var result map[string]any
-	if err := json.Unmarshal(data, &result); err != nil {
-		t.Fatalf("Failed to unmarshal result: %v", err)
-	}
-
-	// Verify basic fields are still present
-	if result["id"] != "test_pc" {
-		t.Errorf("Marshaled id = %v, want %q", result["id"], "test_pc")
-	}
-
-	if result["name"] != "Test Character" {
-		t.Errorf("Marshaled name = %v, want %q", result["name"], "Test Character")
-	}
-}
-
 func TestPC_MarshalJSON_NilPC(t *testing.T) {
-	// Test marshaling a nil PC pointer (should not panic)
-	var pc *PC = nil
-
-	// This should not panic
+	var pc *PC
 	data, err := json.Marshal(pc)
 	if err != nil {
 		t.Fatalf("MarshalJSON() with nil PC error = %v", err)
 	}
-
-	// Should return "null"
 	if string(data) != "null" {
 		t.Errorf("MarshalJSON() with nil PC = %q, want %q", string(data), "null")
 	}
 }
 
 func TestPC_MarshalUnmarshalRoundTrip(t *testing.T) {
-	// Create a PC with full data
-	spec := &PCSpec{
+	original := &PC{
 		ID:          "test_pc",
 		Name:        "Test Ranger",
 		Class:       "Ranger",
@@ -251,65 +174,42 @@ func TestPC_MarshalUnmarshalRoundTrip(t *testing.T) {
 		Inventory: []string{"longbow", "arrows", "rope"},
 	}
 
-	// Build Actor
-	allAttrs := spec.Stats.ToAttributes()
-	maps.Copy(allAttrs, spec.Attributes)
-
-	actor := d20.NewActor(spec.Name)
-	actor.MaxHP, actor.HP = spec.MaxHP, spec.MaxHP
-	actor.AC = spec.AC
-	actor.Attributes = allAttrs
-	actor.Modifiers = spec.CombatModifiers
-
-	actor.HP = spec.HP
-
-	originalPC := &PC{
-		Spec:  spec,
-		Actor: actor,
-	}
-
-	// Marshal to JSON
-	data, err := json.Marshal(originalPC)
+	data, err := json.Marshal(original)
 	if err != nil {
 		t.Fatalf("Marshal error: %v", err)
 	}
 
-	// Unmarshal back
-	var restoredPC PC
-	if err := json.Unmarshal(data, &restoredPC); err != nil {
+	var restored PC
+	if err := json.Unmarshal(data, &restored); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	// Verify Spec fields round-trip; Actor is left nil by UnmarshalJSON
-	if restoredPC.Spec.ID != spec.ID {
-		t.Errorf("ID = %q, want %q", restoredPC.Spec.ID, spec.ID)
+	if restored.ID != original.ID {
+		t.Errorf("ID = %q, want %q", restored.ID, original.ID)
 	}
-	if restoredPC.Spec.Name != spec.Name {
-		t.Errorf("Name = %q, want %q", restoredPC.Spec.Name, spec.Name)
+	if restored.Name != original.Name {
+		t.Errorf("Name = %q, want %q", restored.Name, original.Name)
 	}
-	if restoredPC.Spec.Class != spec.Class {
-		t.Errorf("Class = %q, want %q", restoredPC.Spec.Class, spec.Class)
+	if restored.Class != original.Class {
+		t.Errorf("Class = %q, want %q", restored.Class, original.Class)
 	}
-	if restoredPC.Spec.HP != spec.HP {
-		t.Errorf("HP = %d, want %d", restoredPC.Spec.HP, spec.HP)
+	if restored.HP != original.HP {
+		t.Errorf("HP = %d, want %d", restored.HP, original.HP)
 	}
-	if restoredPC.Spec.MaxHP != spec.MaxHP {
-		t.Errorf("MaxHP = %d, want %d", restoredPC.Spec.MaxHP, spec.MaxHP)
+	if restored.MaxHP != original.MaxHP {
+		t.Errorf("MaxHP = %d, want %d", restored.MaxHP, original.MaxHP)
 	}
-	if restoredPC.Spec.AC != spec.AC {
-		t.Errorf("AC = %d, want %d", restoredPC.Spec.AC, spec.AC)
+	if restored.AC != original.AC {
+		t.Errorf("AC = %d, want %d", restored.AC, original.AC)
 	}
-	if restoredPC.Spec.Stats.Dexterity != 18 {
-		t.Errorf("Stats.Dexterity = %d, want 18", restoredPC.Spec.Stats.Dexterity)
+	if restored.Stats.Dexterity != 18 {
+		t.Errorf("Stats.Dexterity = %d, want 18", restored.Stats.Dexterity)
 	}
-	if restoredPC.Spec.Attributes["survival"] != 8 {
-		t.Errorf("Attributes[survival] = %d, want 8", restoredPC.Spec.Attributes["survival"])
+	if restored.Attributes["survival"] != 8 {
+		t.Errorf("Attributes[survival] = %d, want 8", restored.Attributes["survival"])
 	}
-	if len(restoredPC.Spec.CombatModifiers) != 2 {
-		t.Errorf("CombatModifiers count = %d, want 2", len(restoredPC.Spec.CombatModifiers))
-	}
-	if restoredPC.Actor != nil {
-		t.Error("Actor should be nil after unmarshal; use NewPCFromSpec to build it")
+	if len(restored.CombatModifiers) != 2 {
+		t.Errorf("CombatModifiers count = %d, want 2", len(restored.CombatModifiers))
 	}
 }
 
@@ -318,14 +218,8 @@ func TestPC_UnmarshalJSON_IDOnly(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"id":"pirate_captain"}`), &pc); err != nil {
 		t.Fatalf("Unmarshal id-only PC: %v", err)
 	}
-	if pc.Spec == nil {
-		t.Fatal("Spec is nil after unmarshal")
-	}
-	if pc.Spec.ID != "pirate_captain" {
-		t.Errorf("Spec.ID = %q, want %q", pc.Spec.ID, "pirate_captain")
-	}
-	if pc.Actor != nil {
-		t.Error("Actor should be nil for id-only unmarshal")
+	if pc.ID != "pirate_captain" {
+		t.Errorf("ID = %q, want %q", pc.ID, "pirate_captain")
 	}
 }
 
@@ -343,116 +237,96 @@ func TestBuildPrompt(t *testing.T) {
 		{
 			name: "PC with all fields",
 			pc: &PC{
-				Spec: &PCSpec{
-					Name:        "Sir Galahad",
-					Pronouns:    "he/him",
-					Level:       5,
-					Class:       "Paladin",
-					Description: "A brave knight of the Round Table, clad in shining armor and wielding a mighty sword.",
-				},
+				Name:        "Sir Galahad",
+				Pronouns:    "he/him",
+				Level:       5,
+				Class:       "Paladin",
+				Description: "A brave knight of the Round Table, clad in shining armor and wielding a mighty sword.",
 			},
 			want: "REMEMBER: In this game, the user is controlling: Sir Galahad (he/him), Level 5 Paladin. A brave knight of the Round Table, clad in shining armor and wielding a mighty sword.",
 		},
 		{
 			name: "PC without pronouns",
 			pc: &PC{
-				Spec: &PCSpec{
-					Name:        "Aragorn",
-					Level:       10,
-					Class:       "Ranger",
-					Description: "A skilled ranger and heir to the throne of Gondor.",
-				},
+				Name:        "Aragorn",
+				Level:       10,
+				Class:       "Ranger",
+				Description: "A skilled ranger and heir to the throne of Gondor.",
 			},
 			want: "REMEMBER: In this game, the user is controlling: Aragorn, Level 10 Ranger. A skilled ranger and heir to the throne of Gondor.",
 		},
 		{
 			name: "PC without level",
 			pc: &PC{
-				Spec: &PCSpec{
-					Name:        "Gandalf",
-					Pronouns:    "he/him",
-					Class:       "Wizard",
-					Description: "A wise wizard of great power.",
-				},
+				Name:        "Gandalf",
+				Pronouns:    "he/him",
+				Class:       "Wizard",
+				Description: "A wise wizard of great power.",
 			},
 			want: "REMEMBER: In this game, the user is controlling: Gandalf (he/him), Wizard. A wise wizard of great power.",
 		},
 		{
 			name: "PC without class",
 			pc: &PC{
-				Spec: &PCSpec{
-					Name:        "Frodo",
-					Pronouns:    "he/him",
-					Level:       3,
-					Description: "A brave hobbit carrying a heavy burden.",
-				},
+				Name:        "Frodo",
+				Pronouns:    "he/him",
+				Level:       3,
+				Description: "A brave hobbit carrying a heavy burden.",
 			},
 			want: "REMEMBER: In this game, the user is controlling: Frodo (he/him), Level 3. A brave hobbit carrying a heavy burden.",
 		},
 		{
 			name: "PC without level or class",
 			pc: &PC{
-				Spec: &PCSpec{
-					Name:        "Samwise",
-					Pronouns:    "he/him",
-					Description: "A loyal friend and companion.",
-				},
+				Name:        "Samwise",
+				Pronouns:    "he/him",
+				Description: "A loyal friend and companion.",
 			},
 			want: "REMEMBER: In this game, the user is controlling: Samwise (he/him). A loyal friend and companion.",
 		},
 		{
 			name: "PC without description",
 			pc: &PC{
-				Spec: &PCSpec{
-					Name:     "Gimli",
-					Pronouns: "he/him",
-					Level:    8,
-					Class:    "Fighter",
-				},
+				Name:     "Gimli",
+				Pronouns: "he/him",
+				Level:    8,
+				Class:    "Fighter",
 			},
 			want: "REMEMBER: In this game, the user is controlling: Gimli (he/him), Level 8 Fighter",
 		},
 		{
 			name: "PC with name only",
 			pc: &PC{
-				Spec: &PCSpec{
-					Name: "Legolas",
-				},
+				Name: "Legolas",
 			},
 			want: "REMEMBER: In this game, the user is controlling: Legolas",
 		},
 		{
 			name: "PC with class but no level",
 			pc: &PC{
-				Spec: &PCSpec{
-					Name:  "Boromir",
-					Class: "Fighter",
-				},
+				Name:  "Boromir",
+				Class: "Fighter",
 			},
 			want: "REMEMBER: In this game, the user is controlling: Boromir, Fighter",
 		},
 		{
 			name: "PC with level zero but has class",
 			pc: &PC{
-				Spec: &PCSpec{
-					Name:  "Young Apprentice",
-					Level: 0,
-					Class: "Wizard",
-				},
+				Name:  "Young Apprentice",
+				Level: 0,
+				Class: "Wizard",
 			},
 			want: "REMEMBER: In this game, the user is controlling: Young Apprentice, Wizard",
 		},
 		{
 			name: "PC with Race",
 			pc: &PC{
-				Spec: &PCSpec{
-					Name:        "Fooman",
-					Pronouns:    "hi/him",
-					Level:       4,
-					Race:        "Human",
-					Class:       "Rogue",
-					Description: "A strange dude with a mysterious past.",
-				},
+				Name:        "Fooman",
+				Pronouns:    "hi/him",
+				Level:       4,
+				Race:        "Human",
+				Class:       "Rogue",
+				Description: "A strange dude with a mysterious past.",
 			},
 			want: "REMEMBER: In this game, the user is controlling: Fooman (hi/him), Level 4 Human Rogue. A strange dude with a mysterious past.",
 		},
@@ -468,41 +342,94 @@ func TestBuildPrompt(t *testing.T) {
 	}
 }
 
-func TestBuildPrompt_WithActor(t *testing.T) {
-	// Test that BuildPrompt works correctly even when Actor is built
-	spec := &PCSpec{
-		Name:        "Test Paladin",
-		Pronouns:    "he/him",
-		Level:       5,
-		Class:       "Paladin",
-		Description: "A holy warrior.",
-		Stats: Stats5e{
-			Strength:     16,
-			Dexterity:    10,
-			Constitution: 14,
-			Intelligence: 8,
-			Wisdom:       12,
-			Charisma:     16,
-		},
-		HP:    40,
-		MaxHP: 40,
-		AC:    18,
-	}
-
-	actor := d20.NewActor(spec.Name)
-	actor.MaxHP, actor.HP = spec.MaxHP, spec.MaxHP
-	actor.AC = spec.AC
-	actor.Attributes = spec.Stats.ToAttributes()
-
+func TestPC_MarshalJSON_WithContingencyPrompts(t *testing.T) {
+	minTurns := 5
 	pc := &PC{
-		Spec:  spec,
-		Actor: actor,
+		ID:       "test_pc",
+		Name:     "Test",
+		Pronouns: "they/them",
+		Stats: Stats5e{
+			Strength:     10,
+			Dexterity:    10,
+			Constitution: 10,
+			Intelligence: 10,
+			Wisdom:       10,
+			Charisma:     10,
+		},
+		HP:    10,
+		MaxHP: 10,
+		AC:    10,
+		ContingencyPrompts: []conditionals.ContingencyPrompt{
+			{Prompt: "Always active"},
+			{
+				Prompt: "Conditional prompt",
+				When:   &conditionals.ConditionalWhen{MinTurns: &minTurns},
+			},
+		},
 	}
 
-	got := BuildPrompt(pc)
-	want := "REMEMBER: In this game, the user is controlling: Test Paladin (he/him), Level 5 Paladin. A holy warrior."
+	jsonData, err := json.Marshal(pc)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
 
-	if got != want {
-		t.Errorf("BuildPrompt() = %q, want %q", got, want)
+	var result map[string]any
+	if err := json.Unmarshal(jsonData, &result); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	prompts, ok := result["contingency_prompts"]
+	if !ok {
+		t.Error("JSON should contain contingency_prompts field")
+	}
+
+	promptsArray, ok := prompts.([]any)
+	if !ok || len(promptsArray) != 2 {
+		t.Errorf("contingency_prompts should be an array of length 2, got %v", prompts)
+	}
+}
+
+func TestPC_UnmarshalJSON_WithContingencyPrompts(t *testing.T) {
+	jsonData := []byte(`{
+		"id": "test",
+		"name": "Test Character",
+		"pronouns": "they/them",
+		"stats": {"strength": 10, "dexterity": 10, "constitution": 10, "intelligence": 10, "wisdom": 10, "charisma": 10},
+		"hp": 10,
+		"max_hp": 10,
+		"ac": 10,
+		"contingency_prompts": [
+			"Simple string prompt",
+			{
+				"prompt": "Complex conditional prompt",
+				"when": {"vars": {"test_var": "test_value"}}
+			}
+		]
+	}`)
+
+	var pc PC
+	if err := json.Unmarshal(jsonData, &pc); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	if len(pc.ContingencyPrompts) != 2 {
+		t.Fatalf("Expected 2 contingency prompts, got %d", len(pc.ContingencyPrompts))
+	}
+
+	if pc.ContingencyPrompts[0].Prompt != "Simple string prompt" {
+		t.Errorf("First prompt = %q, want %q", pc.ContingencyPrompts[0].Prompt, "Simple string prompt")
+	}
+	if pc.ContingencyPrompts[0].When != nil {
+		t.Error("First prompt should have nil When clause")
+	}
+
+	if pc.ContingencyPrompts[1].Prompt != "Complex conditional prompt" {
+		t.Errorf("Second prompt = %q, want %q", pc.ContingencyPrompts[1].Prompt, "Complex conditional prompt")
+	}
+	if pc.ContingencyPrompts[1].When == nil {
+		t.Fatal("Second prompt should have non-nil When clause")
+	}
+	if pc.ContingencyPrompts[1].When.Vars["test_var"] != "test_value" {
+		t.Error("Second prompt When clause should have test_var=test_value")
 	}
 }

@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 )
 
-func (r *RedisStorage) GetNPC(ctx context.Context, templateID string) (*actor.NPC, error) {
+func (r *RedisStorage) GetNPC(ctx context.Context, templateID string) (*character.NPC, error) {
 	path := filepath.Join(r.dataDir, "npcs", templateID+".json")
 	r.logger.Debug("Loading NPC template", "templateID", templateID, "full_path", path)
 
@@ -25,7 +25,7 @@ func (r *RedisStorage) GetNPC(ctx context.Context, templateID string) (*actor.NP
 		return nil, fmt.Errorf("failed to read npc template file: %w", err)
 	}
 
-	var n actor.NPC
+	var n character.NPC
 	if err := json.Unmarshal(file, &n); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal npc template: %w", err)
 	}
@@ -56,7 +56,7 @@ func (r *RedisStorage) ListNPCs(ctx context.Context) (map[string]string, error) 
 			return nil
 		}
 
-		var n actor.NPC
+		var n character.NPC
 		if err := json.Unmarshal(file, &n); err != nil {
 			r.logger.Warn("Failed to unmarshal npc file", "path", path, "error", err)
 			return nil

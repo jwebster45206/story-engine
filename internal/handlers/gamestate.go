@@ -12,7 +12,7 @@ import (
 	"github.com/jwebster45206/story-engine/internal/auth"
 	"github.com/jwebster45206/story-engine/internal/httperror"
 	"github.com/jwebster45206/story-engine/internal/llm"
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
@@ -190,8 +190,8 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 
 	// Determine which PC to use
 	var requestPCID string
-	if req.PC != nil && req.PC.Spec != nil {
-		requestPCID = req.PC.Spec.ID
+	if req.PC != nil {
+		requestPCID = req.PC.ID
 	}
 	pcID := requestPCID
 	if pcID == "" {
@@ -201,25 +201,20 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		pcID = state.DefaultPCID
 	}
 
-	var loadedPC *actor.PC
-	pcSpec, pcErr := h.storage.GetPCSpec(r.Context(), pcID)
+	var loadedPC *character.PC
+	pc, pcErr := h.storage.GetPC(r.Context(), pcID)
 	if pcErr != nil {
-		h.logger.Warn("Failed to load PC spec, trying fallback to classic", "pc_id", pcID, "error", pcErr)
-		pcSpec, pcErr = h.storage.GetPCSpec(r.Context(), state.DefaultPCID)
+		h.logger.Warn("Failed to load PC, trying fallback to classic", "pc_id", pcID, "error", pcErr)
+		pc, pcErr = h.storage.GetPC(r.Context(), state.DefaultPCID)
 		if pcErr != nil {
 			h.logger.Error("Failed to load fallback PC 'classic'", "error", pcErr)
 			// Continue without PC rather than failing - PC is optional for now
 		}
 	}
-	if pcSpec != nil {
-		var err error
-		loadedPC, err = actor.NewPCFromSpec(pcSpec)
-		if err != nil {
-			h.logger.Error("Failed to construct PC from spec", "pc_id", pcSpec.ID, "error", err)
-		} else {
-			gs.PC = loadedPC
-			h.logger.Debug("PC loaded successfully", "pc_id", loadedPC.Spec.ID, "name", loadedPC.Spec.Name, "source", map[bool]string{true: "request", false: "scenario"}[requestPCID != ""])
-		}
+	if pc != nil {
+		loadedPC = pc
+		gs.PC = loadedPC
+		h.logger.Debug("PC loaded successfully", "pc_id", loadedPC.ID, "name", loadedPC.Name, "source", map[bool]string{true: "request", false: "scenario"}[requestPCID != ""])
 	}
 
 	// Merge PC starting inventory with scenario starting inventory
@@ -232,8 +227,8 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Add PC starting inventory (if PC loaded)
-	if loadedPC != nil && loadedPC.Spec != nil && loadedPC.Spec.Inventory != nil {
-		for _, item := range loadedPC.Spec.Inventory {
+	if loadedPC != nil {
+		for _, item := range loadedPC.Inventory {
 			inventoryMap[item] = true
 		}
 	}
@@ -245,9 +240,8 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Clear PC inventory to avoid confusion - gs.Inventory is now canonical
-	// PC.Spec.Inventory was just a template for starting items
-	if gs.PC != nil && gs.PC.Spec != nil {
-		gs.PC.Spec.Inventory = nil
+	if gs.PC != nil {
+		gs.PC.Inventory = nil
 	}
 
 	// Add the opening prompt to chat history
@@ -257,8 +251,8 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 
 		// Check if scenario prompt has placeholder and PC has opening prompt
 		// Use gs.PC instead of loadedPC since that's the canonical reference
-		if strings.Contains(openingPrompt, "%s") && gs.PC != nil && gs.PC.Spec != nil && gs.PC.Spec.OpeningPrompt != "" {
-			openingPrompt = fmt.Sprintf(openingPrompt, gs.PC.Spec.OpeningPrompt)
+		if strings.Contains(openingPrompt, "%s") && gs.PC != nil && gs.PC.OpeningPrompt != "" {
+			openingPrompt = fmt.Sprintf(openingPrompt, gs.PC.OpeningPrompt)
 		}
 
 		gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
@@ -290,7 +284,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 			h.logger.Warn("Failed to load NPC template, keeping inline definition", "npc_key", npcKey, "template_id", npc.TemplateID, "error", err)
 			continue
 		}
-		merged := actor.NewNPCFromTemplate(template, &npc)
+		merged := character.NewNPCFromTemplate(template, &npc)
 		if merged == nil {
 			h.logger.Warn("Failed to merge NPC template, keeping inline definition", "npc_key", npcKey, "template_id", npc.TemplateID)
 			continue

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -14,8 +14,8 @@ import (
 // for LLM context. For background processing, Vars are also populated.
 type PromptState struct {
 	SceneName        string                       `json:"scene_name,omitempty"`         // Current scene name
-	NPCs             map[string]actor.NPC         `json:"npcs,omitempty"`               // Map of key NPCs
-	Monsters         map[string]actor.Monster     `json:"monsters,omitempty"`           // Monsters at current location
+	NPCs             map[string]character.NPC         `json:"npcs,omitempty"`               // Map of key NPCs
+	Monsters         map[string]character.Monster     `json:"monsters,omitempty"`           // Monsters at current location
 	WorldLocations   map[string]scenario.Location `json:"locations,omitempty"`          // Current locations in the game world
 	Location         string                       `json:"user_location,omitempty"`      // User's current location
 	Inventory        []string                     `json:"user_inventory,omitempty"`     // Inventory items
@@ -29,7 +29,7 @@ type PromptState struct {
 
 func ToPromptState(gs *state.GameState) *PromptState {
 	// Filter NPCs: only include those in the same location as user OR marked as important
-	filteredNPCs := make(map[string]actor.NPC)
+	filteredNPCs := make(map[string]character.NPC)
 	for name, npc := range gs.NPCs {
 		if npc.Location == gs.Location || npc.IsImportant {
 			filteredNPCs[name] = npc
@@ -37,7 +37,7 @@ func ToPromptState(gs *state.GameState) *PromptState {
 	}
 
 	// Filter Monsters: only include those in the current location
-	filteredMonsters := make(map[string]actor.Monster)
+	filteredMonsters := make(map[string]character.Monster)
 	if currentLoc, ok := gs.WorldLocations[gs.Location]; ok {
 		for id, monster := range currentLoc.Monsters {
 			if monster != nil {
@@ -86,7 +86,7 @@ func filterLocations(worldLocations map[string]scenario.Location, currentLocatio
 
 func ToBackgroundPromptState(gs *state.GameState) *PromptState {
 	// Filter NPCs: only include those in the same location as user OR marked as important
-	filteredNPCs := make(map[string]actor.NPC)
+	filteredNPCs := make(map[string]character.NPC)
 	for name, npc := range gs.NPCs {
 		if npc.Location == gs.Location || npc.IsImportant {
 			filteredNPCs[name] = npc
@@ -94,7 +94,7 @@ func ToBackgroundPromptState(gs *state.GameState) *PromptState {
 	}
 
 	// Filter Monsters: only include those in the current location
-	filteredMonsters := make(map[string]actor.Monster)
+	filteredMonsters := make(map[string]character.Monster)
 	if currentLoc, ok := gs.WorldLocations[gs.Location]; ok {
 		for id, monster := range currentLoc.Monsters {
 			if monster != nil {

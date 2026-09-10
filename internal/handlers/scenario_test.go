@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
@@ -31,7 +31,7 @@ func TestScenarioHandler_ServeHTTP(t *testing.T) {
 				Exits:       map[string]string{"north": "captain_cabin"},
 			},
 		},
-		NPCs: map[string]actor.NPC{
+		NPCs: map[string]character.NPC{
 			"Captain Blackbeard": {
 				Name:        "Captain Blackbeard",
 				Type:        "captain",

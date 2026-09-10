@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
@@ -29,7 +29,7 @@ func TestGetStatePrompt(t *testing.T) {
 				Scenario:  "test.json",
 				Location:  "Tortuga",
 				Inventory: []string{"cutlass", "spyglass"},
-				NPCs: map[string]actor.NPC{
+				NPCs: map[string]character.NPC{
 					"Gibbs": {
 						Name:        "Gibbs",
 						Type:        "pirate",
@@ -93,7 +93,7 @@ func TestGetStatePrompt(t *testing.T) {
 								Exits:       map[string]string{"east": "Black Pearl"},
 							},
 						},
-						NPCs: map[string]actor.NPC{
+						NPCs: map[string]character.NPC{
 							"Shipwright": {
 								Name:        "Shipwright",
 								Type:        "craftsman",

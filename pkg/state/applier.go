@@ -6,14 +6,14 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
 // MonsterStorage is the interface for loading monster templates
 type MonsterStorage interface {
-	GetMonster(ctx context.Context, templateID string) (*actor.Monster, error)
+	GetMonster(ctx context.Context, templateID string) (*character.Monster, error)
 }
 
 // Applier encapsulates the logic for applying deltas to game state,
@@ -188,7 +188,7 @@ func (a *Applier) Apply() error {
 	// Ensure that items are singletons
 	a.gs.NormalizeItems()
 
-	// Sync locations for NPCs that are following other actors
+	// Sync locations for NPCs that are following other characters
 	// This MUST be last to ensure we sync to final locations after all other changes
 	a.syncFollowingNPCs()
 

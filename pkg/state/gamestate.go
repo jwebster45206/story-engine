@@ -8,7 +8,7 @@ import (
 	"time"
 	"uuid"
 
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
@@ -37,8 +37,8 @@ type GameState struct {
 	Rules              RulesMode                    `json:"rules,omitempty"`              // "strict" (default) or "relaxed"
 	Temperature        float64                      `json:"temperature,omitempty"`        // LLM sampling temperature (0.0-1.0)
 	Narrator           *scenario.Narrator           `json:"narrator,omitempty"`           // Embedded narrator for this game session (loaded once at creation)
-	PC                 *actor.PC                    `json:"pc,omitempty"`                 // Player Character for this game session
-	NPCs               map[string]actor.NPC         `json:"npcs,omitempty"`               // All NPCs in the game world
+	PC                 *character.PC                    `json:"pc,omitempty"`                 // Player Character for this game session
+	NPCs               map[string]character.NPC         `json:"npcs,omitempty"`               // All NPCs in the game world
 	WorldLocations     map[string]scenario.Location `json:"locations,omitempty"`          // Current locations in the game world
 	Location           string                       `json:"user_location,omitempty"`      // Current location in the game world
 	Inventory          []string                     `json:"user_inventory,omitempty"`     // User's inventory items
@@ -75,7 +75,7 @@ func NewGameState(scenarioFileName string, narrator *scenario.Narrator, provider
 		Vars:               make(map[string]string),
 		FiredStoryEvents:   make([]string, 0),
 		ContingencyPrompts: make([]string, 0),
-		NPCs:               make(map[string]actor.NPC),
+		NPCs:               make(map[string]character.NPC),
 		WorldLocations:     make(map[string]scenario.Location),
 		CreatedAt:          time.Now(),
 		UpdatedAt:          time.Now(),
@@ -99,7 +99,7 @@ func (gs *GameState) Validate() error {
 
 // Normalize applies casing and defaults for create-request fields.
 // Call after Validate. Rules and Temperature defaults are applied here;
-// Scenario gets snake_case + .json; Narrator.ID and PC.Spec.ID get snake_case.
+// Scenario gets snake_case + .json; Narrator.ID and PC.ID get snake_case.
 func (gs *GameState) Normalize() {
 	gs.Scenario = normalizeID(gs.Scenario)
 	gs.Scenario = ensureJSONExtension(gs.Scenario)
@@ -107,8 +107,8 @@ func (gs *GameState) Normalize() {
 	if gs.Narrator != nil {
 		gs.Narrator.ID = stripJSONExtension(normalizeID(gs.Narrator.ID))
 	}
-	if gs.PC != nil && gs.PC.Spec != nil {
-		gs.PC.Spec.ID = stripJSONExtension(normalizeID(gs.PC.Spec.ID))
+	if gs.PC != nil {
+		gs.PC.ID = stripJSONExtension(normalizeID(gs.PC.ID))
 	}
 
 	if gs.Rules == "" {
@@ -187,8 +187,8 @@ func (gs *GameState) GetContingencyPrompts(s *scenario.Scenario) []string {
 	prompts = append(prompts, scenarioPrompts...)
 
 	// Filter PC-level contingency prompts based on conditions
-	if gs.PC != nil && gs.PC.Spec != nil {
-		pcPrompts := scenario.FilterContingencyPrompts(gs.PC.Spec.ContingencyPrompts, gs)
+	if gs.PC != nil {
+		pcPrompts := scenario.FilterContingencyPrompts(gs.PC.ContingencyPrompts, gs)
 		prompts = append(prompts, pcPrompts...)
 	}
 
@@ -262,7 +262,7 @@ func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 		gs.WorldLocations = make(map[string]scenario.Location)
 	}
 	if gs.NPCs == nil {
-		gs.NPCs = make(map[string]actor.NPC)
+		gs.NPCs = make(map[string]character.NPC)
 	}
 
 	// Copy locations from scene
@@ -380,7 +380,7 @@ func (gs *GameState) GetUserLocation() string {
 }
 
 // SpawnMonster creates a new monster instance from a template.
-func (gs *GameState) SpawnMonster(template *actor.Monster, monsterDef *actor.Monster) *actor.Monster {
+func (gs *GameState) SpawnMonster(template *character.Monster, monsterDef *character.Monster) *character.Monster {
 	if monsterDef == nil || template == nil {
 		return nil
 	}
@@ -392,11 +392,11 @@ func (gs *GameState) SpawnMonster(template *actor.Monster, monsterDef *actor.Mon
 	}
 
 	if loc.Monsters == nil {
-		loc.Monsters = make(map[string]*actor.Monster)
+		loc.Monsters = make(map[string]*character.Monster)
 	}
 
 	// Create monster from template with scenario overrides
-	m := actor.NewMonster(template, monsterDef)
+	m := character.NewMonster(template, monsterDef)
 	if m == nil {
 		return nil
 	}

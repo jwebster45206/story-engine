@@ -8,7 +8,7 @@ import (
 	"uuid"
 
 	"github.com/jwebster45206/story-engine/internal/llm"
-	"github.com/jwebster45206/story-engine/pkg/actor"
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
@@ -214,17 +214,17 @@ func (s *stubStorage) GetNarrator(_ context.Context, _ string) (*scenario.Narrat
 	return nil, nil
 }
 func (s *stubStorage) ListNarrators(_ context.Context) ([]string, error) { return nil, nil }
-func (s *stubStorage) GetPCSpec(_ context.Context, _ string) (*actor.PCSpec, error) {
+func (s *stubStorage) GetPC(_ context.Context, _ string) (*character.PC, error) {
 	return nil, nil
 }
 func (s *stubStorage) ListPCs(_ context.Context) ([]string, error) { return nil, nil }
-func (s *stubStorage) GetMonster(_ context.Context, _ string) (*actor.Monster, error) {
+func (s *stubStorage) GetMonster(_ context.Context, _ string) (*character.Monster, error) {
 	return nil, nil
 }
 func (s *stubStorage) ListMonsters(_ context.Context) (map[string]string, error) {
 	return nil, nil
 }
-func (s *stubStorage) GetNPC(_ context.Context, _ string) (*actor.NPC, error) {
+func (s *stubStorage) GetNPC(_ context.Context, _ string) (*character.NPC, error) {
 	return nil, nil
 }
 func (s *stubStorage) ListNPCs(_ context.Context) (map[string]string, error) {
