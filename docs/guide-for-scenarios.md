@@ -454,7 +454,7 @@ Both will work correctly.
 NPCs can be loaded from reusable JSON files in `data/npcs/` rather than defined entirely inline. This is useful when:
 
 - The same character appears across multiple scenarios
-- An NPC needs **actor properties** (HP, AC, combat stats) for fighting or dramatic stakes
+- An NPC needs **combat stats** (HP, AC) for fighting or dramatic stakes
 - You want to keep the scenario file lean
 
 To reference a template, set `template_id` to the filename (without `.json`). Any other inline fields act as **overrides** that replace the corresponding template values for this scenario instance. Only specify what differs; everything else comes from the template.
@@ -478,13 +478,13 @@ If the template file is missing the engine logs a warning and falls back to the 
 
 **Fully inline NPCs are unchanged** — if `template_id` is absent the NPC is used exactly as written.
 
-#### Actor properties
+#### Combat stats
 
 Co-located NPCs appear in `<current_location>` as names only (`NPCs here: Guard Captain`). Important NPCs elsewhere appear in `<npcs_elsewhere>` as `- Name: Location Name` with no description. NPC voice, disposition, and behavior are driven by **contingency prompts** injected into the system prompt's guidelines section — not by repeating full NPC profiles in WORLD STATE every turn.
 
-Standalone NPC templates can include optional actor stats for combat. Monster-style stat lines appear when relevant; narrative NPCs rely on contingency prompts for characterization.
+Standalone NPC templates can include optional combat stats. Monster-style stat lines appear when relevant; narrative NPCs rely on contingency prompts for characterization.
 
-Actor fields supported on standalone NPCs (all optional):
+Combat fields supported on standalone NPCs (all optional):
 
 | Field | Description |
 |-------|-------------|

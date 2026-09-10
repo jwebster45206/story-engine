@@ -55,7 +55,7 @@ type PC struct {
 // Returns an empty string if pc is nil.
 //
 // Example output:
-// The user is controlling: Sir Galahad (he/him), Level 5 Paladin.A brave knight of the Round Table, clad in shining armor and wielding a mighty sword.
+// The user is controlling: Sir Galahad (he/him), Level 5 Paladin. A brave knight of the Round Table, clad in shining armor and wielding a mighty sword.
 func BuildPrompt(pc *PC) string {
 	if pc == nil {
 		return ""
