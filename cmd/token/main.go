@@ -1,3 +1,8 @@
+// token is a util to generate tokens for the story engine
+// for local development and testing.
+// It is a local issuer of tokens for a key on disk.
+// See story engine README for setup.
+
 package main
 
 import (
