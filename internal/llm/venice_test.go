@@ -43,6 +43,12 @@ func TestNewVeniceService(t *testing.T) {
 
 func TestVeniceService_ChatStream_SSE(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		opts, _ := body["stream_options"].(map[string]any)
+		if opts == nil || opts["include_usage"] != true {
+			t.Error("expected stream_options.include_usage=true")
+		}
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
 		responses := []string{
@@ -63,14 +69,54 @@ func TestVeniceService_ChatStream_SSE(t *testing.T) {
 	ch, err := svc.ChatStream(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "Hi"}}, DefaultTemperature)
 	require.NoError(t, err)
 	var content strings.Builder
+	var usage Usage
 	for chunk := range ch {
 		require.NoError(t, chunk.Error)
 		content.WriteString(chunk.Content)
 		if chunk.Done {
+			usage = chunk.Usage
 			break
 		}
 	}
 	assert.Equal(t, "Hello world", content.String())
+	assert.Equal(t, 0, usage.InputTokens)
+}
+
+func TestVeniceService_ChatStream_UsageAfterFinish(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		responses := []string{
+			`data: {"id":"test-1","object":"chat.completion.chunk","created":1,"model":"test-model","choices":[{"index":0,"delta":{"content":"Hello"}}]}`,
+			`data: {"id":"test-1","object":"chat.completion.chunk","created":1,"model":"test-model","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`,
+			`data: {"id":"test-1","object":"chat.completion.chunk","created":1,"model":"test-model","choices":[],"usage":{"prompt_tokens":9,"completion_tokens":3,"total_tokens":12}}`,
+			`data: [DONE]`,
+		}
+		for _, resp := range responses {
+			_, _ = w.Write([]byte(resp + "\n"))
+			w.(http.Flusher).Flush()
+		}
+	}))
+	defer server.Close()
+
+	svc := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
+	ch, err := svc.ChatStream(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "Hi"}}, DefaultTemperature)
+	require.NoError(t, err)
+	var content strings.Builder
+	var usage Usage
+	for chunk := range ch {
+		require.NoError(t, chunk.Error)
+		content.WriteString(chunk.Content)
+		if chunk.Done {
+			usage = chunk.Usage
+			break
+		}
+	}
+	assert.Equal(t, "Hello", content.String())
+	assert.Equal(t, 9, usage.InputTokens)
+	assert.Equal(t, 3, usage.OutputTokens)
+	assert.Equal(t, "test-model", usage.Model)
 }
 
 func TestVeniceService_DeltaUpdate_JSONSchema(t *testing.T) {
@@ -82,15 +128,17 @@ func TestVeniceService_DeltaUpdate_JSONSchema(t *testing.T) {
 		}
 		assert.Equal(t, "test-backend-model", body["model"])
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"{\"user_location\":\"dock\",\"scene_change\":null,\"item_events\":[],\"npc_events\":[],\"set_vars\":{},\"game_ended\":false}"},"finish_reason":"stop"}]}`))
+		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","model":"test-backend-model","choices":[{"index":0,"message":{"role":"assistant","content":"{\"user_location\":\"dock\",\"scene_change\":null,\"item_events\":[],\"npc_events\":[],\"set_vars\":{},\"game_ended\":false}"},"finish_reason":"stop"}],"usage":{"prompt_tokens":5,"completion_tokens":2,"total_tokens":7}}`))
 	}))
 	defer server.Close()
 
 	svc := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	svc.baseURL = server.URL
-	delta, model, err := svc.DeltaUpdate(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "update"}})
+	delta, usage, err := svc.DeltaUpdate(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "update"}})
 	require.NoError(t, err)
-	assert.Equal(t, "test-backend-model", model)
+	assert.Equal(t, "test-backend-model", usage.Model)
+	assert.Equal(t, 5, usage.InputTokens)
+	assert.Equal(t, 2, usage.OutputTokens)
 	require.NotNil(t, delta)
 	assert.Equal(t, "dock", delta.UserLocation)
 }

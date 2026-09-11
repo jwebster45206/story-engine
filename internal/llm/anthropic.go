@@ -141,7 +141,7 @@ func (a *AnthropicService) splitChatMessages(messages []chat.ChatMessage) (strin
 // chatCompletion makes a chat completion request to Anthropic with the specified model.
 // temperature is used only to select DefaultMaxTokens vs BackendMaxTokens; it is never
 // sent to the Anthropic API (sampling params are deprecated on Opus 4.7+).
-func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, tools []AnthropicTool) (string, error) {
+func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, tools []AnthropicTool) (string, Usage, error) {
 	// Extract system messages and convert to Anthropic format
 	systemPrompt, conversationMessages := a.splitChatMessages(messages)
 
@@ -172,12 +172,12 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 
 	reqBody, err := json.Marshal(anthropicReq)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", a.baseURL+"/messages", bytes.NewBuffer(reqBody))
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	// Set required Anthropic headers
@@ -187,26 +187,35 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to make request: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to make request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+		return "", Usage{}, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var anthropicResp AnthropicChatResponse
 	if err := json.Unmarshal(body, &anthropicResp); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	if anthropicResp.Error != nil {
-		return "", fmt.Errorf("API error: %s", anthropicResp.Error.Message)
+		return "", Usage{}, fmt.Errorf("API error: %s", anthropicResp.Error.Message)
+	}
+
+	usage := Usage{
+		InputTokens:  anthropicResp.Usage.InputTokens,
+		OutputTokens: anthropicResp.Usage.OutputTokens,
+		Model:        modelName,
+	}
+	if anthropicResp.Model != "" {
+		usage.Model = anthropicResp.Model
 	}
 
 	// Extract content from the response (text or tool use)
@@ -219,7 +228,7 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 			// For tool use, return the input as JSON
 			inputBytes, err := json.Marshal(content.Input)
 			if err != nil {
-				return "", fmt.Errorf("failed to marshal tool input: %w", err)
+				return "", usage, fmt.Errorf("failed to marshal tool input: %w", err)
 			}
 			responseText += string(inputBytes)
 		}
@@ -229,7 +238,7 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 		responseText = "(no response)"
 	}
 
-	return responseText, nil
+	return responseText, usage, nil
 }
 
 // ChatStream generates a streaming chat response using Anthropic.
@@ -286,10 +295,11 @@ func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatM
 		defer close(chunkChan)
 
 		scanner := bufio.NewScanner(resp.Body)
+		usage := Usage{Model: a.modelName}
 		for scanner.Scan() {
 			select {
 			case <-ctx.Done():
-				chunkChan <- StreamChunk{Error: ctx.Err()}
+				chunkChan <- StreamChunk{Error: ctx.Err(), Usage: usage}
 				return
 			default:
 			}
@@ -315,13 +325,13 @@ func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatM
 
 			var streamEvent AnthropicStreamEvent
 			if err := json.Unmarshal([]byte(jsonData), &streamEvent); err != nil {
-				chunkChan <- StreamChunk{Error: fmt.Errorf("failed to decode streaming response: %w", err)}
+				chunkChan <- StreamChunk{Error: fmt.Errorf("failed to decode streaming response: %w", err), Usage: usage}
 				return
 			}
 
 			// Check for API errors
 			if streamEvent.Error != nil {
-				chunkChan <- StreamChunk{Error: fmt.Errorf("anthropic API error: %s", streamEvent.Error.Message)}
+				chunkChan <- StreamChunk{Error: fmt.Errorf("anthropic API error: %s", streamEvent.Error.Message), Usage: usage}
 				return
 			}
 
@@ -335,12 +345,24 @@ func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatM
 						Done:    false,
 					}
 				}
+			case "message_start":
+				if streamEvent.Message != nil {
+					usage.InputTokens = streamEvent.Message.Usage.InputTokens
+					if streamEvent.Message.Usage.OutputTokens > 0 {
+						usage.OutputTokens = streamEvent.Message.Usage.OutputTokens
+					}
+					if streamEvent.Message.Model != "" {
+						usage.Model = streamEvent.Message.Model
+					}
+				}
+			case "message_delta":
+				if streamEvent.Usage != nil {
+					usage.OutputTokens = streamEvent.Usage.OutputTokens
+				}
 			case "message_stop":
-				// End of stream
-				chunkChan <- StreamChunk{Done: true}
+				chunkChan <- StreamChunk{Done: true, Usage: usage}
 				return
-			case "message_start", "content_block_start", "content_block_stop", "message_delta", "ping":
-				// These are structural events we can ignore for our streaming purposes
+			case "content_block_start", "content_block_stop", "ping":
 				continue
 			default:
 				// Unknown event type, log and continue
@@ -350,7 +372,7 @@ func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatM
 		}
 
 		if err := scanner.Err(); err != nil {
-			chunkChan <- StreamChunk{Error: fmt.Errorf("error reading stream: %w", err)}
+			chunkChan <- StreamChunk{Error: fmt.Errorf("error reading stream: %w", err), Usage: usage}
 		}
 	}()
 
@@ -367,7 +389,7 @@ func (a *AnthropicService) getDeltaUpdateTool() AnthropicTool {
 }
 
 // DeltaUpdate processes a gamestate delta request using Anthropic Claude
-func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, string, error) {
+func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, Usage, error) {
 	// Determine which model to use for DeltaUpdate
 	modelToUse := a.modelName
 	if a.backendModelName != "" {
@@ -377,14 +399,14 @@ func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.Chat
 	// Create tools for structured output (first tool will be automatically chosen)
 	tools := []AnthropicTool{a.getDeltaUpdateTool()}
 
-	content, err := a.chatCompletion(ctx, messages, modelToUse, 0.0, tools)
+	content, usage, err := a.chatCompletion(ctx, messages, modelToUse, 0.0, tools)
 	if err != nil {
-		return nil, "", err
+		return nil, usage, err
 	}
 
 	deltaUpdate, repaired, err := parseDeltaUpdateResponse(content)
 	if err != nil {
-		return nil, "", err
+		return nil, usage, err
 	}
 	if repaired {
 		a.logger.Warn("fixed truncated gamestate delta JSON",
@@ -394,5 +416,5 @@ func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.Chat
 		)
 	}
 
-	return deltaUpdate, modelToUse, nil
+	return deltaUpdate, usage, nil
 }

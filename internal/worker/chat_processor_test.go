@@ -179,8 +179,8 @@ func (s *stubLLMService) ChatStream(_ context.Context, messages []chat.ChatMessa
 	close(ch)
 	return ch, nil
 }
-func (s *stubLLMService) DeltaUpdate(_ context.Context, _ []chat.ChatMessage) (*conditionals.GameStateDelta, string, error) {
-	return nil, "", nil
+func (s *stubLLMService) DeltaUpdate(_ context.Context, _ []chat.ChatMessage) (*conditionals.GameStateDelta, llm.Usage, error) {
+	return nil, llm.Usage{}, nil
 }
 
 // stubStorage returns a preset GameState and Scenario; all writes are no-ops.

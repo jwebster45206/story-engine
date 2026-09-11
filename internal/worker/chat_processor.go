@@ -218,7 +218,7 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 
 	// Send the gamestate delta request to the LLM
 	var delta *conditionals.GameStateDelta
-	var backendModel string
+	var usage llm.Usage
 	var deltaErr error
 
 	maxAttempts := 2
@@ -235,8 +235,28 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 		p.logger.Debug("Sending gamestate delta request to LLM", "game_state_id", gs.ID.String(), "provider", gs.Provider, "attempt", attempt)
 		// deltaCtx is the deadline for this DeltaUpdate attempt.
 		deltaCtx, deltaCancel := context.WithTimeout(ctx, llmRequestTimeout)
-		delta, backendModel, deltaErr = svc.DeltaUpdate(deltaCtx, messages)
+		delta, usage, deltaErr = svc.DeltaUpdate(deltaCtx, messages)
 		deltaCancel()
+
+		if usage.InputTokens > 0 {
+			p.logger.Info("llm usage",
+				"model", usage.Model,
+				"input_tokens", usage.InputTokens,
+				"output_tokens", usage.OutputTokens,
+				"call_kind", "reducer",
+				"provider", gs.Provider,
+				"game_state_id", gs.ID.String(),
+			)
+		} else {
+			p.logger.Warn("llm usage missing",
+				"model", usage.Model,
+				"input_tokens", usage.InputTokens,
+				"output_tokens", usage.OutputTokens,
+				"call_kind", "reducer",
+				"provider", gs.Provider,
+				"game_state_id", gs.ID.String(),
+			)
+		}
 
 		switch {
 		case ctx.Err() != nil:
@@ -253,7 +273,7 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 			p.logger.Error("Failed to get meta extraction response from LLM after retries", "error", deltaErr, "game_state_id", gs.ID.String(), "attempts", maxAttempts)
 			return
 		}
-		p.logger.Debug("Received gamestate delta from LLM", "game_state_id", gs.ID.String(), "delta", delta, "backend_model", backendModel)
+		p.logger.Debug("Received gamestate delta from LLM", "game_state_id", gs.ID.String(), "delta", delta, "backend_model", usage.Model)
 		break
 	}
 
@@ -299,7 +319,7 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 		"game_state_id", gs.ID.String(),
 		"delta", delta,
 		"duration_s", time.Since(start).Seconds(),
-		"backend_model", backendModel,
+		"backend_model", usage.Model,
 	)
 }
 

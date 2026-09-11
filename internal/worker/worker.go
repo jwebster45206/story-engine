@@ -224,7 +224,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			Message:     userMessage,
 		}
 
-		fullMessage, err := w.consumeStream(chatReq, req, "failed to process chat request")
+		fullMessage, err := w.consumeStream(chatReq, req, gs.Provider, "failed to process chat request")
 		if err != nil {
 			return err
 		}
@@ -259,7 +259,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			Message:     storyEventMessage,
 		}
 
-		fullMessage, err := w.consumeStream(chatReq, req, "failed to process story event")
+		fullMessage, err := w.consumeStream(chatReq, req, gs.Provider, "failed to process story event")
 		if err != nil {
 			return err
 		}
@@ -304,7 +304,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 	return nil
 }
 
-func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, errWrap string) (string, error) {
+func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, provider, errWrap string) (string, error) {
 	streamChan, err := w.processor.ProcessChatStream(w.ctx, chatReq)
 	if err != nil {
 		w.log.Error("Failed to start stream",
@@ -320,7 +320,11 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 	var fullMessage strings.Builder
 	var streamErr error
 	var done bool
+	var usage llm.Usage
 	for chunk := range streamChan {
+		if chunk.Done || chunk.Error != nil {
+			usage = chunk.Usage
+		}
 		if chunk.Error != nil {
 			streamErr = chunk.Error
 			w.log.Error("Error in stream",
@@ -340,6 +344,30 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 			done = true
 			break
 		}
+	}
+
+	if usage.InputTokens > 0 {
+		w.log.Info("llm usage",
+			"model", usage.Model,
+			"input_tokens", usage.InputTokens,
+			"output_tokens", usage.OutputTokens,
+			"call_kind", "narrator",
+			"provider", provider,
+			"game_state_id", req.GameStateID.String(),
+			"request_id", req.RequestID,
+			"type", req.Type,
+		)
+	} else {
+		w.log.Warn("llm usage missing",
+			"model", usage.Model,
+			"input_tokens", usage.InputTokens,
+			"output_tokens", usage.OutputTokens,
+			"call_kind", "narrator",
+			"provider", provider,
+			"game_state_id", req.GameStateID.String(),
+			"request_id", req.RequestID,
+			"type", req.Type,
+		)
 	}
 
 	if streamErr == nil && !done && w.ctx.Err() != nil {
