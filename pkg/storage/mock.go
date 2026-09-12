@@ -70,17 +70,14 @@ func (m *MockStorage) Close() error {
 	return nil
 }
 
-func (m *MockStorage) CreateGameState(ctx context.Context, id uuid.UUID, gs *state.GameState, ownerID uuid.UUID) error {
-	if id == uuid.Nil() || ownerID == uuid.Nil() {
-		return errors.New("id and ownerID must not be empty")
-	}
-	if gs == nil {
-		return errors.New("gamestate cannot be nil")
+func (m *MockStorage) CreateGameState(ctx context.Context, id uuid.UUID, gs *state.GameState) error {
+	if gs == nil || id == uuid.Nil() || gs.PrincipalID == uuid.Nil() {
+		return errors.New("id and principal must not be empty")
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.gamestates[id] = gs
-	m.owners[id] = ownerID
+	m.owners[id] = gs.PrincipalID
 	return nil
 }
 

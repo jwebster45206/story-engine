@@ -159,20 +159,27 @@ func TestRedisStorage_Owner(t *testing.T) {
 	ctx := t.Context()
 	ownerID := uuid.MustParse("22222222-2222-4222-8222-222222222222")
 	gs := state.NewGameState("test_scenario.json", nil, "test-provider", "test_model")
+	gs.PrincipalID = ownerID
 
-	if err := store.CreateGameState(ctx, uuid.Nil(), gs, ownerID); err == nil {
+	if err := store.CreateGameState(ctx, uuid.Nil(), gs); err == nil {
 		t.Fatal("CreateGameState with nil id should fail")
 	}
-	if err := store.CreateGameState(ctx, gs.ID, gs, uuid.Nil()); err == nil {
-		t.Fatal("CreateGameState with nil ownerID should fail")
+	gs.PrincipalID = uuid.Nil()
+	if err := store.CreateGameState(ctx, gs.ID, gs); err == nil {
+		t.Fatal("CreateGameState with nil principal should fail")
 	}
+	gs.PrincipalID = ownerID
 
-	if err := store.CreateGameState(ctx, gs.ID, gs, ownerID); err != nil {
+	if err := store.CreateGameState(ctx, gs.ID, gs); err != nil {
 		t.Fatal(err)
 	}
 	got, err := store.GetOwner(ctx, gs.ID)
 	if err != nil || got != ownerID {
 		t.Fatalf("GetOwner = %v err=%v", got, err)
+	}
+	stored, err := store.LoadGameState(ctx, gs.ID)
+	if err != nil || stored == nil || stored.PrincipalID != ownerID {
+		t.Fatalf("stored principal = %v err=%v", stored, err)
 	}
 
 	gs.Location = "forest"
@@ -208,7 +215,8 @@ func TestRedisStorage_Owner(t *testing.T) {
 	}
 
 	gs2 := state.NewGameState("test_scenario.json", nil, "test-provider", "test_model")
-	if err := store.CreateGameState(ctx, gs2.ID, gs2, ownerID); err != nil {
+	gs2.PrincipalID = ownerID
+	if err := store.CreateGameState(ctx, gs2.ID, gs2); err != nil {
 		t.Fatal(err)
 	}
 	mr.FastForward(gameStateTTL + time.Second)

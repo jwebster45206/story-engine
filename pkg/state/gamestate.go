@@ -30,6 +30,7 @@ const DefaultPCID = "classic"
 // GameState stores the current state of the game
 type GameState struct {
 	ID                 uuid.UUID                    `json:"id"`                           // Unique ID per session
+	PrincipalID        uuid.UUID                    `json:"principal_id,omitempty"`       // Principal ID for usage tracking
 	Provider           string                       `json:"provider,omitempty"`           // Named provider from config (vendor+model)
 	ModelName          string                       `json:"model_name,omitempty"`         // Server-stamped from the provider's model; ignored on input
 	Scenario           string                       `json:"scenario,omitempty"`           // Filename of the scenario being played. Ex: "foo_scenario.json"

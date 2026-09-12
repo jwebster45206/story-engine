@@ -89,7 +89,8 @@ func tokenFor(t *testing.T, priv *ecdsa.PrivateKey, id uuid.UUID) string {
 // saveOwned writes a gamestate and stamps its owner so tests can skip POST /gamestate.
 func saveOwned(t *testing.T, ctx context.Context, store *storage.MockStorage, gs *state.GameState, ownerID uuid.UUID) {
 	t.Helper()
-	if err := store.CreateGameState(ctx, gs.ID, gs, ownerID); err != nil {
+	gs.PrincipalID = ownerID
+	if err := store.CreateGameState(ctx, gs.ID, gs); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -157,6 +158,9 @@ func TestGameStateHandler_Create(t *testing.T) {
 	}
 	if response.ModelName != "foo_model" {
 		t.Errorf("Expected stamped model foo_model, got %q", response.ModelName)
+	}
+	if response.PrincipalID != testOwnerID {
+		t.Errorf("Expected principal %v, got %v", testOwnerID, response.PrincipalID)
 	}
 }
 
@@ -622,6 +626,9 @@ func TestGameStateOwnership(t *testing.T) {
 	var created state.GameState
 	if err := json.NewDecoder(rr.Body).Decode(&created); err != nil {
 		t.Fatal(err)
+	}
+	if created.PrincipalID != testPrincipalA {
+		t.Fatalf("principal = %v, want %v", created.PrincipalID, testPrincipalA)
 	}
 	ownerID, err := mockStorage.GetOwner(t.Context(), created.ID)
 	if err != nil || ownerID != testPrincipalA {

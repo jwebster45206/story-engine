@@ -346,16 +346,27 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 		}
 	}
 
+	// Gamestate needed for getting principal ID for usage tracking
+	gs, err := w.processor.GetGameState(w.ctx, req.GameStateID)
+	if err != nil {
+		w.log.Error("Failed to load game state for usage tracking",
+			"error", err,
+			"request_id", req.RequestID,
+		)
+	}
+
 	if usage.InputTokens > 0 {
 		w.log.Info("llm usage",
 			"type", "reducer",
 			"game_state_id", req.GameStateID,
+			"principal_id", gs.PrincipalID,
 			"usage", usage, // includes provider details
 		)
 	} else {
 		w.log.Warn("llm usage missing",
 			"type", "reducer",
 			"game_state_id", req.GameStateID,
+			"principal_id", gs.PrincipalID,
 			"provider", provider,
 		)
 	}

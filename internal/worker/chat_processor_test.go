@@ -191,7 +191,7 @@ type stubStorage struct {
 
 func (s *stubStorage) Ping(_ context.Context) error { return nil }
 func (s *stubStorage) Close() error                 { return nil }
-func (s *stubStorage) CreateGameState(_ context.Context, _ uuid.UUID, _ *state.GameState, _ uuid.UUID) error {
+func (s *stubStorage) CreateGameState(_ context.Context, _ uuid.UUID, _ *state.GameState) error {
 	return nil
 }
 func (s *stubStorage) UpdateGameState(_ context.Context, _ uuid.UUID, _ *state.GameState) error {
