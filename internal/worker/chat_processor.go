@@ -242,8 +242,7 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 			p.logger.Info("llm usage",
 				"type", "reducer",
 				"game_state_id", gs.ID,
-				"provider", gs.Provider,
-				"usage", usage,
+				"usage", usage, // includes provider details
 			)
 		} else {
 			p.logger.Warn("llm usage missing",

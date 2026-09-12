@@ -350,8 +350,7 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 		w.log.Info("llm usage",
 			"type", "reducer",
 			"game_state_id", req.GameStateID,
-			"provider", provider,
-			"usage", usage,
+			"usage", usage, // includes provider details
 		)
 	} else {
 		w.log.Warn("llm usage missing",
