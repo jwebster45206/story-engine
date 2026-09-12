@@ -297,7 +297,7 @@ func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatM
 		defer close(chunkChan)
 
 		scanner := bufio.NewScanner(resp.Body)
-		usage := Usage{Model: a.modelName}
+		usage := Usage{Model: a.modelName, Vendor: vendorAnthropic}
 		for scanner.Scan() {
 			select {
 			case <-ctx.Done():

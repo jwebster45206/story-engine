@@ -277,7 +277,7 @@ func (v *VeniceService) ChatStream(ctx context.Context, messages []chat.ChatMess
 		defer close(chunkChan)
 
 		scanner := bufio.NewScanner(resp.Body)
-		usage := Usage{Model: v.modelName}
+		usage := Usage{Model: v.modelName, Vendor: vendorVenice}
 		for scanner.Scan() {
 			select {
 			case <-ctx.Done():
