@@ -240,21 +240,16 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 
 		if usage.InputTokens > 0 {
 			p.logger.Info("llm usage",
-				"model", usage.Model,
-				"input_tokens", usage.InputTokens,
-				"output_tokens", usage.OutputTokens,
-				"call_kind", "reducer",
+				"type", "reducer",
+				"game_state_id", gs.ID,
 				"provider", gs.Provider,
-				"game_state_id", gs.ID.String(),
+				"usage", usage,
 			)
 		} else {
 			p.logger.Warn("llm usage missing",
-				"model", usage.Model,
-				"input_tokens", usage.InputTokens,
-				"output_tokens", usage.OutputTokens,
-				"call_kind", "reducer",
+				"type", "reducer",
+				"game_state_id", gs.ID,
 				"provider", gs.Provider,
-				"game_state_id", gs.ID.String(),
 			)
 		}
 

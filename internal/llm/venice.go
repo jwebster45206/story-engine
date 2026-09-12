@@ -19,6 +19,7 @@ import (
 const (
 	veniceBaseURL = "https://api.venice.ai/api/v1"
 	msgNoResponse = "(no response)"
+	vendorVenice  = "venice"
 )
 
 // VeniceService implements LLMService for Venice AI
@@ -49,6 +50,10 @@ type VeniceParameters struct {
 
 type VeniceStreamOptions struct {
 	IncludeUsage bool `json:"include_usage"`
+}
+
+var veniceEnableUsage = VeniceStreamOptions{
+	IncludeUsage: true,
 }
 
 type VeniceTokenUsage struct {
@@ -87,7 +92,7 @@ type VeniceChatResponse struct {
 	Model   string             `json:"model"`
 	Choices []VeniceChatChoice `json:"choices"`
 	Usage   VeniceTokenUsage   `json:"usage,omitzero"`
-	Error *struct {
+	Error   *struct {
 		Message string `json:"message"`
 		Type    string `json:"type"`
 		Code    string `json:"code"`
@@ -197,6 +202,7 @@ func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.Chat
 		InputTokens:  veniceResp.Usage.PromptTokens,
 		OutputTokens: veniceResp.Usage.CompletionTokens,
 		Model:        modelName,
+		Vendor:       vendorVenice,
 	}
 	if veniceResp.Model != "" {
 		usage.Model = veniceResp.Model
@@ -225,14 +231,12 @@ func (v *VeniceService) getDeltaUpdateResponseFormat() *VeniceResponseFormat {
 // ChatStream generates a streaming chat response using Venice AI
 func (v *VeniceService) ChatStream(ctx context.Context, messages []chat.ChatMessage, temperature float64) (<-chan StreamChunk, error) {
 	reqBody := VeniceChatRequest{
-		Model:       v.modelName,
-		Messages:    chat.ToLLMMessages(messages),
-		Temperature: temperature,
-		MaxTokens:   DefaultMaxTokens,
-		Stream:      true,
-		StreamOptions: new(VeniceStreamOptions{
-			IncludeUsage: true,
-		}),
+		Model:         v.modelName,
+		Messages:      chat.ToLLMMessages(messages),
+		Temperature:   temperature,
+		MaxTokens:     DefaultMaxTokens,
+		Stream:        true,
+		StreamOptions: &veniceEnableUsage,
 		VeniceParameters: VeniceParameters{
 			IncludeVeniceSystemPrompt: false,
 			EnableWebSearch:           "off",

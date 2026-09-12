@@ -19,6 +19,7 @@ import (
 const (
 	anthropicBaseURL = "https://api.anthropic.com/v1"
 	anthropicVersion = "2023-06-01"
+	vendorAnthropic  = "anthropic"
 )
 
 // AnthropicService implements LLMService for Anthropic Claude
@@ -213,6 +214,7 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 		InputTokens:  anthropicResp.Usage.InputTokens,
 		OutputTokens: anthropicResp.Usage.OutputTokens,
 		Model:        modelName,
+		Vendor:       vendorAnthropic,
 	}
 	if anthropicResp.Model != "" {
 		usage.Model = anthropicResp.Model

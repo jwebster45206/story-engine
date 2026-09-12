@@ -22,10 +22,10 @@ const (
 )
 
 // Usage is token counts reported by an LLM provider for one call.
-// InputTokens == 0 means the provider omitted usage.
 type Usage struct {
 	InputTokens  int
 	OutputTokens int
+	Vendor       string
 	Model        string
 }
 

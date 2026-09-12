@@ -348,25 +348,16 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 
 	if usage.InputTokens > 0 {
 		w.log.Info("llm usage",
-			"model", usage.Model,
-			"input_tokens", usage.InputTokens,
-			"output_tokens", usage.OutputTokens,
-			"call_kind", "narrator",
+			"type", "reducer",
+			"game_state_id", req.GameStateID,
 			"provider", provider,
-			"game_state_id", req.GameStateID.String(),
-			"request_id", req.RequestID,
-			"type", req.Type,
+			"usage", usage,
 		)
 	} else {
 		w.log.Warn("llm usage missing",
-			"model", usage.Model,
-			"input_tokens", usage.InputTokens,
-			"output_tokens", usage.OutputTokens,
-			"call_kind", "narrator",
+			"type", "reducer",
+			"game_state_id", req.GameStateID,
 			"provider", provider,
-			"game_state_id", req.GameStateID.String(),
-			"request_id", req.RequestID,
-			"type", req.Type,
 		)
 	}
 
