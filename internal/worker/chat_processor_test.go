@@ -179,8 +179,8 @@ func (s *stubLLMService) ChatStream(_ context.Context, messages []chat.ChatMessa
 	close(ch)
 	return ch, nil
 }
-func (s *stubLLMService) DeltaUpdate(_ context.Context, _ []chat.ChatMessage) (*conditionals.GameStateDelta, string, error) {
-	return nil, "", nil
+func (s *stubLLMService) DeltaUpdate(_ context.Context, _ []chat.ChatMessage) (*conditionals.GameStateDelta, llm.Usage, error) {
+	return nil, llm.Usage{}, nil
 }
 
 // stubStorage returns a preset GameState and Scenario; all writes are no-ops.
@@ -191,7 +191,7 @@ type stubStorage struct {
 
 func (s *stubStorage) Ping(_ context.Context) error { return nil }
 func (s *stubStorage) Close() error                 { return nil }
-func (s *stubStorage) CreateGameState(_ context.Context, _ uuid.UUID, _ *state.GameState, _ uuid.UUID) error {
+func (s *stubStorage) CreateGameState(_ context.Context, _ uuid.UUID, _ *state.GameState) error {
 	return nil
 }
 func (s *stubStorage) UpdateGameState(_ context.Context, _ uuid.UUID, _ *state.GameState) error {

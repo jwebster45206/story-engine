@@ -25,9 +25,9 @@ func gamestateOwnerKey(id uuid.UUID) string {
 
 // GameState operations (Redis-backed)
 
-func (r *RedisStorage) CreateGameState(ctx context.Context, id uuid.UUID, gs *state.GameState, ownerID uuid.UUID) error {
-	if id == uuid.Nil() || ownerID == uuid.Nil() {
-		return fmt.Errorf("id and ownerID must not be empty")
+func (r *RedisStorage) CreateGameState(ctx context.Context, id uuid.UUID, gs *state.GameState) error {
+	if id == uuid.Nil() || gs == nil || gs.PrincipalID == uuid.Nil() {
+		return fmt.Errorf("id and principal must not be empty")
 	}
 	gs.UpdatedAt = time.Now()
 	data, err := json.Marshal(gs)
@@ -36,7 +36,7 @@ func (r *RedisStorage) CreateGameState(ctx context.Context, id uuid.UUID, gs *st
 	}
 	pipe := r.client.TxPipeline()
 	pipe.Set(ctx, gamestateKey(id), string(data), gameStateTTL)
-	pipe.Set(ctx, gamestateOwnerKey(id), ownerID.String(), gameStateTTL)
+	pipe.Set(ctx, gamestateOwnerKey(id), gs.PrincipalID.String(), gameStateTTL)
 	if _, err := pipe.Exec(ctx); err != nil {
 		return fmt.Errorf("failed to create gamestate: %w", err)
 	}

@@ -100,11 +100,17 @@ func TestAnthropicService_ChatStream_SSE(t *testing.T) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
 		frames := []string{
+			`event: message_start`,
+			`data: {"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","content":[],"model":"claude-test","usage":{"input_tokens":12,"output_tokens":0}}}`,
+			``,
 			`event: content_block_delta`,
 			`data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hello"}}`,
 			``,
 			`event: content_block_delta`,
 			`data: {"type":"content_block_delta","delta":{"type":"text_delta","text":" world"}}`,
+			``,
+			`event: message_delta`,
+			`data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":4}}`,
 			``,
 			`event: message_stop`,
 			`data: {"type":"message_stop"}`,
@@ -126,17 +132,22 @@ func TestAnthropicService_ChatStream_SSE(t *testing.T) {
 		t.Fatal(err)
 	}
 	var content strings.Builder
+	var usage Usage
 	for chunk := range ch {
 		if chunk.Error != nil {
 			t.Fatal(chunk.Error)
 		}
 		content.WriteString(chunk.Content)
 		if chunk.Done {
+			usage = chunk.Usage
 			break
 		}
 	}
 	if content.String() != "Hello world" {
 		t.Fatalf("content = %q", content.String())
+	}
+	if usage.InputTokens != 12 || usage.OutputTokens != 4 || usage.Model != "claude-test" {
+		t.Fatalf("usage = %+v", usage)
 	}
 }
 
@@ -154,12 +165,15 @@ func TestAnthropicService_DeltaUpdate_ToolUse(t *testing.T) {
 
 	svc := NewAnthropicService(anthropicPC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	svc.baseURL = server.URL
-	delta, model, err := svc.DeltaUpdate(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "update"}})
+	delta, usage, err := svc.DeltaUpdate(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "update"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if model != "claude-backend" {
-		t.Fatalf("model = %q", model)
+	if usage.Model != "claude-backend" {
+		t.Fatalf("model = %q", usage.Model)
+	}
+	if usage.InputTokens != 1 || usage.OutputTokens != 1 {
+		t.Fatalf("usage = %+v", usage)
 	}
 	if delta == nil || delta.UserLocation != "dock" {
 		t.Fatalf("delta = %#v", delta)

@@ -175,6 +175,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 
 	// Create a new GameState; model_name is stamped from the provider config (client value ignored).
 	gs := state.NewGameState(req.Scenario, narrator, provider, info.Model)
+	gs.PrincipalID = p.ID
 	gs.Rules = req.Rules
 	gs.Temperature = req.Temperature
 
@@ -326,7 +327,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 		gs.WorldLocations[locName] = loc
 	}
 
-	if err := h.storage.CreateGameState(r.Context(), gs.ID, gs, p.ID); err != nil {
+	if err := h.storage.CreateGameState(r.Context(), gs.ID, gs); err != nil {
 		h.logger.Error("Failed to save new game state", "error", err, "id", gs.ID.String())
 		httperror.Write(w, h.logger, http.StatusInternalServerError, "Failed to create game state")
 		return

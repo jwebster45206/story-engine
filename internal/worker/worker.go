@@ -320,7 +320,11 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 	var fullMessage strings.Builder
 	var streamErr error
 	var done bool
+	var usage llm.Usage
 	for chunk := range streamChan {
+		if chunk.Done || chunk.Error != nil {
+			usage = chunk.Usage
+		}
 		if chunk.Error != nil {
 			streamErr = chunk.Error
 			w.log.Error("Error in stream",
@@ -340,6 +344,31 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 			done = true
 			break
 		}
+	}
+
+	// Gamestate needed for getting principal ID for usage tracking
+	gs, err := w.processor.GetGameState(w.ctx, req.GameStateID)
+	if err != nil {
+		w.log.Error("Failed to load game state for usage tracking",
+			"error", err,
+			"request_id", req.RequestID,
+		)
+	}
+
+	if usage.InputTokens > 0 {
+		w.log.Info("llm usage",
+			"type", "reducer",
+			"game_state_id", req.GameStateID,
+			"principal_id", gs.PrincipalID,
+			"usage", usage, // includes provider details
+		)
+	} else {
+		w.log.Warn("llm usage missing",
+			"type", "reducer",
+			"game_state_id", req.GameStateID,
+			"principal_id", gs.PrincipalID,
+			"provider", gs.Provider,
+		)
 	}
 
 	if streamErr == nil && !done && w.ctx.Err() != nil {

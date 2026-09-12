@@ -19,6 +19,7 @@ import (
 const (
 	veniceBaseURL = "https://api.venice.ai/api/v1"
 	msgNoResponse = "(no response)"
+	vendorVenice  = "venice"
 )
 
 // VeniceService implements LLMService for Venice AI
@@ -47,6 +48,20 @@ type VeniceParameters struct {
 	EnableWebSearch           string `json:"enable_web_search"`
 }
 
+type VeniceStreamOptions struct {
+	IncludeUsage bool `json:"include_usage"`
+}
+
+var veniceEnableUsage = VeniceStreamOptions{
+	IncludeUsage: true,
+}
+
+type VeniceTokenUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
 // VeniceChatRequest represents the request structure for Venice AI chat completions
 type VeniceChatRequest struct {
 	Model            string                `json:"model"`
@@ -54,6 +69,7 @@ type VeniceChatRequest struct {
 	Temperature      float64               `json:"temperature,omitempty"`
 	MaxTokens        int                   `json:"max_tokens,omitempty"`
 	Stream           bool                  `json:"stream"`
+	StreamOptions    *VeniceStreamOptions  `json:"stream_options,omitempty"`
 	ResponseFormat   *VeniceResponseFormat `json:"response_format,omitempty"`
 	VeniceParameters VeniceParameters      `json:"venice_parameters"`
 }
@@ -75,12 +91,8 @@ type VeniceChatResponse struct {
 	Created int64              `json:"created"`
 	Model   string             `json:"model"`
 	Choices []VeniceChatChoice `json:"choices"`
-	Usage   struct {
-		PromptTokens     int `json:"prompt_tokens"`
-		CompletionTokens int `json:"completion_tokens"`
-		TotalTokens      int `json:"total_tokens"`
-	} `json:"usage,omitzero"`
-	Error *struct {
+	Usage   VeniceTokenUsage   `json:"usage,omitzero"`
+	Error   *struct {
 		Message string `json:"message"`
 		Type    string `json:"type"`
 		Code    string `json:"code"`
@@ -104,6 +116,7 @@ type VeniceStreamResponse struct {
 	Created int64                `json:"created"`
 	Model   string               `json:"model"`
 	Choices []VeniceStreamChoice `json:"choices"`
+	Usage   VeniceTokenUsage     `json:"usage,omitzero"`
 	Error   *struct {
 		Message string `json:"message"`
 		Type    string `json:"type"`
@@ -126,7 +139,7 @@ func NewVeniceService(pc *config.ProviderConfig, logger *slog.Logger) *VeniceSer
 }
 
 // chatCompletion makes a chat completion request to Venice AI with the specified model
-func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, responseFormat *VeniceResponseFormat) (string, error) {
+func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, responseFormat *VeniceResponseFormat) (string, Usage, error) {
 	maxTokens := DefaultMaxTokens
 	if temperature == 0.0 {
 		maxTokens = BackendMaxTokens
@@ -150,12 +163,12 @@ func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.Chat
 
 	reqBody, err := json.Marshal(veniceReq)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", v.baseURL+"/chat/completions", bytes.NewBuffer(reqBody))
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+v.apiKey)
@@ -163,33 +176,43 @@ func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.Chat
 
 	resp, err := v.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to make request: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to make request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+		return "", Usage{}, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var veniceResp VeniceChatResponse
 	if err := json.Unmarshal(body, &veniceResp); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
+		return "", Usage{}, fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	if veniceResp.Error != nil {
-		return "", fmt.Errorf("API error: %s", veniceResp.Error.Message)
+		return "", Usage{}, fmt.Errorf("API error: %s", veniceResp.Error.Message)
+	}
+
+	usage := Usage{
+		InputTokens:  veniceResp.Usage.PromptTokens,
+		OutputTokens: veniceResp.Usage.CompletionTokens,
+		Model:        modelName,
+		Vendor:       vendorVenice,
+	}
+	if veniceResp.Model != "" {
+		usage.Model = veniceResp.Model
 	}
 
 	if len(veniceResp.Choices) == 0 {
-		return msgNoResponse, nil
+		return msgNoResponse, usage, nil
 	}
 
-	return veniceResp.Choices[0].Message.Content, nil
+	return veniceResp.Choices[0].Message.Content, usage, nil
 }
 
 // getDeltaUpdateResponseFormat returns the response format
@@ -208,11 +231,12 @@ func (v *VeniceService) getDeltaUpdateResponseFormat() *VeniceResponseFormat {
 // ChatStream generates a streaming chat response using Venice AI
 func (v *VeniceService) ChatStream(ctx context.Context, messages []chat.ChatMessage, temperature float64) (<-chan StreamChunk, error) {
 	reqBody := VeniceChatRequest{
-		Model:       v.modelName,
-		Messages:    chat.ToLLMMessages(messages),
-		Temperature: temperature,
-		MaxTokens:   DefaultMaxTokens,
-		Stream:      true,
+		Model:         v.modelName,
+		Messages:      chat.ToLLMMessages(messages),
+		Temperature:   temperature,
+		MaxTokens:     DefaultMaxTokens,
+		Stream:        true,
+		StreamOptions: &veniceEnableUsage,
 		VeniceParameters: VeniceParameters{
 			IncludeVeniceSystemPrompt: false,
 			EnableWebSearch:           "off",
@@ -253,10 +277,11 @@ func (v *VeniceService) ChatStream(ctx context.Context, messages []chat.ChatMess
 		defer close(chunkChan)
 
 		scanner := bufio.NewScanner(resp.Body)
+		usage := Usage{Model: v.modelName, Vendor: vendorVenice}
 		for scanner.Scan() {
 			select {
 			case <-ctx.Done():
-				chunkChan <- StreamChunk{Error: ctx.Err()}
+				chunkChan <- StreamChunk{Error: ctx.Err(), Usage: usage}
 				return
 			default:
 			}
@@ -276,47 +301,53 @@ func (v *VeniceService) ChatStream(ctx context.Context, messages []chat.ChatMess
 
 			// Check for end of stream
 			if jsonData == "[DONE]" {
-				chunkChan <- StreamChunk{Done: true}
+				chunkChan <- StreamChunk{Done: true, Usage: usage}
 				return
 			}
 
 			var streamResp VeniceStreamResponse
 			if err := json.Unmarshal([]byte(jsonData), &streamResp); err != nil {
-				chunkChan <- StreamChunk{Error: fmt.Errorf("failed to decode streaming response: %w", err)}
+				chunkChan <- StreamChunk{Error: fmt.Errorf("failed to decode streaming response: %w", err), Usage: usage}
 				return
 			}
 
 			// Check for API errors
 			if streamResp.Error != nil {
-				chunkChan <- StreamChunk{Error: fmt.Errorf("venice API error: %s", streamResp.Error.Message)}
+				chunkChan <- StreamChunk{Error: fmt.Errorf("venice API error: %s", streamResp.Error.Message), Usage: usage}
 				return
 			}
 
-			// Extract content from the first choice
+			if streamResp.Usage.PromptTokens > 0 || streamResp.Usage.CompletionTokens > 0 {
+				usage.InputTokens = streamResp.Usage.PromptTokens
+				usage.OutputTokens = streamResp.Usage.CompletionTokens
+			}
+			if streamResp.Model != "" {
+				usage.Model = streamResp.Model
+			}
+
+			// Extract content from the first choice. Do not finish on
+			// finish_reason; usage arrives on a later chunk before [DONE].
 			if len(streamResp.Choices) > 0 {
 				choice := streamResp.Choices[0]
-				chunkChan <- StreamChunk{
-					Content: choice.Delta.Content,
-					Done:    choice.FinishReason != nil,
-				}
-
-				// Check if streaming is complete
-				if choice.FinishReason != nil {
-					chunkChan <- StreamChunk{Done: true}
-					return
+				if choice.Delta.Content != "" {
+					chunkChan <- StreamChunk{
+						Content: choice.Delta.Content,
+					}
 				}
 			}
 		}
 
 		if err := scanner.Err(); err != nil {
-			chunkChan <- StreamChunk{Error: fmt.Errorf("error reading stream: %w", err)}
+			chunkChan <- StreamChunk{Error: fmt.Errorf("error reading stream: %w", err), Usage: usage}
+			return
 		}
+		chunkChan <- StreamChunk{Done: true, Usage: usage}
 	}()
 
 	return chunkChan, nil
 }
 
-func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, string, error) {
+func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, Usage, error) {
 	modelToUse := v.modelName
 	if v.backendModelName != "" {
 		modelToUse = v.backendModelName
@@ -324,14 +355,14 @@ func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMes
 
 	// Use structured JSON response format with temperature 0 for deterministic output
 	responseFormat := v.getDeltaUpdateResponseFormat()
-	content, err := v.chatCompletion(ctx, messages, modelToUse, 0.0, responseFormat)
+	content, usage, err := v.chatCompletion(ctx, messages, modelToUse, 0.0, responseFormat)
 	if err != nil {
-		return nil, "", err
+		return nil, usage, err
 	}
 
 	deltaUpdate, repaired, err := parseDeltaUpdateResponse(content)
 	if err != nil {
-		return nil, "", err
+		return nil, usage, err
 	}
 	if repaired {
 		v.logger.Warn("fixed truncated gamestate delta JSON",
@@ -341,5 +372,5 @@ func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMes
 		)
 	}
 
-	return deltaUpdate, modelToUse, nil
+	return deltaUpdate, usage, nil
 }

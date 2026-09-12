@@ -21,7 +21,7 @@ type Storage interface {
 	Close() error
 
 	// GameState operations (Redis-backed)
-	CreateGameState(ctx context.Context, id uuid.UUID, gs *state.GameState, ownerID uuid.UUID) error
+	CreateGameState(ctx context.Context, id uuid.UUID, gs *state.GameState) error
 	UpdateGameState(ctx context.Context, id uuid.UUID, gs *state.GameState) error
 	LoadGameState(ctx context.Context, id uuid.UUID) (*state.GameState, error)
 	DeleteGameState(ctx context.Context, id uuid.UUID) error

@@ -46,7 +46,8 @@ func TestAuthorizeGame(t *testing.T) {
 	gs := state.NewGameState("foo_scenario.json", nil, "foo", "foo_model")
 	ownerID := uuid.MustParse("22222222-2222-4222-8222-222222222222")
 	other := uuid.MustParse("44444444-4444-4444-8444-444444444444")
-	if err := store.CreateGameState(t.Context(), gs.ID, gs, ownerID); err != nil {
+	gs.PrincipalID = ownerID
+	if err := store.CreateGameState(t.Context(), gs.ID, gs); err != nil {
 		t.Fatal(err)
 	}
 	orphan := state.NewGameState("foo_scenario.json", nil, "foo", "foo_model")

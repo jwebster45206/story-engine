@@ -21,11 +21,20 @@ const (
 	HTTPClientTimeout  = 60 * time.Second
 )
 
+// Usage is token counts reported by an LLM provider for one call.
+type Usage struct {
+	InputTokens  int
+	OutputTokens int
+	Vendor       string
+	Model        string
+}
+
 type StreamChunk struct {
 	Content  string `json:"content"`
 	Done     bool   `json:"done"`
 	Error    error  `json:"-"`               // Don't serialize directly
 	ErrorMsg string `json:"error,omitempty"` // Serialize error message as string
+	Usage    Usage  `json:"-"`               // Token usage; set on the final Done (or error) chunk
 }
 
 func (sc StreamChunk) MarshalJSON() ([]byte, error) {
@@ -50,7 +59,7 @@ type LLMService interface {
 	// Venice honors temperature; Anthropic does not send it.
 	ChatStream(ctx context.Context, messages []chat.ChatMessage, temperature float64) (<-chan StreamChunk, error)
 
-	DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, string, error)
+	DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, Usage, error)
 }
 
 // parseDeltaUpdateResponse parses an LLM response text into a DeltaUpdate struct.

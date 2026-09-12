@@ -21,7 +21,7 @@ type MockLLMAPI struct {
 }
 
 // DeltaUpdate mocks the DeltaUpdate functionality
-func (m *MockLLMAPI) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, string, error) {
+func (m *MockLLMAPI) DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, Usage, error) {
 	// For testing, return a simple mock DeltaUpdate
 	t := true
 	f := false
@@ -71,7 +71,7 @@ func (m *MockLLMAPI) DeltaUpdate(ctx context.Context, messages []chat.ChatMessag
 			"mock_var": "mock_value",
 		},
 		GameEnded: &f,
-	}, "mock-model", nil
+	}, Usage{Model: "mock-model"}, nil
 }
 
 type GenerateResponseCall struct {
