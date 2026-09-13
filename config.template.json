@@ -20,5 +20,6 @@
     }
   },
   "redis_url": "localhost:6379",
-  "chat_history_limit": 6
+  "chat_history_limit": 6,
+  "enable_adjudicator": false
 }

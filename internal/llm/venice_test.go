@@ -143,6 +143,50 @@ func TestVeniceService_DeltaUpdate_JSONSchema(t *testing.T) {
 	assert.Equal(t, "dock", delta.UserLocation)
 }
 
+func TestVeniceService_Complete_UsesBackendModel(t *testing.T) {
+	var got map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","model":"test-backend-model","choices":[{"index":0,"message":{"role":"assistant","content":"allowed: yes"},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":4,"total_tokens":11}}`))
+	}))
+	defer server.Close()
+
+	svc := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
+	text, usage, err := svc.Complete(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "I walk north"}}, 0)
+	require.NoError(t, err)
+	assert.Equal(t, "test-backend-model", got["model"])
+	assert.Equal(t, float64(AdjudicatorMaxTokens), got["max_tokens"])
+	_, hasFormat := got["response_format"]
+	assert.False(t, hasFormat, "Complete should not send response_format")
+	assert.Equal(t, "allowed: yes", text)
+	assert.Equal(t, "test-backend-model", usage.Model)
+	assert.Equal(t, 7, usage.InputTokens)
+	assert.Equal(t, 4, usage.OutputTokens)
+}
+
+func TestVeniceService_Complete_PrefersAdjudicatorModel(t *testing.T) {
+	var gotModel string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		gotModel, _ = body["model"].(string)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","model":"adj-model","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`))
+	}))
+	defer server.Close()
+
+	pc := venicePC()
+	pc.AdjudicatorModel = "adj-model"
+	svc := NewVeniceService(pc, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
+	_, usage, err := svc.Complete(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "hi"}}, 0)
+	require.NoError(t, err)
+	assert.Equal(t, "adj-model", gotModel)
+	assert.Equal(t, "adj-model", usage.Model)
+}
+
 func TestVeniceStreamResponseParsing(t *testing.T) {
 	streamData := `{"id":"test-1","object":"chat.completion.chunk","created":1234567890,"model":"test-model","choices":[{"index":0,"delta":{"content":"Hello world"},"finish_reason":null}]}`
 	var streamResp VeniceStreamResponse

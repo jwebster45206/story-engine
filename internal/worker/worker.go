@@ -255,8 +255,9 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 	case queuePkg.RequestTypeStoryEvent:
 		storyEventMessage := req.EventPrompt
 		chatReq := chat.ChatRequest{
-			GameStateID: req.GameStateID,
-			Message:     storyEventMessage,
+			GameStateID:     req.GameStateID,
+			Message:         storyEventMessage,
+			SkipAdjudicator: true,
 		}
 
 		fullMessage, err := w.consumeStream(chatReq, req, "failed to process story event")
@@ -354,22 +355,13 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 			"request_id", req.RequestID,
 		)
 	}
-
-	if usage.InputTokens > 0 {
-		w.log.Info("llm usage",
-			"type", "reducer",
-			"game_state_id", req.GameStateID,
-			"principal_id", gs.PrincipalID,
-			"usage", usage, // includes provider details
-		)
-	} else {
-		w.log.Warn("llm usage missing",
-			"type", "reducer",
-			"game_state_id", req.GameStateID,
-			"principal_id", gs.PrincipalID,
-			"provider", gs.Provider,
-		)
+	var principalID uuid.UUID
+	provider := ""
+	if gs != nil {
+		principalID = gs.PrincipalID
+		provider = gs.Provider
 	}
+	logLLMUsage(w.log, usageTypeNarrator, req.GameStateID, principalID, provider, usage)
 
 	if streamErr == nil && !done && w.ctx.Err() != nil {
 		streamErr = w.ctx.Err()

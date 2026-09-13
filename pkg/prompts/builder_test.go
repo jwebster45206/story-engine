@@ -521,3 +521,63 @@ func TestBuilder_Build_StrictAndRelaxedShareRulesBlock(t *testing.T) {
 		t.Errorf("NarratorRules block should be identical;\nstrict:\n%s\nrelaxed:\n%s", strictRules, relaxedRules)
 	}
 }
+
+func TestBuilder_Build_AdjudicationAfterRules(t *testing.T) {
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
+	gs.Location = "start"
+	sc := &scenario.Scenario{
+		Name:   "Test",
+		Story:  "A test story",
+		Rating: scenario.RatingPG,
+		Locations: map[string]scenario.Location{
+			"start": {Name: "start", Description: "Starting location"},
+		},
+	}
+
+	messages, err := New().
+		WithGameState(gs).
+		WithScenario(sc).
+		WithUserMessage("I walk north", chat.ChatRoleUser).
+		WithAdjudication("- Attempted: walk north\n- Not allowed: no such exit").
+		Build()
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	user := messages[len(messages)-1].Content
+	rulesIdx := strings.Index(user, "<rules>")
+	adjIdx := strings.Index(user, "<adjudication>")
+	if rulesIdx < 0 || adjIdx < 0 {
+		t.Fatalf("expected both blocks, got %q", user)
+	}
+	if adjIdx < rulesIdx {
+		t.Fatal("adjudication should follow <rules>")
+	}
+	if !strings.Contains(user, AdjudicatorHonorLine) {
+		t.Error("expected honor line after adjudication")
+	}
+	if !strings.HasPrefix(user, "I walk north") {
+		t.Errorf("user text should come first, got %q", user)
+	}
+}
+
+func TestBuilder_Build_EmptyAdjudicationOmitsBlock(t *testing.T) {
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
+	sc := &scenario.Scenario{Name: "Test", Story: "Story", Rating: scenario.RatingPG}
+
+	messages, err := New().
+		WithGameState(gs).
+		WithScenario(sc).
+		WithUserMessage("hi", chat.ChatRoleUser).
+		WithAdjudication("  ").
+		Build()
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	user := messages[len(messages)-1].Content
+	if strings.Contains(user, "<adjudication>") {
+		t.Errorf("empty adjudication should omit the block, got %q", user)
+	}
+	if !strings.Contains(user, "<rules>") {
+		t.Error("rules block should still be present")
+	}
+}

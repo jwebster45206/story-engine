@@ -17,6 +17,7 @@ type Builder struct {
 	userMessage  string
 	userRole     string
 	historyLimit int
+	adjudication string
 	messages     []chat.ChatMessage
 }
 
@@ -50,6 +51,12 @@ func (b *Builder) WithUserMessage(message string, role string) *Builder {
 // WithHistoryLimit sets the chat history window size.
 func (b *Builder) WithHistoryLimit(limit int) *Builder {
 	b.historyLimit = limit
+	return b
+}
+
+// WithAdjudication appends a this-turn ruling after the <rules> block on the user message.
+func (b *Builder) WithAdjudication(text string) *Builder {
+	b.adjudication = strings.TrimSpace(text)
 	return b
 }
 
@@ -142,6 +149,9 @@ func (b *Builder) addUserMessage() {
 	content := b.userMessage
 	if rulesBlock := FormatRulesBlock(allRules); rulesBlock != "" {
 		content += "\n\n" + rulesBlock
+	}
+	if adjBlock := FormatAdjudicationBlock(b.adjudication); adjBlock != "" {
+		content += "\n\n" + adjBlock
 	}
 
 	b.messages = append(b.messages, chat.ChatMessage{

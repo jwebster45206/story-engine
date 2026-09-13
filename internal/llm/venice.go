@@ -24,12 +24,13 @@ const (
 
 // VeniceService implements LLMService for Venice AI
 type VeniceService struct {
-	apiKey           string
-	baseURL          string
-	modelName        string
-	backendModelName string
-	httpClient       *http.Client
-	logger           *slog.Logger
+	apiKey               string
+	baseURL              string
+	modelName            string
+	backendModelName     string
+	adjudicatorModelName string
+	httpClient           *http.Client
+	logger               *slog.Logger
 }
 
 type VeniceResponseFormat struct {
@@ -127,10 +128,11 @@ type VeniceStreamResponse struct {
 // NewVeniceService creates a new Venice AI service
 func NewVeniceService(pc *config.ProviderConfig, logger *slog.Logger) *VeniceService {
 	return &VeniceService{
-		apiKey:           pc.APIKey,
-		baseURL:          veniceBaseURL,
-		modelName:        pc.Model,
-		backendModelName: pc.BackendModel,
+		apiKey:               pc.APIKey,
+		baseURL:              veniceBaseURL,
+		modelName:            pc.Model,
+		backendModelName:     pc.BackendModel,
+		adjudicatorModelName: pc.AdjudicatorModel,
 		httpClient: &http.Client{
 			Timeout: HTTPClientTimeout,
 		},
@@ -139,10 +141,9 @@ func NewVeniceService(pc *config.ProviderConfig, logger *slog.Logger) *VeniceSer
 }
 
 // chatCompletion makes a chat completion request to Venice AI with the specified model
-func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, responseFormat *VeniceResponseFormat) (string, Usage, error) {
-	maxTokens := DefaultMaxTokens
-	if temperature == 0.0 {
-		maxTokens = BackendMaxTokens
+func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, maxTokens int, responseFormat *VeniceResponseFormat) (string, Usage, error) {
+	if maxTokens <= 0 {
+		maxTokens = DefaultMaxTokens
 	}
 	veniceReq := VeniceChatRequest{
 		Model:       modelName,
@@ -355,7 +356,7 @@ func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMes
 
 	// Use structured JSON response format with temperature 0 for deterministic output
 	responseFormat := v.getDeltaUpdateResponseFormat()
-	content, usage, err := v.chatCompletion(ctx, messages, modelToUse, 0.0, responseFormat)
+	content, usage, err := v.chatCompletion(ctx, messages, modelToUse, 0.0, BackendMaxTokens, responseFormat)
 	if err != nil {
 		return nil, usage, err
 	}
@@ -373,4 +374,10 @@ func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMes
 	}
 
 	return deltaUpdate, usage, nil
+}
+
+// Complete generates a non-streaming free-text response on the adjudicator model.
+func (v *VeniceService) Complete(ctx context.Context, messages []chat.ChatMessage, temperature float64) (string, Usage, error) {
+	modelToUse := pickCompleteModel(v.adjudicatorModelName, v.backendModelName, v.modelName)
+	return v.chatCompletion(ctx, messages, modelToUse, temperature, AdjudicatorMaxTokens, nil)
 }

@@ -124,6 +124,15 @@ func (m *MockLLMAPI) ChatStream(ctx context.Context, messages []chat.ChatMessage
 	return ch, nil
 }
 
+// Complete mocks a non-streaming chat completion.
+func (m *MockLLMAPI) Complete(ctx context.Context, messages []chat.ChatMessage, _ float64) (string, Usage, error) {
+	content, err := m.mockContent(ctx, messages)
+	if err != nil {
+		return "", Usage{}, err
+	}
+	return content, Usage{Model: "mock-model", Vendor: "mock", InputTokens: 1, OutputTokens: 1}, nil
+}
+
 // Reset clears all call tracking
 func (m *MockLLMAPI) Reset() {
 	m.mu.Lock()

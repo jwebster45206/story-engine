@@ -24,12 +24,13 @@ const (
 
 // AnthropicService implements LLMService for Anthropic Claude
 type AnthropicService struct {
-	apiKey           string
-	baseURL          string
-	modelName        string
-	backendModelName string
-	httpClient       *http.Client
-	logger           *slog.Logger
+	apiKey               string
+	baseURL              string
+	modelName            string
+	backendModelName     string
+	adjudicatorModelName string
+	httpClient           *http.Client
+	logger               *slog.Logger
 }
 
 type AnthropicTool struct {
@@ -109,10 +110,11 @@ func NewAnthropicService(pc *config.ProviderConfig, logger *slog.Logger) *Anthro
 		logger.Debug("Anthropic sampling parameters (temperature, top_p, top_k) are not sent; Opus 4.7+ rejects non-default values")
 	}
 	return &AnthropicService{
-		apiKey:           pc.APIKey,
-		baseURL:          anthropicBaseURL,
-		modelName:        pc.Model,
-		backendModelName: pc.BackendModel,
+		apiKey:               pc.APIKey,
+		baseURL:              anthropicBaseURL,
+		modelName:            pc.Model,
+		backendModelName:     pc.BackendModel,
+		adjudicatorModelName: pc.AdjudicatorModel,
 		httpClient: &http.Client{
 			Timeout: HTTPClientTimeout,
 		},
@@ -140,15 +142,13 @@ func (a *AnthropicService) splitChatMessages(messages []chat.ChatMessage) (strin
 }
 
 // chatCompletion makes a chat completion request to Anthropic with the specified model.
-// temperature is used only to select DefaultMaxTokens vs BackendMaxTokens; it is never
-// sent to the Anthropic API (sampling params are deprecated on Opus 4.7+).
-func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, tools []AnthropicTool) (string, Usage, error) {
+// Sampling params are not sent (deprecated on Opus 4.7+).
+func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, maxTokens int, tools []AnthropicTool) (string, Usage, error) {
 	// Extract system messages and convert to Anthropic format
 	systemPrompt, conversationMessages := a.splitChatMessages(messages)
 
-	maxTokens := DefaultMaxTokens
-	if temperature == 0 {
-		maxTokens = BackendMaxTokens
+	if maxTokens <= 0 {
+		maxTokens = DefaultMaxTokens
 	}
 	anthropicReq := AnthropicChatRequest{
 		Model:     modelName,
@@ -401,7 +401,7 @@ func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.Chat
 	// Create tools for structured output (first tool will be automatically chosen)
 	tools := []AnthropicTool{a.getDeltaUpdateTool()}
 
-	content, usage, err := a.chatCompletion(ctx, messages, modelToUse, 0.0, tools)
+	content, usage, err := a.chatCompletion(ctx, messages, modelToUse, BackendMaxTokens, tools)
 	if err != nil {
 		return nil, usage, err
 	}
@@ -419,4 +419,11 @@ func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.Chat
 	}
 
 	return deltaUpdate, usage, nil
+}
+
+// Complete generates a non-streaming free-text response on the adjudicator model.
+func (a *AnthropicService) Complete(ctx context.Context, messages []chat.ChatMessage, temperature float64) (string, Usage, error) {
+	_ = temperature // sampling params are not sent to Anthropic
+	modelToUse := pickCompleteModel(a.adjudicatorModelName, a.backendModelName, a.modelName)
+	return a.chatCompletion(ctx, messages, modelToUse, AdjudicatorMaxTokens, nil)
 }

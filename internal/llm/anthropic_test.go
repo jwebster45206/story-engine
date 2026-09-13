@@ -179,3 +179,68 @@ func TestAnthropicService_DeltaUpdate_ToolUse(t *testing.T) {
 		t.Fatalf("delta = %#v", delta)
 	}
 }
+
+func TestAnthropicService_Complete_UsesBackendModel(t *testing.T) {
+	var gotModel string
+	var gotMaxTokens float64
+	var hasTools bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		gotModel, _ = body["model"].(string)
+		gotMaxTokens, _ = body["max_tokens"].(float64)
+		_, hasTools = body["tools"]
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"text","text":"allowed: yes"}],"model":"claude-backend","stop_reason":"end_turn","usage":{"input_tokens":8,"output_tokens":3}}`))
+	}))
+	defer server.Close()
+
+	svc := NewAnthropicService(anthropicPC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
+	text, usage, err := svc.Complete(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "I walk north"}}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotModel != "claude-backend" {
+		t.Fatalf("model = %q", gotModel)
+	}
+	if int(gotMaxTokens) != AdjudicatorMaxTokens {
+		t.Fatalf("max_tokens = %v, want %d", gotMaxTokens, AdjudicatorMaxTokens)
+	}
+	if hasTools {
+		t.Fatal("Complete should not send tools")
+	}
+	if text != "allowed: yes" {
+		t.Fatalf("text = %q", text)
+	}
+	if usage.Model != "claude-backend" || usage.InputTokens != 8 || usage.OutputTokens != 3 {
+		t.Fatalf("usage = %+v", usage)
+	}
+}
+
+func TestAnthropicService_Complete_PrefersAdjudicatorModel(t *testing.T) {
+	var gotModel string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		gotModel, _ = body["model"].(string)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"text","text":"ok"}],"model":"claude-adj","stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}`))
+	}))
+	defer server.Close()
+
+	pc := anthropicPC()
+	pc.AdjudicatorModel = "claude-adj"
+	svc := NewAnthropicService(pc, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
+	_, usage, err := svc.Complete(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "hi"}}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotModel != "claude-adj" {
+		t.Fatalf("model = %q", gotModel)
+	}
+	if usage.Model != "claude-adj" {
+		t.Fatalf("usage.Model = %q", usage.Model)
+	}
+}
