@@ -166,27 +166,6 @@ func TestVeniceService_Complete_UsesBackendModel(t *testing.T) {
 	assert.Equal(t, 4, usage.OutputTokens)
 }
 
-func TestVeniceService_Complete_PrefersAdjudicatorModel(t *testing.T) {
-	var gotModel string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var body map[string]any
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		gotModel, _ = body["model"].(string)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","model":"adj-model","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`))
-	}))
-	defer server.Close()
-
-	pc := venicePC()
-	pc.AdjudicatorModel = "adj-model"
-	svc := NewVeniceService(pc, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	svc.baseURL = server.URL
-	_, usage, err := svc.Complete(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "hi"}}, 0)
-	require.NoError(t, err)
-	assert.Equal(t, "adj-model", gotModel)
-	assert.Equal(t, "adj-model", usage.Model)
-}
-
 func TestVeniceStreamResponseParsing(t *testing.T) {
 	streamData := `{"id":"test-1","object":"chat.completion.chunk","created":1234567890,"model":"test-model","choices":[{"index":0,"delta":{"content":"Hello world"},"finish_reason":null}]}`
 	var streamResp VeniceStreamResponse

@@ -30,8 +30,7 @@ func main() {
 		"environment", cfg.Environment,
 		"redis_url", cfg.RedisURL,
 		"default_provider", cfg.DefaultProvider,
-		"providers", len(cfg.Providers),
-		"enable_adjudicator", cfg.EnableAdjudicator)
+		"providers", len(cfg.Providers))
 
 	// Initialize queue service
 	queueClient, err := queue.NewClient(cfg.RedisURL, log)
@@ -68,7 +67,7 @@ func main() {
 	log.Info("LLM providers initialized successfully", "default", registry.Default(), "count", len(registry.Names()))
 
 	// Create ChatProcessor
-	processor := worker.NewChatProcessor(storageService, registry, chatQueue, log, cfg.ChatHistoryLimit, cfg.EnableAdjudicator)
+	processor := worker.NewChatProcessor(storageService, registry, chatQueue, log, cfg.ChatHistoryLimit)
 	log.Info("Chat processor initialized successfully")
 
 	// Create a separate Redis client for worker locking

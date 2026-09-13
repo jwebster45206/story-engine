@@ -60,23 +60,11 @@ type LLMService interface {
 	// Venice honors temperature; Anthropic does not send it.
 	ChatStream(ctx context.Context, messages []chat.ChatMessage, temperature float64) (<-chan StreamChunk, error)
 
-	// Complete generates a non-streaming chat response using the adjudicator
-	// model (falling back to backend, then primary). Venice honors temperature;
-	// Anthropic does not send it.
+	// Complete generates a non-streaming chat response using BackendModel
+	// (falling back to Model). Venice honors temperature; Anthropic does not send it.
 	Complete(ctx context.Context, messages []chat.ChatMessage, temperature float64) (string, Usage, error)
 
 	DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, Usage, error)
-}
-
-// pickCompleteModel selects the model for Complete: adjudicator, else backend, else primary.
-func pickCompleteModel(adjudicator, backend, primary string) string {
-	if strings.TrimSpace(adjudicator) != "" {
-		return adjudicator
-	}
-	if strings.TrimSpace(backend) != "" {
-		return backend
-	}
-	return primary
 }
 
 // parseDeltaUpdateResponse parses an LLM response text into a DeltaUpdate struct.

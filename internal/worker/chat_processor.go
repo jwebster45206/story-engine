@@ -28,12 +28,11 @@ type LLMResolver interface {
 
 // ChatProcessor handles chat processing for the worker (streaming + post-stream state updates).
 type ChatProcessor struct {
-	storage           storage.Storage
-	resolver          LLMResolver
-	chatQueue         state.ChatQueue
-	logger            *slog.Logger
-	historyLimit      int
-	enableAdjudicator bool
+	storage      storage.Storage
+	resolver     LLMResolver
+	chatQueue    state.ChatQueue
+	logger       *slog.Logger
+	historyLimit int
 
 	// For background gamestate delta cancellation
 	metaCancelMu sync.Mutex
@@ -47,19 +46,17 @@ func NewChatProcessor(
 	chatQueue state.ChatQueue,
 	logger *slog.Logger,
 	historyLimit int,
-	enableAdjudicator bool,
 ) *ChatProcessor {
 	if historyLimit <= 0 {
 		historyLimit = PromptHistoryLimit
 	}
 	return &ChatProcessor{
-		storage:           storage,
-		resolver:          resolver,
-		chatQueue:         chatQueue,
-		logger:            logger,
-		historyLimit:      historyLimit,
-		enableAdjudicator: enableAdjudicator,
-		metaCancel:        make(map[uuid.UUID]context.CancelFunc),
+		storage:      storage,
+		resolver:     resolver,
+		chatQueue:    chatQueue,
+		logger:       logger,
+		historyLimit: historyLimit,
+		metaCancel:   make(map[uuid.UUID]context.CancelFunc),
 	}
 }
 
@@ -119,14 +116,13 @@ const noResponseSentinel = "(no response)"
 // adjudicate runs the pre-chat rules pass. Fail-open: empty string means the
 // narrator prompt is unchanged.
 func (p *ChatProcessor) adjudicate(ctx context.Context, svc llm.LLMService, gs *state.GameState, req chat.ChatRequest) string {
-	if !p.enableAdjudicator || req.SkipAdjudicator {
+	if !req.UseAdjudicator {
 		return ""
 	}
 
 	adjMessages, err := prompts.BuildAdjudicatorMessages(gs, req.Message, prompts.AdjudicatorWindow(p.historyLimit))
 	if err != nil {
 		p.logger.Warn("Adjudicator skipped: failed to build messages", "error", err, "game_state_id", gs.ID.String())
-		logLLMUsage(p.logger, usageTypeAdjudicator, gs.ID, gs.PrincipalID, gs.Provider, llm.Usage{})
 		return ""
 	}
 
@@ -134,7 +130,12 @@ func (p *ChatProcessor) adjudicate(ctx context.Context, svc llm.LLMService, gs *
 	adjCtx, cancel := context.WithTimeout(ctx, llmRequestTimeout)
 	defer cancel()
 	text, usage, err := svc.Complete(adjCtx, adjMessages, 0)
-	logLLMUsage(p.logger, usageTypeAdjudicator, gs.ID, gs.PrincipalID, gs.Provider, usage)
+	p.logger.Info("llm usage",
+		"type", "adjudicator",
+		"game_state_id", gs.ID,
+		"principal_id", gs.PrincipalID,
+		"usage", usage,
+	)
 	if err != nil {
 		p.logger.Warn("Adjudicator failed open", "error", err, "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
 		return ""
@@ -288,7 +289,12 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 			return
 		}
 
-		logLLMUsage(p.logger, usageTypeReducer, gs.ID, gs.PrincipalID, gs.Provider, usage)
+		p.logger.Info("llm usage",
+			"type", "reducer",
+			"game_state_id", gs.ID,
+			"principal_id", gs.PrincipalID,
+			"usage", usage,
+		)
 
 		p.logger.Debug("Received gamestate delta from LLM", "game_state_id", gs.ID.String(), "delta", delta, "backend_model", usage.Model)
 		break

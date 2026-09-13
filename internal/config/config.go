@@ -22,25 +22,22 @@ type ProviderConfig struct {
 	DisplayName string `json:"display_name,omitempty"`
 	// Model is the primary chat model id.
 	Model string `json:"model"`
-	// BackendModel is used for delta extraction; falls back to Model when empty.
+	// BackendModel is the non-narrator model (adjudicator and delta extraction);
+	// falls back to Model when empty.
 	BackendModel string `json:"backend_model,omitempty"`
-	// AdjudicatorModel is used for the pre-chat rules pass; falls back to
-	// BackendModel, then Model, when empty.
-	AdjudicatorModel string `json:"adjudicator_model,omitempty"`
 	// APIKey is the provider credential.
 	APIKey string `json:"api_key,omitempty"`
 }
 
 type Config struct {
-	Port              string                     `json:"port"`
-	Environment       string                     `json:"environment"`
-	LogLevel          slog.Level                 `json:"-"`
-	LogLevelStr       string                     `json:"log_level"`
-	Providers         map[string]*ProviderConfig `json:"providers"`
-	DefaultProvider   string                     `json:"default_provider,omitempty"`
-	RedisURL          string                     `json:"redis_url"`
-	ChatHistoryLimit  int                        `json:"chat_history_limit"` // max past messages sent to LLM per request (0 = use default)
-	EnableAdjudicator bool                       `json:"enable_adjudicator"` // pre-chat rules pass before narrator stream
+	Port             string                     `json:"port"`
+	Environment      string                     `json:"environment"`
+	LogLevel         slog.Level                 `json:"-"`
+	LogLevelStr      string                     `json:"log_level"`
+	Providers        map[string]*ProviderConfig `json:"providers"`
+	DefaultProvider  string                     `json:"default_provider,omitempty"`
+	RedisURL         string                     `json:"redis_url"`
+	ChatHistoryLimit int                        `json:"chat_history_limit"` // max past messages sent to LLM per request (0 = use default)
 }
 
 // Load reads configuration from the CONFIG environment variable.

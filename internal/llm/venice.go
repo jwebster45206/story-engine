@@ -24,13 +24,12 @@ const (
 
 // VeniceService implements LLMService for Venice AI
 type VeniceService struct {
-	apiKey               string
-	baseURL              string
-	modelName            string
-	backendModelName     string
-	adjudicatorModelName string
-	httpClient           *http.Client
-	logger               *slog.Logger
+	apiKey           string
+	baseURL          string
+	modelName        string
+	backendModelName string
+	httpClient       *http.Client
+	logger           *slog.Logger
 }
 
 type VeniceResponseFormat struct {
@@ -128,11 +127,10 @@ type VeniceStreamResponse struct {
 // NewVeniceService creates a new Venice AI service
 func NewVeniceService(pc *config.ProviderConfig, logger *slog.Logger) *VeniceService {
 	return &VeniceService{
-		apiKey:               pc.APIKey,
-		baseURL:              veniceBaseURL,
-		modelName:            pc.Model,
-		backendModelName:     pc.BackendModel,
-		adjudicatorModelName: pc.AdjudicatorModel,
+		apiKey:           pc.APIKey,
+		baseURL:          veniceBaseURL,
+		modelName:        pc.Model,
+		backendModelName: pc.BackendModel,
 		httpClient: &http.Client{
 			Timeout: HTTPClientTimeout,
 		},
@@ -376,8 +374,11 @@ func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMes
 	return deltaUpdate, usage, nil
 }
 
-// Complete generates a non-streaming free-text response on the adjudicator model.
+// Complete generates a non-streaming free-text response on the backend model.
 func (v *VeniceService) Complete(ctx context.Context, messages []chat.ChatMessage, temperature float64) (string, Usage, error) {
-	modelToUse := pickCompleteModel(v.adjudicatorModelName, v.backendModelName, v.modelName)
+	modelToUse := v.modelName
+	if v.backendModelName != "" {
+		modelToUse = v.backendModelName
+	}
 	return v.chatCompletion(ctx, messages, modelToUse, temperature, AdjudicatorMaxTokens, nil)
 }

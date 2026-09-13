@@ -114,27 +114,12 @@ func TestLoad_BadDefaultProvider(t *testing.T) {
 }
 
 func TestProviderConfigJSONRoundTrip(t *testing.T) {
-	raw := []byte(`{"vendor":"anthropic","model":"m","backend_model":"b","adjudicator_model":"a","display_name":"D"}`)
+	raw := []byte(`{"vendor":"anthropic","model":"m","backend_model":"b","display_name":"D"}`)
 	var pc ProviderConfig
 	if err := json.Unmarshal(raw, &pc); err != nil {
 		t.Fatal(err)
 	}
-	if pc.BackendModel != "b" || pc.AdjudicatorModel != "a" || pc.DisplayName != "D" {
+	if pc.BackendModel != "b" || pc.DisplayName != "D" {
 		t.Fatalf("unexpected %#v", pc)
-	}
-}
-
-func TestLoad_EnableAdjudicator(t *testing.T) {
-	path := writeConfig(t, `{
-		"providers":{"only":{"vendor":"venice","api_key":"k","model":"m"}},
-		"redis_url":"localhost:6379",
-		"enable_adjudicator": true
-	}`)
-	cfg, err := loadFrom(t, path)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if !cfg.EnableAdjudicator {
-		t.Fatal("expected enable_adjudicator true")
 	}
 }

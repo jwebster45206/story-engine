@@ -301,7 +301,7 @@ func newTestSetup(historyCount, historyLimit int) (*ChatProcessor, *stubLLMServi
 	}
 	llm := &stubLLMService{}
 	stor := &stubStorage{gs: gs, sc: sc}
-	processor := NewChatProcessor(stor, stubResolver{llm}, nil, slog.Default(), historyLimit, false)
+	processor := NewChatProcessor(stor, stubResolver{llm}, nil, slog.Default(), historyLimit)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "hello"}
 	return processor, llm, req
 }
@@ -379,7 +379,7 @@ func TestProcessChatStream_UsesGameStateTemperature(t *testing.T) {
 	}
 	llm := &stubLLMService{}
 	stor := &stubStorage{gs: gs, sc: sc}
-	processor := NewChatProcessor(stor, stubResolver{llm}, nil, slog.Default(), 10, false)
+	processor := NewChatProcessor(stor, stubResolver{llm}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "hello"}
 
 	_, err := processor.ProcessChatStream(context.Background(), req)
@@ -412,8 +412,8 @@ func TestProcessChatStream_AdjudicatorInjectedAfterRules(t *testing.T) {
 		completeUsage: llm.Usage{InputTokens: 4, OutputTokens: 2, Model: "stub-adj", Vendor: "stub"},
 	}
 	stor := &stubStorage{gs: gs, sc: sc}
-	processor := NewChatProcessor(stor, stubResolver{stub}, nil, slog.Default(), 10, true)
-	req := chat.ChatRequest{GameStateID: gsID, Message: "I walk north"}
+	processor := NewChatProcessor(stor, stubResolver{stub}, nil, slog.Default(), 10)
+	req := chat.ChatRequest{GameStateID: gsID, Message: "I walk north", UseAdjudicator: true}
 
 	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
@@ -458,8 +458,8 @@ func TestProcessChatStream_AdjudicatorFailOpenOmitsBlock(t *testing.T) {
 	}
 	sc := &scenario.Scenario{Name: "Test", Story: "A test story", Rating: scenario.RatingPG}
 	stub := &stubLLMService{completeErr: fmt.Errorf("adjudicator down")}
-	processor := NewChatProcessor(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10, true)
-	req := chat.ChatRequest{GameStateID: gsID, Message: "hello"}
+	processor := NewChatProcessor(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
+	req := chat.ChatRequest{GameStateID: gsID, Message: "hello", UseAdjudicator: true}
 
 	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
@@ -476,8 +476,6 @@ func TestProcessChatStream_AdjudicatorFailOpenOmitsBlock(t *testing.T) {
 
 func TestProcessChatStream_StoryEventSkipsAdjudicator(t *testing.T) {
 	processor, stub, req := newTestSetup(2, 10)
-	processor.enableAdjudicator = true
-	req.SkipAdjudicator = true
 
 	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
@@ -485,24 +483,11 @@ func TestProcessChatStream_StoryEventSkipsAdjudicator(t *testing.T) {
 	}
 	for _, c := range stub.calls {
 		if c == "complete" {
-			t.Fatal("story events should not call Complete")
+			t.Fatal("turns without UseAdjudicator should not call Complete")
 		}
 	}
 	user := lastUserContent(stub.capturedMessages)
 	if strings.Contains(user, "<adjudication>") {
 		t.Errorf("story event should not inject adjudication, got %q", user)
-	}
-}
-
-func TestProcessChatStream_AdjudicatorDisabledSkipsComplete(t *testing.T) {
-	processor, stub, req := newTestSetup(2, 10)
-	_, err := processor.ProcessChatStream(context.Background(), req)
-	if err != nil {
-		t.Fatalf("ProcessChatStream: %v", err)
-	}
-	for _, c := range stub.calls {
-		if c == "complete" {
-			t.Fatal("Complete should not run when enableAdjudicator is false")
-		}
 	}
 }

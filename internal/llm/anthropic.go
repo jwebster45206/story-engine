@@ -24,13 +24,12 @@ const (
 
 // AnthropicService implements LLMService for Anthropic Claude
 type AnthropicService struct {
-	apiKey               string
-	baseURL              string
-	modelName            string
-	backendModelName     string
-	adjudicatorModelName string
-	httpClient           *http.Client
-	logger               *slog.Logger
+	apiKey           string
+	baseURL          string
+	modelName        string
+	backendModelName string
+	httpClient       *http.Client
+	logger           *slog.Logger
 }
 
 type AnthropicTool struct {
@@ -110,11 +109,10 @@ func NewAnthropicService(pc *config.ProviderConfig, logger *slog.Logger) *Anthro
 		logger.Debug("Anthropic sampling parameters (temperature, top_p, top_k) are not sent; Opus 4.7+ rejects non-default values")
 	}
 	return &AnthropicService{
-		apiKey:               pc.APIKey,
-		baseURL:              anthropicBaseURL,
-		modelName:            pc.Model,
-		backendModelName:     pc.BackendModel,
-		adjudicatorModelName: pc.AdjudicatorModel,
+		apiKey:           pc.APIKey,
+		baseURL:          anthropicBaseURL,
+		modelName:        pc.Model,
+		backendModelName: pc.BackendModel,
 		httpClient: &http.Client{
 			Timeout: HTTPClientTimeout,
 		},
@@ -421,9 +419,12 @@ func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.Chat
 	return deltaUpdate, usage, nil
 }
 
-// Complete generates a non-streaming free-text response on the adjudicator model.
+// Complete generates a non-streaming free-text response on the backend model.
 func (a *AnthropicService) Complete(ctx context.Context, messages []chat.ChatMessage, temperature float64) (string, Usage, error) {
 	_ = temperature // sampling params are not sent to Anthropic
-	modelToUse := pickCompleteModel(a.adjudicatorModelName, a.backendModelName, a.modelName)
+	modelToUse := a.modelName
+	if a.backendModelName != "" {
+		modelToUse = a.backendModelName
+	}
 	return a.chatCompletion(ctx, messages, modelToUse, AdjudicatorMaxTokens, nil)
 }
