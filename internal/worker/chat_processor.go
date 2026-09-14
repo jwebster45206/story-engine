@@ -72,46 +72,81 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 		return nil, fmt.Errorf("game state not found: %s", req.GameStateID.String())
 	}
 
-	// Get Scenario for the chat
 	loadedScenario, err := p.storage.GetScenario(ctx, gs.Scenario)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load scenario: %w", err)
 	}
 
-	// Build chat messages using the prompt builder
-	// req.Message is already formatted with PC name if applicable
+	svc, err := p.resolver.Get(gs.Provider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve LLM provider %q: %w", gs.Provider, err)
+	}
+
+	adjudication := p.adjudicate(ctx, svc, gs, req)
+
 	messages, err := prompts.New().
 		WithGameState(gs).
 		WithScenario(loadedScenario).
 		WithUserMessage(req.Message, chat.ChatRoleUser).
 		WithHistoryLimit(p.historyLimit).
+		WithAdjudication(adjudication).
 		Build()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build chat messages: %w", err)
 	}
 
-	// Clear story events after consumption
 	if p.chatQueue != nil {
 		if err := p.chatQueue.Clear(ctx, gs.ID); err != nil {
 			p.logger.Error("Failed to clear chat queue", "error", err, "game_state_id", gs.ID.String())
 		}
 	}
 
-	// Initialize LLM streaming
-	// Use the context passed in from the worker - it will stay alive while consuming the stream
 	temperature := gs.Temperature
-	llm, err := p.resolver.Get(gs.Provider)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve LLM provider %q: %w", gs.Provider, err)
-	}
 	p.logger.Debug("Sending streaming chat request to LLM", "game_state_id", gs.ID.String(), "provider", gs.Provider, "messages", messages)
-	streamChan, err := llm.ChatStream(ctx, messages, temperature)
+	streamChan, err := svc.ChatStream(ctx, messages, temperature)
 	if err != nil {
 		return nil, fmt.Errorf("LLM chat stream failed: %w", err)
 	}
 
-	// Caller consumes the stream and updates game state
 	return streamChan, nil
+}
+
+const noResponseSentinel = "(no response)"
+
+// adjudicate runs the pre-chat rules pass. Fail-open: empty string means the
+// narrator prompt is unchanged.
+func (p *ChatProcessor) adjudicate(ctx context.Context, svc llm.LLMService, gs *state.GameState, req chat.ChatRequest) string {
+	if !req.UseAdjudicator {
+		return ""
+	}
+
+	adjMessages, err := prompts.BuildAdjudicatorMessages(gs, req.Message, prompts.AdjudicatorWindow(p.historyLimit))
+	if err != nil {
+		p.logger.Warn("Adjudicator skipped: failed to build messages", "error", err, "game_state_id", gs.ID.String())
+		return ""
+	}
+
+	start := time.Now()
+	adjCtx, cancel := context.WithTimeout(ctx, llmRequestTimeout)
+	defer cancel()
+	text, usage, err := svc.Complete(adjCtx, adjMessages, 0)
+	p.logger.Info("llm usage",
+		"type", "adjudicator",
+		"game_state_id", gs.ID,
+		"principal_id", gs.PrincipalID,
+		"usage", usage,
+	)
+	if err != nil {
+		p.logger.Warn("Adjudicator failed open", "error", err, "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
+		return ""
+	}
+	text = strings.TrimSpace(text)
+	if text == "" || text == noResponseSentinel {
+		p.logger.Warn("Adjudicator returned empty ruling, failing open", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
+		return ""
+	}
+	p.logger.Debug("Adjudicator ruling", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds(), "adjudication", text)
+	return text
 }
 
 // UpdateGameStateAfterStream updates game state after streaming is complete.
@@ -254,21 +289,12 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 			return
 		}
 
-		if usage.InputTokens > 0 {
-			p.logger.Info("llm usage",
-				"type", "reducer",
-				"game_state_id", gs.ID,
-				"principal_id", gs.PrincipalID,
-				"usage", usage, // includes provider details
-			)
-		} else {
-			p.logger.Warn("llm usage missing",
-				"type", "reducer",
-				"game_state_id", gs.ID,
-				"principal_id", gs.PrincipalID,
-				"provider", gs.Provider,
-			)
-		}
+		p.logger.Info("llm usage",
+			"type", "reducer",
+			"game_state_id", gs.ID,
+			"principal_id", gs.PrincipalID,
+			"usage", usage,
+		)
 
 		p.logger.Debug("Received gamestate delta from LLM", "game_state_id", gs.ID.String(), "delta", delta, "backend_model", usage.Model)
 		break

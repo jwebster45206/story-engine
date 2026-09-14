@@ -139,20 +139,15 @@ func (a *AnthropicService) splitChatMessages(messages []chat.ChatMessage) (strin
 	return systemPrompt, nonSystemMessages
 }
 
-// chatCompletion makes a chat completion request to Anthropic with the specified model.
-// temperature is used only to select DefaultMaxTokens vs BackendMaxTokens; it is never
-// sent to the Anthropic API (sampling params are deprecated on Opus 4.7+).
-func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, tools []AnthropicTool) (string, Usage, error) {
+// chatCompletion is the non-streaming backend path. BackendMaxTokens is the cap by convention.
+// Sampling params are not sent (deprecated on Opus 4.7+).
+func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, tools []AnthropicTool) (string, Usage, error) {
 	// Extract system messages and convert to Anthropic format
 	systemPrompt, conversationMessages := a.splitChatMessages(messages)
 
-	maxTokens := DefaultMaxTokens
-	if temperature == 0 {
-		maxTokens = BackendMaxTokens
-	}
 	anthropicReq := AnthropicChatRequest{
 		Model:     modelName,
-		MaxTokens: maxTokens,
+		MaxTokens: BackendMaxTokens,
 		Messages:  chat.ToLLMMessages(conversationMessages),
 		Stream:    false,
 	}
@@ -401,7 +396,7 @@ func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.Chat
 	// Create tools for structured output (first tool will be automatically chosen)
 	tools := []AnthropicTool{a.getDeltaUpdateTool()}
 
-	content, usage, err := a.chatCompletion(ctx, messages, modelToUse, 0.0, tools)
+	content, usage, err := a.chatCompletion(ctx, messages, modelToUse, tools)
 	if err != nil {
 		return nil, usage, err
 	}
@@ -419,4 +414,14 @@ func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.Chat
 	}
 
 	return deltaUpdate, usage, nil
+}
+
+// Complete generates a non-streaming free-text response on the backend model.
+func (a *AnthropicService) Complete(ctx context.Context, messages []chat.ChatMessage, temperature float64) (string, Usage, error) {
+	_ = temperature // sampling params are not sent to Anthropic
+	modelToUse := a.modelName
+	if a.backendModelName != "" {
+		modelToUse = a.backendModelName
+	}
+	return a.chatCompletion(ctx, messages, modelToUse, nil)
 }

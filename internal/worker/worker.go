@@ -220,8 +220,9 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 	switch req.Type {
 	case queuePkg.RequestTypeChat:
 		chatReq := chat.ChatRequest{
-			GameStateID: req.GameStateID,
-			Message:     userMessage,
+			GameStateID:    req.GameStateID,
+			Message:        userMessage,
+			UseAdjudicator: true,
 		}
 
 		fullMessage, err := w.consumeStream(chatReq, req, "failed to process chat request")
@@ -355,21 +356,12 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 		)
 	}
 
-	if usage.InputTokens > 0 {
-		w.log.Info("llm usage",
-			"type", "reducer",
-			"game_state_id", req.GameStateID,
-			"principal_id", gs.PrincipalID,
-			"usage", usage, // includes provider details
-		)
-	} else {
-		w.log.Warn("llm usage missing",
-			"type", "reducer",
-			"game_state_id", req.GameStateID,
-			"principal_id", gs.PrincipalID,
-			"provider", gs.Provider,
-		)
-	}
+	w.log.Info("llm usage",
+		"type", "narrator",
+		"game_state_id", req.GameStateID,
+		"principal_id", gs.PrincipalID,
+		"usage", usage,
+	)
 
 	if streamErr == nil && !done && w.ctx.Err() != nil {
 		streamErr = w.ctx.Err()

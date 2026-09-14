@@ -138,17 +138,13 @@ func NewVeniceService(pc *config.ProviderConfig, logger *slog.Logger) *VeniceSer
 	}
 }
 
-// chatCompletion makes a chat completion request to Venice AI with the specified model
+// chatCompletion is the non-streaming backend path. BackendMaxTokens is the cap by convention.
 func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, responseFormat *VeniceResponseFormat) (string, Usage, error) {
-	maxTokens := DefaultMaxTokens
-	if temperature == 0.0 {
-		maxTokens = BackendMaxTokens
-	}
 	veniceReq := VeniceChatRequest{
 		Model:       modelName,
 		Messages:    chat.ToLLMMessages(messages),
 		Temperature: temperature,
-		MaxTokens:   maxTokens,
+		MaxTokens:   BackendMaxTokens,
 		Stream:      false,
 		VeniceParameters: VeniceParameters{
 			IncludeVeniceSystemPrompt: false,
@@ -373,4 +369,13 @@ func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMes
 	}
 
 	return deltaUpdate, usage, nil
+}
+
+// Complete generates a non-streaming free-text response on the backend model.
+func (v *VeniceService) Complete(ctx context.Context, messages []chat.ChatMessage, temperature float64) (string, Usage, error) {
+	modelToUse := v.modelName
+	if v.backendModelName != "" {
+		modelToUse = v.backendModelName
+	}
+	return v.chatCompletion(ctx, messages, modelToUse, temperature, nil)
 }

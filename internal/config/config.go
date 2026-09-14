@@ -22,7 +22,8 @@ type ProviderConfig struct {
 	DisplayName string `json:"display_name,omitempty"`
 	// Model is the primary chat model id.
 	Model string `json:"model"`
-	// BackendModel is used for delta extraction; falls back to Model when empty.
+	// BackendModel is the non-narrator model (adjudicator and delta extraction);
+	// falls back to Model when empty.
 	BackendModel string `json:"backend_model,omitempty"`
 	// APIKey is the provider credential.
 	APIKey string `json:"api_key,omitempty"`

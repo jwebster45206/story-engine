@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
+	"strings"
 	"testing"
 	"uuid"
 
@@ -170,9 +172,15 @@ func (s stubResolver) Get(_ string) (llm.LLMService, error) { return s.llm, nil 
 type stubLLMService struct {
 	capturedMessages []chat.ChatMessage
 	capturedTemp     float64
+	calls            []string
+	completeMessages []chat.ChatMessage
+	completeText     string
+	completeErr      error
+	completeUsage    llm.Usage
 }
 
 func (s *stubLLMService) ChatStream(_ context.Context, messages []chat.ChatMessage, temperature float64) (<-chan llm.StreamChunk, error) {
+	s.calls = append(s.calls, "stream")
 	s.capturedMessages = messages
 	s.capturedTemp = temperature
 	ch := make(chan llm.StreamChunk)
@@ -181,6 +189,17 @@ func (s *stubLLMService) ChatStream(_ context.Context, messages []chat.ChatMessa
 }
 func (s *stubLLMService) DeltaUpdate(_ context.Context, _ []chat.ChatMessage) (*conditionals.GameStateDelta, llm.Usage, error) {
 	return nil, llm.Usage{}, nil
+}
+func (s *stubLLMService) Complete(_ context.Context, messages []chat.ChatMessage, _ float64) (string, llm.Usage, error) {
+	s.calls = append(s.calls, "complete")
+	s.completeMessages = messages
+	if s.completeErr != nil {
+		return "", s.completeUsage, s.completeErr
+	}
+	if s.completeText != "" || s.completeUsage.InputTokens > 0 {
+		return s.completeText, s.completeUsage, nil
+	}
+	return "ruling: allowed", llm.Usage{InputTokens: 2, OutputTokens: 1, Model: "stub-adj"}, nil
 }
 
 // stubStorage returns a preset GameState and Scenario; all writes are no-ops.
@@ -242,6 +261,16 @@ func makeHistory(n int) []chat.ChatMessage {
 		}
 	}
 	return msgs
+}
+
+// lastUserContent returns the content of the last user-role message.
+func lastUserContent(msgs []chat.ChatMessage) string {
+	for _, msg := range slices.Backward(msgs) {
+		if msg.Role == chat.ChatRoleUser {
+			return msg.Content
+		}
+	}
+	return ""
 }
 
 // countNonSystem counts messages whose role is not ChatRoleSystem.
@@ -360,5 +389,106 @@ func TestProcessChatStream_UsesGameStateTemperature(t *testing.T) {
 	}
 	if llm.capturedTemp != wantTemp {
 		t.Errorf("expected gamestate temperature %f, got %f", wantTemp, llm.capturedTemp)
+	}
+}
+
+func TestProcessChatStream_AdjudicatorInjectedAfterRules(t *testing.T) {
+	gsID := uuid.New()
+	gs := &state.GameState{
+		ID:          gsID,
+		Scenario:    "test.json",
+		Rules:       state.RulesStrict,
+		Temperature: state.DefaultTemperature,
+		ChatHistory: makeHistory(6),
+		IsEnded:     true,
+		Vars:        make(map[string]string),
+		Location:    "tavern",
+		WorldLocations: map[string]scenario.Location{
+			"tavern": {Name: "The Tavern", Description: "A smoky taproom."},
+		},
+	}
+	sc := &scenario.Scenario{Name: "Test", Story: "A test story", Rating: scenario.RatingPG}
+	stub := &stubLLMService{
+		completeText:  "- Attempted: walk north\n- Not allowed",
+		completeUsage: llm.Usage{InputTokens: 4, OutputTokens: 2, Model: "stub-adj", Vendor: "stub"},
+	}
+	stor := &stubStorage{gs: gs, sc: sc}
+	processor := NewChatProcessor(stor, stubResolver{stub}, nil, slog.Default(), 10)
+	req := chat.ChatRequest{GameStateID: gsID, Message: "I walk north", UseAdjudicator: true}
+
+	_, err := processor.ProcessChatStream(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ProcessChatStream: %v", err)
+	}
+	if len(stub.calls) < 2 || stub.calls[0] != "complete" || stub.calls[1] != "stream" {
+		t.Fatalf("call order = %v, want complete then stream", stub.calls)
+	}
+	user := lastUserContent(stub.capturedMessages)
+	rulesIdx := strings.Index(user, "<rules>")
+	adjIdx := strings.Index(user, "<adjudication>")
+	if rulesIdx < 0 || adjIdx < 0 {
+		t.Fatalf("expected rules and adjudication on narrator user turn, got %q", user)
+	}
+	if adjIdx < rulesIdx {
+		t.Fatal("adjudication should follow <rules>")
+	}
+	if !strings.Contains(user, stub.completeText) {
+		t.Errorf("narrator user turn missing ruling: %q", user)
+	}
+	if len(stub.completeMessages) == 0 {
+		t.Fatal("expected Complete messages")
+	}
+	adjUser := stub.completeMessages[len(stub.completeMessages)-1].Content
+	if strings.Contains(adjUser, "<rules>") {
+		t.Error("adjudicator user turn should not include <rules>")
+	}
+	adjSys := stub.completeMessages[0].Content
+	if !strings.Contains(adjSys, "<world_state>") {
+		t.Error("adjudicator system prompt should include world_state")
+	}
+}
+
+func TestProcessChatStream_AdjudicatorFailOpenOmitsBlock(t *testing.T) {
+	gsID := uuid.New()
+	gs := &state.GameState{
+		ID:          gsID,
+		Scenario:    "test.json",
+		Temperature: state.DefaultTemperature,
+		IsEnded:     true,
+		Vars:        make(map[string]string),
+	}
+	sc := &scenario.Scenario{Name: "Test", Story: "A test story", Rating: scenario.RatingPG}
+	stub := &stubLLMService{completeErr: fmt.Errorf("adjudicator down")}
+	processor := NewChatProcessor(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
+	req := chat.ChatRequest{GameStateID: gsID, Message: "hello", UseAdjudicator: true}
+
+	_, err := processor.ProcessChatStream(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ProcessChatStream: %v", err)
+	}
+	user := lastUserContent(stub.capturedMessages)
+	if strings.Contains(user, "<adjudication>") {
+		t.Errorf("fail-open should omit adjudication, got %q", user)
+	}
+	if !strings.Contains(user, "<rules>") {
+		t.Error("rules block should remain")
+	}
+}
+
+func TestProcessChatStream_StoryEventSkipsAdjudicator(t *testing.T) {
+	processor, stub, req := newTestSetup(2, 10)
+
+	_, err := processor.ProcessChatStream(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ProcessChatStream: %v", err)
+	}
+	for _, c := range stub.calls {
+		if c == "complete" {
+			t.Fatal("turns without UseAdjudicator should not call Complete")
+		}
+	}
+	user := lastUserContent(stub.capturedMessages)
+	if strings.Contains(user, "<adjudication>") {
+		t.Errorf("story event should not inject adjudication, got %q", user)
 	}
 }
