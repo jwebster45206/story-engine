@@ -355,14 +355,11 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 			"request_id", req.RequestID,
 		)
 	}
-	var principalID uuid.UUID
-	if gs != nil {
-		principalID = gs.PrincipalID
-	}
+
 	w.log.Info("llm usage",
 		"type", "narrator",
 		"game_state_id", req.GameStateID,
-		"principal_id", principalID,
+		"principal_id", gs.PrincipalID,
 		"usage", usage,
 	)
 
