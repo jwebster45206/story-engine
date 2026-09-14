@@ -27,7 +27,6 @@ paths:
         Enqueues a message for the worker. Returns `202` + `request_id`; narration
         streams on `GET /v1/events/gamestate/{id}` (`request.processing` → `chat.chunk`
         → `request.completed` or `request.failed`). Max message length 255.
-        Request field `stream` is ignored (deprecated).
       operationId: sendChatMessage
       tags:
         - Chat
@@ -606,10 +605,6 @@ components:
           type: string
           maxLength: 255
           example: "I look around the tavern"
-        stream:
-          type: boolean
-          deprecated: true
-          description: Ignored; streaming is via SSE
 
     ChatAcceptedResponse:
       type: object
