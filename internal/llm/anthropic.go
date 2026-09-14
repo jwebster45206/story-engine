@@ -139,18 +139,15 @@ func (a *AnthropicService) splitChatMessages(messages []chat.ChatMessage) (strin
 	return systemPrompt, nonSystemMessages
 }
 
-// chatCompletion makes a chat completion request to Anthropic with the specified model.
+// chatCompletion is the non-streaming backend path. BackendMaxTokens is the cap by convention.
 // Sampling params are not sent (deprecated on Opus 4.7+).
-func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, maxTokens int, tools []AnthropicTool) (string, Usage, error) {
+func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, tools []AnthropicTool) (string, Usage, error) {
 	// Extract system messages and convert to Anthropic format
 	systemPrompt, conversationMessages := a.splitChatMessages(messages)
 
-	if maxTokens <= 0 {
-		maxTokens = DefaultMaxTokens
-	}
 	anthropicReq := AnthropicChatRequest{
 		Model:     modelName,
-		MaxTokens: maxTokens,
+		MaxTokens: BackendMaxTokens,
 		Messages:  chat.ToLLMMessages(conversationMessages),
 		Stream:    false,
 	}
@@ -399,7 +396,7 @@ func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.Chat
 	// Create tools for structured output (first tool will be automatically chosen)
 	tools := []AnthropicTool{a.getDeltaUpdateTool()}
 
-	content, usage, err := a.chatCompletion(ctx, messages, modelToUse, BackendMaxTokens, tools)
+	content, usage, err := a.chatCompletion(ctx, messages, modelToUse, tools)
 	if err != nil {
 		return nil, usage, err
 	}
@@ -426,5 +423,5 @@ func (a *AnthropicService) Complete(ctx context.Context, messages []chat.ChatMes
 	if a.backendModelName != "" {
 		modelToUse = a.backendModelName
 	}
-	return a.chatCompletion(ctx, messages, modelToUse, BackendMaxTokens, nil)
+	return a.chatCompletion(ctx, messages, modelToUse, nil)
 }

@@ -138,16 +138,13 @@ func NewVeniceService(pc *config.ProviderConfig, logger *slog.Logger) *VeniceSer
 	}
 }
 
-// chatCompletion makes a chat completion request to Venice AI with the specified model
-func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, maxTokens int, responseFormat *VeniceResponseFormat) (string, Usage, error) {
-	if maxTokens <= 0 {
-		maxTokens = DefaultMaxTokens
-	}
+// chatCompletion is the non-streaming backend path. BackendMaxTokens is the cap by convention.
+func (v *VeniceService) chatCompletion(ctx context.Context, messages []chat.ChatMessage, modelName string, temperature float64, responseFormat *VeniceResponseFormat) (string, Usage, error) {
 	veniceReq := VeniceChatRequest{
 		Model:       modelName,
 		Messages:    chat.ToLLMMessages(messages),
 		Temperature: temperature,
-		MaxTokens:   maxTokens,
+		MaxTokens:   BackendMaxTokens,
 		Stream:      false,
 		VeniceParameters: VeniceParameters{
 			IncludeVeniceSystemPrompt: false,
@@ -354,7 +351,7 @@ func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMes
 
 	// Use structured JSON response format with temperature 0 for deterministic output
 	responseFormat := v.getDeltaUpdateResponseFormat()
-	content, usage, err := v.chatCompletion(ctx, messages, modelToUse, 0.0, BackendMaxTokens, responseFormat)
+	content, usage, err := v.chatCompletion(ctx, messages, modelToUse, 0.0, responseFormat)
 	if err != nil {
 		return nil, usage, err
 	}
@@ -380,5 +377,5 @@ func (v *VeniceService) Complete(ctx context.Context, messages []chat.ChatMessag
 	if v.backendModelName != "" {
 		modelToUse = v.backendModelName
 	}
-	return v.chatCompletion(ctx, messages, modelToUse, temperature, BackendMaxTokens, nil)
+	return v.chatCompletion(ctx, messages, modelToUse, temperature, nil)
 }
