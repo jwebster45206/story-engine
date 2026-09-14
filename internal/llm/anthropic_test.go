@@ -204,8 +204,8 @@ func TestAnthropicService_Complete_UsesBackendModel(t *testing.T) {
 	if gotModel != "claude-backend" {
 		t.Fatalf("model = %q", gotModel)
 	}
-	if int(gotMaxTokens) != AdjudicatorMaxTokens {
-		t.Fatalf("max_tokens = %v, want %d", gotMaxTokens, AdjudicatorMaxTokens)
+	if int(gotMaxTokens) != BackendMaxTokens {
+		t.Fatalf("max_tokens = %v, want %d", gotMaxTokens, BackendMaxTokens)
 	}
 	if hasTools {
 		t.Fatal("Complete should not send tools")

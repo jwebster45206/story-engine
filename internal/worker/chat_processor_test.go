@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 	"uuid"
@@ -264,9 +265,9 @@ func makeHistory(n int) []chat.ChatMessage {
 
 // lastUserContent returns the content of the last user-role message.
 func lastUserContent(msgs []chat.ChatMessage) string {
-	for i := len(msgs) - 1; i >= 0; i-- {
-		if msgs[i].Role == chat.ChatRoleUser {
-			return msgs[i].Content
+	for _, msg := range slices.Backward(msgs) {
+		if msg.Role == chat.ChatRoleUser {
+			return msg.Content
 		}
 	}
 	return ""

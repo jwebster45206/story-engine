@@ -15,11 +15,10 @@ import (
 )
 
 const (
-	DefaultTemperature   = state.DefaultTemperature
-	DefaultMaxTokens     = 512
-	BackendMaxTokens     = 512
-	AdjudicatorMaxTokens = 256
-	HTTPClientTimeout    = 60 * time.Second
+	DefaultTemperature = state.DefaultTemperature
+	DefaultMaxTokens   = 512
+	BackendMaxTokens   = 512
+	HTTPClientTimeout  = 60 * time.Second
 )
 
 // Usage is token counts reported by an LLM provider for one call.

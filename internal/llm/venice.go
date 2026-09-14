@@ -380,5 +380,5 @@ func (v *VeniceService) Complete(ctx context.Context, messages []chat.ChatMessag
 	if v.backendModelName != "" {
 		modelToUse = v.backendModelName
 	}
-	return v.chatCompletion(ctx, messages, modelToUse, temperature, AdjudicatorMaxTokens, nil)
+	return v.chatCompletion(ctx, messages, modelToUse, temperature, BackendMaxTokens, nil)
 }

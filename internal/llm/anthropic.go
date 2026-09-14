@@ -426,5 +426,5 @@ func (a *AnthropicService) Complete(ctx context.Context, messages []chat.ChatMes
 	if a.backendModelName != "" {
 		modelToUse = a.backendModelName
 	}
-	return a.chatCompletion(ctx, messages, modelToUse, AdjudicatorMaxTokens, nil)
+	return a.chatCompletion(ctx, messages, modelToUse, BackendMaxTokens, nil)
 }

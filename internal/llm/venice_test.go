@@ -157,7 +157,7 @@ func TestVeniceService_Complete_UsesBackendModel(t *testing.T) {
 	text, usage, err := svc.Complete(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "I walk north"}}, 0)
 	require.NoError(t, err)
 	assert.Equal(t, "test-backend-model", got["model"])
-	assert.Equal(t, float64(AdjudicatorMaxTokens), got["max_tokens"])
+	assert.Equal(t, float64(BackendMaxTokens), got["max_tokens"])
 	_, hasFormat := got["response_format"]
 	assert.False(t, hasFormat, "Complete should not send response_format")
 	assert.Equal(t, "allowed: yes", text)
