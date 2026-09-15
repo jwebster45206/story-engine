@@ -135,46 +135,7 @@ func ApplyPromptStateToGameState(ps *PromptState, gs *state.GameState) {
 }
 
 // ToString converts the PromptState into a human-readable string format
-// optimized for LLM comprehension. The output is wrapped in XML-style tags
-// so that location boundaries, adjacency, and movement rules are unambiguous
-// structural elements rather than ambiguous markdown headers.
-//
-// Example output:
-//
-//	<world_state>
-//	<just_entered>true</just_entered>
-//
-//	<current_location>
-//	Castle Hallway
-//	A long stone corridor.
-//
-//	Items here: key, map
-//	NPCs here: Guard
-//	Monsters here:
-//	- Giant Rat (AC: 12, HP: 7/7): A massive rat the size of a dog.
-//
-//	Exits (the ONLY directions reachable this turn):
-//	- north -> Great Hall
-//	- south -> Dungeon but is blocked (the door is locked)
-//	</current_location>
-//
-//	<adjacent_previews>
-//	- north: Great Hall - A grand room with high ceilings.
-//	</adjacent_previews>
-//
-//	<npcs_elsewhere>
-//	- Calypso: Sleepy Mermaid
-//	</npcs_elsewhere>
-//
-//	<user_inventory>
-//	torch, rope
-//	</user_inventory>
-//
-//	<world_state_rules>
-//	- Narrate ONLY current_location. Do not narrate inside adjacent locations.
-//	- ...
-//	</world_state_rules>
-//	</world_state>
+// optimized for LLM comprehension.
 func (ps *PromptState) ToString() string {
 	var sb strings.Builder
 
@@ -182,7 +143,7 @@ func (ps *PromptState) ToString() string {
 	fmt.Fprintf(&sb, "<just_entered>%t</just_entered>\n\n", ps.JustEntered)
 
 	currentLoc, hasCurrent := ps.WorldLocations[ps.Location]
-	ps.writeCurrentLocation(&sb, currentLoc, hasCurrent)
+	ps.writeCurrentLocation(&sb, currentLoc, hasCurrent, true)
 	ps.writeAdjacentPreviews(&sb, currentLoc, hasCurrent)
 	ps.writeNPCsElsewhere(&sb)
 	ps.writeUserInventory(&sb)
@@ -192,9 +153,25 @@ func (ps *PromptState) ToString() string {
 	return sb.String()
 }
 
+func (ps *PromptState) ToSlimString() string {
+	var sb strings.Builder
+
+	sb.WriteString("<world_state>\n")
+
+	currentLoc, hasCurrent := ps.WorldLocations[ps.Location]
+	ps.writeCurrentLocation(&sb, currentLoc, hasCurrent, false)
+	ps.writeAdjacentPreviews(&sb, currentLoc, hasCurrent)
+	ps.writeNPCsElsewhere(&sb)
+	ps.writeUserInventory(&sb)
+
+	sb.WriteString("</world_state>\n")
+	return sb.String()
+}
+
 // writeCurrentLocation renders the <current_location> block with name,
 // description, items here, NPCs here, monsters here, and exits.
-func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scenario.Location, hasCurrent bool) {
+// monsterFlavor includes AC/HP and description on monster lines.
+func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scenario.Location, hasCurrent bool, monsterFlavor bool) {
 	sb.WriteString("<current_location>\n")
 
 	if !hasCurrent {
@@ -234,11 +211,15 @@ func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scen
 		sb.WriteString("Monsters here:\n")
 		for _, id := range monsterIDs {
 			m := ps.Monsters[id]
-			fmt.Fprintf(sb, "- %s (AC: %d, HP: %d/%d)", m.Name, m.AC, m.HP, m.MaxHP)
-			if m.Description != "" {
-				fmt.Fprintf(sb, ": %s", m.Description)
+			if monsterFlavor {
+				fmt.Fprintf(sb, "- %s (AC: %d, HP: %d/%d)", m.Name, m.AC, m.HP, m.MaxHP)
+				if m.Description != "" {
+					fmt.Fprintf(sb, ": %s", m.Description)
+				}
+				sb.WriteString("\n")
+			} else {
+				fmt.Fprintf(sb, "- %s\n", m.Name)
 			}
-			sb.WriteString("\n")
 		}
 	}
 

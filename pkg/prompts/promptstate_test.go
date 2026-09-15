@@ -487,3 +487,72 @@ func TestPromptState_ToString_RelaxedRules(t *testing.T) {
 	requireNotContains(t, result, "may only choose one of")
 	requireNotContains(t, result, "Narrate ONLY current_location")
 }
+
+func TestPromptState_ToSlimString(t *testing.T) {
+	ps := &PromptState{
+		Location:    "deck",
+		JustEntered: true,
+		WorldLocations: map[string]scenario.Location{
+			"deck": {
+				Name:        "Main Deck",
+				Description: "The weathered deck of a pirate ship.",
+				Items:       []string{"coiled rope"},
+				Exits: map[string]string{
+					"down": "hold",
+				},
+				BlockedExits: map[string]string{
+					"south": "the plank has been removed",
+				},
+			},
+			"hold": {
+				Name:        "Ship's Hold",
+				Description: "Dark and musty cargo area.",
+				Preview:     "The cargo hold below decks.",
+			},
+		},
+		NPCs: map[string]character.NPC{
+			"captain": {
+				Name:     "Captain Blackbeard",
+				Location: "deck",
+			},
+			"calypso": {
+				Name:        "Calypso",
+				Location:    "hold",
+				IsImportant: true,
+			},
+		},
+		Monsters: map[string]character.Monster{
+			"rat1": {
+				ID: "rat1", Name: "Giant Rat", AC: 12, HP: 7, MaxHP: 7,
+				Description: "A massive rat with matted fur.",
+			},
+		},
+		Inventory: []string{"rope", "compass"},
+	}
+
+	result := ps.ToSlimString()
+
+	requireContains(t, result, "<world_state>")
+	requireContains(t, result, "<current_location>")
+	requireContains(t, result, "Main Deck")
+	requireContains(t, result, "The weathered deck of a pirate ship.")
+	requireContains(t, result, "Items here: coiled rope")
+	requireContains(t, result, "NPCs here: Captain Blackbeard")
+	requireContains(t, result, "Monsters here:")
+	requireContains(t, result, "- Giant Rat")
+	requireContains(t, result, "- down -> Ship's Hold")
+	requireContains(t, result, "- south is blocked (the plank has been removed)")
+	requireContains(t, result, "<adjacent_previews>")
+	requireContains(t, result, "- down: Ship's Hold - The cargo hold below decks.")
+	requireContains(t, result, "<npcs_elsewhere>")
+	requireContains(t, result, "- Calypso: Ship's Hold")
+	requireContains(t, result, "<user_inventory>")
+	requireContains(t, result, "rope, compass")
+
+	requireNotContains(t, result, "<just_entered>")
+	requireNotContains(t, result, "<world_state_rules>")
+	requireNotContains(t, result, "AC: 12")
+	requireNotContains(t, result, "HP: 7/7")
+	requireNotContains(t, result, "A massive rat with matted fur.")
+	requireNotContains(t, result, "Dark and musty cargo area.")
+}
