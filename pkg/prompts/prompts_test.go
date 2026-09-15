@@ -153,7 +153,7 @@ func TestGetStatePrompt(t *testing.T) {
 				}
 			}
 
-			result, err := GetStatePrompt(tt.gameState, tt.scenario)
+			result, err := getStatePrompt(tt.gameState, tt.scenario)
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got none")

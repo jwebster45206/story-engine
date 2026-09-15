@@ -10,24 +10,22 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
-const GameEndSystemPrompt = `This user's session has ended. Regardless of the user's input, the game will not continue. Respond in a way that will wrap up the game in a narrative manner. End with a fancy "*.*.*.*.*.*. THE END .*.*.*.*.*.*" line, followed by instructions to use Ctrl+N to start a new game or Ctrl+C to exit.`
+const gameEndSystemPrompt = `This user's session has ended. Regardless of the user's input, the game will not continue. Respond in a way that will wrap up the game in a narrative manner. End with a fancy "*.*.*.*.*.*. THE END .*.*.*.*.*.*" line, followed by instructions to use Ctrl+N to start a new game or Ctrl+C to exit.`
 
-const ContentRatingG = `Write content suitable for young children. Avoid violence, romance and scary elements. Use simple language and positive messages. `
-const ContentRatingPG = `Write content suitable for children and families. Mild peril or tension is okay, but avoid strong language, explicit violence, or dark themes. `
-const ContentRatingPG13 = `Write content appropriate for teenagers. You may include mild swearing, romantic tension, action scenes, and complex emotional themes, but avoid explicit adult situations, graphic violence, or drug use. `
-const ContentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
+const contentRatingG = `Write content suitable for young children. Avoid violence, romance and scary elements. Use simple language and positive messages. `
+const contentRatingPG = `Write content suitable for children and families. Mild peril or tension is okay, but avoid strong language, explicit violence, or dark themes. `
+const contentRatingPG13 = `Write content appropriate for teenagers. You may include mild swearing, romantic tension, action scenes, and complex emotional themes, but avoid explicit adult situations, graphic violence, or drug use. `
+const contentRatingR = `Write with full freedom for adult audiences. All content should progress the story. `
 
-// NarratorRules are the highest-priority output constraints, injected into every user turn
+// narratorRules are the highest-priority output constraints, injected into every user turn
 // as a <rules> block appended after the player's message.
-var NarratorRules = []string{
+var narratorRules = []string{
 	"Stay within the story world. Only NPCs, locations, items, and monsters defined in the WORLD STATE may appear — invent nothing.",
 	"Do not act or speak for the Player Character. The player provides the PC's voice.",
 	"Resolve exactly one action, exchange, or location reveal — then stop and let the player respond.",
 }
 
-// FormatRulesBlock formats a slice of rule strings into a <rules> block
-// suitable for appending to a user message.
-func FormatRulesBlock(rules []string) string {
+func formatRulesBlock(rules []string) string {
 	if len(rules) == 0 {
 		return ""
 	}
@@ -41,10 +39,9 @@ func FormatRulesBlock(rules []string) string {
 	return sb.String()
 }
 
-// StatePromptTemplate provides a rich context for the LLM to understand the scenario and current game state.
-// The %s for world state is already wrapped in <world_state>...</world_state> tags by PromptState.ToString,
-// so no additional delimiter is needed.
-const StatePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following describes the immediately surrounding world.\n\n%s\n"
+// statePromptTemplate provides scenario + world-state context.
+// The %s for world state is already wrapped in <world_state>...</world_state> tags by PromptState.ToString.
+const statePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following describes the immediately surrounding world.\n\n%s\n"
 
 // systemPromptTemplate is the stitch point for the narrator system prompt.
 // %s slots in order: narrator name, interpretation, narrator style, PC,
@@ -84,9 +81,9 @@ Your narrator style informs your voice, vocabulary, and output structure. It doe
 %s
 `
 
-// BuildSystemPrompt constructs the system prompt with narrator and PC prompts injected.
+// buildNarratorPrompt constructs the system prompt with narrator and PC prompts injected.
 // mode selects the base ruleset (strict or relaxed). pc is optional - pass nil if no PC.
-func BuildSystemPrompt(narrator *scenario.Narrator, pc *character.PC, mode state.RulesMode) string {
+func buildNarratorPrompt(narrator *scenario.Narrator, pc *character.PC, mode state.RulesMode) string {
 	narratorPrompts := ""
 	narratorName := "the narrator"
 	if narrator != nil {
@@ -97,7 +94,7 @@ func BuildSystemPrompt(narrator *scenario.Narrator, pc *character.PC, mode state
 	if pc != nil {
 		pcPrompt = character.BuildPrompt(pc)
 	}
-	rs := GetRuleSet(mode)
+	rs := getRuleSet(mode)
 	return fmt.Sprintf(systemPromptTemplate,
 		narratorName,
 		rs.Interpretation,
@@ -109,25 +106,22 @@ func BuildSystemPrompt(narrator *scenario.Narrator, pc *character.PC, mode state
 	)
 }
 
-// GetContentRatingPrompt returns the appropriate content rating prompt
-func GetContentRatingPrompt(rating string) string {
+func contentRatingPrompt(rating string) string {
 	switch rating {
 	case scenario.RatingG:
-		return ContentRatingG
+		return contentRatingG
 	case scenario.RatingPG:
-		return ContentRatingPG
+		return contentRatingPG
 	case scenario.RatingPG13:
-		return ContentRatingPG13
+		return contentRatingPG13
 	case scenario.RatingR:
-		return ContentRatingR
+		return contentRatingR
 	default:
-		return ContentRatingPG13 // Default to PG-13
+		return contentRatingPG13
 	}
 }
 
-// GetStatePrompt provides gameplay and story instructions to the LLM.
-// It also provides scenario context and current game state context.
-func GetStatePrompt(gs *state.GameState, s *scenario.Scenario) (chat.ChatMessage, error) {
+func getStatePrompt(gs *state.GameState, s *scenario.Scenario) (chat.ChatMessage, error) {
 	if gs == nil {
 		return chat.ChatMessage{}, fmt.Errorf("game state or scene is nil")
 	}
@@ -148,13 +142,11 @@ func GetStatePrompt(gs *state.GameState, s *scenario.Scenario) (chat.ChatMessage
 
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf(StatePromptTemplate, story, ToPromptState(gs).ToString()),
+		Content: fmt.Sprintf(statePromptTemplate, story, ToPromptState(gs).ToString()),
 	}, nil
 }
 
-// NarratorHistoryDefault is used when BuildNarratorMessages is passed a
-// non-positive history window.
-const NarratorHistoryDefault = 20
+const narratorHistoryDefault = 20
 
 // BuildNarratorMessages assembles the streaming narrator call: system prompt
 // (ruleset, rating, story, world state, contingencies), windowed history, the
@@ -168,7 +160,7 @@ func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessa
 		return nil, fmt.Errorf("scenario is required")
 	}
 	if historyLimit <= 0 {
-		historyLimit = NarratorHistoryDefault
+		historyLimit = narratorHistoryDefault
 	}
 
 	system, err := narratorSystemPrompt(gs, sc)
@@ -192,14 +184,14 @@ func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessa
 
 func narratorSystemPrompt(gs *state.GameState, sc *scenario.Scenario) (string, error) {
 	var sb strings.Builder
-	sb.WriteString(BuildSystemPrompt(gs.Narrator, gs.PC, gs.Rules))
+	sb.WriteString(buildNarratorPrompt(gs.Narrator, gs.PC, gs.Rules))
 
 	sb.WriteString("\n\nContent Rating: " + sc.Rating)
-	if ratingPrompt := GetContentRatingPrompt(sc.Rating); ratingPrompt != "" {
+	if ratingPrompt := contentRatingPrompt(sc.Rating); ratingPrompt != "" {
 		sb.WriteString(" (" + ratingPrompt + ")")
 	}
 
-	statePrompt, err := GetStatePrompt(gs, sc)
+	statePrompt, err := getStatePrompt(gs, sc)
 	if err != nil {
 		return "", err
 	}
@@ -231,17 +223,17 @@ func narratorUserTurn(gs *state.GameState, userMessage, referee string) chat.Cha
 		return chat.ChatMessage{}
 	}
 
-	allRules := make([]string, len(NarratorRules))
-	copy(allRules, NarratorRules)
+	allRules := make([]string, len(narratorRules))
+	copy(allRules, narratorRules)
 	if gs.Narrator != nil && len(gs.Narrator.Rules) > 0 {
 		allRules = append(allRules, gs.Narrator.Rules...)
 	}
 
 	content := userMessage
-	if rulesBlock := FormatRulesBlock(allRules); rulesBlock != "" {
+	if rulesBlock := formatRulesBlock(allRules); rulesBlock != "" {
 		content += "\n\n" + rulesBlock
 	}
-	if refBlock := FormatRefereeBlock(referee); refBlock != "" {
+	if refBlock := formatRefereeBlock(referee); refBlock != "" {
 		content += "\n\n" + refBlock
 	}
 	return chat.ChatMessage{
@@ -251,7 +243,7 @@ func narratorUserTurn(gs *state.GameState, userMessage, referee string) chat.Cha
 }
 
 func narratorGameEndMessage(sc *scenario.Scenario) chat.ChatMessage {
-	finalPrompt := GameEndSystemPrompt
+	finalPrompt := gameEndSystemPrompt
 	if sc.GameEndPrompt != "" {
 		finalPrompt += "\n\n" + sc.GameEndPrompt
 	}

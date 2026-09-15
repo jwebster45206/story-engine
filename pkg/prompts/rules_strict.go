@@ -1,11 +1,8 @@
 package prompts
 
-import "github.com/jwebster45206/story-engine/pkg/state"
-
-// StrictRuleSet is the default ruleset: player movement and invention are
+// strictRuleSet is the default ruleset: player movement and invention are
 // constrained to the WORLD STATE, with a canned redirect for invalid exits.
-var StrictRuleSet = RuleSet{
-	Mode:            state.RulesStrict,
+var strictRuleSet = ruleSet{
 	EnforceExits:    true,
 	Interpretation:  strictInterpretation,
 	Locations:       strictLocations,

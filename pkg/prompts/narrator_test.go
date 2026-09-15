@@ -218,7 +218,7 @@ func TestBuildNarratorMessages_RelaxedSystemPrompt(t *testing.T) {
 		t.Error("expected <rules> block on user message")
 	}
 	if !strings.Contains(user, "Do not act or speak for the Player Character") {
-		t.Error("expected NarratorRules in user message")
+		t.Error("expected narratorRules in user message")
 	}
 }
 
@@ -241,7 +241,7 @@ func TestBuildNarratorMessages_StrictAndRelaxedShareRulesBlock(t *testing.T) {
 	strictRules := strictMsgs[len(strictMsgs)-1].Content[strings.Index(strictMsgs[len(strictMsgs)-1].Content, "<rules>"):]
 	relaxedRules := relaxedMsgs[len(relaxedMsgs)-1].Content[strings.Index(relaxedMsgs[len(relaxedMsgs)-1].Content, "<rules>"):]
 	if strictRules != relaxedRules {
-		t.Errorf("NarratorRules block should be identical;\nstrict:\n%s\nrelaxed:\n%s", strictRules, relaxedRules)
+		t.Errorf("narratorRules block should be identical;\nstrict:\n%s\nrelaxed:\n%s", strictRules, relaxedRules)
 	}
 }
 
@@ -263,7 +263,7 @@ func TestBuildNarratorMessages_RefereeAfterRules(t *testing.T) {
 	if refIdx < rulesIdx {
 		t.Fatal("referee block should follow <rules>")
 	}
-	if !strings.Contains(user, RefereeHonorLine) {
+	if !strings.Contains(user, refereeHonorLine) {
 		t.Error("expected honor line after referee block")
 	}
 	if !strings.HasPrefix(user, "I walk north") {

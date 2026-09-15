@@ -82,7 +82,10 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 		return nil, fmt.Errorf("failed to resolve LLM provider %q: %w", gs.Provider, err)
 	}
 
-	ruling := p.referee(ctx, svc, gs, req)
+	ruling, err := p.referee(ctx, svc, gs, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run referee: %w", err)
+	}
 
 	messages, err := prompts.BuildNarratorMessages(gs, loadedScenario, req.Message, p.historyLimit, ruling)
 	if err != nil {
@@ -107,17 +110,16 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 
 const noResponseSentinel = "(no response)"
 
-// referee runs the pre-chat rules pass. Fail-open: empty string means the
-// narrator prompt is unchanged.
-func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *state.GameState, req chat.ChatRequest) string {
+// referee runs the pre-chat rules pass. LLM failures fail open: empty string
+// means the narrator prompt is unchanged. Message-build errors are returned.
+func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *state.GameState, req chat.ChatRequest) (string, error) {
 	if !req.UseReferee {
-		return ""
+		return "", nil
 	}
 
-	refMessages, err := prompts.BuildRefereeMessages(gs, req.Message, prompts.RefereeWindow(p.historyLimit))
+	refMessages, err := prompts.BuildRefereeMessages(gs, req.Message, p.historyLimit)
 	if err != nil {
-		p.logger.Warn("Referee skipped: failed to build messages", "error", err, "game_state_id", gs.ID.String())
-		return ""
+		return "", fmt.Errorf("failed to build referee messages: %w", err)
 	}
 
 	start := time.Now()
@@ -132,15 +134,15 @@ func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *sta
 	)
 	if err != nil {
 		p.logger.Warn("Referee failed open", "error", err, "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
-		return ""
+		return "", nil
 	}
 	text = strings.TrimSpace(text)
 	if text == "" || text == noResponseSentinel {
 		p.logger.Warn("Referee returned empty ruling, failing open", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
-		return ""
+		return "", nil
 	}
 	p.logger.Debug("Referee ruling", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds(), "ruling", text)
-	return text
+	return text, nil
 }
 
 // UpdateGameStateAfterStream updates game state after streaming is complete.

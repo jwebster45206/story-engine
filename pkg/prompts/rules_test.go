@@ -9,21 +9,18 @@ import (
 
 func TestGetRuleSet_DefaultsToStrict(t *testing.T) {
 	for _, mode := range []state.RulesMode{"", state.RulesStrict, "unknown"} {
-		rs := GetRuleSet(mode)
-		if rs.Mode != state.RulesStrict {
-			t.Errorf("GetRuleSet(%q).Mode = %q, want strict", mode, rs.Mode)
-		}
+		rs := getRuleSet(mode)
 		if !rs.EnforceExits {
-			t.Errorf("GetRuleSet(%q).EnforceExits = false, want true", mode)
+			t.Errorf("getRuleSet(%q).EnforceExits = false, want true", mode)
+		}
+		if !strings.Contains(rs.Interpretation, "Do not allow the user to control NPCs") {
+			t.Errorf("getRuleSet(%q) should use strict interpretation", mode)
 		}
 	}
 }
 
 func TestGetRuleSet_Relaxed(t *testing.T) {
-	rs := GetRuleSet(state.RulesRelaxed)
-	if rs.Mode != state.RulesRelaxed {
-		t.Errorf("Mode = %q, want relaxed", rs.Mode)
-	}
+	rs := getRuleSet(state.RulesRelaxed)
 	if rs.EnforceExits {
 		t.Error("EnforceExits = true, want false for relaxed")
 	}
@@ -33,23 +30,23 @@ func TestGetRuleSet_Relaxed(t *testing.T) {
 }
 
 func TestGetRuleSet_StrictExamplesNonEmpty(t *testing.T) {
-	rs := GetRuleSet(state.RulesStrict)
+	rs := getRuleSet(state.RulesStrict)
 	if strings.TrimSpace(rs.Examples) == "" {
 		t.Error("strict Examples should be non-empty")
 	}
 }
 
 func TestRuleSet_FormatRefereeRules_SkipsEmpty(t *testing.T) {
-	rs := RuleSet{
+	rs := ruleSet{
 		Movement: "- go north",
 		Global:   "- stay in sandbox",
 	}
 	got := rs.formatRefereeRules()
-	if !strings.Contains(got, "1. Movement") {
+	if !strings.Contains(got, "Movement\n- go north") {
 		t.Errorf("missing Movement heading:\n%s", got)
 	}
-	if !strings.Contains(got, "2. Global") {
-		t.Errorf("Global should be numbered 2 when Items/NPCs are empty:\n%s", got)
+	if !strings.Contains(got, "Global\n- stay in sandbox") {
+		t.Errorf("missing Global heading:\n%s", got)
 	}
 	if strings.Contains(got, "Items") || strings.Contains(got, "NPCs") {
 		t.Errorf("empty sections should be omitted:\n%s", got)

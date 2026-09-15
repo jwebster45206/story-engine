@@ -1,13 +1,10 @@
 package prompts
 
-import "github.com/jwebster45206/story-engine/pkg/state"
-
-// RelaxedRuleSet grants the player latitude to steer the world: free movement,
+// relaxedRuleSet grants the player latitude to steer the world: free movement,
 // improvised item interactions, player-introduced people/creatures/places, and
 // out-of-ability actions played out rather than redirected. Narrator voice and
 // output style remain identical to strict.
-var RelaxedRuleSet = RuleSet{
-	Mode:            state.RulesRelaxed,
+var relaxedRuleSet = ruleSet{
 	EnforceExits:    false,
 	Interpretation:  relaxedInterpretation,
 	Locations:       relaxedLocations,

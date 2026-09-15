@@ -14,16 +14,16 @@ func TestRefereeWindow(t *testing.T) {
 	tests := []struct {
 		in, want int
 	}{
-		{0, RefereeHistoryLimit},
-		{-1, RefereeHistoryLimit},
+		{0, refereeHistoryLimit},
+		{-1, refereeHistoryLimit},
 		{1, 1},
 		{2, 2},
-		{4, RefereeHistoryLimit},
-		{16, RefereeHistoryLimit},
+		{4, refereeHistoryLimit},
+		{16, refereeHistoryLimit},
 	}
 	for _, tt := range tests {
-		if got := RefereeWindow(tt.in); got != tt.want {
-			t.Errorf("RefereeWindow(%d) = %d, want %d", tt.in, got, tt.want)
+		if got := refereeWindow(tt.in); got != tt.want {
+			t.Errorf("refereeWindow(%d) = %d, want %d", tt.in, got, tt.want)
 		}
 	}
 }
@@ -51,7 +51,7 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 	strictSys := strictMsgs[0].Content
 	relaxedSys := relaxedMsgs[0].Content
 
-	if !strings.Contains(strictSys, RefereePrompt) {
+	if !strings.Contains(strictSys, refereePrompt) {
 		t.Error("expected referee preamble")
 	}
 	if !strings.Contains(strictSys, "up to two sentences") {
@@ -60,7 +60,7 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 	if !strings.Contains(strictSys, `"Allowed."`) || !strings.Contains(strictSys, `"Not allowed."`) {
 		t.Error("expected Allowed / Not allowed instruction")
 	}
-	for _, heading := range []string{"1. Movement", "2. Items", "3. NPCs", "4. Global"} {
+	for _, heading := range []string{"Movement\n-", "Items\n-", "NPCs\n-", "Global\n-"} {
 		if !strings.Contains(strictSys, heading) {
 			t.Errorf("strict prompt missing heading %q", heading)
 		}
