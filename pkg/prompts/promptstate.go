@@ -358,7 +358,7 @@ func (ps *PromptState) writeUserInventory(sb *strings.Builder) {
 // active ruleset. Strict mode enumerates allowed destinations with a
 // canned redirect; relaxed mode presents exits as suggestions.
 func (ps *PromptState) writeWorldStateRules(sb *strings.Builder, currentLoc scenario.Location, hasCurrent bool) {
-	rs := GetRuleSet(ps.Rules)
+	rs := getRuleSet(ps.Rules)
 	sb.WriteString("\n<world_state_rules>\n")
 	for _, r := range rs.WorldStateRules {
 		fmt.Fprintf(sb, "- %s\n", r)

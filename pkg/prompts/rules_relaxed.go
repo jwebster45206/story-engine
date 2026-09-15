@@ -1,19 +1,20 @@
 package prompts
 
-import "github.com/jwebster45206/story-engine/pkg/state"
-
-// RelaxedRuleSet grants the player latitude to steer the world: free movement,
+// relaxedRuleSet grants the player latitude to steer the world: free movement,
 // improvised item interactions, player-introduced people/creatures/places, and
 // out-of-ability actions played out rather than redirected. Narrator voice and
 // output style remain identical to strict.
-var RelaxedRuleSet = RuleSet{
-	Mode:            state.RulesRelaxed,
+var relaxedRuleSet = ruleSet{
+	EnforceExits:    false,
 	Interpretation:  relaxedInterpretation,
 	Locations:       relaxedLocations,
 	GameMechanics:   relaxedGameMechanics,
 	Monsters:        relaxedMonsters,
 	WorldStateRules: relaxedWorldStateRules,
-	EnforceExits:    false,
+	Movement:        relaxedRefereeMovement,
+	Items:           relaxedRefereeItems,
+	NPCs:            relaxedRefereeNPCs,
+	Global:          relaxedRefereeGlobal,
 }
 
 var relaxedWorldStateRules = []string{
@@ -42,3 +43,16 @@ const relaxedGameMechanics = `The player may improvise interactions with objects
 Movement guidance is inline in each turn's WORLD STATE block (see <world_state_rules>). Known exits are suggestions; follow the player's lead when they go elsewhere.`
 
 const relaxedMonsters = `Monsters listed in the WORLD STATE are authoritative for combat stats (AC/HP); defeated monsters (HP 0) are removed by the engine. Player-introduced creatures may appear; resolve encounters dramatically and consistently with the tone of the scenario.`
+
+const relaxedRefereeMovement = `- Known exits are the obvious paths; other directions may be allowed.
+- Blocked exits are soft obstacles; a plausible attempt to pass them may be allowed.`
+
+const relaxedRefereeItems = `- Prefer listed items in user_inventory and "Items here".
+- Improvised interactions with unlisted objects may be allowed.`
+
+const relaxedRefereeNPCs = `- NPCs listed as "NPCs here" are present this turn.
+- Player-introduced people may appear and be acted on.
+- Do not speak or act for the Player Character.`
+
+const relaxedRefereeGlobal = `- Honor people, creatures, places, and objects the player introduces.
+- If the player attempts something outside the PC's defined abilities, the attempt is allowed; play it out rather than refuse.`

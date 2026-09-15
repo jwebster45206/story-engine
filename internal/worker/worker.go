@@ -220,9 +220,9 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 	switch req.Type {
 	case queuePkg.RequestTypeChat:
 		chatReq := chat.ChatRequest{
-			GameStateID:    req.GameStateID,
-			Message:        userMessage,
-			UseAdjudicator: true,
+			GameStateID: req.GameStateID,
+			Message:     userMessage,
+			UseReferee:  true,
 		}
 
 		fullMessage, err := w.consumeStream(chatReq, req, "failed to process chat request")

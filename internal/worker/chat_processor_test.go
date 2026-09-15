@@ -392,7 +392,7 @@ func TestProcessChatStream_UsesGameStateTemperature(t *testing.T) {
 	}
 }
 
-func TestProcessChatStream_AdjudicatorInjectedAfterRules(t *testing.T) {
+func TestProcessChatStream_RefereeInjectedAfterRules(t *testing.T) {
 	gsID := uuid.New()
 	gs := &state.GameState{
 		ID:          gsID,
@@ -414,7 +414,7 @@ func TestProcessChatStream_AdjudicatorInjectedAfterRules(t *testing.T) {
 	}
 	stor := &stubStorage{gs: gs, sc: sc}
 	processor := NewChatProcessor(stor, stubResolver{stub}, nil, slog.Default(), 10)
-	req := chat.ChatRequest{GameStateID: gsID, Message: "I walk north", UseAdjudicator: true}
+	req := chat.ChatRequest{GameStateID: gsID, Message: "I walk north", UseReferee: true}
 
 	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
@@ -425,12 +425,12 @@ func TestProcessChatStream_AdjudicatorInjectedAfterRules(t *testing.T) {
 	}
 	user := lastUserContent(stub.capturedMessages)
 	rulesIdx := strings.Index(user, "<rules>")
-	adjIdx := strings.Index(user, "<adjudication>")
-	if rulesIdx < 0 || adjIdx < 0 {
-		t.Fatalf("expected rules and adjudication on narrator user turn, got %q", user)
+	refIdx := strings.Index(user, "<referee>")
+	if rulesIdx < 0 || refIdx < 0 {
+		t.Fatalf("expected rules and referee on narrator user turn, got %q", user)
 	}
-	if adjIdx < rulesIdx {
-		t.Fatal("adjudication should follow <rules>")
+	if refIdx < rulesIdx {
+		t.Fatal("referee block should follow <rules>")
 	}
 	if !strings.Contains(user, stub.completeText) {
 		t.Errorf("narrator user turn missing ruling: %q", user)
@@ -438,17 +438,17 @@ func TestProcessChatStream_AdjudicatorInjectedAfterRules(t *testing.T) {
 	if len(stub.completeMessages) == 0 {
 		t.Fatal("expected Complete messages")
 	}
-	adjUser := stub.completeMessages[len(stub.completeMessages)-1].Content
-	if strings.Contains(adjUser, "<rules>") {
-		t.Error("adjudicator user turn should not include <rules>")
+	refUser := stub.completeMessages[len(stub.completeMessages)-1].Content
+	if strings.Contains(refUser, "<rules>") {
+		t.Error("referee user turn should not include <rules>")
 	}
-	adjSys := stub.completeMessages[0].Content
-	if !strings.Contains(adjSys, "<world_state>") {
-		t.Error("adjudicator system prompt should include world_state")
+	refSys := stub.completeMessages[0].Content
+	if !strings.Contains(refSys, "<world_state>") {
+		t.Error("referee system prompt should include world_state")
 	}
 }
 
-func TestProcessChatStream_AdjudicatorFailOpenOmitsBlock(t *testing.T) {
+func TestProcessChatStream_RefereeFailOpenOmitsBlock(t *testing.T) {
 	gsID := uuid.New()
 	gs := &state.GameState{
 		ID:          gsID,
@@ -458,24 +458,24 @@ func TestProcessChatStream_AdjudicatorFailOpenOmitsBlock(t *testing.T) {
 		Vars:        make(map[string]string),
 	}
 	sc := &scenario.Scenario{Name: "Test", Story: "A test story", Rating: scenario.RatingPG}
-	stub := &stubLLMService{completeErr: fmt.Errorf("adjudicator down")}
+	stub := &stubLLMService{completeErr: fmt.Errorf("referee down")}
 	processor := NewChatProcessor(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
-	req := chat.ChatRequest{GameStateID: gsID, Message: "hello", UseAdjudicator: true}
+	req := chat.ChatRequest{GameStateID: gsID, Message: "hello", UseReferee: true}
 
 	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
 	user := lastUserContent(stub.capturedMessages)
-	if strings.Contains(user, "<adjudication>") {
-		t.Errorf("fail-open should omit adjudication, got %q", user)
+	if strings.Contains(user, "<referee>") {
+		t.Errorf("fail-open should omit referee block, got %q", user)
 	}
 	if !strings.Contains(user, "<rules>") {
 		t.Error("rules block should remain")
 	}
 }
 
-func TestProcessChatStream_StoryEventSkipsAdjudicator(t *testing.T) {
+func TestProcessChatStream_StoryEventSkipsReferee(t *testing.T) {
 	processor, stub, req := newTestSetup(2, 10)
 
 	_, err := processor.ProcessChatStream(context.Background(), req)
@@ -484,11 +484,11 @@ func TestProcessChatStream_StoryEventSkipsAdjudicator(t *testing.T) {
 	}
 	for _, c := range stub.calls {
 		if c == "complete" {
-			t.Fatal("turns without UseAdjudicator should not call Complete")
+			t.Fatal("turns without UseReferee should not call Complete")
 		}
 	}
 	user := lastUserContent(stub.capturedMessages)
-	if strings.Contains(user, "<adjudication>") {
-		t.Errorf("story event should not inject adjudication, got %q", user)
+	if strings.Contains(user, "<referee>") {
+		t.Errorf("story event should not inject referee block, got %q", user)
 	}
 }
