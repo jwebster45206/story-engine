@@ -10,21 +10,66 @@ import (
 
 // AdjudicatorHistoryLimit is the default chat-history window for the pre-chat
 // rules pass. Smaller than the narrator window on purpose.
-const AdjudicatorHistoryLimit = 4
+const AdjudicatorHistoryLimit = 2
 
 const AdjudicatorHonorLine = "Honor this mechanical resolution. Narrate the outcome; do not re-adjudicate."
 
-// AdjudicatorPrompt is the referee preamble. RuleSet bodies and WORLD STATE
+// AdjudicatorPrompt is the referee preamble. Mode-specific rules and WORLD STATE
 // are appended by BuildAdjudicatorMessages.
-const AdjudicatorPrompt = `You are the rules adjudicator for a roleplaying text adventure. You do not narrate. Decide what mechanically applies to this player input given the selected ruleset and WORLD STATE.
+const AdjudicatorPrompt = `You are the mechanical referee for a roleplaying text adventure. You are not the narrator. You evaluate the player's input and apply game rules. You determine whether the action is allowed or not, and why. 
 
-Output short bullets only, no fiction:
-- Attempted action
-- Allowed or not, and why (per the ruleset)
-- Which listed entities, exits, or items apply
-- Constraints the narrator must honor
+Reply in up to two sentences. 
+Sentence 1: "Allowed." or "Not allowed." then reasoning.
+Sentence 2: If not allowed only: What would happen in-world if the exact action were taken by the PC? This is a terse single-sentence for narrator hint. It is not narration. 
 
-Do not write story prose.`
+Example:	"Allowed. The PC can move to the drawbridge."
+Example:	"Not allowed. The PC cannot move to the banquet hall because it is blocked. The PC would be stopped by the guard. "
+
+Example:	"Allowed. The PC attacks the giant rat."
+Example:	"Not allowed. There is no giant rat to attack."
+Example:	"Not allowed. The PC cannot dictate that the guard is defeated in the attack. The PC's attack occurs, but outcome is decided by the narrator."`
+
+const adjudicatorRulesStrict = `1. Movement
+- The player may only travel listed exits in current_location.
+- Blocked exits are not usable.
+- Invented destinations are not allowed.
+
+2. Items
+- Interact only with items in user_inventory or "Items here".
+- Picking up items that are not listed as interactable is not allowed.
+
+3. NPCs
+- Only NPCs listed as "NPCs here" may be spoken to or acted on. NPCs elsewhere are out of reach this turn.
+
+4. Global
+- The player roleplays as the Player Character (PC) only; never as any NPC.
+- Stay within the WORLD STATE sandbox: only listed locations, items, NPCs, and monsters exist. Invented creatures, places, items, or powers are not allowed.
+- Only listed monsters may be engaged.
+- Ordinary PC actions that stay in that sandbox are allowed.`
+
+const adjudicatorRulesRelaxed = `1. Movement
+- Known exits are the obvious paths; other directions may be allowed.
+- Blocked exits are soft obstacles; a plausible attempt to pass them may be allowed.
+
+2. Items
+- Prefer listed items in user_inventory and "Items here".
+- Improvised interactions with unlisted objects may be allowed.
+
+3. NPCs
+- NPCs listed as "NPCs here" are present this turn.
+- Player-introduced people may appear and be acted on.
+- Do not speak or act for the Player Character.
+
+4. Global
+- Honor people, creatures, places, and objects the player introduces.
+- If the player attempts something outside the PC's defined abilities, the attempt is allowed; play it out rather than refuse.`
+
+func adjudicatorRules(mode state.RulesMode) string {
+	if mode == state.RulesRelaxed {
+		return adjudicatorRulesRelaxed
+	}
+	return adjudicatorRulesStrict
+}
 
 // AdjudicatorWindow returns the history window for the adjudicator: min of
 // the narrator limit and AdjudicatorHistoryLimit.
@@ -44,27 +89,20 @@ func FormatAdjudicationBlock(text string) string {
 	return "<adjudication>\n" + text + "\n</adjudication>\n" + AdjudicatorHonorLine
 }
 
-// BuildAdjudicatorMessages assembles the pre-chat referee call: RuleSet from
-// gs.Rules, location-scoped WORLD STATE, a short history window, and the
-// current user line (no narrator <rules> block).
+// BuildAdjudicatorMessages assembles the pre-chat referee call: mode-specific
+// adjudicator rules, location-scoped WORLD STATE, a short history window, and
+// the current user line (no narrator <rules> block).
 func BuildAdjudicatorMessages(gs *state.GameState, userMessage string, historyLimit int) ([]chat.ChatMessage, error) {
 	if gs == nil {
 		return nil, fmt.Errorf("gamestate is required")
 	}
 
-	rs := GetRuleSet(gs.Rules)
 	var sb strings.Builder
 	sb.WriteString(AdjudicatorPrompt)
-	sb.WriteString("\n\n### HOW YOU INTERPRET USER PROMPTS:\n")
-	sb.WriteString(rs.Interpretation)
-	sb.WriteString("\n\n### Describing locations\n")
-	sb.WriteString(rs.Locations)
-	sb.WriteString("\n\n### Game mechanics:\n")
-	sb.WriteString(rs.GameMechanics)
-	sb.WriteString("\n\n### Monsters\n")
-	sb.WriteString(rs.Monsters)
 	sb.WriteString("\n\n")
-	sb.WriteString(ToPromptState(gs).ToString())
+	sb.WriteString(adjudicatorRules(gs.Rules))
+	sb.WriteString("\n\n")
+	sb.WriteString(ToPromptState(gs).ToSlimString())
 
 	msgs := []chat.ChatMessage{{
 		Role:    chat.ChatRoleSystem,

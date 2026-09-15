@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
@@ -15,8 +16,9 @@ func TestAdjudicatorWindow(t *testing.T) {
 	}{
 		{0, AdjudicatorHistoryLimit},
 		{-1, AdjudicatorHistoryLimit},
+		{1, 1},
 		{2, 2},
-		{4, 4},
+		{4, AdjudicatorHistoryLimit},
 		{16, AdjudicatorHistoryLimit},
 	}
 	for _, tt := range tests {
@@ -27,7 +29,7 @@ func TestAdjudicatorWindow(t *testing.T) {
 }
 
 func TestBuildAdjudicatorMessages_RequiresGameState(t *testing.T) {
-	_, err := BuildAdjudicatorMessages(nil, "hi", 4)
+	_, err := BuildAdjudicatorMessages(nil, "hi", 2)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -37,11 +39,11 @@ func TestBuildAdjudicatorMessages_StrictVsRelaxed(t *testing.T) {
 	strictGS := adjudicatorTestGS(state.RulesStrict)
 	relaxedGS := adjudicatorTestGS(state.RulesRelaxed)
 
-	strictMsgs, err := BuildAdjudicatorMessages(strictGS, "I walk north", 4)
+	strictMsgs, err := BuildAdjudicatorMessages(strictGS, "I walk north", 2)
 	if err != nil {
 		t.Fatalf("strict: %v", err)
 	}
-	relaxedMsgs, err := BuildAdjudicatorMessages(relaxedGS, "I walk north", 4)
+	relaxedMsgs, err := BuildAdjudicatorMessages(relaxedGS, "I walk north", 2)
 	if err != nil {
 		t.Fatalf("relaxed: %v", err)
 	}
@@ -52,11 +54,44 @@ func TestBuildAdjudicatorMessages_StrictVsRelaxed(t *testing.T) {
 	if !strings.Contains(strictSys, AdjudicatorPrompt) {
 		t.Error("expected adjudicator preamble")
 	}
-	if !strings.Contains(strictSys, "<world_state>") {
-		t.Error("expected world_state")
+	if !strings.Contains(strictSys, "up to two sentences") {
+		t.Error("expected two-sentence instruction")
 	}
-	if !strings.Contains(strictSys, "The Tavern") {
-		t.Error("expected current location in world_state")
+	if !strings.Contains(strictSys, `"Allowed."`) || !strings.Contains(strictSys, `"Not allowed."`) {
+		t.Error("expected Allowed / Not allowed instruction")
+	}
+	for _, heading := range []string{"1. Movement", "2. Items", "3. NPCs", "4. Global"} {
+		if !strings.Contains(strictSys, heading) {
+			t.Errorf("strict prompt missing heading %q", heading)
+		}
+		if !strings.Contains(relaxedSys, heading) {
+			t.Errorf("relaxed prompt missing heading %q", heading)
+		}
+	}
+	if !strings.Contains(strictSys, "The player may only travel listed exits") {
+		t.Error("expected strict movement rule")
+	}
+	if strings.Contains(strictSys, "Known exits are the obvious paths") {
+		t.Error("strict messages should not include relaxed movement")
+	}
+	if !strings.Contains(relaxedSys, "Known exits are the obvious paths") {
+		t.Error("expected relaxed movement rule")
+	}
+	if strings.Contains(relaxedSys, "The player may only travel listed exits") {
+		t.Error("relaxed messages should not include strict movement")
+	}
+	if strings.Contains(strictSys, "Honor people, creatures, places, and objects the player introduces") {
+		t.Error("strict messages should not include relaxed global rule")
+	}
+	if !strings.Contains(relaxedSys, "Honor people, creatures, places, and objects the player introduces") {
+		t.Error("expected relaxed global rule")
+	}
+
+	if strings.Contains(strictSys, "### Describing locations") {
+		t.Error("adjudicator should not include narrator Describing locations")
+	}
+	if strings.Contains(strictSys, "weave real exits") {
+		t.Error("adjudicator should not include narrator location prose")
 	}
 	if strings.Contains(strictSys, "Content Rating") {
 		t.Error("adjudicator should not include content rating")
@@ -64,14 +99,36 @@ func TestBuildAdjudicatorMessages_StrictVsRelaxed(t *testing.T) {
 	if strings.Contains(strictSys, "You are a test narrator") {
 		t.Error("adjudicator should not include narrator style")
 	}
-	if !strings.Contains(strictSys, "Do not allow the user to control NPCs, create NPCs, invent items") {
-		t.Error("expected strict interpretation")
+	if strings.Contains(strictSys, "<just_entered>") {
+		t.Error("adjudicator should not include just_entered")
 	}
-	if strings.Contains(strictSys, "Honor people, creatures, places, and objects the player introduces") {
-		t.Error("strict messages should not include relaxed interpretation")
+	if strings.Contains(strictSys, "<world_state_rules>") {
+		t.Error("adjudicator should not include world_state_rules")
 	}
-	if !strings.Contains(relaxedSys, "Honor people, creatures, places, and objects the player introduces") {
-		t.Error("expected relaxed interpretation")
+
+	if !strings.Contains(strictSys, "<world_state>") {
+		t.Error("expected world_state")
+	}
+	if !strings.Contains(strictSys, "The Tavern") {
+		t.Error("expected current location in world_state")
+	}
+	if !strings.Contains(strictSys, "A smoky taproom.") {
+		t.Error("expected location description")
+	}
+	if !strings.Contains(strictSys, "<adjacent_previews>") {
+		t.Error("expected adjacent_previews")
+	}
+	if !strings.Contains(strictSys, "north -> Harbor Street") {
+		t.Error("expected listed exit")
+	}
+	if !strings.Contains(strictSys, "Items here: mug") {
+		t.Error("expected location items")
+	}
+	if !strings.Contains(strictSys, "NPCs here: Bartender") {
+		t.Error("expected NPCs here")
+	}
+	if !strings.Contains(strictSys, "torch") {
+		t.Error("expected inventory")
 	}
 
 	user := strictMsgs[len(strictMsgs)-1]
@@ -111,11 +168,20 @@ func adjudicatorTestGS(mode state.RulesMode) *state.GameState {
 	}, "test-provider", "test-model")
 	gs.Rules = mode
 	gs.Location = "tavern"
+	gs.Inventory = []string{"torch"}
+	gs.NPCs = map[string]character.NPC{
+		"bartender": {Name: "Bartender", Location: "tavern"},
+	}
 	gs.WorldLocations = map[string]scenario.Location{
 		"tavern": {
 			Name:        "The Tavern",
 			Description: "A smoky taproom.",
+			Items:       []string{"mug"},
 			Exits:       map[string]string{"north": "street"},
+		},
+		"street": {
+			Name:    "Harbor Street",
+			Preview: "A cobblestone street.",
 		},
 	}
 	return gs

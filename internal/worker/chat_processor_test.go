@@ -409,7 +409,7 @@ func TestProcessChatStream_AdjudicatorInjectedAfterRules(t *testing.T) {
 	}
 	sc := &scenario.Scenario{Name: "Test", Story: "A test story", Rating: scenario.RatingPG}
 	stub := &stubLLMService{
-		completeText:  "- Attempted: walk north\n- Not allowed",
+		completeText:  "Not allowed. There is no north exit from The Tavern.",
 		completeUsage: llm.Usage{InputTokens: 4, OutputTokens: 2, Model: "stub-adj", Vendor: "stub"},
 	}
 	stor := &stubStorage{gs: gs, sc: sc}
