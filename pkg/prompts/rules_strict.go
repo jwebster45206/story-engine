@@ -6,12 +6,17 @@ import "github.com/jwebster45206/story-engine/pkg/state"
 // constrained to the WORLD STATE, with a canned redirect for invalid exits.
 var StrictRuleSet = RuleSet{
 	Mode:            state.RulesStrict,
+	EnforceExits:    true,
 	Interpretation:  strictInterpretation,
 	Locations:       strictLocations,
 	GameMechanics:   strictGameMechanics,
 	Monsters:        strictMonsters,
 	WorldStateRules: strictWorldStateRules,
-	EnforceExits:    true,
+	Movement:        strictRefereeMovement,
+	Items:           strictRefereeItems,
+	NPCs:            strictRefereeNPCs,
+	Global:          strictRefereeGlobal,
+	Examples:        strictRefereeExamples,
 }
 
 var strictWorldStateRules = []string{
@@ -37,3 +42,24 @@ const strictGameMechanics = `The use of items is restricted by the game engine. 
 Movement, reachable destinations, and the redirect template are enforced inline in each turn's WORLD STATE block (see <world_state_rules>). Follow those rules exactly.`
 
 const strictMonsters = `Monsters are listed in the WORLD STATE only when present at the player's location. Do not invent monsters. If combat occurs, resolve it dramatically based on the listed AC/HP; defeated monsters (HP 0) are removed by the engine.`
+
+const strictRefereeMovement = `- The player may only travel listed exits in current_location.
+- Blocked exits are not usable.
+- Invented destinations are not allowed.`
+
+const strictRefereeItems = `- Interact only with items in user_inventory or "Items here".
+- Picking up items that are not listed as interactable is not allowed.`
+
+const strictRefereeNPCs = `- Only NPCs listed as "NPCs here" may be spoken to or acted on. NPCs elsewhere are out of reach this turn.`
+
+const strictRefereeGlobal = `- The player roleplays as the Player Character (PC) only; never as any NPC.
+- Stay within the WORLD STATE sandbox: only listed locations, items, NPCs, and monsters exist. Invented creatures, places, items, or powers are not allowed.
+- Only listed monsters may be engaged.
+- Ordinary PC actions that stay in that sandbox are allowed.`
+
+const strictRefereeExamples = `Example:	"Allowed. The PC can move to the drawbridge."
+Example:	"Not allowed. The PC cannot move to the banquet hall because it is blocked. The PC would be stopped by the guard. "
+
+Example:	"Allowed. The PC attacks the giant rat."
+Example:	"Not allowed. There is no giant rat to attack."
+Example:	"Not allowed. The PC cannot dictate that the guard is defeated in the attack. The PC's attack occurs, but outcome is decided by the narrator."`

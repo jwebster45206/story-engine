@@ -27,13 +27,13 @@ An optional console TUI lives under `cmd/console`.
 
 **Chat loop**
 1. `POST /v1/chat` — enqueue a player message (`202` + `request_id`).
-2. Narration arrives on the SSE stream (`request.processing` → `chat.chunk` → `request.completed` / `request.failed`).
+2. A referee call (backend model) rules whether the attempt is allowed, then narration arrives on the SSE stream (`request.processing` → `chat.chunk` → `request.completed` / `request.failed`).
 3. Structured game state (location, inventory, vars, scenes, …) updates in the background.
 4. Engine-driven story events are also queued and streamed over the same SSE channel.
 
 ### LLM layer
 
-Each turn calls an LLM twice: a narrator that streams to the player, then a (often cheaper) model that extracts structured game changes. Named providers in config pick the vendor and those two models; the game stores the provider name.
+Each player turn uses three agents: a **referee** (backend model) that allows or denies the attempt, a **narrator** that streams to the player, then a **reducer** (often the same cheaper backend model) that extracts structured game changes. Named providers in config pick the vendor and the narrator vs backend models; the game stores the provider name.
 
 ### Authentication
 

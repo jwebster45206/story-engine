@@ -27,6 +27,33 @@ func TestGetRuleSet_Relaxed(t *testing.T) {
 	if rs.EnforceExits {
 		t.Error("EnforceExits = true, want false for relaxed")
 	}
+	if rs.Examples != "" {
+		t.Errorf("relaxed Examples = %q, want empty", rs.Examples)
+	}
+}
+
+func TestGetRuleSet_StrictExamplesNonEmpty(t *testing.T) {
+	rs := GetRuleSet(state.RulesStrict)
+	if strings.TrimSpace(rs.Examples) == "" {
+		t.Error("strict Examples should be non-empty")
+	}
+}
+
+func TestRuleSet_FormatRefereeRules_SkipsEmpty(t *testing.T) {
+	rs := RuleSet{
+		Movement: "- go north",
+		Global:   "- stay in sandbox",
+	}
+	got := rs.formatRefereeRules()
+	if !strings.Contains(got, "1. Movement") {
+		t.Errorf("missing Movement heading:\n%s", got)
+	}
+	if !strings.Contains(got, "2. Global") {
+		t.Errorf("Global should be numbered 2 when Items/NPCs are empty:\n%s", got)
+	}
+	if strings.Contains(got, "Items") || strings.Contains(got, "NPCs") {
+		t.Errorf("empty sections should be omitted:\n%s", got)
+	}
 }
 
 func TestSystemPromptTemplate_HasSevenSlots(t *testing.T) {

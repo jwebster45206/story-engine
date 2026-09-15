@@ -82,15 +82,9 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 		return nil, fmt.Errorf("failed to resolve LLM provider %q: %w", gs.Provider, err)
 	}
 
-	adjudication := p.adjudicate(ctx, svc, gs, req)
+	ruling := p.referee(ctx, svc, gs, req)
 
-	messages, err := prompts.New().
-		WithGameState(gs).
-		WithScenario(loadedScenario).
-		WithUserMessage(req.Message, chat.ChatRoleUser).
-		WithHistoryLimit(p.historyLimit).
-		WithAdjudication(adjudication).
-		Build()
+	messages, err := prompts.BuildNarratorMessages(gs, loadedScenario, req.Message, p.historyLimit, ruling)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build chat messages: %w", err)
 	}
@@ -113,39 +107,39 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 
 const noResponseSentinel = "(no response)"
 
-// adjudicate runs the pre-chat rules pass. Fail-open: empty string means the
+// referee runs the pre-chat rules pass. Fail-open: empty string means the
 // narrator prompt is unchanged.
-func (p *ChatProcessor) adjudicate(ctx context.Context, svc llm.LLMService, gs *state.GameState, req chat.ChatRequest) string {
-	if !req.UseAdjudicator {
+func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *state.GameState, req chat.ChatRequest) string {
+	if !req.UseReferee {
 		return ""
 	}
 
-	adjMessages, err := prompts.BuildAdjudicatorMessages(gs, req.Message, prompts.AdjudicatorWindow(p.historyLimit))
+	refMessages, err := prompts.BuildRefereeMessages(gs, req.Message, prompts.RefereeWindow(p.historyLimit))
 	if err != nil {
-		p.logger.Warn("Adjudicator skipped: failed to build messages", "error", err, "game_state_id", gs.ID.String())
+		p.logger.Warn("Referee skipped: failed to build messages", "error", err, "game_state_id", gs.ID.String())
 		return ""
 	}
 
 	start := time.Now()
-	adjCtx, cancel := context.WithTimeout(ctx, llmRequestTimeout)
+	refCtx, cancel := context.WithTimeout(ctx, llmRequestTimeout)
 	defer cancel()
-	text, usage, err := svc.Complete(adjCtx, adjMessages, 0)
+	text, usage, err := svc.Complete(refCtx, refMessages, 0)
 	p.logger.Info("llm usage",
-		"type", "adjudicator",
+		"type", "referee",
 		"game_state_id", gs.ID,
 		"principal_id", gs.PrincipalID,
 		"usage", usage,
 	)
 	if err != nil {
-		p.logger.Warn("Adjudicator failed open", "error", err, "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
+		p.logger.Warn("Referee failed open", "error", err, "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
 		return ""
 	}
 	text = strings.TrimSpace(text)
 	if text == "" || text == noResponseSentinel {
-		p.logger.Warn("Adjudicator returned empty ruling, failing open", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
+		p.logger.Warn("Referee returned empty ruling, failing open", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
 		return ""
 	}
-	p.logger.Debug("Adjudicator ruling", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds(), "adjudication", text)
+	p.logger.Debug("Referee ruling", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds(), "ruling", text)
 	return text
 }
 
