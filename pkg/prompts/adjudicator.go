@@ -14,20 +14,13 @@ const AdjudicatorHistoryLimit = 2
 
 const AdjudicatorHonorLine = "Honor this mechanical resolution. Narrate the outcome; do not re-adjudicate."
 
-// AdjudicatorPrompt is the referee preamble. Mode-specific rules and WORLD STATE
-// are appended by BuildAdjudicatorMessages.
+// AdjudicatorPrompt is the referee preamble. Mode-specific rules, WORLD STATE,
+// and (in strict mode) examples are appended by BuildAdjudicatorMessages.
 const AdjudicatorPrompt = `You are the mechanical referee for a roleplaying text adventure. You are not the narrator. You evaluate the player's input and apply game rules. You determine whether the action is allowed or not, and why. 
 
 Reply in up to two sentences. 
 Sentence 1: "Allowed." or "Not allowed." then reasoning.
-Sentence 2: If not allowed only: What would happen in-world if the exact action were taken by the PC? This is a terse single-sentence for narrator hint. It is not narration. 
-
-Example:	"Allowed. The PC can move to the drawbridge."
-Example:	"Not allowed. The PC cannot move to the banquet hall because it is blocked. The PC would be stopped by the guard. "
-
-Example:	"Allowed. The PC attacks the giant rat."
-Example:	"Not allowed. There is no giant rat to attack."
-Example:	"Not allowed. The PC cannot dictate that the guard is defeated in the attack. The PC's attack occurs, but outcome is decided by the narrator."`
+Sentence 2: If not allowed only: What would happen in-world if the exact action were taken by the PC? This is a terse single-sentence for narrator hint. It is not narration.`
 
 const adjudicatorRulesStrict = `1. Movement
 - The player may only travel listed exits in current_location.
@@ -64,11 +57,26 @@ const adjudicatorRulesRelaxed = `1. Movement
 - Honor people, creatures, places, and objects the player introduces.
 - If the player attempts something outside the PC's defined abilities, the attempt is allowed; play it out rather than refuse.`
 
+const adjudicatorExamplesStrict = `Examples:
+Example:	"Allowed. The PC can move to the drawbridge."
+Example:	"Not allowed. The PC cannot move to the banquet hall because it is blocked. The PC would be stopped by the guard. "
+
+Example:	"Allowed. The PC attacks the giant rat."
+Example:	"Not allowed. There is no giant rat to attack."
+Example:	"Not allowed. The PC cannot dictate that the guard is defeated in the attack. The PC's attack occurs, but outcome is decided by the narrator."`
+
 func adjudicatorRules(mode state.RulesMode) string {
 	if mode == state.RulesRelaxed {
 		return adjudicatorRulesRelaxed
 	}
 	return adjudicatorRulesStrict
+}
+
+func adjudicatorExamples(mode state.RulesMode) string {
+	if mode == state.RulesRelaxed {
+		return ""
+	}
+	return adjudicatorExamplesStrict
 }
 
 // AdjudicatorWindow returns the history window for the adjudicator: min of
@@ -90,8 +98,9 @@ func FormatAdjudicationBlock(text string) string {
 }
 
 // BuildAdjudicatorMessages assembles the pre-chat referee call: mode-specific
-// adjudicator rules, location-scoped WORLD STATE, a short history window, and
-// the current user line (no narrator <rules> block).
+// adjudicator rules, location-scoped WORLD STATE, strict-mode examples at the
+// end, a short history window, and the current user line (no narrator <rules>
+// block).
 func BuildAdjudicatorMessages(gs *state.GameState, userMessage string, historyLimit int) ([]chat.ChatMessage, error) {
 	if gs == nil {
 		return nil, fmt.Errorf("gamestate is required")
@@ -103,6 +112,10 @@ func BuildAdjudicatorMessages(gs *state.GameState, userMessage string, historyLi
 	sb.WriteString(adjudicatorRules(gs.Rules))
 	sb.WriteString("\n\n")
 	sb.WriteString(ToPromptState(gs).ToSlimString())
+	if examples := adjudicatorExamples(gs.Rules); examples != "" {
+		sb.WriteString("\n")
+		sb.WriteString(examples)
+	}
 
 	msgs := []chat.ChatMessage{{
 		Role:    chat.ChatRoleSystem,

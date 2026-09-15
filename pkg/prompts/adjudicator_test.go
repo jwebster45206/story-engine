@@ -87,6 +87,17 @@ func TestBuildAdjudicatorMessages_StrictVsRelaxed(t *testing.T) {
 		t.Error("expected relaxed global rule")
 	}
 
+	examplesIdx := strings.Index(strictSys, "Examples:")
+	worldEnd := strings.Index(strictSys, "</world_state>")
+	if examplesIdx < 0 {
+		t.Error("strict prompt should include examples")
+	} else if worldEnd < 0 || examplesIdx < worldEnd {
+		t.Error("strict examples should follow world_state")
+	}
+	if strings.Contains(relaxedSys, "Examples:") {
+		t.Error("relaxed prompt should not include examples")
+	}
+
 	if strings.Contains(strictSys, "### Describing locations") {
 		t.Error("adjudicator should not include narrator Describing locations")
 	}
