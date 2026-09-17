@@ -64,7 +64,7 @@ Players can override the scenario's default narrator when creating a game sessio
 
 ### Output Length and Structure
 
-Every narrator **must** include a length rule in the `rules` field. The system prompt provides a soft default ("1 to 3 short paragraphs of 1 to 3 sentences each"), but narrators are responsible for overriding or reinforcing that default to match their voice.
+Every narrator **must** include a length rule in the `rules` field. Each user turn includes a soft default ("1 to 3 short paragraphs of 1 to 3 sentences each"), but narrators are responsible for overriding or reinforcing that default to match their voice.
 
 Guidelines:
 - **Always include a length rule** in the `rules` array

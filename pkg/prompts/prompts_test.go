@@ -59,7 +59,7 @@ func TestGetStatePrompt(t *testing.T) {
 					"<current_location>",
 					"Tortuga",
 					"A pirate port",
-					"Exits (the ONLY directions reachable this turn):",
+					"Exits:",
 					"- east -> Black Pearl",
 					"<user_inventory>",
 					"cutlass, spyglass",
@@ -117,11 +117,11 @@ func TestGetStatePrompt(t *testing.T) {
 					"Tortuga",
 					"A bustling pirate port",
 					"NPCs here: Shipwright",
-					"Exits (the ONLY directions reachable this turn):",
+					"Exits:",
 					"<user_inventory>",
 					"cutlass",
 					"<world_state_rules>",
-					"Movement: the player may only choose one of:",
+					"Narrate ONLY current_location.",
 				},
 			},
 		},
@@ -153,7 +153,7 @@ func TestGetStatePrompt(t *testing.T) {
 				}
 			}
 
-			result, err := GetStatePrompt(tt.gameState, tt.scenario)
+			result, err := getStatePrompt(tt.gameState, tt.scenario)
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got none")

@@ -10,40 +10,40 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
-func TestAdjudicatorWindow(t *testing.T) {
+func TestRefereeWindow(t *testing.T) {
 	tests := []struct {
 		in, want int
 	}{
-		{0, AdjudicatorHistoryLimit},
-		{-1, AdjudicatorHistoryLimit},
+		{0, refereeHistoryLimit},
+		{-1, refereeHistoryLimit},
 		{1, 1},
 		{2, 2},
-		{4, AdjudicatorHistoryLimit},
-		{16, AdjudicatorHistoryLimit},
+		{4, refereeHistoryLimit},
+		{16, refereeHistoryLimit},
 	}
 	for _, tt := range tests {
-		if got := AdjudicatorWindow(tt.in); got != tt.want {
-			t.Errorf("AdjudicatorWindow(%d) = %d, want %d", tt.in, got, tt.want)
+		if got := refereeWindow(tt.in); got != tt.want {
+			t.Errorf("refereeWindow(%d) = %d, want %d", tt.in, got, tt.want)
 		}
 	}
 }
 
-func TestBuildAdjudicatorMessages_RequiresGameState(t *testing.T) {
-	_, err := BuildAdjudicatorMessages(nil, "hi", 2)
+func TestBuildRefereeMessages_RequiresGameState(t *testing.T) {
+	_, err := BuildRefereeMessages(nil, "hi", 2)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 }
 
-func TestBuildAdjudicatorMessages_StrictVsRelaxed(t *testing.T) {
-	strictGS := adjudicatorTestGS(state.RulesStrict)
-	relaxedGS := adjudicatorTestGS(state.RulesRelaxed)
+func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
+	strictGS := refereeTestGS(state.RulesStrict)
+	relaxedGS := refereeTestGS(state.RulesRelaxed)
 
-	strictMsgs, err := BuildAdjudicatorMessages(strictGS, "I walk north", 2)
+	strictMsgs, err := BuildRefereeMessages(strictGS, "I walk north", 2)
 	if err != nil {
 		t.Fatalf("strict: %v", err)
 	}
-	relaxedMsgs, err := BuildAdjudicatorMessages(relaxedGS, "I walk north", 2)
+	relaxedMsgs, err := BuildRefereeMessages(relaxedGS, "I walk north", 2)
 	if err != nil {
 		t.Fatalf("relaxed: %v", err)
 	}
@@ -51,8 +51,8 @@ func TestBuildAdjudicatorMessages_StrictVsRelaxed(t *testing.T) {
 	strictSys := strictMsgs[0].Content
 	relaxedSys := relaxedMsgs[0].Content
 
-	if !strings.Contains(strictSys, AdjudicatorPrompt) {
-		t.Error("expected adjudicator preamble")
+	if !strings.Contains(strictSys, refereePrompt) {
+		t.Error("expected referee preamble")
 	}
 	if !strings.Contains(strictSys, "up to two sentences") {
 		t.Error("expected two-sentence instruction")
@@ -60,7 +60,7 @@ func TestBuildAdjudicatorMessages_StrictVsRelaxed(t *testing.T) {
 	if !strings.Contains(strictSys, `"Allowed."`) || !strings.Contains(strictSys, `"Not allowed."`) {
 		t.Error("expected Allowed / Not allowed instruction")
 	}
-	for _, heading := range []string{"1. Movement", "2. Items", "3. NPCs", "4. Global"} {
+	for _, heading := range []string{"Movement\n-", "Items\n-", "NPCs\n-", "Global\n-"} {
 		if !strings.Contains(strictSys, heading) {
 			t.Errorf("strict prompt missing heading %q", heading)
 		}
@@ -99,22 +99,22 @@ func TestBuildAdjudicatorMessages_StrictVsRelaxed(t *testing.T) {
 	}
 
 	if strings.Contains(strictSys, "### Describing locations") {
-		t.Error("adjudicator should not include narrator Describing locations")
+		t.Error("referee should not include narrator Describing locations")
 	}
 	if strings.Contains(strictSys, "weave real exits") {
-		t.Error("adjudicator should not include narrator location prose")
+		t.Error("referee should not include narrator location prose")
 	}
 	if strings.Contains(strictSys, "Content Rating") {
-		t.Error("adjudicator should not include content rating")
+		t.Error("referee should not include content rating")
 	}
 	if strings.Contains(strictSys, "You are a test narrator") {
-		t.Error("adjudicator should not include narrator style")
+		t.Error("referee should not include narrator style")
 	}
 	if strings.Contains(strictSys, "<just_entered>") {
-		t.Error("adjudicator should not include just_entered")
+		t.Error("referee should not include just_entered")
 	}
 	if strings.Contains(strictSys, "<world_state_rules>") {
-		t.Error("adjudicator should not include world_state_rules")
+		t.Error("referee should not include world_state_rules")
 	}
 
 	if !strings.Contains(strictSys, "<world_state>") {
@@ -147,12 +147,12 @@ func TestBuildAdjudicatorMessages_StrictVsRelaxed(t *testing.T) {
 		t.Errorf("user = %+v", user)
 	}
 	if strings.Contains(user.Content, "<rules>") {
-		t.Error("adjudicator user turn should not include narrator <rules>")
+		t.Error("referee user turn should not include narrator <rules>")
 	}
 }
 
-func TestBuildAdjudicatorMessages_HistoryWindow(t *testing.T) {
-	gs := adjudicatorTestGS(state.RulesStrict)
+func TestBuildRefereeMessages_HistoryWindow(t *testing.T) {
+	gs := refereeTestGS(state.RulesStrict)
 	gs.ChatHistory = make([]chat.ChatMessage, 8)
 	for i := range gs.ChatHistory {
 		gs.ChatHistory[i] = chat.ChatMessage{Role: chat.ChatRoleUser, Content: "drop"}
@@ -160,9 +160,9 @@ func TestBuildAdjudicatorMessages_HistoryWindow(t *testing.T) {
 	gs.ChatHistory[6].Content = "keep-a"
 	gs.ChatHistory[7].Content = "keep-b"
 
-	msgs, err := BuildAdjudicatorMessages(gs, "now", 2)
+	msgs, err := BuildRefereeMessages(gs, "now", 2)
 	if err != nil {
-		t.Fatalf("BuildAdjudicatorMessages: %v", err)
+		t.Fatalf("BuildRefereeMessages: %v", err)
 	}
 	if len(msgs) != 4 {
 		t.Fatalf("len = %d, want 4", len(msgs))
@@ -172,7 +172,7 @@ func TestBuildAdjudicatorMessages_HistoryWindow(t *testing.T) {
 	}
 }
 
-func adjudicatorTestGS(mode state.RulesMode) *state.GameState {
+func refereeTestGS(mode state.RulesMode) *state.GameState {
 	gs := state.NewGameState("test.json", &scenario.Narrator{
 		Name:    "Test Narrator",
 		Prompts: []string{"You are a test narrator"},
