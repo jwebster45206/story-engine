@@ -123,7 +123,7 @@ func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *sta
 	start := time.Now()
 	refCtx, cancel := context.WithTimeout(ctx, llmRequestTimeout)
 	defer cancel()
-	text, usage, err := svc.Complete(refCtx, refMessages, 0)
+	ruling, usage, err := svc.GetRuling(refCtx, refMessages)
 	p.logger.Info("llm usage",
 		"type", "referee",
 		"game_state_id", gs.ID,
@@ -134,7 +134,11 @@ func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *sta
 		p.logger.Error("Referee failure", "error", err, "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
 		return "", nil
 	}
-	text = strings.TrimSpace(text)
+	if ruling == nil {
+		p.logger.Warn("Referee returned empty ruling", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
+		return "", nil
+	}
+	text := ruling.NarratorText()
 	if text == "" {
 		p.logger.Warn("Referee returned empty ruling", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
 		return "", nil

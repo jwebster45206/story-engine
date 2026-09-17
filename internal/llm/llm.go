@@ -56,7 +56,7 @@ func (sc StreamChunk) MarshalJSON() ([]byte, error) {
 // LLMService defines the interface for interacting with the LLM API
 type LLMService interface {
 	ChatStream(ctx context.Context, messages []chat.ChatMessage, temperature float64) (<-chan StreamChunk, error)
-	Complete(ctx context.Context, messages []chat.ChatMessage, temperature float64) (string, Usage, error)
+	GetRuling(ctx context.Context, messages []chat.ChatMessage) (*chat.Ruling, Usage, error)
 	DeltaUpdate(ctx context.Context, messages []chat.ChatMessage) (*conditionals.GameStateDelta, Usage, error)
 }
 
@@ -125,4 +125,64 @@ func parseDeltaUpdateResponse(responseText string) (*conditionals.GameStateDelta
 	}
 
 	return &metaUpdate, repaired, nil
+}
+
+// parseRulingResponse parses referee JSON into a Ruling. It strips markdown
+// fences; it does not salvage truncated JSON. Empty input yields a nil ruling.
+func parseRulingResponse(responseText string) (*chat.Ruling, error) {
+	if responseText == "" {
+		return nil, nil
+	}
+
+	originalText := responseText
+	mTxt := strings.TrimSpace(originalText)
+
+	if strings.HasPrefix(mTxt, "```") {
+		lines := strings.Split(mTxt, "\n")
+		startIdx := 0
+		for i, line := range lines {
+			if strings.HasPrefix(line, "```") && i == 0 {
+				startIdx = 1
+				break
+			}
+		}
+		endIdx := len(lines)
+		for i, line := range slices.Backward(lines) {
+			if strings.HasPrefix(line, "```") && i > 0 {
+				endIdx = i
+				break
+			}
+		}
+		if startIdx < endIdx {
+			mTxt = strings.Join(lines[startIdx:endIdx], "\n")
+		}
+	}
+
+	if !strings.HasPrefix(strings.TrimSpace(mTxt), "{") {
+		jsonStart := strings.Index(mTxt, "{")
+		if jsonStart >= 0 {
+			mTxt = mTxt[jsonStart:]
+		}
+	}
+
+	mTxt = strings.TrimSpace(mTxt)
+
+	var wire struct {
+		Allowed   bool    `json:"allowed"`
+		Reasoning *string `json:"reasoning"`
+		Reaction  *string `json:"reaction"`
+	}
+	if _, err := sejson.Unmarshal([]byte(mTxt), &wire); err != nil {
+		return nil, fmt.Errorf("failed to parse ruling. Original response: %q, Cleaned text: %q, Error: %w", originalText, mTxt, err)
+	}
+
+	ruling := &chat.Ruling{Allowed: wire.Allowed}
+	if wire.Reasoning != nil {
+		ruling.Reasoning = *wire.Reasoning
+	}
+	if wire.Reaction != nil {
+		ruling.Reaction = *wire.Reaction
+	}
+	ruling.Normalize()
+	return ruling, nil
 }

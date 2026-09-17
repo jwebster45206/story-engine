@@ -42,9 +42,9 @@ const strictRefereeGlobal = `- The player roleplays as the Player Character (PC)
 - Only listed monsters may be engaged.
 - Ordinary PC actions that stay in that sandbox are allowed.`
 
-const strictRefereeExamples = `Example:	"Allowed. The PC can move to the drawbridge."
-Example:	"Not allowed. The PC cannot move to the banquet hall because it is blocked. The PC would be stopped by the guard. "
+const strictRefereeExamples = `Example:	{"allowed":true,"reasoning":"The PC can move to the drawbridge.","reaction":null}
+Example:	{"allowed":false,"reasoning":"The PC cannot move to the banquet hall because it is blocked.","reaction":"The PC would be stopped by the guard."}
 
-Example:	"Allowed. The PC attacks the giant rat."
-Example:	"Not allowed. There is no giant rat to attack."
-Example:	"Not allowed. The PC cannot dictate that the guard is defeated in the attack. The PC's attack occurs, but outcome is decided by the narrator."`
+Example:	{"allowed":true,"reasoning":"The PC attacks the giant rat.","reaction":null}
+Example:	{"allowed":false,"reasoning":"There is no giant rat to attack.","reaction":null}
+Example:	{"allowed":false,"reasoning":"The PC cannot dictate that the guard is defeated in the attack. The PC's attack occurs, but outcome is decided by the narrator.","reaction":null}`

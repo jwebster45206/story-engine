@@ -416,12 +416,30 @@ func (a *AnthropicService) DeltaUpdate(ctx context.Context, messages []chat.Chat
 	return deltaUpdate, usage, nil
 }
 
-// Complete generates a non-streaming free-text response on the backend model.
-func (a *AnthropicService) Complete(ctx context.Context, messages []chat.ChatMessage, temperature float64) (string, Usage, error) {
-	_ = temperature // sampling params are not sent to Anthropic
+func (a *AnthropicService) getRulingTool() AnthropicTool {
+	return AnthropicTool{
+		Name:        "ruling",
+		Description: "Return the referee ruling for the player's action.",
+		InputSchema: rulingSchema(),
+	}
+}
+
+// GetRuling generates a structured referee ruling on the backend model.
+func (a *AnthropicService) GetRuling(ctx context.Context, messages []chat.ChatMessage) (*chat.Ruling, Usage, error) {
 	modelToUse := a.modelName
 	if a.backendModelName != "" {
 		modelToUse = a.backendModelName
 	}
-	return a.chatCompletion(ctx, messages, modelToUse, nil)
+
+	tools := []AnthropicTool{a.getRulingTool()}
+	content, usage, err := a.chatCompletion(ctx, messages, modelToUse, tools)
+	if err != nil {
+		return nil, usage, err
+	}
+
+	ruling, err := parseRulingResponse(content)
+	if err != nil {
+		return nil, usage, err
+	}
+	return ruling, usage, nil
 }

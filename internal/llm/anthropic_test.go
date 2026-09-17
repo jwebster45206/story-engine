@@ -180,24 +180,24 @@ func TestAnthropicService_DeltaUpdate_ToolUse(t *testing.T) {
 	}
 }
 
-func TestAnthropicService_Complete_UsesBackendModel(t *testing.T) {
+func TestAnthropicService_GetRuling_ToolUse(t *testing.T) {
 	var gotModel string
 	var gotMaxTokens float64
-	var hasTools bool
+	var tools []any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		gotModel, _ = body["model"].(string)
 		gotMaxTokens, _ = body["max_tokens"].(float64)
-		_, hasTools = body["tools"]
+		tools, _ = body["tools"].([]any)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"text","text":"allowed: yes"}],"model":"claude-backend","stop_reason":"end_turn","usage":{"input_tokens":8,"output_tokens":3}}`))
+		_, _ = w.Write([]byte(`{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"tool_use","id":"t1","name":"ruling","input":{"allowed":false,"reasoning":"No such exit.","reaction":"The wall stops the PC."}}],"model":"claude-backend","stop_reason":"tool_use","usage":{"input_tokens":8,"output_tokens":3}}`))
 	}))
 	defer server.Close()
 
 	svc := NewAnthropicService(anthropicPC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	svc.baseURL = server.URL
-	text, usage, err := svc.Complete(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "I walk north"}}, 0)
+	ruling, usage, err := svc.GetRuling(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "I walk north"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,11 +207,31 @@ func TestAnthropicService_Complete_UsesBackendModel(t *testing.T) {
 	if int(gotMaxTokens) != BackendMaxTokens {
 		t.Fatalf("max_tokens = %v, want %d", gotMaxTokens, BackendMaxTokens)
 	}
-	if hasTools {
-		t.Fatal("Complete should not send tools")
+	if len(tools) != 1 {
+		t.Fatal("expected ruling tool")
 	}
-	if text != "allowed: yes" {
-		t.Fatalf("text = %q", text)
+	tool, _ := tools[0].(map[string]any)
+	if tool["name"] != "ruling" {
+		t.Fatalf("tool name = %v", tool["name"])
+	}
+	schema, _ := tool["input_schema"].(map[string]any)
+	props, _ := schema["properties"].(map[string]any)
+	reasoning, _ := props["reasoning"].(map[string]any)
+	anyOf, _ := reasoning["anyOf"].([]any)
+	maxLen := 0.0
+	for _, opt := range anyOf {
+		m, _ := opt.(map[string]any)
+		if m["type"] == "string" {
+			if ml, ok := m["maxLength"].(float64); ok {
+				maxLen = ml
+			}
+		}
+	}
+	if maxLen != 255 {
+		t.Fatalf("reasoning maxLength = %v, want 255", maxLen)
+	}
+	if ruling == nil || ruling.Allowed || ruling.Reasoning != "No such exit." || ruling.Reaction != "The wall stops the PC." {
+		t.Fatalf("ruling = %#v", ruling)
 	}
 	if usage.Model != "claude-backend" || usage.InputTokens != 8 || usage.OutputTokens != 3 {
 		t.Fatalf("usage = %+v", usage)

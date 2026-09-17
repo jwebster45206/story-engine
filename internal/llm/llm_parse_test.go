@@ -1,51 +1,125 @@
 package llm
 
 import (
+	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
-func TestParseDeltaUpdateResponse_Empty(t *testing.T) {
+func TestParseDeltaUpdateResponse(t *testing.T) {
 	t.Parallel()
-	delta, repaired, err := parseDeltaUpdateResponse("")
-	if err != nil || repaired || delta != nil {
-		t.Fatalf("delta=%v repaired=%v err=%v", delta, repaired, err)
-	}
-}
-
-func TestParseDeltaUpdateResponse_MarkdownAndRepair(t *testing.T) {
-	t.Parallel()
-	input := "```json\n{\"user_location\": \"dock\", \"game_ended\": false,\n```"
-	delta, repaired, err := parseDeltaUpdateResponse(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !repaired {
-		t.Fatal("expected repaired=true")
-	}
-	if delta == nil || delta.UserLocation != "dock" {
-		t.Fatalf("unexpected delta: %+v", delta)
-	}
-}
-
-func TestParseDeltaUpdateResponse_TruncatedAcquire(t *testing.T) {
-	t.Parallel()
-	input := `{
+	tests := []struct {
+		name     string
+		input    string
+		wantNil  bool
+		repaired bool
+		wantErr  bool
+		check    func(*testing.T, *conditionals.GameStateDelta)
+	}{
+		{
+			name:    "empty",
+			wantNil: true,
+		},
+		{
+			name:     "repairs truncated markdown json",
+			input:    "```json\n{\"user_location\": \"dock\", \"game_ended\": false,\n```",
+			repaired: true,
+			check: func(t *testing.T, delta *conditionals.GameStateDelta) {
+				if delta.UserLocation != "dock" {
+					t.Errorf("UserLocation = %q, want dock", delta.UserLocation)
+				}
+			},
+		},
+		{
+			name: "salvages truncated item_events",
+			input: `{
   "game_ended": false,
   "item_events": [
     {
       "action": "acquire",
       "consumed": false,
       "from": { "name": "black_pearl", "type": "location" },
-      "item": "ship repair ledger"` + strings.Repeat("\n", 20)
-	delta, repaired, err := parseDeltaUpdateResponse(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+      "item": "ship repair ledger"` + strings.Repeat("\n", 20),
+			repaired: true,
+			check: func(t *testing.T, delta *conditionals.GameStateDelta) {
+				if len(delta.ItemEvents) != 1 || delta.ItemEvents[0].Item != "ship repair ledger" {
+					t.Errorf("ItemEvents = %+v", delta.ItemEvents)
+				}
+			},
+		},
 	}
-	if !repaired {
-		t.Fatal("expected repaired=true")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			delta, repaired, err := parseDeltaUpdateResponse(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
+			}
+			if repaired != tt.repaired {
+				t.Errorf("repaired = %v, want %v", repaired, tt.repaired)
+			}
+			if tt.wantNil {
+				if delta != nil {
+					t.Fatalf("delta = %+v, want nil", delta)
+				}
+				return
+			}
+			if delta == nil {
+				t.Fatal("delta is nil")
+			}
+			if tt.check != nil {
+				tt.check(t, delta)
+			}
+		})
 	}
-	if delta == nil || len(delta.ItemEvents) != 1 || delta.ItemEvents[0].Item != "ship repair ledger" {
-		t.Fatalf("unexpected delta: %+v", delta)
+}
+
+func TestParseRulingResponse(t *testing.T) {
+	t.Parallel()
+	long := strings.Repeat("x", 300)
+	tests := []struct {
+		name    string
+		input   string
+		want    *chat.Ruling
+		wantErr bool
+	}{
+		{
+			name: "empty",
+		},
+		{
+			name:  "strips markdown fence",
+			input: "```json\n{\"allowed\": false, \"reasoning\": \"No such exit.\", \"reaction\": \"The wall stops the PC.\"}\n```",
+			want:  &chat.Ruling{Allowed: false, Reasoning: "No such exit.", Reaction: "The wall stops the PC."},
+		},
+		{
+			name:  "null optionals become empty",
+			input: `{"allowed": true, "reasoning": null, "reaction": null}`,
+			want:  &chat.Ruling{Allowed: true},
+		},
+		{
+			name:  "drops reaction when allowed",
+			input: `{"allowed": true, "reasoning": "Listed exit.", "reaction": "Should be ignored."}`,
+			want:  &chat.Ruling{Allowed: true, Reasoning: "Listed exit."},
+		},
+		{
+			name:  "keeps over-length reasoning",
+			input: `{"allowed": true, "reasoning": "` + long + `", "reaction": null}`,
+			want:  &chat.Ruling{Allowed: true, Reasoning: long},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := parseRulingResponse(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("got %+v, want %+v", got, tt.want)
+			}
+		})
 	}
 }
