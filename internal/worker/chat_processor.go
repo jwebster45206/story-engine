@@ -108,8 +108,6 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 	return streamChan, nil
 }
 
-const noResponseSentinel = "(no response)"
-
 // referee runs the pre-chat rules pass. LLM failures fail open: empty string
 // means the narrator prompt is unchanged. Message-build errors are returned.
 func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *state.GameState, req chat.ChatRequest) (string, error) {
@@ -133,12 +131,12 @@ func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *sta
 		"usage", usage,
 	)
 	if err != nil {
-		p.logger.Warn("Referee failed open", "error", err, "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
+		p.logger.Error("Referee failure", "error", err, "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
 		return "", nil
 	}
 	text = strings.TrimSpace(text)
-	if text == "" || text == noResponseSentinel {
-		p.logger.Warn("Referee returned empty ruling, failing open", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
+	if text == "" {
+		p.logger.Warn("Referee returned empty ruling", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
 		return "", nil
 	}
 	p.logger.Debug("Referee ruling", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds(), "ruling", text)
