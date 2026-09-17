@@ -143,24 +143,44 @@ func TestVeniceService_DeltaUpdate_JSONSchema(t *testing.T) {
 	assert.Equal(t, "dock", delta.UserLocation)
 }
 
-func TestVeniceService_Complete_UsesBackendModel(t *testing.T) {
+func TestVeniceService_GetRuling_JSONSchema(t *testing.T) {
 	var got map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewDecoder(r.Body).Decode(&got)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","model":"test-backend-model","choices":[{"index":0,"message":{"role":"assistant","content":"allowed: yes"},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":4,"total_tokens":11}}`))
+		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","model":"test-backend-model","choices":[{"index":0,"message":{"role":"assistant","content":"{\"allowed\":false,\"reasoning\":\"No such exit.\",\"reaction\":\"The wall stops the PC.\"}"},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":4,"total_tokens":11}}`))
 	}))
 	defer server.Close()
 
 	svc := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	svc.baseURL = server.URL
-	text, usage, err := svc.Complete(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "I walk north"}}, 0)
+	ruling, usage, err := svc.GetRuling(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "I walk north"}})
 	require.NoError(t, err)
 	assert.Equal(t, "test-backend-model", got["model"])
 	assert.Equal(t, float64(BackendMaxTokens), got["max_tokens"])
-	_, hasFormat := got["response_format"]
-	assert.False(t, hasFormat, "Complete should not send response_format")
-	assert.Equal(t, "allowed: yes", text)
+	rf, ok := got["response_format"].(map[string]any)
+	require.True(t, ok, "expected response_format")
+	js, _ := rf["json_schema"].(map[string]any)
+	require.NotNil(t, js)
+	assert.Equal(t, "ruling", js["name"])
+	schema, _ := js["schema"].(map[string]any)
+	props, _ := schema["properties"].(map[string]any)
+	reasoning, _ := props["reasoning"].(map[string]any)
+	anyOf, _ := reasoning["anyOf"].([]any)
+	maxLen := 0.0
+	for _, opt := range anyOf {
+		m, _ := opt.(map[string]any)
+		if m["type"] == "string" {
+			if ml, ok := m["maxLength"].(float64); ok {
+				maxLen = ml
+			}
+		}
+	}
+	assert.Equal(t, float64(255), maxLen)
+	require.NotNil(t, ruling)
+	assert.False(t, ruling.Allowed)
+	assert.Equal(t, "No such exit.", ruling.Reasoning)
+	assert.Equal(t, "The wall stops the PC.", ruling.Reaction)
 	assert.Equal(t, "test-backend-model", usage.Model)
 	assert.Equal(t, 7, usage.InputTokens)
 	assert.Equal(t, 4, usage.OutputTokens)

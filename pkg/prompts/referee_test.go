@@ -54,11 +54,17 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 	if !strings.Contains(strictSys, refereePrompt) {
 		t.Error("expected referee preamble")
 	}
-	if !strings.Contains(strictSys, "up to two sentences") {
-		t.Error("expected two-sentence instruction")
+	if strings.Contains(strictSys, "up to two sentences") {
+		t.Error("preamble should not require two-sentence prose")
 	}
-	if !strings.Contains(strictSys, `"Allowed."`) || !strings.Contains(strictSys, `"Not allowed."`) {
-		t.Error("expected Allowed / Not allowed instruction")
+	if !strings.Contains(strictSys, "allowed:") {
+		t.Error("expected allowed field in preamble")
+	}
+	if !strings.Contains(strictSys, "reaction:") {
+		t.Error("expected reaction field in preamble")
+	}
+	if !strings.Contains(strictSys, `"allowed":true`) && !strings.Contains(strictSys, `"allowed":false`) {
+		t.Error("strict examples should contain allowed JSON")
 	}
 	for _, heading := range []string{"Movement\n-", "Items\n-", "NPCs\n-", "Global\n-"} {
 		if !strings.Contains(strictSys, heading) {

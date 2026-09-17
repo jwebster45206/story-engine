@@ -173,10 +173,10 @@ type stubLLMService struct {
 	capturedMessages []chat.ChatMessage
 	capturedTemp     float64
 	calls            []string
-	completeMessages []chat.ChatMessage
-	completeText     string
-	completeErr      error
-	completeUsage    llm.Usage
+	rulingMessages   []chat.ChatMessage
+	ruling           *chat.Ruling
+	rulingErr        error
+	rulingUsage      llm.Usage
 }
 
 func (s *stubLLMService) ChatStream(_ context.Context, messages []chat.ChatMessage, temperature float64) (<-chan llm.StreamChunk, error) {
@@ -190,16 +190,16 @@ func (s *stubLLMService) ChatStream(_ context.Context, messages []chat.ChatMessa
 func (s *stubLLMService) DeltaUpdate(_ context.Context, _ []chat.ChatMessage) (*conditionals.GameStateDelta, llm.Usage, error) {
 	return nil, llm.Usage{}, nil
 }
-func (s *stubLLMService) Complete(_ context.Context, messages []chat.ChatMessage, _ float64) (string, llm.Usage, error) {
-	s.calls = append(s.calls, "complete")
-	s.completeMessages = messages
-	if s.completeErr != nil {
-		return "", s.completeUsage, s.completeErr
+func (s *stubLLMService) GetRuling(_ context.Context, messages []chat.ChatMessage) (*chat.Ruling, llm.Usage, error) {
+	s.calls = append(s.calls, "ruling")
+	s.rulingMessages = messages
+	if s.rulingErr != nil {
+		return nil, s.rulingUsage, s.rulingErr
 	}
-	if s.completeText != "" || s.completeUsage.InputTokens > 0 {
-		return s.completeText, s.completeUsage, nil
+	if s.ruling != nil || s.rulingUsage.InputTokens > 0 {
+		return s.ruling, s.rulingUsage, nil
 	}
-	return "ruling: allowed", llm.Usage{InputTokens: 2, OutputTokens: 1, Model: "stub-adj"}, nil
+	return &chat.Ruling{Allowed: true, Reasoning: "allowed"}, llm.Usage{InputTokens: 2, OutputTokens: 1, Model: "stub-adj"}, nil
 }
 
 // stubStorage returns a preset GameState and Scenario; all writes are no-ops.
@@ -409,8 +409,11 @@ func TestProcessChatStream_RefereeInjectedAfterRules(t *testing.T) {
 	}
 	sc := &scenario.Scenario{Name: "Test", Story: "A test story", Rating: scenario.RatingPG}
 	stub := &stubLLMService{
-		completeText:  "Not allowed. There is no north exit from The Tavern.",
-		completeUsage: llm.Usage{InputTokens: 4, OutputTokens: 2, Model: "stub-adj", Vendor: "stub"},
+		ruling: &chat.Ruling{
+			Allowed:   false,
+			Reasoning: "There is no north exit from The Tavern.",
+		},
+		rulingUsage: llm.Usage{InputTokens: 4, OutputTokens: 2, Model: "stub-adj", Vendor: "stub"},
 	}
 	stor := &stubStorage{gs: gs, sc: sc}
 	processor := NewChatProcessor(stor, stubResolver{stub}, nil, slog.Default(), 10)
@@ -420,8 +423,8 @@ func TestProcessChatStream_RefereeInjectedAfterRules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
-	if len(stub.calls) < 2 || stub.calls[0] != "complete" || stub.calls[1] != "stream" {
-		t.Fatalf("call order = %v, want complete then stream", stub.calls)
+	if len(stub.calls) < 2 || stub.calls[0] != "ruling" || stub.calls[1] != "stream" {
+		t.Fatalf("call order = %v, want ruling then stream", stub.calls)
 	}
 	user := lastUserContent(stub.capturedMessages)
 	rulesIdx := strings.Index(user, "<rules>")
@@ -432,17 +435,18 @@ func TestProcessChatStream_RefereeInjectedAfterRules(t *testing.T) {
 	if refIdx < rulesIdx {
 		t.Fatal("referee block should follow <rules>")
 	}
-	if !strings.Contains(user, stub.completeText) {
+	wantText := stub.ruling.NarratorText()
+	if !strings.Contains(user, wantText) {
 		t.Errorf("narrator user turn missing ruling: %q", user)
 	}
-	if len(stub.completeMessages) == 0 {
-		t.Fatal("expected Complete messages")
+	if len(stub.rulingMessages) == 0 {
+		t.Fatal("expected GetRuling messages")
 	}
-	refUser := stub.completeMessages[len(stub.completeMessages)-1].Content
+	refUser := stub.rulingMessages[len(stub.rulingMessages)-1].Content
 	if strings.Contains(refUser, "<rules>") {
 		t.Error("referee user turn should not include <rules>")
 	}
-	refSys := stub.completeMessages[0].Content
+	refSys := stub.rulingMessages[0].Content
 	if !strings.Contains(refSys, "<world_state>") {
 		t.Error("referee system prompt should include world_state")
 	}
@@ -458,7 +462,7 @@ func TestProcessChatStream_RefereeFailOpenOmitsBlock(t *testing.T) {
 		Vars:        make(map[string]string),
 	}
 	sc := &scenario.Scenario{Name: "Test", Story: "A test story", Rating: scenario.RatingPG}
-	stub := &stubLLMService{completeErr: fmt.Errorf("referee down")}
+	stub := &stubLLMService{rulingErr: fmt.Errorf("referee down")}
 	processor := NewChatProcessor(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "hello", UseReferee: true}
 
@@ -483,8 +487,8 @@ func TestProcessChatStream_StoryEventSkipsReferee(t *testing.T) {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
 	for _, c := range stub.calls {
-		if c == "complete" {
-			t.Fatal("turns without UseReferee should not call Complete")
+		if c == "ruling" {
+			t.Fatal("turns without UseReferee should not call GetRuling")
 		}
 	}
 	user := lastUserContent(stub.capturedMessages)

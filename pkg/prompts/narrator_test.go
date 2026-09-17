@@ -223,9 +223,6 @@ func TestBuildNarratorMessages_RelaxedSystemPrompt(t *testing.T) {
 	if !strings.Contains(user, "Do not act or speak for the Player Character") {
 		t.Error("expected narratorRules in user message")
 	}
-	if !strings.Contains(user, "1 to 3 short paragraphs of 1 to 3 sentences each") {
-		t.Error("expected length constraint in user-turn <rules>")
-	}
 }
 
 func TestBuildNarratorMessages_StrictAndRelaxedShareRulesBlock(t *testing.T) {

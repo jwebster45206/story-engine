@@ -371,11 +371,32 @@ func (v *VeniceService) DeltaUpdate(ctx context.Context, messages []chat.ChatMes
 	return deltaUpdate, usage, nil
 }
 
-// Complete generates a non-streaming free-text response on the backend model.
-func (v *VeniceService) Complete(ctx context.Context, messages []chat.ChatMessage, temperature float64) (string, Usage, error) {
+func (v *VeniceService) getRulingResponseFormat() *VeniceResponseFormat {
+	return &VeniceResponseFormat{
+		Type: "json_schema",
+		JSONSchema: VeniceJSONSchema{
+			Name:   "ruling",
+			Strict: true,
+			Schema: rulingSchema(),
+		},
+	}
+}
+
+// GetRuling generates a structured referee ruling on the backend model.
+func (v *VeniceService) GetRuling(ctx context.Context, messages []chat.ChatMessage) (*chat.Ruling, Usage, error) {
 	modelToUse := v.modelName
 	if v.backendModelName != "" {
 		modelToUse = v.backendModelName
 	}
-	return v.chatCompletion(ctx, messages, modelToUse, temperature, nil)
+
+	content, usage, err := v.chatCompletion(ctx, messages, modelToUse, 0.0, v.getRulingResponseFormat())
+	if err != nil {
+		return nil, usage, err
+	}
+
+	ruling, err := parseRulingResponse(content)
+	if err != nil {
+		return nil, usage, err
+	}
+	return ruling, usage, nil
 }

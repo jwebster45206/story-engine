@@ -124,13 +124,12 @@ func (m *MockLLMAPI) ChatStream(ctx context.Context, messages []chat.ChatMessage
 	return ch, nil
 }
 
-// Complete mocks a non-streaming chat completion.
-func (m *MockLLMAPI) Complete(ctx context.Context, messages []chat.ChatMessage, _ float64) (string, Usage, error) {
-	content, err := m.mockContent(ctx, messages)
-	if err != nil {
-		return "", Usage{}, err
+// GetRuling mocks a structured referee ruling.
+func (m *MockLLMAPI) GetRuling(ctx context.Context, messages []chat.ChatMessage) (*chat.Ruling, Usage, error) {
+	if _, err := m.mockContent(ctx, messages); err != nil {
+		return nil, Usage{}, err
 	}
-	return content, Usage{Model: "mock-model", Vendor: "mock", InputTokens: 1, OutputTokens: 1}, nil
+	return &chat.Ruling{Allowed: true, Reasoning: "mock ruling"}, Usage{Model: "mock-model", Vendor: "mock", InputTokens: 1, OutputTokens: 1}, nil
 }
 
 // Reset clears all call tracking

@@ -12,11 +12,12 @@ const refereeHistoryLimit = 2
 
 const refereeHonorLine = "Honor this mechanical resolution. Narrate the outcome; do not re-decide."
 
-const refereePrompt = `You are the mechanical referee for a roleplaying text adventure. You are not the narrator. You evaluate the player's input and apply game rules. You determine whether the action is allowed or not, and why. 
+const refereePrompt = `You are the mechanical referee for a roleplaying text adventure. You are not the narrator. You evaluate the player's input and apply game rules. You determine whether the action is allowed or not, and why.
 
-Reply in up to two sentences. 
-Sentence 1: "Allowed." or "Not allowed." then reasoning.
-Sentence 2: If not allowed only: What would happen in-world if the exact action were taken by the PC? This is a terse single-sentence for narrator hint. It is not narration.`
+Respond with JSON:
+- allowed: whether the action is permitted
+- reasoning: brief explanation, or null
+- reaction: only when the action is not allowed. A terse in-world hint of what would happen if the PC took the exact action. It is not narration. Null when allowed is true.`
 
 func refereeWindow(narratorLimit int) int {
 	if narratorLimit <= 0 || narratorLimit > refereeHistoryLimit {

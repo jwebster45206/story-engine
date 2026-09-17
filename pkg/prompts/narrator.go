@@ -22,7 +22,6 @@ const contentRatingR = `Write with full freedom for adult audiences. All content
 var narratorRules = []string{
 	"Stay within the story world. Only NPCs, locations, items, and monsters defined in the WORLD STATE may appear — invent nothing.",
 	"Do not act or speak for the Player Character. The player provides the PC's voice.",
-	"By default, respond in 1 to 3 short paragraphs of 1 to 3 sentences each. The narrator style in the system prompt may override this default.",
 	"Resolve exactly one action, exchange, or location reveal — then stop and let the player respond.",
 }
 

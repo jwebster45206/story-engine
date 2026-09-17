@@ -2,7 +2,6 @@ package llm
 
 // deltaUpdateSchema is the shared apply_changes JSON Schema used by every vendor
 // wrapper (Anthropic tool input_schema and Venice response_format.json_schema).
-// An edit here changes both.
 func deltaUpdateSchema() map[string]any {
 	return map[string]any{
 		"type":                 "object",
@@ -100,5 +99,35 @@ func deltaUpdateSchema() map[string]any {
 			},
 		},
 		"required": []string{"user_location", "scene_change", "item_events", "npc_events", "set_vars", "game_ended"},
+	}
+}
+
+// rulingSchema is the shared JSON Schema for referee rulings (Venice
+// response_format.json_schema and Anthropic tool input_schema).
+func rulingSchema() map[string]any {
+	return map[string]any{
+		"type":                 "object",
+		"additionalProperties": false,
+		"properties": map[string]any{
+			"allowed": map[string]any{
+				"type": "boolean",
+			},
+			"reasoning": map[string]any{
+				"anyOf": []any{
+					map[string]any{
+						"type":      "string",
+						"maxLength": 255,
+					},
+					map[string]any{"type": "null"},
+				},
+			},
+			"reaction": map[string]any{
+				"anyOf": []any{
+					map[string]any{"type": "string"},
+					map[string]any{"type": "null"},
+				},
+			},
+		},
+		"required": []string{"allowed", "reasoning", "reaction"},
 	}
 }
