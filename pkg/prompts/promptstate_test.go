@@ -459,7 +459,7 @@ func TestPromptState_ToString_ExitsSortedWithoutRedirect(t *testing.T) {
 	east := strings.Index(result, "- east -> East Room")
 	north := strings.Index(result, "- north -> North Room")
 	south := strings.Index(result, "- south -> South Room")
-	if east < 0 || north < 0 || south < 0 || !(east < north && north < south) {
+	if east < 0 || north < 0 || south < 0 || east >= north || north >= south {
 		t.Errorf("exits should be listed alphabetically by direction, got:\n%s", result)
 	}
 	requireNotContains(t, result, "You can't go that way")
