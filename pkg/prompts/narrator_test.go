@@ -207,11 +207,14 @@ func TestBuildNarratorMessages_RelaxedSystemPrompt(t *testing.T) {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
 	system := messages[0].Content
-	if !strings.Contains(system, "Honor people, creatures, places, and objects the player introduces") {
-		t.Error("expected relaxed system prompt language")
+	if !strings.Contains(system, "You may extend it with plausible architecture") {
+		t.Error("expected relaxed location language")
 	}
 	if strings.Contains(system, "Do not allow the user to control NPCs, create NPCs, invent items") {
 		t.Error("strict invention ban should not appear in relaxed mode")
+	}
+	if strings.Contains(system, "HOW YOU INTERPRET USER PROMPTS") {
+		t.Error("narrator should not interpret/allow user actions")
 	}
 	user := messages[len(messages)-1].Content
 	if !strings.Contains(user, "<rules>") {
@@ -219,6 +222,9 @@ func TestBuildNarratorMessages_RelaxedSystemPrompt(t *testing.T) {
 	}
 	if !strings.Contains(user, "Do not act or speak for the Player Character") {
 		t.Error("expected narratorRules in user message")
+	}
+	if !strings.Contains(user, "1 to 3 short paragraphs of 1 to 3 sentences each") {
+		t.Error("expected length constraint in user-turn <rules>")
 	}
 }
 

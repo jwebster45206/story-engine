@@ -147,7 +147,7 @@ func (ps *PromptState) ToString() string {
 	ps.writeAdjacentPreviews(&sb, currentLoc, hasCurrent)
 	ps.writeNPCsElsewhere(&sb)
 	ps.writeUserInventory(&sb)
-	ps.writeWorldStateRules(&sb, currentLoc, hasCurrent)
+	ps.writeWorldStateRules(&sb)
 
 	sb.WriteString("</world_state>\n")
 	return sb.String()
@@ -224,7 +224,7 @@ func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scen
 	}
 
 	if len(currentLoc.Exits) > 0 || len(currentLoc.BlockedExits) > 0 {
-		sb.WriteString("\nExits (the ONLY directions reachable this turn):\n")
+		sb.WriteString("\nExits:\n")
 		dirs := collectExitDirections(currentLoc)
 		for _, dir := range dirs {
 			destKey, hasExit := currentLoc.Exits[dir]
@@ -355,43 +355,16 @@ func (ps *PromptState) writeUserInventory(sb *strings.Builder) {
 }
 
 // writeWorldStateRules renders the <world_state_rules> block from the
-// active ruleset. Strict mode enumerates allowed destinations with a
-// canned redirect; relaxed mode presents exits as suggestions.
-func (ps *PromptState) writeWorldStateRules(sb *strings.Builder, currentLoc scenario.Location, hasCurrent bool) {
+// active ruleset: storytelling scope (current_location, just_entered),
+// not movement enforcement.
+func (ps *PromptState) writeWorldStateRules(sb *strings.Builder) {
 	rs := getRuleSet(ps.Rules)
+	if len(rs.WorldStateRules) == 0 {
+		return
+	}
 	sb.WriteString("\n<world_state_rules>\n")
 	for _, r := range rs.WorldStateRules {
 		fmt.Fprintf(sb, "- %s\n", r)
-	}
-
-	if hasCurrent && len(currentLoc.Exits) > 0 {
-		dirs := make([]string, 0, len(currentLoc.Exits))
-		for d := range currentLoc.Exits {
-			dirs = append(dirs, d)
-		}
-		sort.Strings(dirs)
-
-		options := make([]string, 0, len(dirs))
-		redirects := make([]string, 0, len(dirs))
-		for _, d := range dirs {
-			destName := ps.locationDisplayName(currentLoc.Exits[d])
-			options = append(options, fmt.Sprintf("%s (%s)", d, destName))
-			redirects = append(redirects, fmt.Sprintf("%s to %s", d, destName))
-		}
-
-		if rs.EnforceExits {
-			fmt.Fprintf(sb,
-				"- Movement: the player may only choose one of: %s. If they try anything else, redirect with: \"You can't go that way. From %s you can go %s.\"\n",
-				strings.Join(options, ", "),
-				currentLoc.Name,
-				joinNatural(redirects),
-			)
-		} else {
-			fmt.Fprintf(sb,
-				"- Known exits from here: %s. The player may attempt other directions; if they do, carry them there.\n",
-				strings.Join(options, ", "),
-			)
-		}
 	}
 	sb.WriteString("</world_state_rules>\n")
 }
@@ -424,23 +397,4 @@ func collectExitDirections(loc scenario.Location) []string {
 	}
 	sort.Strings(dirs)
 	return dirs
-}
-
-// joinNatural joins items with commas and a final " or ":
-//
-//	[]            -> ""
-//	[a]           -> "a"
-//	[a, b]        -> "a or b"
-//	[a, b, c]     -> "a, b, or c"
-func joinNatural(items []string) string {
-	switch len(items) {
-	case 0:
-		return ""
-	case 1:
-		return items[0]
-	case 2:
-		return items[0] + " or " + items[1]
-	default:
-		return strings.Join(items[:len(items)-1], ", ") + ", or " + items[len(items)-1]
-	}
 }

@@ -52,16 +52,15 @@ func TestPromptState_ToString_BasicLocation(t *testing.T) {
 	requireContains(t, result, "<current_location>")
 	requireContains(t, result, "The Rusty Anchor Tavern")
 	requireContains(t, result, "A dimly lit tavern filled with the smell of ale and sea salt.")
-	requireContains(t, result, "Exits (the ONLY directions reachable this turn):")
+	requireContains(t, result, "Exits:")
 	requireContains(t, result, "- north -> Harbor Street")
 	requireContains(t, result, "<adjacent_previews>")
 	requireContains(t, result, "- north: Harbor Street - A busy street near the docks.")
 	// Preview must be used, NOT the full description, for adjacent rooms.
 	requireNotContains(t, result, "A busy cobblestone street near the docks.")
-	// World state rules block must enumerate the literal destination.
+	// World state rules are storytelling scope, not movement enforcement.
 	requireContains(t, result, "<world_state_rules>")
-	requireContains(t, result, "Movement: the player may only choose one of: north (Harbor Street).")
-	requireContains(t, result, `From The Rusty Anchor Tavern you can go north to Harbor Street.`)
+	requireContains(t, result, "Narrate ONLY current_location.")
 }
 
 func TestPromptState_ToString_JustEnteredToggle(t *testing.T) {
@@ -236,7 +235,7 @@ func TestPromptState_ToString_Comprehensive(t *testing.T) {
 	requireContains(t, result, "NPCs here: Captain Blackbeard")
 	requireContains(t, result, "Monsters here:")
 	requireContains(t, result, "- Giant Rat (AC: 12, HP: 7/7): A massive rat with matted fur.")
-	requireContains(t, result, "Exits (the ONLY directions reachable this turn):")
+	requireContains(t, result, "Exits:")
 	requireContains(t, result, "- down -> Ship's Hold")
 	requireContains(t, result, "- south is blocked (the plank has been removed)")
 	requireContains(t, result, "<adjacent_previews>")
@@ -246,7 +245,8 @@ func TestPromptState_ToString_Comprehensive(t *testing.T) {
 	requireContains(t, result, "<user_inventory>")
 	requireContains(t, result, "rope, compass")
 	requireContains(t, result, "<world_state_rules>")
-	requireContains(t, result, "Movement: the player may only choose one of: down (Ship's Hold).")
+	requireContains(t, result, "Narrate ONLY current_location.")
+	requireNotContains(t, result, "Movement: the player may only choose")
 }
 
 func TestPromptState_ToString_EmptyState(t *testing.T) {
@@ -257,10 +257,8 @@ func TestPromptState_ToString_EmptyState(t *testing.T) {
 	requireContains(t, result, "<just_entered>false</just_entered>")
 	requireContains(t, result, "<current_location>")
 	requireContains(t, result, "Unknown location:")
-	// With no current location, no movement rule should be emitted.
-	requireNotContains(t, result, "Movement: the player may only choose one of:")
-	// Rules block still present.
 	requireContains(t, result, "<world_state_rules>")
+	requireContains(t, result, "Narrate ONLY current_location.")
 }
 
 func TestPromptState_ToString_NoExitsHidesMovementRule(t *testing.T) {
@@ -277,10 +275,7 @@ func TestPromptState_ToString_NoExitsHidesMovementRule(t *testing.T) {
 	result := ps.ToString()
 
 	requireContains(t, result, "Sealed Room")
-	// No exits, so no exits header and no movement rule.
-	requireNotContains(t, result, "Exits (the ONLY directions reachable this turn):")
-	requireNotContains(t, result, "Movement: the player may only choose")
-	// But the other rules still apply.
+	requireNotContains(t, result, "\nExits:\n")
 	requireContains(t, result, "Narrate ONLY current_location.")
 }
 
@@ -433,11 +428,11 @@ func TestPromptState_ToString_ImportantElsewhereWithoutDirection(t *testing.T) {
 
 	requireContains(t, result, "- north: Street - A cobblestone street.")
 	requireContains(t, result, "- Castle (elsewhere) - A distant castle on the hill.")
-	// Castle must NOT appear in the movement rule.
-	requireNotContains(t, result, "Castle).")
+	requireContains(t, result, "- north -> Street")
+	requireNotContains(t, result, "- north -> Castle")
 }
 
-func TestPromptState_ToString_RedirectTemplateMultiExit(t *testing.T) {
+func TestPromptState_ToString_ExitsSortedWithoutRedirect(t *testing.T) {
 	ps := &PromptState{
 		Location: "hub",
 		WorldLocations: map[string]scenario.Location{
@@ -457,10 +452,18 @@ func TestPromptState_ToString_RedirectTemplateMultiExit(t *testing.T) {
 
 	result := ps.ToString()
 
-	// Comma-separated list with final "or".
-	requireContains(t, result, `From Hub you can go east to East Room, north to North Room, or south to South Room.`)
-	// Movement options use parenthesized form, sorted alphabetically by direction.
-	requireContains(t, result, "Movement: the player may only choose one of: east (East Room), north (North Room), south (South Room).")
+	requireContains(t, result, "Exits:")
+	requireContains(t, result, "- east -> East Room")
+	requireContains(t, result, "- north -> North Room")
+	requireContains(t, result, "- south -> South Room")
+	east := strings.Index(result, "- east -> East Room")
+	north := strings.Index(result, "- north -> North Room")
+	south := strings.Index(result, "- south -> South Room")
+	if east < 0 || north < 0 || south < 0 || !(east < north && north < south) {
+		t.Errorf("exits should be listed alphabetically by direction, got:\n%s", result)
+	}
+	requireNotContains(t, result, "You can't go that way")
+	requireNotContains(t, result, "Movement: the player may only choose")
 }
 
 func TestPromptState_ToString_RelaxedRules(t *testing.T) {
@@ -481,10 +484,11 @@ func TestPromptState_ToString_RelaxedRules(t *testing.T) {
 	result := ps.ToString()
 
 	requireContains(t, result, "<world_state_rules>")
-	requireContains(t, result, "Known exits from here: north (Harbor Street).")
-	requireContains(t, result, "The player may attempt other directions")
+	requireContains(t, result, "The WORLD STATE is a starting point.")
+	requireContains(t, result, "If just_entered is true")
 	requireNotContains(t, result, "You can't go that way")
 	requireNotContains(t, result, "may only choose one of")
+	requireNotContains(t, result, "The player may attempt other directions")
 	requireNotContains(t, result, "Narrate ONLY current_location")
 }
 

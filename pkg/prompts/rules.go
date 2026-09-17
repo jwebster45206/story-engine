@@ -10,10 +10,7 @@ import (
 // ruleSet is the mode-dependent prompt copy shared by narrator and referee.
 // Empty string fields are omitted when a prompt is stitched.
 type ruleSet struct {
-	EnforceExits    bool
-	Interpretation  string
 	Locations       string
-	GameMechanics   string
 	Monsters        string
 	WorldStateRules []string
 	Movement        string

@@ -10,22 +10,19 @@ import (
 func TestGetRuleSet_DefaultsToStrict(t *testing.T) {
 	for _, mode := range []state.RulesMode{"", state.RulesStrict, "unknown"} {
 		rs := getRuleSet(mode)
-		if !rs.EnforceExits {
-			t.Errorf("getRuleSet(%q).EnforceExits = false, want true", mode)
-		}
-		if !strings.Contains(rs.Interpretation, "Do not allow the user to control NPCs") {
-			t.Errorf("getRuleSet(%q) should use strict interpretation", mode)
+		if !strings.Contains(rs.Locations, "Do not add architecture, props, or named entities not in the WORLD STATE") {
+			t.Errorf("getRuleSet(%q) should use strict locations copy", mode)
 		}
 	}
 }
 
 func TestGetRuleSet_Relaxed(t *testing.T) {
 	rs := getRuleSet(state.RulesRelaxed)
-	if rs.EnforceExits {
-		t.Error("EnforceExits = true, want false for relaxed")
-	}
 	if rs.Examples != "" {
 		t.Errorf("relaxed Examples = %q, want empty", rs.Examples)
+	}
+	if !strings.Contains(rs.Locations, "You may extend it with plausible architecture") {
+		t.Error("expected relaxed locations copy")
 	}
 }
 
@@ -53,10 +50,10 @@ func TestRuleSet_FormatRefereeRules_SkipsEmpty(t *testing.T) {
 	}
 }
 
-func TestSystemPromptTemplate_HasSevenSlots(t *testing.T) {
+func TestSystemPromptTemplate_HasFiveSlots(t *testing.T) {
 	count := strings.Count(systemPromptTemplate, "%s")
-	if count != 7 {
-		t.Errorf("systemPromptTemplate has %d %%s slots, want 7", count)
+	if count != 5 {
+		t.Errorf("systemPromptTemplate has %d %%s slots, want 5", count)
 	}
 }
 
@@ -64,5 +61,11 @@ func TestSystemPromptTemplate_SharedNarratorVoiceHeading(t *testing.T) {
 	const heading = "### Writing rules for narrative output:"
 	if !strings.Contains(systemPromptTemplate, heading) {
 		t.Errorf("systemPromptTemplate missing shared heading %q", heading)
+	}
+	if strings.Contains(systemPromptTemplate, "HOW YOU INTERPRET USER PROMPTS") {
+		t.Error("interpretation section should be removed from narrator template")
+	}
+	if strings.Contains(systemPromptTemplate, "### Game mechanics:") {
+		t.Error("game mechanics section should be removed from narrator template")
 	}
 }

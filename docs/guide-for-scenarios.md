@@ -114,7 +114,7 @@ NPCs here: Pip Upton
 Monsters here:
 - Skeleton (AC: 13, HP: 13/13): An animated skeleton wielding a rusty sword.
 
-Exits (the ONLY directions reachable this turn):
+Exits:
 - north -> Tomb Entrance
 - east -> Entry Hall
 </current_location>
@@ -131,7 +131,6 @@ Exits (the ONLY directions reachable this turn):
 <world_state_rules>
 - Narrate ONLY current_location. Do not narrate inside adjacent locations.
 - If just_entered is true, give a brief opening description; otherwise do not re-describe the room.
-- Movement: the player may only choose one of: east (Entry Hall), north (Tomb Entrance). ...
 </world_state_rules>
 </world_state>
 ```
@@ -144,7 +143,7 @@ Exits (the ONLY directions reachable this turn):
 | `<adjacent_previews>` | Adjacent rooms' `preview` field (one sentence each) | Orientation only — not a license to narrate inside those rooms |
 | `<npcs_elsewhere>` | Important NPCs not at the player's location | Name + location only — no description or items |
 | `<just_entered>` | Engine flag (true on first turn after a location change) | Tells narrator to open a new room briefly vs. continue action |
-| `<world_state_rules>` | Generated from current exits | Inline movement enforcement and anti-invention rules |
+| `<world_state_rules>` | Mode-specific storytelling lines | Scope for narration (`current_location`, `just_entered`); not movement enforcement |
 
 ### Authoring implications
 

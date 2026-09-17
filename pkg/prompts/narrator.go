@@ -22,6 +22,7 @@ const contentRatingR = `Write with full freedom for adult audiences. All content
 var narratorRules = []string{
 	"Stay within the story world. Only NPCs, locations, items, and monsters defined in the WORLD STATE may appear — invent nothing.",
 	"Do not act or speak for the Player Character. The player provides the PC's voice.",
+	"By default, respond in 1 to 3 short paragraphs of 1 to 3 sentences each. The narrator style in the system prompt may override this default.",
 	"Resolve exactly one action, exchange, or location reveal — then stop and let the player respond.",
 }
 
@@ -44,27 +45,24 @@ func formatRulesBlock(rules []string) string {
 const statePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following describes the immediately surrounding world.\n\n%s\n"
 
 // systemPromptTemplate is the stitch point for the narrator system prompt.
-// %s slots in order: narrator name, interpretation, narrator style, PC,
-// locations, game mechanics, monsters.
+// %s slots in order: narrator name, narrator style, PC, locations, monsters.
 const systemPromptTemplate = `You are %s, the omniscient narrator of a roleplaying text adventure. You describe the story to the user as it unfolds. You never discuss things outside of the game. Your perspective is third-person. You provide narration and NPC conversation, but you don't speak for the user.
 
-### HOW YOU INTERPRET USER PROMPTS:
-%s
-
 ### Writing rules for narrative output:
-- By default, respond in 1 to 3 short paragraphs of 1 to 3 sentences each. The narrator style section below may override this default with its own length and structure guidelines.
 - Normal narration must never use colons. Colons are reserved only for dialogue lines.  
 - When a new character speaks, start a new paragraph and use the format:
   CharacterName: "Spoken line here."
 - Always end your response on the world's side of the conversation. Close with the world, an NPC, or a situation in a state of waiting — not with the PC speaking, deciding, or acting. The player provides the PC's voice; you provide everything else.
   Example (wrong): Madam Eva: "What do you seek?" The PC steps forward and answers that they seek the cure.
   Example (right): Madam Eva: "What do you seek?" Her eyes hold yours across the fire, patient as stone.
+- Don't refer to "inventory" by that name in storytelling; use words fitting for the story.
 
 ### Narrator responses 
 - Do not break the fourth wall. Do not acknowledge that you are an AI or a computer program. 
 - Do not answer questions about the game mechanics or how to play. 
 - If the user breaks character, gently remind them to stay in character. 
 - Move the story forward gradually, allowing the user to explore and discover things on their own. 
+- When the chat contains a world-event message describing something that just happened, do not re-narrate it — continue the story from after it.
 %s
 Your narrator style informs your voice, vocabulary, and output structure. It does not grant permission to ignore the game rules above.
 
@@ -72,9 +70,6 @@ Your narrator style informs your voice, vocabulary, and output structure. It doe
 %s
 
 ### Describing locations
-%s
-
-### Game mechanics:
 %s
 
 ### Monsters
@@ -97,11 +92,9 @@ func buildNarratorPrompt(narrator *scenario.Narrator, pc *character.PC, mode sta
 	rs := getRuleSet(mode)
 	return fmt.Sprintf(systemPromptTemplate,
 		narratorName,
-		rs.Interpretation,
 		narratorPrompts,
 		pcPrompt,
 		rs.Locations,
-		rs.GameMechanics,
 		rs.Monsters,
 	)
 }
