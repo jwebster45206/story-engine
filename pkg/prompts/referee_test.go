@@ -63,8 +63,29 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 	if !strings.Contains(strictSys, "reaction:") {
 		t.Error("expected reaction field in preamble")
 	}
+	if !strings.Contains(strictSys, "scope:") {
+		t.Error("expected scope field in preamble")
+	}
+	if !strings.Contains(strictSys, "focus:") {
+		t.Error("expected focus field in preamble")
+	}
+	if strings.Contains(strictSys, "mentioned:") {
+		t.Error("mentioned should not be in the referee preamble")
+	}
+	if !strings.Contains(strictSys, "dialogue, movement, combat, examine, ambient, other") {
+		t.Error("expected scope enum in preamble")
+	}
 	if !strings.Contains(strictSys, `"allowed":true`) && !strings.Contains(strictSys, `"allowed":false`) {
 		t.Error("strict examples should contain allowed JSON")
+	}
+	if !strings.Contains(strictSys, `"scope":"movement"`) {
+		t.Error("strict examples should include scope")
+	}
+	if !strings.Contains(strictSys, `"locations":["drawbridge"]`) {
+		t.Error("strict examples should include focus.locations")
+	}
+	if strings.Contains(strictSys, `"items"`) {
+		t.Error("strict examples should not include focus.items")
 	}
 	for _, heading := range []string{"Movement\n-", "Items\n-", "NPCs\n-", "Global\n-"} {
 		if !strings.Contains(strictSys, heading) {

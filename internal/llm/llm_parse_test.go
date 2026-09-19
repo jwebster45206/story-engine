@@ -92,22 +92,37 @@ func TestParseRulingResponse(t *testing.T) {
 		{
 			name:  "strips markdown fence",
 			input: "```json\n{\"allowed\": false, \"reasoning\": \"No such exit.\", \"reaction\": \"The wall stops the PC.\"}\n```",
-			want:  &chat.Ruling{Allowed: false, Reasoning: "No such exit.", Reaction: "The wall stops the PC."},
+			want:  &chat.Ruling{Allowed: false, Reasoning: "No such exit.", Reaction: "The wall stops the PC.", Scope: chat.RulingScopeOther},
 		},
 		{
 			name:  "null optionals become empty",
 			input: `{"allowed": true, "reasoning": null, "reaction": null}`,
-			want:  &chat.Ruling{Allowed: true},
+			want:  &chat.Ruling{Allowed: true, Scope: chat.RulingScopeOther},
 		},
 		{
 			name:  "drops reaction when allowed",
 			input: `{"allowed": true, "reasoning": "Listed exit.", "reaction": "Should be ignored."}`,
-			want:  &chat.Ruling{Allowed: true, Reasoning: "Listed exit."},
+			want:  &chat.Ruling{Allowed: true, Reasoning: "Listed exit.", Scope: chat.RulingScopeOther},
 		},
 		{
 			name:  "keeps over-length reasoning",
 			input: `{"allowed": true, "reasoning": "` + long + `", "reaction": null}`,
-			want:  &chat.Ruling{Allowed: true, Reasoning: long},
+			want:  &chat.Ruling{Allowed: true, Reasoning: long, Scope: chat.RulingScopeOther},
+		},
+		{
+			name:  "parses scope focus npcs and locations",
+			input: `{"allowed":true,"reasoning":"Talk to the bartender.","reaction":null,"scope":"dialogue","focus":{"npcs":["Bartender"],"locations":["The Tavern"]}}`,
+			want: &chat.Ruling{
+				Allowed:   true,
+				Reasoning: "Talk to the bartender.",
+				Scope:     chat.RulingScopeDialogue,
+				Focus:     chat.RulingFocus{NPCs: []string{"Bartender"}, Locations: []string{"The Tavern"}},
+			},
+		},
+		{
+			name:  "unknown scope becomes other",
+			input: `{"allowed":true,"reasoning":null,"reaction":null,"scope":"teleport","focus":{"npcs":[],"locations":[]}}`,
+			want:  &chat.Ruling{Allowed: true, Scope: chat.RulingScopeOther},
 		},
 	}
 	for _, tt := range tests {

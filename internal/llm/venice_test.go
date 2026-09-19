@@ -148,7 +148,7 @@ func TestVeniceService_GetRuling_JSONSchema(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewDecoder(r.Body).Decode(&got)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","model":"test-backend-model","choices":[{"index":0,"message":{"role":"assistant","content":"{\"allowed\":false,\"reasoning\":\"No such exit.\",\"reaction\":\"The wall stops the PC.\"}"},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":4,"total_tokens":11}}`))
+		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","model":"test-backend-model","choices":[{"index":0,"message":{"role":"assistant","content":"{\"allowed\":false,\"reasoning\":\"No such exit.\",\"reaction\":\"The wall stops the PC.\",\"scope\":\"movement\",\"focus\":{\"npcs\":[],\"locations\":[]}}"},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":4,"total_tokens":11}}`))
 	}))
 	defer server.Close()
 
@@ -177,10 +177,37 @@ func TestVeniceService_GetRuling_JSONSchema(t *testing.T) {
 		}
 	}
 	assert.Equal(t, float64(255), maxLen)
+	for _, field := range []string{"scope", "focus"} {
+		if _, ok := props[field]; !ok {
+			t.Errorf("ruling schema missing %q", field)
+		}
+	}
+	if _, ok := props["mentioned"]; ok {
+		t.Error("ruling schema should not include mentioned")
+	}
+	required, _ := schema["required"].([]any)
+	gotReq := make([]string, 0, len(required))
+	for _, v := range required {
+		s, _ := v.(string)
+		gotReq = append(gotReq, s)
+	}
+	for _, field := range []string{"scope", "focus"} {
+		found := false
+		for _, s := range gotReq {
+			if s == field {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("ruling schema required missing %q: %v", field, gotReq)
+		}
+	}
 	require.NotNil(t, ruling)
 	assert.False(t, ruling.Allowed)
 	assert.Equal(t, "No such exit.", ruling.Reasoning)
 	assert.Equal(t, "The wall stops the PC.", ruling.Reaction)
+	assert.Equal(t, chat.RulingScopeMovement, ruling.Scope)
 	assert.Equal(t, "test-backend-model", usage.Model)
 	assert.Equal(t, 7, usage.InputTokens)
 	assert.Equal(t, 4, usage.OutputTokens)

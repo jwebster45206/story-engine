@@ -173,17 +173,29 @@ func parseRulingResponse(responseText string) (*chat.Ruling, error) {
 		Allowed   bool    `json:"allowed"`
 		Reasoning *string `json:"reasoning"`
 		Reaction  *string `json:"reaction"`
+		Scope     string  `json:"scope"`
+		Focus     *struct {
+			NPCs      []string `json:"npcs"`
+			Locations []string `json:"locations"`
+		} `json:"focus"`
 	}
 	if _, err := sejson.Unmarshal([]byte(mTxt), &wire); err != nil {
 		return nil, fmt.Errorf("failed to parse ruling. Original response: %q, Cleaned text: %q, Error: %w", originalText, mTxt, err)
 	}
 
-	ruling := &chat.Ruling{Allowed: wire.Allowed}
+	ruling := &chat.Ruling{
+		Allowed: wire.Allowed,
+		Scope:   chat.RulingScope(wire.Scope),
+	}
 	if wire.Reasoning != nil {
 		ruling.Reasoning = *wire.Reasoning
 	}
 	if wire.Reaction != nil {
 		ruling.Reaction = *wire.Reaction
+	}
+	if wire.Focus != nil {
+		ruling.Focus.NPCs = wire.Focus.NPCs
+		ruling.Focus.Locations = wire.Focus.Locations
 	}
 	ruling.Normalize()
 	return ruling, nil

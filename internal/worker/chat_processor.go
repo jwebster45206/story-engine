@@ -107,16 +107,16 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 	return streamChan, nil
 }
 
-// referee runs the pre-chat rules pass. LLM failures fail open: empty string
+// referee runs the pre-chat rules pass. LLM failures fail open: a nil ruling
 // means the narrator prompt is unchanged. Message-build errors are returned.
-func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *state.GameState, req chat.ChatRequest) (string, error) {
+func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *state.GameState, req chat.ChatRequest) (*chat.Ruling, error) {
 	if !req.UseReferee {
-		return "", nil
+		return nil, nil
 	}
 
 	refMessages, err := prompts.BuildRefereeMessages(gs, req.Message, p.historyLimit)
 	if err != nil {
-		return "", fmt.Errorf("failed to build referee messages: %w", err)
+		return nil, fmt.Errorf("failed to build referee messages: %w", err)
 	}
 
 	start := time.Now()
@@ -131,19 +131,26 @@ func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *sta
 	)
 	if err != nil {
 		p.logger.Error("Referee failure", "error", err, "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
-		return "", nil
+		return nil, nil
 	}
 	if ruling == nil {
 		p.logger.Warn("Referee returned empty ruling", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
-		return "", nil
+		return nil, nil
 	}
 	text := ruling.NarratorText()
 	if text == "" {
 		p.logger.Warn("Referee returned empty ruling", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
-		return "", nil
+		return nil, nil
 	}
-	p.logger.Debug("Referee ruling", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds(), "ruling", text)
-	return text, nil
+	p.logger.Debug("Referee ruling",
+		"game_state_id", gs.ID.String(),
+		"duration_ms", time.Since(start).Milliseconds(),
+		"scope", ruling.Scope,
+		"focus_npcs", ruling.Focus.NPCs,
+		"focus_locations", ruling.Focus.Locations,
+		"ruling", text,
+	)
+	return ruling, nil
 }
 
 // UpdateGameStateAfterStream updates game state after streaming is complete.

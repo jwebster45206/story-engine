@@ -1,6 +1,7 @@
 package prompts
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 )
 
 func TestBuildNarratorMessages_RequiresGameState(t *testing.T) {
-	_, err := BuildNarratorMessages(nil, &scenario.Scenario{Name: "Test"}, "hi", 10, "")
+	_, err := BuildNarratorMessages(nil, &scenario.Scenario{Name: "Test"}, "hi", 10, nil)
 	if err == nil {
 		t.Fatal("expected error when gamestate is not set")
 	}
@@ -23,7 +24,7 @@ func TestBuildNarratorMessages_RequiresGameState(t *testing.T) {
 
 func TestBuildNarratorMessages_RequiresScenario(t *testing.T) {
 	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
-	_, err := BuildNarratorMessages(gs, nil, "hi", 10, "")
+	_, err := BuildNarratorMessages(gs, nil, "hi", 10, nil)
 	if err == nil {
 		t.Fatal("expected error when scenario is not set")
 	}
@@ -44,7 +45,7 @@ func TestBuildNarratorMessages_BasicMessages(t *testing.T) {
 		},
 	}
 
-	messages, err := BuildNarratorMessages(gs, sc, "Hello world", 20, "")
+	messages, err := BuildNarratorMessages(gs, sc, "Hello world", 20, nil)
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
@@ -88,7 +89,7 @@ func TestBuildNarratorMessages_WithNarrator(t *testing.T) {
 	gs.Location = "start"
 	sc := basicScenario()
 
-	messages, err := BuildNarratorMessages(gs, sc, "Test", 20, "")
+	messages, err := BuildNarratorMessages(gs, sc, "Test", 20, nil)
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
@@ -112,7 +113,7 @@ func TestBuildNarratorMessages_WithPC(t *testing.T) {
 	gs.Location = "start"
 	sc := basicScenario()
 
-	messages, err := BuildNarratorMessages(gs, sc, "Test", 20, "")
+	messages, err := BuildNarratorMessages(gs, sc, "Test", 20, nil)
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
@@ -134,7 +135,7 @@ func TestBuildNarratorMessages_WithChatHistory(t *testing.T) {
 		{Role: chat.ChatRoleAgent, Content: "Response 2"},
 	}
 
-	messages, err := BuildNarratorMessages(gs, basicScenario(), "Message 3", 20, "")
+	messages, err := BuildNarratorMessages(gs, basicScenario(), "Message 3", 20, nil)
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
@@ -156,7 +157,7 @@ func TestBuildNarratorMessages_HistoryWindowing(t *testing.T) {
 		})
 	}
 
-	messages, err := BuildNarratorMessages(gs, basicScenario(), "Test", 5, "")
+	messages, err := BuildNarratorMessages(gs, basicScenario(), "Test", 5, nil)
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
@@ -172,7 +173,7 @@ func TestBuildNarratorMessages_GameEnded(t *testing.T) {
 	sc := basicScenario()
 	sc.GameEndPrompt = "The adventure has ended!"
 
-	messages, err := BuildNarratorMessages(gs, sc, "Test", 20, "")
+	messages, err := BuildNarratorMessages(gs, sc, "Test", 20, nil)
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
@@ -185,7 +186,6 @@ func TestBuildNarratorMessages_GameEnded(t *testing.T) {
 func TestBuildNarratorMessages_WithContingencyPrompts(t *testing.T) {
 	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "start"
-	gs.JustEntered = true
 	gs.Vars = map[string]string{"test_flag": "true"}
 	gs.ChatHistory = []chat.ChatMessage{
 		{Role: chat.ChatRoleAgent, Content: "A bell rings.", IsStoryEvent: true},
@@ -199,7 +199,7 @@ func TestBuildNarratorMessages_WithContingencyPrompts(t *testing.T) {
 		},
 	}
 
-	messages, err := BuildNarratorMessages(gs, sc, "Test", 20, "")
+	messages, err := BuildNarratorMessages(gs, sc, "Test", 20, nil)
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestBuildNarratorMessages_RelaxedSystemPrompt(t *testing.T) {
 	gs.Rules = state.RulesRelaxed
 	sc := &scenario.Scenario{Name: "Test", Story: "A test story", Rating: scenario.RatingPG}
 
-	messages, err := BuildNarratorMessages(gs, sc, "look around", 20, "")
+	messages, err := BuildNarratorMessages(gs, sc, "look around", 20, nil)
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
@@ -256,11 +256,11 @@ func TestBuildNarratorMessages_StrictAndRelaxedShareRulesBlock(t *testing.T) {
 	relaxedGS := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	relaxedGS.Rules = state.RulesRelaxed
 
-	strictMsgs, err := BuildNarratorMessages(strictGS, sc, "hi", 20, "")
+	strictMsgs, err := BuildNarratorMessages(strictGS, sc, "hi", 20, nil)
 	if err != nil {
 		t.Fatalf("strict: %v", err)
 	}
-	relaxedMsgs, err := BuildNarratorMessages(relaxedGS, sc, "hi", 20, "")
+	relaxedMsgs, err := BuildNarratorMessages(relaxedGS, sc, "hi", 20, nil)
 	if err != nil {
 		t.Fatalf("relaxed: %v", err)
 	}
@@ -277,7 +277,7 @@ func TestBuildNarratorMessages_RefereeAfterRules(t *testing.T) {
 	gs.Location = "start"
 	sc := basicScenario()
 
-	messages, err := BuildNarratorMessages(gs, sc, "I walk north", 20, "- Attempted: walk north\n- Not allowed: no such exit")
+	messages, err := BuildNarratorMessages(gs, sc, "I walk north", 20, new(chat.Ruling{Allowed: false, Reasoning: "There is no north exit."}))
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
@@ -293,6 +293,9 @@ func TestBuildNarratorMessages_RefereeAfterRules(t *testing.T) {
 	if !strings.Contains(user, refereeHonorLine) {
 		t.Error("expected honor line after referee block")
 	}
+	if !strings.Contains(user, "Not allowed. There is no north exit.") {
+		t.Errorf("expected ruling prose, got %q", user)
+	}
 	if !strings.HasPrefix(user, "I walk north") {
 		t.Errorf("user text should come first, got %q", user)
 	}
@@ -302,7 +305,7 @@ func TestBuildNarratorMessages_EmptyRefereeOmitsBlock(t *testing.T) {
 	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	sc := &scenario.Scenario{Name: "Test", Story: "Story", Rating: scenario.RatingPG}
 
-	messages, err := BuildNarratorMessages(gs, sc, "hi", 20, "  ")
+	messages, err := BuildNarratorMessages(gs, sc, "hi", 20, nil)
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
@@ -343,7 +346,7 @@ func TestBuildNarratorMessages_PersistentCacheSafety(t *testing.T) {
 		},
 	}
 
-	first, err := BuildNarratorMessages(gs, sc, "look around", 20, "")
+	first, err := BuildNarratorMessages(gs, sc, "look around", 20, nil)
 	if err != nil {
 		t.Fatalf("turn 1: %v", err)
 	}
@@ -360,19 +363,16 @@ func TestBuildNarratorMessages_PersistentCacheSafety(t *testing.T) {
 
 	turns := []func(){
 		func() {
-			gs.JustEntered = true
 			gs.Inventory = []string{"torch"}
 			gs.Vars = map[string]string{"flag": "true"}
 		},
 		func() {
 			gs.Location = "cave"
-			gs.JustEntered = true
 			gs.NPCs = map[string]character.NPC{
 				"guide": {Name: "Guide", Location: "cave"},
 			}
 		},
 		func() {
-			gs.JustEntered = false
 			gs.SceneTurnCounter = 3
 			gs.ChatHistory = []chat.ChatMessage{
 				{Role: chat.ChatRoleUser, Content: "I enter the cave"},
@@ -399,7 +399,7 @@ func TestBuildNarratorMessages_PersistentCacheSafety(t *testing.T) {
 
 	for i, mutate := range turns {
 		mutate()
-		msgs, err := BuildNarratorMessages(gs, sc, "continue", 20, "Allowed.")
+		msgs, err := BuildNarratorMessages(gs, sc, "continue", 20, new(chat.Ruling{Allowed: true}))
 		if err != nil {
 			t.Fatalf("turn %d: %v", i+2, err)
 		}
@@ -417,7 +417,7 @@ func TestBuildNarratorMessages_PersistentDropsRedundantCopy(t *testing.T) {
 	gs.Location = "start"
 	sc := basicScenario()
 
-	messages, err := BuildNarratorMessages(gs, sc, "look around", 20, "")
+	messages, err := BuildNarratorMessages(gs, sc, "look around", 20, nil)
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
@@ -459,7 +459,7 @@ func TestBuildNarratorMessages_PersistentDropsRedundantCopy(t *testing.T) {
 func TestBuildNarratorMessages_RulesBlockOwnsPCAndInvention(t *testing.T) {
 	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "start"
-	messages, err := BuildNarratorMessages(gs, basicScenario(), "hi", 20, "")
+	messages, err := BuildNarratorMessages(gs, basicScenario(), "hi", 20, nil)
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
@@ -487,7 +487,7 @@ func TestBuildNarratorMessages_MonstersCopyConditional(t *testing.T) {
 	sc := basicScenario()
 	sc.Locations = gs.WorldLocations
 
-	messages, err := BuildNarratorMessages(gs, sc, "look", 20, "")
+	messages, err := BuildNarratorMessages(gs, sc, "look", 20, nil)
 	if err != nil {
 		t.Fatalf("no monsters: %v", err)
 	}
@@ -504,7 +504,7 @@ func TestBuildNarratorMessages_MonstersCopyConditional(t *testing.T) {
 	}
 	gs.WorldLocations["start"] = loc
 
-	messages, err = BuildNarratorMessages(gs, sc, "look", 20, "")
+	messages, err = BuildNarratorMessages(gs, sc, "look", 20, nil)
 	if err != nil {
 		t.Fatalf("with monsters: %v", err)
 	}
@@ -520,39 +520,242 @@ func TestBuildNarratorMessages_MonstersCopyConditional(t *testing.T) {
 	}
 }
 
-func TestBuildNarratorMessages_JustEnteredDirective(t *testing.T) {
+func TestBuildNarratorMessages_StayPutUnlessMoving(t *testing.T) {
 	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "start"
 	gs.WorldLocations = map[string]scenario.Location{
-		"start": {Name: "Forest Clearing", Description: "A quiet glade."},
+		"start": {
+			Name:        "Forest Clearing",
+			Description: "A quiet glade with ancient oaks.",
+			Preview:     "A forest clearing.",
+			Exits:       map[string]string{"east": "cave"},
+		},
+		"cave": {
+			Name:        "Dark Cave",
+			Description: "A dripping limestone cave.",
+			Preview:     "A cave mouth.",
+			Items:       []string{"rusty lantern"},
+			Exits:       map[string]string{"west": "start"},
+		},
+	}
+	gs.NPCs = map[string]character.NPC{
+		"hermit": {Name: "The Hermit", Location: "cave"},
 	}
 	sc := basicScenario()
 	sc.Locations = gs.WorldLocations
 
-	messages, err := BuildNarratorMessages(gs, sc, "look", 20, "")
+	messages, err := BuildNarratorMessages(gs, sc, "look", 20, nil)
 	if err != nil {
-		t.Fatalf("just_entered false: %v", err)
+		t.Fatalf("nil ruling: %v", err)
 	}
 	dynamic := messages[1].Content
-	if strings.Contains(dynamic, "<just_entered>") {
-		t.Error("just_entered tag should be omitted")
+	if strings.Contains(dynamic, "<just_entered>") || strings.Contains(dynamic, "New location:") {
+		t.Error("just_entered should be gone from the narrator prompt")
 	}
-	if strings.Contains(dynamic, "New location:") {
-		t.Error("just_entered directive should be omitted when false")
+	if !strings.Contains(dynamic, stayPutDirective) {
+		t.Error("expected stay-put directive when not moving")
+	}
+	if strings.Contains(dynamic, "<destination>") {
+		t.Error("destination sidecar should be omitted")
+	}
+	if current := currentLocationBlock(dynamic); !strings.Contains(current, "Forest Clearing") {
+		t.Errorf("nil ruling should keep origin as current_location\n%s", current)
 	}
 
-	gs.JustEntered = true
-	messages, err = BuildNarratorMessages(gs, sc, "look", 20, "")
+	dialogue := new(chat.Ruling{
+		Allowed: true,
+		Scope:   chat.RulingScopeDialogue,
+		Focus:   chat.RulingFocus{NPCs: []string{"Guide"}},
+	})
+	messages, err = BuildNarratorMessages(gs, sc, "talk", 20, dialogue)
 	if err != nil {
-		t.Fatalf("just_entered true: %v", err)
+		t.Fatalf("dialogue: %v", err)
+	}
+	if !strings.Contains(messages[1].Content, stayPutDirective) {
+		t.Error("dialogue should stay put")
+	}
+	if current := currentLocationBlock(messages[1].Content); !strings.Contains(current, "Forest Clearing") {
+		t.Errorf("dialogue should keep origin as current_location\n%s", current)
+	}
+
+	denied := new(chat.Ruling{
+		Allowed:   false,
+		Scope:     chat.RulingScopeMovement,
+		Focus:     chat.RulingFocus{Locations: []string{"Dark Cave"}},
+		Reasoning: "The way is blocked.",
+	})
+	messages, err = BuildNarratorMessages(gs, sc, "go east", 20, denied)
+	if err != nil {
+		t.Fatalf("denied move: %v", err)
 	}
 	dynamic = messages[1].Content
-	if strings.Contains(dynamic, "<just_entered>") {
-		t.Error("just_entered tag should be omitted even when true")
+	if strings.Contains(dynamic, "<destination>") {
+		t.Error("denied movement should not inject destination")
 	}
-	want := "New location: brief opening description of Forest Clearing, then continue."
-	if !strings.Contains(dynamic, want) {
-		t.Errorf("missing just_entered directive %q\n--- dynamic ---\n%s", want, dynamic)
+	if !strings.Contains(dynamic, stayPutDirective) {
+		t.Error("denied movement should stay put")
+	}
+	if current := currentLocationBlock(dynamic); !strings.Contains(current, "Forest Clearing") {
+		t.Errorf("denied movement should keep origin as current_location\n%s", current)
+	}
+
+	move := new(chat.Ruling{
+		Allowed: true,
+		Scope:   chat.RulingScopeMovement,
+		Focus:   chat.RulingFocus{Locations: []string{"Dark Cave"}},
+	})
+	messages, err = BuildNarratorMessages(gs, sc, "go east", 20, move)
+	if err != nil {
+		t.Fatalf("allowed move: %v", err)
+	}
+	dynamic = messages[1].Content
+	if gs.Location != "start" {
+		t.Errorf("GameState.Location = %q, want start (prompt-only view)", gs.Location)
+	}
+	if strings.Contains(dynamic, stayPutDirective) {
+		t.Error("allowed movement should not stay put")
+	}
+	if strings.Contains(dynamic, "<destination>") {
+		t.Error("destination sidecar should be gone; dest is current_location")
+	}
+	current := currentLocationBlock(dynamic)
+	if !strings.Contains(current, "Dark Cave") {
+		t.Errorf("current_location should be the destination\n%s", current)
+	}
+	if !strings.Contains(current, "A dripping limestone cave.") {
+		t.Errorf("current_location should include dest description\n%s", current)
+	}
+	if !strings.Contains(current, "rusty lantern") {
+		t.Errorf("current_location should include dest items\n%s", current)
+	}
+	if !strings.Contains(current, "The Hermit") {
+		t.Errorf("current_location should include dest NPCs\n%s", current)
+	}
+	if strings.Contains(current, "A quiet glade with ancient oaks.") {
+		t.Errorf("origin description must not be current_location\n%s", current)
+	}
+	if !strings.Contains(dynamic, fmt.Sprintf(arrivalDirectiveFmt, "Dark Cave")) {
+		t.Errorf("missing arrival directive\n%s", dynamic)
+	}
+
+	empty := new(chat.Ruling{
+		Allowed: true,
+		Scope:   chat.RulingScopeMovement,
+	})
+	messages, err = BuildNarratorMessages(gs, sc, "go east", 20, empty)
+	if err != nil {
+		t.Fatalf("venice miss: %v", err)
+	}
+	dynamic = messages[1].Content
+	if strings.Contains(dynamic, stayPutDirective) {
+		t.Error("allowed movement with empty locations should not stay put")
+	}
+	if strings.Contains(dynamic, "<destination>") {
+		t.Error("venice miss must not invent a destination block")
+	}
+	if strings.Contains(dynamic, "The PC is arriving") {
+		t.Error("venice miss must not invent an arrival line")
+	}
+	if current := currentLocationBlock(dynamic); !strings.Contains(current, "Forest Clearing") {
+		t.Errorf("venice miss should keep origin as current_location\n%s", current)
+	}
+	if !strings.Contains(dynamic, "<adjacent_previews>") {
+		t.Error("venice miss should keep adjacent_previews")
+	}
+
+	unknown := new(chat.Ruling{
+		Allowed: true,
+		Scope:   chat.RulingScopeMovement,
+		Focus:   chat.RulingFocus{Locations: []string{"The Moon"}},
+	})
+	messages, err = BuildNarratorMessages(gs, sc, "fly", 20, unknown)
+	if err != nil {
+		t.Fatalf("unknown dest: %v", err)
+	}
+	dynamic = messages[1].Content
+	if strings.Contains(dynamic, "<destination>") {
+		t.Error("unresolved location must not be injected")
+	}
+	if strings.Contains(dynamic, stayPutDirective) {
+		t.Error("unresolved destination should fail open without stay-put")
+	}
+	if current := currentLocationBlock(dynamic); !strings.Contains(current, "Forest Clearing") {
+		t.Errorf("unresolved dest should keep origin as current_location\n%s", current)
+	}
+}
+
+func TestBuildNarratorMessages_FollowingNPCOnMove(t *testing.T) {
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
+	gs.Location = "start"
+	gs.WorldLocations = map[string]scenario.Location{
+		"start": {Name: "Forest Clearing", Description: "A quiet glade.", Exits: map[string]string{"east": "cave"}},
+		"cave":  {Name: "Dark Cave", Description: "A dripping limestone cave.", Exits: map[string]string{"west": "start"}},
+	}
+	gs.NPCs = map[string]character.NPC{
+		"pip": {Name: "Pip Upton", Location: "start", Following: "pc"},
+	}
+	sc := basicScenario()
+	sc.Locations = gs.WorldLocations
+	move := new(chat.Ruling{
+		Allowed: true,
+		Scope:   chat.RulingScopeMovement,
+		Focus:   chat.RulingFocus{Locations: []string{"cave"}},
+	})
+
+	messages, err := BuildNarratorMessages(gs, sc, "go east", 20, move)
+	if err != nil {
+		t.Fatalf("BuildNarratorMessages: %v", err)
+	}
+	current := currentLocationBlock(messages[1].Content)
+	if !strings.Contains(current, "Pip Upton") {
+		t.Errorf("PC-following NPC should appear at dest\n%s", current)
+	}
+	if gs.NPCs["pip"].Location != "start" {
+		t.Errorf("follower Location = %q, want start (Apply still owns the sync)", gs.NPCs["pip"].Location)
+	}
+}
+
+func currentLocationBlock(s string) string {
+	start := strings.Index(s, "<current_location>")
+	end := strings.Index(s, "</current_location>")
+	if start < 0 || end < 0 || end <= start {
+		return ""
+	}
+	return s[start:end]
+}
+
+func TestBuildNarratorMessages_FocusedNPCDescription(t *testing.T) {
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
+	gs.Location = "tavern"
+	gs.NPCs = map[string]character.NPC{
+		"pip": {
+			Name:        "Pip Upton",
+			Description: "A cheerful deckhand.",
+			Location:    "tavern",
+		},
+		"beatrice": {Name: "Sister Beatrice", Location: "tavern"},
+	}
+	gs.WorldLocations = map[string]scenario.Location{
+		"tavern": {Name: "The Tavern", Description: "A smoky taproom."},
+	}
+	sc := basicScenario()
+	sc.Locations = gs.WorldLocations
+	ruling := new(chat.Ruling{
+		Allowed: true,
+		Scope:   chat.RulingScopeDialogue,
+		Focus:   chat.RulingFocus{NPCs: []string{"Pip Upton"}},
+	})
+
+	messages, err := BuildNarratorMessages(gs, sc, "talk to Pip", 20, ruling)
+	if err != nil {
+		t.Fatalf("BuildNarratorMessages: %v", err)
+	}
+	dynamic := messages[1].Content
+	if !strings.Contains(dynamic, "- Pip Upton: A cheerful deckhand.") {
+		t.Errorf("focused NPC should include description\n%s", dynamic)
+	}
+	if !strings.Contains(dynamic, "- Sister Beatrice\n") {
+		t.Errorf("unfocused NPC should be a bare name\n%s", dynamic)
 	}
 }
 
@@ -561,7 +764,7 @@ func TestBuildNarratorMessages_WorldEventRuleConditional(t *testing.T) {
 	gs.Location = "start"
 	sc := basicScenario()
 
-	messages, err := BuildNarratorMessages(gs, sc, "look", 20, "")
+	messages, err := BuildNarratorMessages(gs, sc, "look", 20, nil)
 	if err != nil {
 		t.Fatalf("no story event: %v", err)
 	}
@@ -575,7 +778,7 @@ func TestBuildNarratorMessages_WorldEventRuleConditional(t *testing.T) {
 	gs.ChatHistory = []chat.ChatMessage{
 		{Role: chat.ChatRoleAgent, Content: "A horn sounds in the distance.", IsStoryEvent: true},
 	}
-	messages, err = BuildNarratorMessages(gs, sc, "look", 20, "")
+	messages, err = BuildNarratorMessages(gs, sc, "look", 20, nil)
 	if err != nil {
 		t.Fatalf("with story event: %v", err)
 	}
@@ -591,7 +794,7 @@ func TestBuildNarratorMessages_WorldEventRuleConditional(t *testing.T) {
 		chat.ChatMessage{Role: chat.ChatRoleUser, Content: "I wait"},
 		chat.ChatMessage{Role: chat.ChatRoleAgent, Content: "Time passes."},
 	)
-	messages, err = BuildNarratorMessages(gs, sc, "look", 2, "")
+	messages, err = BuildNarratorMessages(gs, sc, "look", 2, nil)
 	if err != nil {
 		t.Fatalf("windowed out: %v", err)
 	}
