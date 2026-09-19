@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -192,14 +193,7 @@ func TestVeniceService_GetRuling_JSONSchema(t *testing.T) {
 		gotReq = append(gotReq, s)
 	}
 	for _, field := range []string{"scope", "focus"} {
-		found := false
-		for _, s := range gotReq {
-			if s == field {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !slices.Contains(gotReq, field) {
 			t.Errorf("ruling schema required missing %q: %v", field, gotReq)
 		}
 	}
