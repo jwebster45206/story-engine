@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -182,7 +181,7 @@ func (p *ChatProcessor) UpdateGameStateAfterStream(ctx context.Context, gs *stat
 		if err != nil {
 			p.logger.Error("Failed to copy game state for background sync", "error", err, "game_state_id", gs.ID.String())
 		} else {
-			go p.syncGameState(metaCtx, gsCopy, userMessage, responseMessage)
+			go p.syncGameState(metaCtx, gsCopy, responseMessage)
 		}
 	}
 
@@ -191,7 +190,7 @@ func (p *ChatProcessor) UpdateGameStateAfterStream(ctx context.Context, gs *stat
 }
 
 // syncGameState runs in the background to extract and update the stateful parts of gamestate
-func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, userMessage string, responseMessage string) {
+func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, responseMessage string) {
 	start := time.Now()
 	p.logger.Debug("Starting background game gamestate delta", "game_state_id", gs.ID.String(), "response", responseMessage)
 	defer func() {
@@ -200,54 +199,17 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 		p.metaCancelMu.Unlock()
 	}()
 
-	currentStateJSON, err := json.Marshal(prompts.ToBackgroundPromptState(gs))
-	if err != nil {
-		p.logger.Error("Failed to marshal current game state for gamestate delta", "error", err, "game_state_id", gs.ID.String())
-		return
-	}
-
 	s, err := p.storage.GetScenario(ctx, gs.Scenario)
 	if err != nil {
 		p.logger.Error("Failed to get scenario from storage", "error", err, "game_state_id", gs.ID.String())
 		return
 	}
 
-	contingencyRules := prompts.GlobalContingencyRules
-	contingencyRules = append(contingencyRules, s.ContingencyRules...)
-	if gs.SceneName != "" {
-		contingencyRules = append(contingencyRules, s.Scenes[gs.SceneName].ContingencyRules...)
+	messages, err := prompts.BuildReducerMessages(gs, s, responseMessage)
+	if err != nil {
+		p.logger.Error("Failed to build reducer messages", "error", err, "game_state_id", gs.ID.String())
+		return
 	}
-
-	messages := []chat.ChatMessage{
-		{
-			Role:    chat.ChatRoleSystem,
-			Content: fmt.Sprintf(prompts.ReducerPrompt, strings.Join(contingencyRules, "\n- ")),
-		},
-		{
-			Role:    chat.ChatRoleSystem,
-			Content: fmt.Sprintf("BEFORE game state: %s", string(currentStateJSON)),
-		},
-		{
-			Role:    chat.ChatRoleUser,
-			Content: userMessage,
-		},
-	}
-
-	// Add the narrator response followed by a user extraction request.
-	// Some LLM providers (e.g. Venice) reject a conversation whose last message
-	// has role "assistant" when add_generation_prompt is enabled. Appending a
-	// user turn here keeps the message list valid while clearly signalling to
-	// the reducer what it should produce.
-	messages = append(messages,
-		chat.ChatMessage{
-			Role:    chat.ChatRoleAgent,
-			Content: responseMessage,
-		},
-		chat.ChatMessage{
-			Role:    chat.ChatRoleUser,
-			Content: "Extract the game state changes as JSON.",
-		},
-	)
 
 	// Send the gamestate delta request to the LLM
 	var delta *conditionals.GameStateDelta
