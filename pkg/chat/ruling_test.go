@@ -1,6 +1,9 @@
 package chat
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestRuling_Normalize_DropsReactionWhenAllowed(t *testing.T) {
 	r := Ruling{
@@ -100,5 +103,24 @@ func TestRuling_NarratorText(t *testing.T) {
 				t.Errorf("NarratorText() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestRuling_UnmarshalJSON_NullOptionals(t *testing.T) {
+	var r Ruling
+	if err := json.Unmarshal([]byte(`{"allowed":true,"reasoning":null,"reaction":null,"scope":"dialogue","focus":null}`), &r); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if !r.Allowed {
+		t.Error("Allowed = false")
+	}
+	if r.Reasoning != "" || r.Reaction != "" {
+		t.Errorf("Reasoning=%q Reaction=%q, want empty", r.Reasoning, r.Reaction)
+	}
+	if r.Scope != RulingScopeDialogue {
+		t.Errorf("Scope = %q, want %q", r.Scope, RulingScopeDialogue)
+	}
+	if r.Focus.NPCs != nil || r.Focus.Locations != nil {
+		t.Errorf("Focus = %#v, want zero", r.Focus)
 	}
 }

@@ -1,6 +1,9 @@
 package chat
 
-import "strings"
+import (
+	"encoding/json"
+	"strings"
+)
 
 // RulingScope is the primary intent of the player's turn, inferred by the referee.
 type RulingScope string
@@ -27,6 +30,32 @@ type Ruling struct {
 	Reaction  string      `json:"reaction,omitempty"`
 	Scope     RulingScope `json:"scope,omitempty"`
 	Focus     RulingFocus `json:"focus"`
+}
+
+// UnmarshalJSON accepts JSON null for optional strings and focus.
+func (r *Ruling) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Allowed   bool         `json:"allowed"`
+		Reasoning *string      `json:"reasoning"`
+		Reaction  *string      `json:"reaction"`
+		Scope     RulingScope  `json:"scope"`
+		Focus     *RulingFocus `json:"focus"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	r.Allowed = raw.Allowed
+	r.Scope = raw.Scope
+	if raw.Reasoning != nil {
+		r.Reasoning = *raw.Reasoning
+	}
+	if raw.Reaction != nil {
+		r.Reaction = *raw.Reaction
+	}
+	if raw.Focus != nil {
+		r.Focus = *raw.Focus
+	}
+	return nil
 }
 
 // Normalize trims optional strings, drops reaction when the action is allowed,

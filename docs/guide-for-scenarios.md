@@ -146,7 +146,6 @@ Exits:
 - **`description`** is shown only while the player is **in** that location. Write the full spatial picture here.
 - **`preview`** is shown for **adjacent** rooms only. Keep it to one spoiler-free sentence. On multi-room maps (especially dungeons), every location should have a `preview`.
 - **Do not put plot-state or NPC presence in `description`** — see Location Fields below. Dynamic content belongs in `contingency_prompts`.
-- On a **movement turn**, the narrator prompt treats the destination as `<current_location>` so arrival can be described this turn. Game state location still updates after narration via the reducer.
 - **NPC names** appear in `<current_location>` when co-located; full NPC voice and behavior come from **contingency prompts** (see NPCs section), not from the WORLD STATE block itself.
 
 ## Locations
