@@ -118,6 +118,10 @@ func contentRatingPrompt(rating string) string {
 }
 
 func getStatePrompt(gs *state.GameState, s *scenario.Scenario) (chat.ChatMessage, error) {
+	return getStatePromptWithFocus(gs, s, nil)
+}
+
+func getStatePromptWithFocus(gs *state.GameState, s *scenario.Scenario, ruling *chat.Ruling) (chat.ChatMessage, error) {
 	if gs == nil {
 		return chat.ChatMessage{}, fmt.Errorf("game state or scene is nil")
 	}
@@ -136,20 +140,28 @@ func getStatePrompt(gs *state.GameState, s *scenario.Scenario) (chat.ChatMessage
 		story += "\n\n" + scene.Story
 	}
 
+	ps := toPromptStateAt(gs, narratorViewLocation(gs, ruling))
+	if ruling != nil {
+		ps.FocusedNPCs = ruling.Focus.NPCs
+	}
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
-		Content: fmt.Sprintf(statePromptTemplate, story, ToPromptState(gs).ToString()),
+		Content: fmt.Sprintf(statePromptTemplate, story, ps.ToString(ruling)),
 	}, nil
 }
 
 const narratorHistoryDefault = 20
 
+const stayPutDirective = `Continue the action; do not re-describe the current location.`
+
+const arrivalDirectiveFmt = `The PC is arriving at %s. Brief opening description of the new location, then continue.`
+
 // BuildNarratorMessages assembles the streaming narrator call: a persistent
 // system prompt (ruleset, voice, PC, rating), a dynamic system prompt (story,
-// world state, conditional monsters/just_entered/world-event, contingencies),
+// world state, conditional monsters/arrival/world-event, contingencies),
 // windowed history, the current user line with <rules> and optional <referee>,
 // and a game-end message when the session has ended.
-func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessage string, historyLimit int, referee string) ([]chat.ChatMessage, error) {
+func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessage string, historyLimit int, ruling *chat.Ruling) ([]chat.ChatMessage, error) {
 	if gs == nil {
 		return nil, fmt.Errorf("gamestate is required")
 	}
@@ -161,7 +173,7 @@ func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessa
 	}
 
 	history := windowHistory(gs.ChatHistory, historyLimit)
-	persistent, dynamic, err := narratorSystemPrompts(gs, sc, history)
+	persistent, dynamic, err := narratorSystemPrompts(gs, sc, history, ruling)
 	if err != nil {
 		return nil, fmt.Errorf("error building system prompt: %w", err)
 	}
@@ -178,7 +190,7 @@ func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessa
 		},
 	}
 	msgs = append(msgs, history...)
-	if user := narratorUserTurn(gs, userMessage, referee); user.Content != "" {
+	if user := narratorUserTurn(gs, userMessage, ruling); user.Content != "" {
 		msgs = append(msgs, user)
 	}
 	if gs.IsEnded {
@@ -187,10 +199,10 @@ func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessa
 	return msgs, nil
 }
 
-func narratorSystemPrompts(gs *state.GameState, sc *scenario.Scenario, history []chat.ChatMessage) (string, string, error) {
+func narratorSystemPrompts(gs *state.GameState, sc *scenario.Scenario, history []chat.ChatMessage, ruling *chat.Ruling) (string, string, error) {
 	persistent := buildNarratorPrompt(gs.Narrator, gs.PC, gs.Rules, sc.Rating)
 
-	statePrompt, err := getStatePrompt(gs, sc)
+	statePrompt, err := getStatePromptWithFocus(gs, sc, ruling)
 	if err != nil {
 		return "", "", err
 	}
@@ -198,16 +210,23 @@ func narratorSystemPrompts(gs *state.GameState, sc *scenario.Scenario, history [
 	var sb strings.Builder
 	sb.WriteString(statePrompt.Content)
 
-	ps := ToPromptState(gs)
-	if len(ps.Monsters) > 0 {
+	view := toPromptStateAt(gs, narratorViewLocation(gs, ruling))
+	if len(view.Monsters) > 0 {
 		rs := getRuleSet(gs.Rules)
 		sb.WriteString("\n\n### Monsters\n")
 		sb.WriteString(rs.Monsters)
 	}
 
-	if gs.JustEntered {
+	if dests := movementDestinations(gs, ruling); len(dests) > 0 {
+		name := dests[0].Loc.Name
+		if name == "" {
+			name = dests[0].Key
+		}
 		sb.WriteString("\n\n")
-		sb.WriteString(justEnteredDirective(ps))
+		fmt.Fprintf(&sb, arrivalDirectiveFmt, name)
+	} else if !movementAllowed(ruling) {
+		sb.WriteString("\n\n")
+		sb.WriteString(stayPutDirective)
 	}
 
 	if historyHasStoryEvent(history) {
@@ -226,12 +245,22 @@ func narratorSystemPrompts(gs *state.GameState, sc *scenario.Scenario, history [
 	return persistent, sb.String(), nil
 }
 
-func justEnteredDirective(ps *PromptState) string {
-	name := ps.locationDisplayName(ps.Location)
-	if name == "" {
-		name = ps.Location
+func movementDestinations(gs *state.GameState, ruling *chat.Ruling) []resolvedLocation {
+	if !movementAllowed(ruling) {
+		return nil
 	}
-	return fmt.Sprintf("New location: brief opening description of %s, then continue.", name)
+	return resolveMovementDestinations(gs, ruling.Focus.Locations)
+}
+
+func movementAllowed(ruling *chat.Ruling) bool {
+	return ruling != nil && ruling.Allowed && ruling.Scope == chat.RulingScopeMovement
+}
+
+func narratorViewLocation(gs *state.GameState, ruling *chat.Ruling) string {
+	if dests := movementDestinations(gs, ruling); len(dests) > 0 {
+		return dests[0].Key
+	}
+	return gs.Location
 }
 
 func historyHasStoryEvent(history []chat.ChatMessage) bool {
@@ -254,7 +283,7 @@ func windowHistory(history []chat.ChatMessage, limit int) []chat.ChatMessage {
 	return history
 }
 
-func narratorUserTurn(gs *state.GameState, userMessage, referee string) chat.ChatMessage {
+func narratorUserTurn(gs *state.GameState, userMessage string, ruling *chat.Ruling) chat.ChatMessage {
 	if userMessage == "" {
 		return chat.ChatMessage{}
 	}
@@ -269,8 +298,10 @@ func narratorUserTurn(gs *state.GameState, userMessage, referee string) chat.Cha
 	if rulesBlock := formatRulesBlock(allRules); rulesBlock != "" {
 		content += "\n\n" + rulesBlock
 	}
-	if refBlock := formatRefereeBlock(referee); refBlock != "" {
-		content += "\n\n" + refBlock
+	if ruling != nil {
+		if refBlock := formatRefereeBlock(ruling.NarratorText()); refBlock != "" {
+			content += "\n\n" + refBlock
+		}
 	}
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleUser,

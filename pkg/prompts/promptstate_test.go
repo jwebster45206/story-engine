@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"github.com/jwebster45206/story-engine/pkg/character"
+	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
+	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
 // requireContains is a small helper that fails the test with the full
@@ -44,7 +46,7 @@ func TestPromptState_ToString_BasicLocation(t *testing.T) {
 		},
 	}
 
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	requireContains(t, result, "<world_state>")
 	requireContains(t, result, "</world_state>")
@@ -61,20 +63,6 @@ func TestPromptState_ToString_BasicLocation(t *testing.T) {
 	// World state rules are storytelling scope, not movement enforcement.
 	requireContains(t, result, "<world_state_rules>")
 	requireContains(t, result, "Narrate ONLY current_location.")
-}
-
-func TestPromptState_ToString_OmitsJustEnteredTag(t *testing.T) {
-	ps := &PromptState{
-		Location:    "room",
-		JustEntered: true,
-		WorldLocations: map[string]scenario.Location{
-			"room": {Name: "Room"},
-		},
-	}
-	requireNotContains(t, ps.ToString(), "<just_entered>")
-
-	ps.JustEntered = false
-	requireNotContains(t, ps.ToString(), "<just_entered>")
 }
 
 func TestPromptState_ToString_BlockedExits(t *testing.T) {
@@ -99,7 +87,7 @@ func TestPromptState_ToString_BlockedExits(t *testing.T) {
 		},
 	}
 
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	requireContains(t, result, "<current_location>")
 	requireContains(t, result, "Castle Hallway")
@@ -129,15 +117,40 @@ func TestPromptState_ToString_WithNPCsHere(t *testing.T) {
 		},
 	}
 
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	requireContains(t, result, "<current_location>")
 	requireContains(t, result, "Town Market")
 	requireContains(t, result, "NPCs here: Greedy Merchant")
-	// We deliberately do NOT dump the NPC's full description or items in the
-	// world state; that information lives in scenario context. Present NPCs
-	// must not appear in <npcs_elsewhere>.
+	requireNotContains(t, result, "A rotund man with a calculating look in his eyes.")
 	requireNotContains(t, result, "<npcs_elsewhere>")
+}
+
+func TestPromptState_ToString_FocusedNPCGetsDescription(t *testing.T) {
+	ps := &PromptState{
+		Location:    "market",
+		FocusedNPCs: []string{"Greedy Merchant"},
+		WorldLocations: map[string]scenario.Location{
+			"market": {Name: "Town Market"},
+		},
+		NPCs: map[string]character.NPC{
+			"merchant": {
+				Name:        "Greedy Merchant",
+				Description: "A rotund man with a calculating look in his eyes.",
+				Location:    "market",
+			},
+			"guard": {
+				Name:     "Town Guard",
+				Location: "market",
+			},
+		},
+	}
+
+	result := ps.ToString(nil)
+	requireContains(t, result, "NPCs here:\n")
+	requireContains(t, result, "- Greedy Merchant: A rotund man with a calculating look in his eyes.")
+	requireContains(t, result, "- Town Guard\n")
+	requireNotContains(t, result, "NPCs here: Greedy Merchant")
 }
 
 func TestPromptState_ToString_NPCsElsewhere(t *testing.T) {
@@ -159,7 +172,7 @@ func TestPromptState_ToString_NPCsElsewhere(t *testing.T) {
 		},
 	}
 
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	requireContains(t, result, "<npcs_elsewhere>")
 	requireContains(t, result, "- Calypso: Sleepy Mermaid")
@@ -177,7 +190,7 @@ func TestPromptState_ToString_WithInventory(t *testing.T) {
 		Inventory: []string{"sword", "shield", "health potion"},
 	}
 
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	requireContains(t, result, "<user_inventory>")
 	requireContains(t, result, "sword, shield, health potion")
@@ -186,8 +199,7 @@ func TestPromptState_ToString_WithInventory(t *testing.T) {
 
 func TestPromptState_ToString_Comprehensive(t *testing.T) {
 	ps := &PromptState{
-		Location:    "deck",
-		JustEntered: true,
+		Location: "deck",
 		WorldLocations: map[string]scenario.Location{
 			"deck": {
 				Name:        "Main Deck",
@@ -224,7 +236,7 @@ func TestPromptState_ToString_Comprehensive(t *testing.T) {
 		Inventory: []string{"rope", "compass"},
 	}
 
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	requireContains(t, result, "<world_state>")
 	requireNotContains(t, result, "<just_entered>")
@@ -251,7 +263,7 @@ func TestPromptState_ToString_Comprehensive(t *testing.T) {
 
 func TestPromptState_ToString_EmptyState(t *testing.T) {
 	ps := &PromptState{}
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	requireContains(t, result, "<world_state>")
 	requireNotContains(t, result, "<just_entered>")
@@ -272,7 +284,7 @@ func TestPromptState_ToString_NoExitsHidesMovementRule(t *testing.T) {
 		},
 	}
 
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	requireContains(t, result, "Sealed Room")
 	requireNotContains(t, result, "\nExits:\n")
@@ -296,7 +308,7 @@ func TestPromptState_ToString_AdjacentPreviewFallbackToName(t *testing.T) {
 		},
 	}
 
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	// When no preview is set, we still emit direction + name, but with no
 	// dash-separated tail.
@@ -329,7 +341,7 @@ func TestPromptState_ToString_NoLeakBetweenAdjacentRooms(t *testing.T) {
 		},
 	}
 
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	// Preview must appear.
 	requireContains(t, result, "- west: Antechamber - A vaulted entry chamber with cat-pillar columns.")
@@ -360,9 +372,9 @@ func TestPromptState_ToString_ExitOrderingIsStable(t *testing.T) {
 		},
 	}
 
-	first := ps.ToString()
+	first := ps.ToString(nil)
 	for range 10 {
-		if ps.ToString() != first {
+		if ps.ToString(nil) != first {
 			t.Fatalf("ToString output is not deterministic across calls")
 		}
 	}
@@ -395,7 +407,7 @@ func TestPromptState_ToString_WithMonstersHere(t *testing.T) {
 		},
 	}
 
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	requireContains(t, result, "Monsters here:")
 	requireContains(t, result, "- Giant Rat (AC: 12, HP: 9/9): A filthy, red-eyed rodent the size of a dog.")
@@ -424,7 +436,7 @@ func TestPromptState_ToString_ImportantElsewhereWithoutDirection(t *testing.T) {
 		},
 	}
 
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	requireContains(t, result, "- north: Street - A cobblestone street.")
 	requireContains(t, result, "- Castle (elsewhere) - A distant castle on the hill.")
@@ -450,7 +462,7 @@ func TestPromptState_ToString_ExitsSortedWithoutRedirect(t *testing.T) {
 		},
 	}
 
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	requireContains(t, result, "Exits:")
 	requireContains(t, result, "- east -> East Room")
@@ -481,7 +493,7 @@ func TestPromptState_ToString_RelaxedRules(t *testing.T) {
 		},
 	}
 
-	result := ps.ToString()
+	result := ps.ToString(nil)
 
 	requireContains(t, result, "<world_state_rules>")
 	requireContains(t, result, "The WORLD STATE is a starting point.")
@@ -494,8 +506,7 @@ func TestPromptState_ToString_RelaxedRules(t *testing.T) {
 
 func TestPromptState_ToSlimString(t *testing.T) {
 	ps := &PromptState{
-		Location:    "deck",
-		JustEntered: true,
+		Location: "deck",
 		WorldLocations: map[string]scenario.Location{
 			"deck": {
 				Name:        "Main Deck",
@@ -559,4 +570,99 @@ func TestPromptState_ToSlimString(t *testing.T) {
 	requireNotContains(t, result, "HP: 7/7")
 	requireNotContains(t, result, "A massive rat with matted fur.")
 	requireNotContains(t, result, "Dark and musty cargo area.")
+}
+
+func TestPromptState_ToString_NilEqualsNonMovement(t *testing.T) {
+	gs := &state.GameState{
+		Location: "start",
+		WorldLocations: map[string]scenario.Location{
+			"start": {
+				Name:        "Forest Clearing",
+				Description: "A quiet glade with ancient oaks.",
+				Exits:       map[string]string{"east": "cave"},
+			},
+			"cave": {Name: "Dark Cave", Description: "A dripping limestone cave.", Preview: "A cave mouth."},
+		},
+	}
+	ps := ToPromptState(gs)
+	gotNil := ps.ToString(nil)
+	dialogue := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeDialogue}
+	if ps.ToString(dialogue) != gotNil {
+		t.Fatal("non-movement ruling should render the same as nil")
+	}
+	requireContains(t, gotNil, "Forest Clearing")
+	requireContains(t, gotNil, "A quiet glade with ancient oaks.")
+	requireContains(t, gotNil, "<adjacent_previews>")
+	requireNotContains(t, gotNil, "A dripping limestone cave.")
+}
+
+func TestPromptState_ToString_MovementUsesDestAsCurrent(t *testing.T) {
+	gs := &state.GameState{
+		Location: "start",
+		WorldLocations: map[string]scenario.Location{
+			"start": {
+				Name:        "Forest Clearing",
+				Description: "A quiet glade with ancient oaks.",
+				Preview:     "A forest clearing.",
+				Exits:       map[string]string{"east": "cave"},
+			},
+			"cave": {
+				Name:        "Dark Cave",
+				Description: "A dripping limestone cave.",
+				Preview:     "A cave mouth.",
+				Items:       []string{"rusty lantern"},
+				Exits:       map[string]string{"west": "start"},
+				Monsters: map[string]*character.Monster{
+					"bat1": {ID: "bat1", Name: "Cave Bat", AC: 11, HP: 3, MaxHP: 3},
+				},
+			},
+		},
+		NPCs: map[string]character.NPC{
+			"hermit": {Name: "The Hermit", Location: "cave"},
+		},
+	}
+	move := &chat.Ruling{
+		Allowed: true,
+		Scope:   chat.RulingScopeMovement,
+		Focus:   chat.RulingFocus{Locations: []string{"Dark Cave"}},
+	}
+	ps := toPromptStateAt(gs, narratorViewLocation(gs, move))
+	if gs.Location != "start" {
+		t.Fatalf("GameState.Location = %q, want start", gs.Location)
+	}
+	if ps.Location != "cave" {
+		t.Fatalf("PromptState.Location = %q, want cave", ps.Location)
+	}
+	got := ps.ToString(move)
+	requireContains(t, got, "Dark Cave")
+	requireContains(t, got, "A dripping limestone cave.")
+	requireContains(t, got, "rusty lantern")
+	requireContains(t, got, "The Hermit")
+	requireContains(t, got, "Cave Bat")
+	requireNotContains(t, got, "<destination>")
+	requireNotContains(t, got, "A quiet glade with ancient oaks.")
+}
+
+func TestPromptState_ToString_FollowingNPCOnMove(t *testing.T) {
+	gs := &state.GameState{
+		Location: "start",
+		WorldLocations: map[string]scenario.Location{
+			"start": {Name: "Forest Clearing", Exits: map[string]string{"east": "cave"}},
+			"cave":  {Name: "Dark Cave", Exits: map[string]string{"west": "start"}},
+		},
+		NPCs: map[string]character.NPC{
+			"pip": {Name: "Pip Upton", Location: "start", Following: "pc"},
+		},
+	}
+	move := &chat.Ruling{
+		Allowed: true,
+		Scope:   chat.RulingScopeMovement,
+		Focus:   chat.RulingFocus{Locations: []string{"cave"}},
+	}
+	ps := toPromptStateAt(gs, narratorViewLocation(gs, move))
+	got := ps.ToString(move)
+	requireContains(t, got, "Pip Upton")
+	if gs.NPCs["pip"].Location != "start" {
+		t.Errorf("follower Location = %q, want start", gs.NPCs["pip"].Location)
+	}
 }

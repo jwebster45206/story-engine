@@ -78,17 +78,8 @@ func (a *Applier) ApplyVars() {
 // Apply applies the delta to the game state (scene changes, items, location, game end)
 func (a *Applier) Apply() error {
 	if a.delta == nil {
-		// No delta this turn - location cannot have changed.
-		if a.gs != nil {
-			a.gs.JustEntered = false
-		}
 		return nil
 	}
-
-	// Capture the pre-Apply location so we can flag JustEntered if it changes.
-	// Scene loads also reset Location to the scene's opening; that case is
-	// also a legitimate "just entered" signal.
-	priorLocation := a.gs.Location
 
 	// Handle scene change
 	if a.delta.SceneChange != nil && a.delta.SceneChange.To != "" &&
@@ -191,11 +182,6 @@ func (a *Applier) Apply() error {
 	// Sync locations for NPCs that are following other characters
 	// This MUST be last to ensure we sync to final locations after all other changes
 	a.syncFollowingNPCs()
-
-	// Flag JustEntered so the narrator knows on the next prompt build that
-	// the player has just arrived. This self-resets on the following Apply()
-	// when no location change occurs.
-	a.gs.JustEntered = a.gs.Location != priorLocation
 
 	return nil
 }

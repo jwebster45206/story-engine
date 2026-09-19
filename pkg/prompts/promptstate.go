@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jwebster45206/story-engine/pkg/character"
+	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -23,22 +24,34 @@ type PromptState struct {
 	IsEnded          bool                         `json:"is_ended"`                     // true when the game is over
 	TurnCounter      int                          `json:"turn_counter,omitempty"`       // Total number of successful chat interactions
 	SceneTurnCounter int                          `json:"scene_turn_counter,omitempty"` // Number of successful chat interactions in
-	JustEntered      bool                         `json:"just_entered,omitempty"`       // true on the first turn after a location change
 	Rules            state.RulesMode              `json:"-"`                            // Narrator ruleset; not sent to reducer JSON
+	FocusedNPCs      []string                     `json:"-"`                            // Referee focus names; not sent to reducer JSON
 }
 
 func ToPromptState(gs *state.GameState) *PromptState {
-	// Filter NPCs: only include those in the same location as user OR marked as important
+	return toPromptStateAt(gs, gs.Location)
+}
+
+// toPromptStateAt builds a PromptState as if the player were already at viewLoc.
+// GameState is not mutated. When viewLoc is a movement destination, NPCs that
+// follow the PC are treated as present there so companions do not vanish on
+// the arrival prompt; Apply still syncs their locations after narration.
+func toPromptStateAt(gs *state.GameState, viewLoc string) *PromptState {
 	filteredNPCs := make(map[string]character.NPC)
 	for name, npc := range gs.NPCs {
-		if npc.Location == gs.Location || npc.IsImportant {
+		if viewLoc != gs.Location && strings.EqualFold(npc.Following, "pc") {
+			clone := npc
+			clone.Location = viewLoc
+			filteredNPCs[name] = clone
+			continue
+		}
+		if npc.Location == viewLoc || npc.IsImportant {
 			filteredNPCs[name] = npc
 		}
 	}
 
-	// Filter Monsters: only include those in the current location
 	filteredMonsters := make(map[string]character.Monster)
-	if currentLoc, ok := gs.WorldLocations[gs.Location]; ok {
+	if currentLoc, ok := gs.WorldLocations[viewLoc]; ok {
 		for id, monster := range currentLoc.Monsters {
 			if monster != nil {
 				filteredMonsters[id] = *monster
@@ -49,10 +62,9 @@ func ToPromptState(gs *state.GameState) *PromptState {
 	return &PromptState{
 		NPCs:           filteredNPCs,
 		Monsters:       filteredMonsters,
-		WorldLocations: filterLocations(gs.WorldLocations, gs.Location),
-		Location:       gs.Location,
+		WorldLocations: filterLocations(gs.WorldLocations, viewLoc),
+		Location:       viewLoc,
 		Inventory:      gs.Inventory,
-		JustEntered:    gs.JustEntered,
 		Rules:          gs.Rules,
 		// Vars and counters intentionally excluded for user-facing prompts
 	}
@@ -114,7 +126,6 @@ func ToBackgroundPromptState(gs *state.GameState) *PromptState {
 		IsEnded:          gs.IsEnded,
 		TurnCounter:      gs.TurnCounter,
 		SceneTurnCounter: gs.SceneTurnCounter,
-		JustEntered:      gs.JustEntered,
 		// ContingencyPrompts are handled as separate system messages, not JSON data
 	}
 }
@@ -135,8 +146,11 @@ func ApplyPromptStateToGameState(ps *PromptState, gs *state.GameState) {
 }
 
 // ToString converts the PromptState into a human-readable string format
-// optimized for LLM comprehension.
-func (ps *PromptState) ToString() string {
+// optimized for LLM comprehension. A nil ruling (and any non-movement ruling)
+// renders the full slim state. A resolved movement destination is applied by
+// building PromptState at that location before calling ToString; this slice
+// does not further trim sections by scope.
+func (ps *PromptState) ToString(ruling *chat.Ruling) string {
 	var sb strings.Builder
 
 	sb.WriteString("<world_state>\n")
@@ -190,15 +204,23 @@ func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scen
 		fmt.Fprintf(sb, "\nItems here: %s\n", strings.Join(currentLoc.Items, ", "))
 	}
 
-	presentNames := make([]string, 0)
-	for _, npc := range ps.NPCs {
-		if npc.Location == ps.Location {
-			presentNames = append(presentNames, npc.Name)
+	if present := presentNPCs(ps.NPCs, ps.Location); len(present) > 0 {
+		if !anyNPCFocused(present, ps.FocusedNPCs) {
+			names := make([]string, len(present))
+			for i, npc := range present {
+				names[i] = npc.Name
+			}
+			fmt.Fprintf(sb, "NPCs here: %s\n", strings.Join(names, ", "))
+		} else {
+			sb.WriteString("NPCs here:\n")
+			for _, npc := range present {
+				if npcFocused(npc, ps.FocusedNPCs) && npc.Description != "" {
+					fmt.Fprintf(sb, "- %s: %s\n", npc.Name, npc.Description)
+				} else {
+					fmt.Fprintf(sb, "- %s\n", npc.Name)
+				}
+			}
 		}
-	}
-	sort.Strings(presentNames)
-	if len(presentNames) > 0 {
-		fmt.Fprintf(sb, "NPCs here: %s\n", strings.Join(presentNames, ", "))
 	}
 
 	if len(ps.Monsters) > 0 {
@@ -355,7 +377,7 @@ func (ps *PromptState) writeUserInventory(sb *strings.Builder) {
 
 // writeWorldStateRules renders the <world_state_rules> block from the
 // active ruleset: storytelling scope (current_location), not movement
-// enforcement. The just_entered opening is a separate dynamic directive.
+// enforcement. Arrival vs stay-put is a separate dynamic directive.
 func (ps *PromptState) writeWorldStateRules(sb *strings.Builder) {
 	rs := getRuleSet(ps.Rules)
 	if len(rs.WorldStateRules) == 0 {
@@ -396,4 +418,90 @@ func collectExitDirections(loc scenario.Location) []string {
 	}
 	sort.Strings(dirs)
 	return dirs
+}
+
+func presentNPCs(npcs map[string]character.NPC, location string) []character.NPC {
+	present := make([]character.NPC, 0)
+	for _, npc := range npcs {
+		if npc.Location == location {
+			present = append(present, npc)
+		}
+	}
+	sort.Slice(present, func(i, j int) bool { return present[i].Name < present[j].Name })
+	return present
+}
+
+func npcFocused(npc character.NPC, focused []string) bool {
+	for _, name := range focused {
+		if strings.EqualFold(name, npc.Name) {
+			return true
+		}
+	}
+	return false
+}
+
+func anyNPCFocused(npcs []character.NPC, focused []string) bool {
+	for _, npc := range npcs {
+		if npcFocused(npc, focused) {
+			return true
+		}
+	}
+	return false
+}
+
+type resolvedLocation struct {
+	Key string
+	Loc scenario.Location
+}
+
+func lookupLocation(world map[string]scenario.Location, name string) (string, scenario.Location, bool) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", scenario.Location{}, false
+	}
+	if loc, ok := world[name]; ok {
+		return name, loc, true
+	}
+	for key, loc := range world {
+		if strings.EqualFold(key, name) || strings.EqualFold(loc.Name, name) {
+			return key, loc, true
+		}
+	}
+	return "", scenario.Location{}, false
+}
+
+func adjacentLocationKeys(world map[string]scenario.Location, current string) map[string]struct{} {
+	out := make(map[string]struct{})
+	cur, ok := world[current]
+	if !ok {
+		return out
+	}
+	for _, dest := range cur.Exits {
+		out[dest] = struct{}{}
+	}
+	return out
+}
+
+func resolveMovementDestinations(gs *state.GameState, names []string) []resolvedLocation {
+	if gs == nil || len(names) == 0 {
+		return nil
+	}
+	adjacent := adjacentLocationKeys(gs.WorldLocations, gs.Location)
+	out := make([]resolvedLocation, 0, len(names))
+	seen := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		key, loc, ok := lookupLocation(gs.WorldLocations, name)
+		if !ok || key == gs.Location {
+			continue
+		}
+		if _, reachable := adjacent[key]; !reachable {
+			continue
+		}
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, resolvedLocation{Key: key, Loc: loc})
+	}
+	return out
 }
