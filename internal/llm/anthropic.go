@@ -17,9 +17,11 @@ import (
 )
 
 const (
-	anthropicBaseURL = "https://api.anthropic.com/v1"
-	anthropicVersion = "2023-06-01"
-	vendorAnthropic  = "anthropic"
+	anthropicBaseURL      = "https://api.anthropic.com/v1"
+	anthropicVersion      = "2023-06-01"
+	anthropicCacheTTLBeta = "extended-cache-ttl-2025-04-11"
+	vendorAnthropic       = "anthropic"
+	anthropicCacheTTLHour = "1h"
 )
 
 // AnthropicService implements LLMService for Anthropic Claude
@@ -43,15 +45,26 @@ type AnthropicToolChoice struct {
 	Name string `json:"name,omitempty"`
 }
 
+type AnthropicCacheControl struct {
+	Type string `json:"type"`
+	TTL  string `json:"ttl,omitempty"`
+}
+
+type AnthropicSystemBlock struct {
+	Type         string                 `json:"type"`
+	Text         string                 `json:"text"`
+	CacheControl *AnthropicCacheControl `json:"cache_control,omitempty"`
+}
+
 type AnthropicChatRequest struct {
-	Model         string               `json:"model"`
-	MaxTokens     int                  `json:"max_tokens"`
-	Messages      []chat.LLMMessage    `json:"messages"`
-	System        string               `json:"system,omitempty"`
-	Stream        bool                 `json:"stream,omitempty"`
-	StopSequences []string             `json:"stop_sequences,omitempty"`
-	Tools         []AnthropicTool      `json:"tools,omitempty"`
-	ToolChoice    *AnthropicToolChoice `json:"tool_choice,omitempty"`
+	Model         string                 `json:"model"`
+	MaxTokens     int                    `json:"max_tokens"`
+	Messages      []chat.LLMMessage      `json:"messages"`
+	System        []AnthropicSystemBlock `json:"system,omitempty"`
+	Stream        bool                   `json:"stream,omitempty"`
+	StopSequences []string               `json:"stop_sequences,omitempty"`
+	Tools         []AnthropicTool        `json:"tools,omitempty"`
+	ToolChoice    *AnthropicToolChoice   `json:"tool_choice,omitempty"`
 }
 
 type AnthropicContentBlock struct {
@@ -95,8 +108,10 @@ type AnthropicChatResponse struct {
 	StopReason   string                  `json:"stop_reason"`
 	StopSequence *string                 `json:"stop_sequence"`
 	Usage        struct {
-		InputTokens  int `json:"input_tokens"`
-		OutputTokens int `json:"output_tokens"`
+		InputTokens              int `json:"input_tokens"`
+		OutputTokens             int `json:"output_tokens"`
+		CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+		CacheReadInputTokens     int `json:"cache_read_input_tokens"`
 	} `json:"usage"`
 	Error *struct {
 		Type    string `json:"type"`
@@ -120,23 +135,38 @@ func NewAnthropicService(pc *config.ProviderConfig, logger *slog.Logger) *Anthro
 	}
 }
 
-// splitChatMessages extracts and combines all system messages into a single top-level
-// Anthropic system prompt. Trailing system messages (e.g. the game-end prompt appended
-// after the user turn) are hoisted to the front here; Venice leaves them inline.
-func (a *AnthropicService) splitChatMessages(messages []chat.ChatMessage) (string, []chat.ChatMessage) {
-	var systemParts []string
+// splitChatMessages extracts system messages as ordered Anthropic content blocks.
+// Persistent blocks are tagged for prompt cache. Trailing system messages
+// (e.g. the game-end prompt) are hoisted with the rest of the system prefix.
+func (a *AnthropicService) splitChatMessages(messages []chat.ChatMessage) ([]AnthropicSystemBlock, []chat.ChatMessage) {
+	var systemBlocks []AnthropicSystemBlock
 	var nonSystemMessages []chat.ChatMessage
 
 	for _, msg := range messages {
-		if msg.Role == chat.ChatRoleSystem {
-			systemParts = append(systemParts, msg.Content)
-		} else {
+		if msg.Role != chat.ChatRoleSystem {
 			nonSystemMessages = append(nonSystemMessages, msg)
+			continue
 		}
+		block := AnthropicSystemBlock{
+			Type: "text",
+			Text: msg.Content,
+		}
+		if msg.IsPersistent {
+			block.CacheControl = &AnthropicCacheControl{
+				Type: "ephemeral",
+				TTL:  anthropicCacheTTLHour,
+			}
+		}
+		systemBlocks = append(systemBlocks, block)
 	}
+	return systemBlocks, nonSystemMessages
+}
 
-	systemPrompt := strings.Join(systemParts, "\n\n")
-	return systemPrompt, nonSystemMessages
+func (a *AnthropicService) setAnthropicHeaders(req *http.Request) {
+	req.Header.Set("x-api-key", a.apiKey)
+	req.Header.Set("anthropic-version", anthropicVersion)
+	req.Header.Set("anthropic-beta", anthropicCacheTTLBeta)
+	req.Header.Set("content-type", "application/json")
 }
 
 // chatCompletion is the non-streaming backend path. BackendMaxTokens is the cap by convention.
@@ -153,7 +183,7 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 	}
 
 	// Add system prompt if we have one
-	if systemPrompt != "" {
+	if len(systemPrompt) > 0 {
 		anthropicReq.System = systemPrompt
 	}
 
@@ -176,10 +206,7 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 		return "", Usage{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Set required Anthropic headers
-	req.Header.Set("x-api-key", a.apiKey)
-	req.Header.Set("anthropic-version", anthropicVersion)
-	req.Header.Set("content-type", "application/json")
+	a.setAnthropicHeaders(req)
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
@@ -206,10 +233,12 @@ func (a *AnthropicService) chatCompletion(ctx context.Context, messages []chat.C
 	}
 
 	usage := Usage{
-		InputTokens:  anthropicResp.Usage.InputTokens,
-		OutputTokens: anthropicResp.Usage.OutputTokens,
-		Model:        modelName,
-		Vendor:       vendorAnthropic,
+		InputTokens:              anthropicResp.Usage.InputTokens,
+		OutputTokens:             anthropicResp.Usage.OutputTokens,
+		CacheCreationInputTokens: anthropicResp.Usage.CacheCreationInputTokens,
+		CacheReadInputTokens:     anthropicResp.Usage.CacheReadInputTokens,
+		Model:                    modelName,
+		Vendor:                   vendorAnthropic,
 	}
 	if anthropicResp.Model != "" {
 		usage.Model = anthropicResp.Model
@@ -252,7 +281,7 @@ func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatM
 	}
 
 	// Add system prompt if we have one
-	if systemPrompt != "" {
+	if len(systemPrompt) > 0 {
 		anthropicReq.System = systemPrompt
 	}
 
@@ -266,10 +295,7 @@ func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatM
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Set required Anthropic headers
-	req.Header.Set("x-api-key", a.apiKey)
-	req.Header.Set("anthropic-version", anthropicVersion)
-	req.Header.Set("content-type", "application/json")
+	a.setAnthropicHeaders(req)
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
@@ -345,6 +371,8 @@ func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatM
 			case "message_start":
 				if streamEvent.Message != nil {
 					usage.InputTokens = streamEvent.Message.Usage.InputTokens
+					usage.CacheCreationInputTokens = streamEvent.Message.Usage.CacheCreationInputTokens
+					usage.CacheReadInputTokens = streamEvent.Message.Usage.CacheReadInputTokens
 					if streamEvent.Message.Usage.OutputTokens > 0 {
 						usage.OutputTokens = streamEvent.Message.Usage.OutputTokens
 					}

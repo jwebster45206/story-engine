@@ -186,6 +186,53 @@ func TestVeniceService_GetRuling_JSONSchema(t *testing.T) {
 	assert.Equal(t, 4, usage.OutputTokens)
 }
 
+func TestVeniceService_ChatStream_PreservesOrderedSystemMessages(t *testing.T) {
+	var got map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		responses := []string{
+			`data: {"id":"test-1","object":"chat.completion.chunk","created":1,"model":"test-model","choices":[{"index":0,"delta":{"content":"ok"}}]}`,
+			`data: {"id":"test-1","object":"chat.completion.chunk","created":1,"model":"test-model","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`,
+			`data: [DONE]`,
+		}
+		for _, resp := range responses {
+			_, _ = w.Write([]byte(resp + "\n"))
+			w.(http.Flusher).Flush()
+		}
+	}))
+	defer server.Close()
+
+	svc := NewVeniceService(venicePC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
+	ch, err := svc.ChatStream(context.Background(), []chat.ChatMessage{
+		{Role: chat.ChatRoleSystem, Content: "persistent", IsPersistent: true},
+		{Role: chat.ChatRoleSystem, Content: "dynamic"},
+		{Role: chat.ChatRoleUser, Content: "Hi"},
+	}, DefaultTemperature)
+	require.NoError(t, err)
+	for chunk := range ch {
+		require.NoError(t, chunk.Error)
+		if chunk.Done {
+			break
+		}
+	}
+	msgs, _ := got["messages"].([]any)
+	require.Len(t, msgs, 3)
+	first, _ := msgs[0].(map[string]any)
+	second, _ := msgs[1].(map[string]any)
+	third, _ := msgs[2].(map[string]any)
+	assert.Equal(t, "system", first["role"])
+	assert.Equal(t, "persistent", first["content"])
+	assert.Equal(t, "system", second["role"])
+	assert.Equal(t, "dynamic", second["content"])
+	assert.Equal(t, "user", third["role"])
+	assert.Equal(t, "Hi", third["content"])
+	_, hasCache := first["cache_control"]
+	assert.False(t, hasCache)
+}
+
 func TestVeniceStreamResponseParsing(t *testing.T) {
 	streamData := `{"id":"test-1","object":"chat.completion.chunk","created":1234567890,"model":"test-model","choices":[{"index":0,"delta":{"content":"Hello world"},"finish_reason":null}]}`
 	var streamResp VeniceStreamResponse
