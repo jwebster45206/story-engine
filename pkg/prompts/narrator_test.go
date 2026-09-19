@@ -185,7 +185,11 @@ func TestBuildNarratorMessages_GameEnded(t *testing.T) {
 func TestBuildNarratorMessages_WithContingencyPrompts(t *testing.T) {
 	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "start"
+	gs.JustEntered = true
 	gs.Vars = map[string]string{"test_flag": "true"}
+	gs.ChatHistory = []chat.ChatMessage{
+		{Role: chat.ChatRoleAgent, Content: "A bell rings.", IsStoryEvent: true},
+	}
 	sc := basicScenario()
 	sc.ContingencyPrompts = []conditionals.ContingencyPrompt{
 		{Prompt: "Always show this prompt"},
@@ -200,11 +204,17 @@ func TestBuildNarratorMessages_WithContingencyPrompts(t *testing.T) {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
 	dynamic := messages[1].Content
+	if !strings.Contains(dynamic, "<contingencies>") {
+		t.Error("expected contingencies wrapper")
+	}
 	if !strings.Contains(dynamic, "Always show this prompt") {
 		t.Error("expected contingency prompts")
 	}
 	if !strings.Contains(dynamic, "Show when flag is true") {
 		t.Error("expected conditional contingency prompts")
+	}
+	if !strings.HasSuffix(strings.TrimSpace(dynamic), "</contingencies>") {
+		t.Error("contingencies should be last in the dynamic block")
 	}
 }
 
@@ -218,8 +228,11 @@ func TestBuildNarratorMessages_RelaxedSystemPrompt(t *testing.T) {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
 	persistent := messages[0].Content
-	if !strings.Contains(persistent, "You may extend it with plausible architecture") {
+	if !strings.Contains(persistent, "draw from the WORLD STATE as your starting point") {
 		t.Error("expected relaxed location language")
+	}
+	if !strings.Contains(messages[1].Content, "The WORLD STATE is a starting point") {
+		t.Error("expected relaxed world-state latitude")
 	}
 	if strings.Contains(persistent, "Do not allow the user to control NPCs, create NPCs, invent items") {
 		t.Error("strict invention ban should not appear in relaxed mode")
@@ -335,6 +348,15 @@ func TestBuildNarratorMessages_PersistentCacheSafety(t *testing.T) {
 		t.Fatalf("turn 1: %v", err)
 	}
 	persistent := first[0].Content
+	if strings.Contains(persistent, "### Monsters") {
+		t.Fatal("monsters copy must not live in the persistent block")
+	}
+	if !strings.Contains(persistent, "Content Rating: PG") {
+		t.Fatal("rating must live in the persistent block")
+	}
+	if strings.Contains(first[1].Content, "Content Rating:") {
+		t.Fatal("rating must not live in the dynamic block")
+	}
 
 	turns := []func(){
 		func() {
@@ -360,6 +382,18 @@ func TestBuildNarratorMessages_PersistentCacheSafety(t *testing.T) {
 		func() {
 			gs.Inventory = []string{"torch", "map"}
 			gs.Vars["flag"] = "false"
+			loc := gs.WorldLocations["cave"]
+			loc.Monsters = map[string]*character.Monster{
+				"rat1": {ID: "rat1", Name: "Giant Rat", AC: 12, HP: 7, MaxHP: 7},
+			}
+			gs.WorldLocations["cave"] = loc
+		},
+		func() {
+			gs.ChatHistory = append(gs.ChatHistory, chat.ChatMessage{
+				Role:         chat.ChatRoleAgent,
+				Content:      "A bell tolls across the water.",
+				IsStoryEvent: true,
+			})
 		},
 	}
 
@@ -375,6 +409,194 @@ func TestBuildNarratorMessages_PersistentCacheSafety(t *testing.T) {
 		if !msgs[0].IsPersistent || msgs[1].IsPersistent {
 			t.Fatalf("turn %d persistence flags = %v, %v", i+2, msgs[0].IsPersistent, msgs[1].IsPersistent)
 		}
+	}
+}
+
+func TestBuildNarratorMessages_PersistentDropsRedundantCopy(t *testing.T) {
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
+	gs.Location = "start"
+	sc := basicScenario()
+
+	messages, err := BuildNarratorMessages(gs, sc, "look around", 20, "")
+	if err != nil {
+		t.Fatalf("BuildNarratorMessages: %v", err)
+	}
+	persistent := messages[0].Content
+	for _, dropped := range []string{
+		"you don't speak for the user",
+		"Example (wrong)",
+		"Example (right)",
+		`Don't refer to "inventory"`,
+		"gently remind them to stay in character",
+		"Physical space first",
+		"Source priority",
+		"### Monsters",
+		worldEventContinuationRule,
+	} {
+		if strings.Contains(persistent, dropped) {
+			t.Errorf("persistent block still contains dropped copy %q", dropped)
+		}
+	}
+	for _, kept := range []string{
+		`Colons are reserved only for dialogue lines`,
+		`CharacterName: "Spoken line here."`,
+		"world's side of the conversation",
+		"Do not break the fourth wall",
+		"Do not answer questions about the game mechanics",
+		"Move the story forward gradually",
+		"### Describing locations",
+		"Content Rating: PG",
+	} {
+		if !strings.Contains(persistent, kept) {
+			t.Errorf("persistent block missing %q", kept)
+		}
+	}
+	if strings.Contains(messages[1].Content, "Content Rating:") {
+		t.Error("rating should not appear in the dynamic block")
+	}
+}
+
+func TestBuildNarratorMessages_RulesBlockOwnsPCAndInvention(t *testing.T) {
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
+	gs.Location = "start"
+	messages, err := BuildNarratorMessages(gs, basicScenario(), "hi", 20, "")
+	if err != nil {
+		t.Fatalf("BuildNarratorMessages: %v", err)
+	}
+	user := messages[len(messages)-1].Content
+	start := strings.Index(user, "<rules>")
+	end := strings.Index(user, "</rules>")
+	if start < 0 || end < 0 || end <= start {
+		t.Fatalf("expected <rules> block, got %q", user)
+	}
+	rules := user[start : end+len("</rules>")]
+	if n := strings.Count(rules, narratorRules[0]); n != 1 {
+		t.Errorf("invention ban appears %d times in <rules>, want 1", n)
+	}
+	if n := strings.Count(rules, narratorRules[1]); n != 1 {
+		t.Errorf("PC-ownership appears %d times in <rules>, want 1", n)
+	}
+}
+
+func TestBuildNarratorMessages_MonstersCopyConditional(t *testing.T) {
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
+	gs.Location = "start"
+	gs.WorldLocations = map[string]scenario.Location{
+		"start": {Name: "Start", Description: "A clearing."},
+	}
+	sc := basicScenario()
+	sc.Locations = gs.WorldLocations
+
+	messages, err := BuildNarratorMessages(gs, sc, "look", 20, "")
+	if err != nil {
+		t.Fatalf("no monsters: %v", err)
+	}
+	if strings.Contains(messages[0].Content, "### Monsters") {
+		t.Error("monsters heading must not appear in persistent")
+	}
+	if strings.Contains(messages[1].Content, "### Monsters") {
+		t.Error("monsters copy should be omitted when none are present")
+	}
+
+	loc := gs.WorldLocations["start"]
+	loc.Monsters = map[string]*character.Monster{
+		"rat1": {ID: "rat1", Name: "Giant Rat", AC: 12, HP: 7, MaxHP: 7},
+	}
+	gs.WorldLocations["start"] = loc
+
+	messages, err = BuildNarratorMessages(gs, sc, "look", 20, "")
+	if err != nil {
+		t.Fatalf("with monsters: %v", err)
+	}
+	if strings.Contains(messages[0].Content, "### Monsters") {
+		t.Error("monsters heading must not appear in persistent")
+	}
+	dynamic := messages[1].Content
+	if !strings.Contains(dynamic, "### Monsters") {
+		t.Error("expected monsters copy when monsters are present")
+	}
+	if !strings.Contains(dynamic, strictMonsters) {
+		t.Error("expected strict monsters copy in the dynamic block")
+	}
+}
+
+func TestBuildNarratorMessages_JustEnteredDirective(t *testing.T) {
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
+	gs.Location = "start"
+	gs.WorldLocations = map[string]scenario.Location{
+		"start": {Name: "Forest Clearing", Description: "A quiet glade."},
+	}
+	sc := basicScenario()
+	sc.Locations = gs.WorldLocations
+
+	messages, err := BuildNarratorMessages(gs, sc, "look", 20, "")
+	if err != nil {
+		t.Fatalf("just_entered false: %v", err)
+	}
+	dynamic := messages[1].Content
+	if strings.Contains(dynamic, "<just_entered>") {
+		t.Error("just_entered tag should be omitted")
+	}
+	if strings.Contains(dynamic, "New location:") {
+		t.Error("just_entered directive should be omitted when false")
+	}
+
+	gs.JustEntered = true
+	messages, err = BuildNarratorMessages(gs, sc, "look", 20, "")
+	if err != nil {
+		t.Fatalf("just_entered true: %v", err)
+	}
+	dynamic = messages[1].Content
+	if strings.Contains(dynamic, "<just_entered>") {
+		t.Error("just_entered tag should be omitted even when true")
+	}
+	want := "New location: brief opening description of Forest Clearing, then continue."
+	if !strings.Contains(dynamic, want) {
+		t.Errorf("missing just_entered directive %q\n--- dynamic ---\n%s", want, dynamic)
+	}
+}
+
+func TestBuildNarratorMessages_WorldEventRuleConditional(t *testing.T) {
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
+	gs.Location = "start"
+	sc := basicScenario()
+
+	messages, err := BuildNarratorMessages(gs, sc, "look", 20, "")
+	if err != nil {
+		t.Fatalf("no story event: %v", err)
+	}
+	if strings.Contains(messages[0].Content, worldEventContinuationRule) {
+		t.Error("world-event rule must not live in persistent")
+	}
+	if strings.Contains(messages[1].Content, worldEventContinuationRule) {
+		t.Error("world-event rule should be omitted when history has no story event")
+	}
+
+	gs.ChatHistory = []chat.ChatMessage{
+		{Role: chat.ChatRoleAgent, Content: "A horn sounds in the distance.", IsStoryEvent: true},
+	}
+	messages, err = BuildNarratorMessages(gs, sc, "look", 20, "")
+	if err != nil {
+		t.Fatalf("with story event: %v", err)
+	}
+	if strings.Contains(messages[0].Content, worldEventContinuationRule) {
+		t.Error("world-event rule must not live in persistent")
+	}
+	if !strings.Contains(messages[1].Content, worldEventContinuationRule) {
+		t.Error("expected world-event rule when a story event is in the window")
+	}
+
+	// Aged out of the history window: rule should disappear.
+	gs.ChatHistory = append(gs.ChatHistory,
+		chat.ChatMessage{Role: chat.ChatRoleUser, Content: "I wait"},
+		chat.ChatMessage{Role: chat.ChatRoleAgent, Content: "Time passes."},
+	)
+	messages, err = BuildNarratorMessages(gs, sc, "look", 2, "")
+	if err != nil {
+		t.Fatalf("windowed out: %v", err)
+	}
+	if strings.Contains(messages[1].Content, worldEventContinuationRule) {
+		t.Error("world-event rule should be omitted when the story event is outside the window")
 	}
 }
 

@@ -43,25 +43,22 @@ func formatRulesBlock(rules []string) string {
 // The %s for world state is already wrapped in <world_state>...</world_state> tags by PromptState.ToString.
 const statePromptTemplate = "The user is roleplaying this scenario: %s\n\nThe following describes the immediately surrounding world.\n\n%s\n"
 
-// systemPromptTemplate is the stitch point for the narrator system prompt.
-// %s slots in order: narrator name, narrator style, PC, locations, monsters.
-const systemPromptTemplate = `You are %s, the omniscient narrator of a roleplaying text adventure. You describe the story to the user as it unfolds. You never discuss things outside of the game. Your perspective is third-person. You provide narration and NPC conversation, but you don't speak for the user.
+const worldEventContinuationRule = `When the chat contains a world-event message describing something that just happened, do not re-narrate it — continue the story from after it.`
+
+// systemPromptTemplate is the stitch point for the persistent narrator system prompt.
+// %s slots in order: narrator name, narrator style, PC, locations, content rating.
+const systemPromptTemplate = `You are %s, the omniscient narrator of a roleplaying text adventure. You describe the story to the user as it unfolds. You never discuss things outside of the game. Your perspective is third-person. You provide narration and NPC conversation.
 
 ### Writing rules for narrative output:
-- Normal narration must never use colons. Colons are reserved only for dialogue lines.  
+- Normal narration must never use colons. Colons are reserved only for dialogue lines.
 - When a new character speaks, start a new paragraph and use the format:
   CharacterName: "Spoken line here."
 - Always end your response on the world's side of the conversation. Close with the world, an NPC, or a situation in a state of waiting — not with the PC speaking, deciding, or acting. The player provides the PC's voice; you provide everything else.
-  Example (wrong): Madam Eva: "What do you seek?" The PC steps forward and answers that they seek the cure.
-  Example (right): Madam Eva: "What do you seek?" Her eyes hold yours across the fire, patient as stone.
-- Don't refer to "inventory" by that name in storytelling; use words fitting for the story.
 
-### Narrator responses 
-- Do not break the fourth wall. Do not acknowledge that you are an AI or a computer program. 
-- Do not answer questions about the game mechanics or how to play. 
-- If the user breaks character, gently remind them to stay in character. 
-- Move the story forward gradually, allowing the user to explore and discover things on their own. 
-- When the chat contains a world-event message describing something that just happened, do not re-narrate it — continue the story from after it.
+### Narrator responses
+- Do not break the fourth wall. Do not acknowledge that you are an AI or a computer program.
+- Do not answer questions about the game mechanics or how to play.
+- Move the story forward gradually, allowing the user to explore and discover things on their own.
 %s
 Your narrator style informs your voice, vocabulary, and output structure. It does not grant permission to ignore the game rules above.
 
@@ -71,13 +68,12 @@ Your narrator style informs your voice, vocabulary, and output structure. It doe
 ### Describing locations
 %s
 
-### Monsters
 %s
 `
 
-// buildNarratorPrompt constructs the system prompt with narrator and PC prompts injected.
+// buildNarratorPrompt constructs the persistent system prompt with narrator and PC prompts injected.
 // mode selects the base ruleset (strict or relaxed). pc is optional - pass nil if no PC.
-func buildNarratorPrompt(narrator *scenario.Narrator, pc *character.PC, mode state.RulesMode) string {
+func buildNarratorPrompt(narrator *scenario.Narrator, pc *character.PC, mode state.RulesMode, rating string) string {
 	narratorPrompts := ""
 	narratorName := "the narrator"
 	if narrator != nil {
@@ -94,8 +90,16 @@ func buildNarratorPrompt(narrator *scenario.Narrator, pc *character.PC, mode sta
 		narratorPrompts,
 		pcPrompt,
 		rs.Locations,
-		rs.Monsters,
+		formatContentRating(rating),
 	)
+}
+
+func formatContentRating(rating string) string {
+	line := "Content Rating: " + rating
+	if ratingPrompt := contentRatingPrompt(rating); ratingPrompt != "" {
+		line += " (" + ratingPrompt + ")"
+	}
+	return line
 }
 
 func contentRatingPrompt(rating string) string {
@@ -141,10 +145,10 @@ func getStatePrompt(gs *state.GameState, s *scenario.Scenario) (chat.ChatMessage
 const narratorHistoryDefault = 20
 
 // BuildNarratorMessages assembles the streaming narrator call: a persistent
-// system prompt (ruleset, voice, PC), a dynamic system prompt (rating, story,
-// world state, contingencies), windowed history, the current user line with
-// <rules> and optional <referee>, and a game-end message when the session
-// has ended.
+// system prompt (ruleset, voice, PC, rating), a dynamic system prompt (story,
+// world state, conditional monsters/just_entered/world-event, contingencies),
+// windowed history, the current user line with <rules> and optional <referee>,
+// and a game-end message when the session has ended.
 func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessage string, historyLimit int, referee string) ([]chat.ChatMessage, error) {
 	if gs == nil {
 		return nil, fmt.Errorf("gamestate is required")
@@ -156,7 +160,8 @@ func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessa
 		historyLimit = narratorHistoryDefault
 	}
 
-	persistent, dynamic, err := narratorSystemPrompts(gs, sc)
+	history := windowHistory(gs.ChatHistory, historyLimit)
+	persistent, dynamic, err := narratorSystemPrompts(gs, sc, history)
 	if err != nil {
 		return nil, fmt.Errorf("error building system prompt: %w", err)
 	}
@@ -172,7 +177,7 @@ func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessa
 			Content: dynamic,
 		},
 	}
-	msgs = append(msgs, windowHistory(gs.ChatHistory, historyLimit)...)
+	msgs = append(msgs, history...)
 	if user := narratorUserTurn(gs, userMessage, referee); user.Content != "" {
 		msgs = append(msgs, user)
 	}
@@ -182,29 +187,60 @@ func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessa
 	return msgs, nil
 }
 
-func narratorSystemPrompts(gs *state.GameState, sc *scenario.Scenario) (string, string, error) {
-	persistent := buildNarratorPrompt(gs.Narrator, gs.PC, gs.Rules)
-
-	var sb strings.Builder
-	sb.WriteString("Content Rating: " + sc.Rating)
-	if ratingPrompt := contentRatingPrompt(sc.Rating); ratingPrompt != "" {
-		sb.WriteString(" (" + ratingPrompt + ")")
-	}
+func narratorSystemPrompts(gs *state.GameState, sc *scenario.Scenario, history []chat.ChatMessage) (string, string, error) {
+	persistent := buildNarratorPrompt(gs.Narrator, gs.PC, gs.Rules, sc.Rating)
 
 	statePrompt, err := getStatePrompt(gs, sc)
 	if err != nil {
 		return "", "", err
 	}
-	sb.WriteString("\n\n" + statePrompt.Content)
+
+	var sb strings.Builder
+	sb.WriteString(statePrompt.Content)
+
+	ps := ToPromptState(gs)
+	if len(ps.Monsters) > 0 {
+		rs := getRuleSet(gs.Rules)
+		sb.WriteString("\n\n### Monsters\n")
+		sb.WriteString(rs.Monsters)
+	}
+
+	if gs.JustEntered {
+		sb.WriteString("\n\n")
+		sb.WriteString(justEnteredDirective(ps))
+	}
+
+	if historyHasStoryEvent(history) {
+		sb.WriteString("\n\n")
+		sb.WriteString(worldEventContinuationRule)
+	}
 
 	contingencyPrompts := gs.GetContingencyPrompts(sc)
 	if len(contingencyPrompts) > 0 {
-		sb.WriteString("\n\nSome important storytelling guidelines:\n\n")
+		sb.WriteString("\n\n<contingencies>\n")
 		for i, prompt := range contingencyPrompts {
 			fmt.Fprintf(&sb, "%d. %s\n", i+1, prompt)
 		}
+		sb.WriteString("</contingencies>")
 	}
 	return persistent, sb.String(), nil
+}
+
+func justEnteredDirective(ps *PromptState) string {
+	name := ps.locationDisplayName(ps.Location)
+	if name == "" {
+		name = ps.Location
+	}
+	return fmt.Sprintf("New location: brief opening description of %s, then continue.", name)
+}
+
+func historyHasStoryEvent(history []chat.ChatMessage) bool {
+	for _, m := range history {
+		if m.IsStoryEvent {
+			return true
+		}
+	}
+	return false
 }
 
 func windowHistory(history []chat.ChatMessage, limit int) []chat.ChatMessage {

@@ -55,7 +55,6 @@ func TestGetStatePrompt(t *testing.T) {
 				mustContain: []string{
 					"The user is roleplaying this scenario: A test adventure",
 					"<world_state>",
-					"<just_entered>false</just_entered>",
 					"<current_location>",
 					"Tortuga",
 					"A pirate port",
@@ -66,6 +65,7 @@ func TestGetStatePrompt(t *testing.T) {
 					"</world_state>",
 				},
 				mustNotContain: []string{
+					"<just_entered>",
 					"// -- BEGIN WORLD STATE --",
 					"// -- END WORLD STATE --",
 				},

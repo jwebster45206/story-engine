@@ -10,7 +10,7 @@ import (
 func TestGetRuleSet_DefaultsToStrict(t *testing.T) {
 	for _, mode := range []state.RulesMode{"", state.RulesStrict, "unknown"} {
 		rs := getRuleSet(mode)
-		if !strings.Contains(rs.Locations, "Do not add architecture, props, or named entities not in the WORLD STATE") {
+		if !strings.Contains(rs.Locations, "Never mention exits that aren't in the WORLD STATE") {
 			t.Errorf("getRuleSet(%q) should use strict locations copy", mode)
 		}
 	}
@@ -21,7 +21,7 @@ func TestGetRuleSet_Relaxed(t *testing.T) {
 	if rs.Examples != "" {
 		t.Errorf("relaxed Examples = %q, want empty", rs.Examples)
 	}
-	if !strings.Contains(rs.Locations, "You may extend it with plausible architecture") {
+	if !strings.Contains(rs.Locations, "draw from the WORLD STATE as your starting point") {
 		t.Error("expected relaxed locations copy")
 	}
 }
@@ -67,5 +67,8 @@ func TestSystemPromptTemplate_SharedNarratorVoiceHeading(t *testing.T) {
 	}
 	if strings.Contains(systemPromptTemplate, "### Game mechanics:") {
 		t.Error("game mechanics section should be removed from narrator template")
+	}
+	if strings.Contains(systemPromptTemplate, "### Monsters") {
+		t.Error("monsters copy should not be in the persistent template")
 	}
 }
