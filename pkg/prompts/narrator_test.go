@@ -520,7 +520,7 @@ func TestBuildNarratorMessages_MonstersCopyConditional(t *testing.T) {
 	}
 }
 
-func TestBuildNarratorMessages_StayPutUnlessMoving(t *testing.T) {
+func TestBuildNarratorMessages_MovementUsesDestAsCurrent(t *testing.T) {
 	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "start"
 	gs.WorldLocations = map[string]scenario.Location{
@@ -552,11 +552,11 @@ func TestBuildNarratorMessages_StayPutUnlessMoving(t *testing.T) {
 	if strings.Contains(dynamic, "<just_entered>") || strings.Contains(dynamic, "New location:") {
 		t.Error("just_entered should be gone from the narrator prompt")
 	}
-	if !strings.Contains(dynamic, stayPutDirective) {
-		t.Error("expected stay-put directive when not moving")
-	}
 	if strings.Contains(dynamic, "<destination>") {
 		t.Error("destination sidecar should be omitted")
+	}
+	if strings.Contains(dynamic, "The PC is arriving") {
+		t.Error("arrival directive should be omitted when not moving")
 	}
 	if current := currentLocationBlock(dynamic); !strings.Contains(current, "Forest Clearing") {
 		t.Errorf("nil ruling should keep origin as current_location\n%s", current)
@@ -571,8 +571,8 @@ func TestBuildNarratorMessages_StayPutUnlessMoving(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dialogue: %v", err)
 	}
-	if !strings.Contains(messages[1].Content, stayPutDirective) {
-		t.Error("dialogue should stay put")
+	if strings.Contains(messages[1].Content, "The PC is arriving") {
+		t.Error("dialogue should not include an arrival directive")
 	}
 	if current := currentLocationBlock(messages[1].Content); !strings.Contains(current, "Forest Clearing") {
 		t.Errorf("dialogue should keep origin as current_location\n%s", current)
@@ -592,8 +592,8 @@ func TestBuildNarratorMessages_StayPutUnlessMoving(t *testing.T) {
 	if strings.Contains(dynamic, "<destination>") {
 		t.Error("denied movement should not inject destination")
 	}
-	if !strings.Contains(dynamic, stayPutDirective) {
-		t.Error("denied movement should stay put")
+	if strings.Contains(dynamic, "The PC is arriving") {
+		t.Error("denied movement should not include an arrival directive")
 	}
 	if current := currentLocationBlock(dynamic); !strings.Contains(current, "Forest Clearing") {
 		t.Errorf("denied movement should keep origin as current_location\n%s", current)
@@ -611,9 +611,6 @@ func TestBuildNarratorMessages_StayPutUnlessMoving(t *testing.T) {
 	dynamic = messages[1].Content
 	if gs.Location != "start" {
 		t.Errorf("GameState.Location = %q, want start (prompt-only view)", gs.Location)
-	}
-	if strings.Contains(dynamic, stayPutDirective) {
-		t.Error("allowed movement should not stay put")
 	}
 	if strings.Contains(dynamic, "<destination>") {
 		t.Error("destination sidecar should be gone; dest is current_location")
@@ -647,9 +644,6 @@ func TestBuildNarratorMessages_StayPutUnlessMoving(t *testing.T) {
 		t.Fatalf("venice miss: %v", err)
 	}
 	dynamic = messages[1].Content
-	if strings.Contains(dynamic, stayPutDirective) {
-		t.Error("allowed movement with empty locations should not stay put")
-	}
 	if strings.Contains(dynamic, "<destination>") {
 		t.Error("venice miss must not invent a destination block")
 	}
@@ -676,14 +670,13 @@ func TestBuildNarratorMessages_StayPutUnlessMoving(t *testing.T) {
 	if strings.Contains(dynamic, "<destination>") {
 		t.Error("unresolved location must not be injected")
 	}
-	if strings.Contains(dynamic, stayPutDirective) {
-		t.Error("unresolved destination should fail open without stay-put")
+	if strings.Contains(dynamic, "The PC is arriving") {
+		t.Error("unresolved destination should not invent an arrival line")
 	}
 	if current := currentLocationBlock(dynamic); !strings.Contains(current, "Forest Clearing") {
 		t.Errorf("unresolved dest should keep origin as current_location\n%s", current)
 	}
 }
-
 func TestBuildNarratorMessages_FollowingNPCOnMove(t *testing.T) {
 	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "start"

@@ -152,15 +152,9 @@ func getStatePromptWithFocus(gs *state.GameState, s *scenario.Scenario, ruling *
 
 const narratorHistoryDefault = 20
 
-const stayPutDirective = `Continue the action; do not re-describe the current location.`
+const arrivalDirectiveFmt = `The PC is arriving at %s. Briefly describe the new location.`
 
-const arrivalDirectiveFmt = `The PC is arriving at %s. Brief opening description of the new location, then continue.`
-
-// BuildNarratorMessages assembles the streaming narrator call: a persistent
-// system prompt (ruleset, voice, PC, rating), a dynamic system prompt (story,
-// world state, conditional monsters/arrival/world-event, contingencies),
-// windowed history, the current user line with <rules> and optional <referee>,
-// and a game-end message when the session has ended.
+// BuildNarratorMessages assembles the streaming narrator call.
 func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessage string, historyLimit int, ruling *chat.Ruling) ([]chat.ChatMessage, error) {
 	if gs == nil {
 		return nil, fmt.Errorf("gamestate is required")
@@ -224,9 +218,6 @@ func narratorSystemPrompts(gs *state.GameState, sc *scenario.Scenario, history [
 		}
 		sb.WriteString("\n\n")
 		fmt.Fprintf(&sb, arrivalDirectiveFmt, name)
-	} else if !movementAllowed(ruling) {
-		sb.WriteString("\n\n")
-		sb.WriteString(stayPutDirective)
 	}
 
 	if historyHasStoryEvent(history) {

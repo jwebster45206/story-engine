@@ -376,8 +376,7 @@ func (ps *PromptState) writeUserInventory(sb *strings.Builder) {
 }
 
 // writeWorldStateRules renders the <world_state_rules> block from the
-// active ruleset: storytelling scope (current_location), not movement
-// enforcement. Arrival vs stay-put is a separate dynamic directive.
+// active ruleset: storytelling scope (current_location)
 func (ps *PromptState) writeWorldStateRules(sb *strings.Builder) {
 	rs := getRuleSet(ps.Rules)
 	if len(rs.WorldStateRules) == 0 {
