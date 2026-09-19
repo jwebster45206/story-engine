@@ -48,7 +48,7 @@ func TestPromptState_ToString_BasicLocation(t *testing.T) {
 
 	requireContains(t, result, "<world_state>")
 	requireContains(t, result, "</world_state>")
-	requireContains(t, result, "<just_entered>false</just_entered>")
+	requireNotContains(t, result, "<just_entered>")
 	requireContains(t, result, "<current_location>")
 	requireContains(t, result, "The Rusty Anchor Tavern")
 	requireContains(t, result, "A dimly lit tavern filled with the smell of ale and sea salt.")
@@ -63,7 +63,7 @@ func TestPromptState_ToString_BasicLocation(t *testing.T) {
 	requireContains(t, result, "Narrate ONLY current_location.")
 }
 
-func TestPromptState_ToString_JustEnteredToggle(t *testing.T) {
+func TestPromptState_ToString_OmitsJustEnteredTag(t *testing.T) {
 	ps := &PromptState{
 		Location:    "room",
 		JustEntered: true,
@@ -71,10 +71,10 @@ func TestPromptState_ToString_JustEnteredToggle(t *testing.T) {
 			"room": {Name: "Room"},
 		},
 	}
-	requireContains(t, ps.ToString(), "<just_entered>true</just_entered>")
+	requireNotContains(t, ps.ToString(), "<just_entered>")
 
 	ps.JustEntered = false
-	requireContains(t, ps.ToString(), "<just_entered>false</just_entered>")
+	requireNotContains(t, ps.ToString(), "<just_entered>")
 }
 
 func TestPromptState_ToString_BlockedExits(t *testing.T) {
@@ -227,7 +227,7 @@ func TestPromptState_ToString_Comprehensive(t *testing.T) {
 	result := ps.ToString()
 
 	requireContains(t, result, "<world_state>")
-	requireContains(t, result, "<just_entered>true</just_entered>")
+	requireNotContains(t, result, "<just_entered>")
 	requireContains(t, result, "<current_location>")
 	requireContains(t, result, "Main Deck")
 	requireContains(t, result, "The weathered deck of a pirate ship.")
@@ -254,7 +254,7 @@ func TestPromptState_ToString_EmptyState(t *testing.T) {
 	result := ps.ToString()
 
 	requireContains(t, result, "<world_state>")
-	requireContains(t, result, "<just_entered>false</just_entered>")
+	requireNotContains(t, result, "<just_entered>")
 	requireContains(t, result, "<current_location>")
 	requireContains(t, result, "Unknown location:")
 	requireContains(t, result, "<world_state_rules>")
@@ -485,7 +485,7 @@ func TestPromptState_ToString_RelaxedRules(t *testing.T) {
 
 	requireContains(t, result, "<world_state_rules>")
 	requireContains(t, result, "The WORLD STATE is a starting point.")
-	requireContains(t, result, "If just_entered is true")
+	requireNotContains(t, result, "If just_entered is true")
 	requireNotContains(t, result, "You can't go that way")
 	requireNotContains(t, result, "may only choose one of")
 	requireNotContains(t, result, "The player may attempt other directions")

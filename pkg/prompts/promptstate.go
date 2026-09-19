@@ -140,7 +140,6 @@ func (ps *PromptState) ToString() string {
 	var sb strings.Builder
 
 	sb.WriteString("<world_state>\n")
-	fmt.Fprintf(&sb, "<just_entered>%t</just_entered>\n\n", ps.JustEntered)
 
 	currentLoc, hasCurrent := ps.WorldLocations[ps.Location]
 	ps.writeCurrentLocation(&sb, currentLoc, hasCurrent, true)
@@ -355,8 +354,8 @@ func (ps *PromptState) writeUserInventory(sb *strings.Builder) {
 }
 
 // writeWorldStateRules renders the <world_state_rules> block from the
-// active ruleset: storytelling scope (current_location, just_entered),
-// not movement enforcement.
+// active ruleset: storytelling scope (current_location), not movement
+// enforcement. The just_entered opening is a separate dynamic directive.
 func (ps *PromptState) writeWorldStateRules(sb *strings.Builder) {
 	rs := getRuleSet(ps.Rules)
 	if len(rs.WorldStateRules) == 0 {
