@@ -1,6 +1,9 @@
 package chat
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestRuling_Normalize_DropsReactionWhenAllowed(t *testing.T) {
 	r := Ruling{
@@ -28,6 +31,38 @@ func TestRuling_Normalize_KeepsReactionWhenDisallowed(t *testing.T) {
 	}
 }
 
+func TestRuling_Normalize_ScopeAndLists(t *testing.T) {
+	r := Ruling{
+		Scope: "  DIALOGUE  ",
+		Focus: RulingFocus{
+			NPCs:      []string{"  Guard  ", "", "Guard", "Bartender"},
+			Locations: []string{"  Cave  ", "", "Cave"},
+		},
+	}
+	r.Normalize()
+	if r.Scope != RulingScopeDialogue {
+		t.Errorf("Scope = %q, want %q", r.Scope, RulingScopeDialogue)
+	}
+	if len(r.Focus.NPCs) != 2 || r.Focus.NPCs[0] != "Guard" || r.Focus.NPCs[1] != "Bartender" {
+		t.Errorf("Focus.NPCs = %#v", r.Focus.NPCs)
+	}
+	if len(r.Focus.Locations) != 1 || r.Focus.Locations[0] != "Cave" {
+		t.Errorf("Focus.Locations = %#v", r.Focus.Locations)
+	}
+
+	unknown := Ruling{Scope: "teleport"}
+	unknown.Normalize()
+	if unknown.Scope != RulingScopeOther {
+		t.Errorf("unknown scope = %q, want %q", unknown.Scope, RulingScopeOther)
+	}
+
+	empty := Ruling{}
+	empty.Normalize()
+	if empty.Scope != RulingScopeOther {
+		t.Errorf("empty scope = %q, want %q", empty.Scope, RulingScopeOther)
+	}
+}
+
 func TestRuling_NarratorText(t *testing.T) {
 	tests := []struct {
 		name string
@@ -51,6 +86,16 @@ func TestRuling_NarratorText(t *testing.T) {
 			r:    &Ruling{Allowed: false, Reasoning: "The exit is blocked.", Reaction: "The guard bars the way."},
 			want: "Not allowed. The exit is blocked.\nThe guard bars the way.",
 		},
+		{
+			name: "scope fields do not leak into narrator text",
+			r: &Ruling{
+				Allowed:   true,
+				Reasoning: "The PC greets the bartender.",
+				Scope:     RulingScopeDialogue,
+				Focus:     RulingFocus{NPCs: []string{"Bartender"}, Locations: []string{"tavern"}},
+			},
+			want: "Allowed. The PC greets the bartender.",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -58,5 +103,24 @@ func TestRuling_NarratorText(t *testing.T) {
 				t.Errorf("NarratorText() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestRuling_UnmarshalJSON_NullOptionals(t *testing.T) {
+	var r Ruling
+	if err := json.Unmarshal([]byte(`{"allowed":true,"reasoning":null,"reaction":null,"scope":"dialogue","focus":null}`), &r); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if !r.Allowed {
+		t.Error("Allowed = false")
+	}
+	if r.Reasoning != "" || r.Reaction != "" {
+		t.Errorf("Reasoning=%q Reaction=%q, want empty", r.Reasoning, r.Reaction)
+	}
+	if r.Scope != RulingScopeDialogue {
+		t.Errorf("Scope = %q, want %q", r.Scope, RulingScopeDialogue)
+	}
+	if r.Focus.NPCs != nil || r.Focus.Locations != nil {
+		t.Errorf("Focus = %#v, want zero", r.Focus)
 	}
 }

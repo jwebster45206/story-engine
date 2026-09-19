@@ -103,8 +103,6 @@ Example (abbreviated):
 
 ```
 <world_state>
-<just_entered>false</just_entered>
-
 <current_location>
 Antechamber
 A broad vaulted chamber supported by four massive pillars...
@@ -130,7 +128,6 @@ Exits:
 
 <world_state_rules>
 - Narrate ONLY current_location. Do not narrate inside adjacent locations.
-- If just_entered is true, give a brief opening description; otherwise do not re-describe the room.
 </world_state_rules>
 </world_state>
 ```
@@ -142,15 +139,13 @@ Exits:
 | `<current_location>` | Current room's `description`, `items`, co-located NPC names, monsters, exits | **Primary narration authority** — describe only what is here |
 | `<adjacent_previews>` | Adjacent rooms' `preview` field (one sentence each) | Orientation only — not a license to narrate inside those rooms |
 | `<npcs_elsewhere>` | Important NPCs not at the player's location | Name + location only — no description or items |
-| `<just_entered>` | Engine flag (true on first turn after a location change) | Tells narrator to open a new room briefly vs. continue action |
-| `<world_state_rules>` | Mode-specific storytelling lines | Scope for narration (`current_location`, `just_entered`); not movement enforcement |
+| `<world_state_rules>` | Mode-specific storytelling lines | Scope for narration (`current_location`); not movement enforcement |
 
 ### Authoring implications
 
 - **`description`** is shown only while the player is **in** that location. Write the full spatial picture here.
 - **`preview`** is shown for **adjacent** rooms only. Keep it to one spoiler-free sentence. On multi-room maps (especially dungeons), every location should have a `preview`.
 - **Do not put plot-state or NPC presence in `description`** — see Location Fields below. Dynamic content belongs in `contingency_prompts`.
-- On a **movement turn**, the narrator still sees the *old* room as `<current_location>` until the background reducer confirms the move. Adjacent previews plus `<world_state_rules>` prevent the narrator from inventing the destination's interior before the engine updates location.
 - **NPC names** appear in `<current_location>` when co-located; full NPC voice and behavior come from **contingency prompts** (see NPCs section), not from the WORLD STATE block itself.
 
 ## Locations
