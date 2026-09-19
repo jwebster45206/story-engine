@@ -142,7 +142,7 @@ func getStatePromptWithFocus(gs *state.GameState, s *scenario.Scenario, ruling *
 
 	ps := toPromptStateAt(gs, narratorViewLocation(gs, ruling))
 	if ruling != nil {
-		ps.FocusedNPCs = ruling.Focus.NPCs
+		ps.FocusedActors = ruling.Focus.Actors
 	}
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,

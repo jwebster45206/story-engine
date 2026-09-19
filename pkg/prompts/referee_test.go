@@ -69,6 +69,9 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 	if !strings.Contains(strictSys, "focus:") {
 		t.Error("expected focus field in preamble")
 	}
+	if !strings.Contains(strictSys, `"NPCs here"`) || !strings.Contains(strictSys, `"Monsters here"`) {
+		t.Error("focus preamble should name NPCs here and Monsters here")
+	}
 	if strings.Contains(strictSys, "mentioned:") {
 		t.Error("mentioned should not be in the referee preamble")
 	}
@@ -83,6 +86,12 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 	}
 	if !strings.Contains(strictSys, `"locations":["drawbridge"]`) {
 		t.Error("strict examples should include focus.locations")
+	}
+	if !strings.Contains(strictSys, `"actors":["Giant Rat"]`) {
+		t.Error("strict examples should include a combat actor")
+	}
+	if strings.Contains(strictSys, `"npcs"`) {
+		t.Error("strict examples should use focus.actors, not focus.npcs")
 	}
 	if strings.Contains(strictSys, `"items"`) {
 		t.Error("strict examples should not include focus.items")

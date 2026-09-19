@@ -17,9 +17,10 @@ const (
 	RulingScopeOther    RulingScope = "other"
 )
 
-// RulingFocus names WORLD STATE NPCs and locations the PC is engaging this turn.
+// RulingFocus names WORLD STATE NPCs or monsters ("actors") and locations
+// the PC is engaging this turn.
 type RulingFocus struct {
-	NPCs      []string `json:"npcs,omitempty"`
+	Actors    []string `json:"actors,omitempty"`
 	Locations []string `json:"locations,omitempty"`
 }
 
@@ -70,7 +71,7 @@ func (r *Ruling) Normalize() {
 		r.Reaction = ""
 	}
 	r.Scope = normalizeRulingScope(string(r.Scope))
-	r.Focus.NPCs = normalizeStringList(r.Focus.NPCs)
+	r.Focus.Actors = normalizeStringList(r.Focus.Actors)
 	r.Focus.Locations = normalizeStringList(r.Focus.Locations)
 }
 

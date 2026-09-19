@@ -565,7 +565,7 @@ func TestBuildNarratorMessages_MovementUsesDestAsCurrent(t *testing.T) {
 	dialogue := new(chat.Ruling{
 		Allowed: true,
 		Scope:   chat.RulingScopeDialogue,
-		Focus:   chat.RulingFocus{NPCs: []string{"Guide"}},
+		Focus:   chat.RulingFocus{Actors: []string{"Guide"}},
 	})
 	messages, err = BuildNarratorMessages(gs, sc, "talk", 20, dialogue)
 	if err != nil {
@@ -736,7 +736,7 @@ func TestBuildNarratorMessages_FocusedNPCDescription(t *testing.T) {
 	ruling := new(chat.Ruling{
 		Allowed: true,
 		Scope:   chat.RulingScopeDialogue,
-		Focus:   chat.RulingFocus{NPCs: []string{"Pip Upton"}},
+		Focus:   chat.RulingFocus{Actors: []string{"Pip Upton"}},
 	})
 
 	messages, err := BuildNarratorMessages(gs, sc, "talk to Pip", 20, ruling)

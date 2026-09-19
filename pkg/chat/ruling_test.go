@@ -35,7 +35,7 @@ func TestRuling_Normalize_ScopeAndLists(t *testing.T) {
 	r := Ruling{
 		Scope: "  DIALOGUE  ",
 		Focus: RulingFocus{
-			NPCs:      []string{"  Guard  ", "", "Guard", "Bartender"},
+			Actors:    []string{"  Guard  ", "", "Guard", "Bartender"},
 			Locations: []string{"  Cave  ", "", "Cave"},
 		},
 	}
@@ -43,8 +43,8 @@ func TestRuling_Normalize_ScopeAndLists(t *testing.T) {
 	if r.Scope != RulingScopeDialogue {
 		t.Errorf("Scope = %q, want %q", r.Scope, RulingScopeDialogue)
 	}
-	if len(r.Focus.NPCs) != 2 || r.Focus.NPCs[0] != "Guard" || r.Focus.NPCs[1] != "Bartender" {
-		t.Errorf("Focus.NPCs = %#v", r.Focus.NPCs)
+	if len(r.Focus.Actors) != 2 || r.Focus.Actors[0] != "Guard" || r.Focus.Actors[1] != "Bartender" {
+		t.Errorf("Focus.Actors = %#v", r.Focus.Actors)
 	}
 	if len(r.Focus.Locations) != 1 || r.Focus.Locations[0] != "Cave" {
 		t.Errorf("Focus.Locations = %#v", r.Focus.Locations)
@@ -92,7 +92,7 @@ func TestRuling_NarratorText(t *testing.T) {
 				Allowed:   true,
 				Reasoning: "The PC greets the bartender.",
 				Scope:     RulingScopeDialogue,
-				Focus:     RulingFocus{NPCs: []string{"Bartender"}, Locations: []string{"tavern"}},
+				Focus:     RulingFocus{Actors: []string{"Bartender"}, Locations: []string{"tavern"}},
 			},
 			want: "Allowed. The PC greets the bartender.",
 		},
@@ -120,7 +120,7 @@ func TestRuling_UnmarshalJSON_NullOptionals(t *testing.T) {
 	if r.Scope != RulingScopeDialogue {
 		t.Errorf("Scope = %q, want %q", r.Scope, RulingScopeDialogue)
 	}
-	if r.Focus.NPCs != nil || r.Focus.Locations != nil {
+	if r.Focus.Actors != nil || r.Focus.Locations != nil {
 		t.Errorf("Focus = %#v, want zero", r.Focus)
 	}
 }
