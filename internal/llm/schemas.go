@@ -135,7 +135,7 @@ func rulingSchema() map[string]any {
 				"type":                 "object",
 				"additionalProperties": false,
 				"properties": map[string]any{
-					"npcs": map[string]any{
+					"actors": map[string]any{
 						"type": "array",
 						"items": map[string]any{
 							"type": "string",
@@ -148,7 +148,7 @@ func rulingSchema() map[string]any {
 						},
 					},
 				},
-				"required": []string{"npcs", "locations"},
+				"required": []string{"actors", "locations"},
 			},
 		},
 		"required": []string{"allowed", "reasoning", "reaction", "scope", "focus"},

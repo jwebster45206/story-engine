@@ -149,7 +149,7 @@ func TestVeniceService_GetRuling_JSONSchema(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewDecoder(r.Body).Decode(&got)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","model":"test-backend-model","choices":[{"index":0,"message":{"role":"assistant","content":"{\"allowed\":false,\"reasoning\":\"No such exit.\",\"reaction\":\"The wall stops the PC.\",\"scope\":\"movement\",\"focus\":{\"npcs\":[],\"locations\":[]}}"},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":4,"total_tokens":11}}`))
+		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","model":"test-backend-model","choices":[{"index":0,"message":{"role":"assistant","content":"{\"allowed\":false,\"reasoning\":\"No such exit.\",\"reaction\":\"The wall stops the PC.\",\"scope\":\"movement\",\"focus\":{\"actors\":[],\"locations\":[]}}"},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":4,"total_tokens":11}}`))
 	}))
 	defer server.Close()
 

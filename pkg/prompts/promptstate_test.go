@@ -128,8 +128,8 @@ func TestPromptState_ToString_WithNPCsHere(t *testing.T) {
 
 func TestPromptState_ToString_FocusedNPCGetsDescription(t *testing.T) {
 	ps := &PromptState{
-		Location:    "market",
-		FocusedNPCs: []string{"Greedy Merchant"},
+		Location:      "market",
+		FocusedActors: []string{"Greedy Merchant"},
 		WorldLocations: map[string]scenario.Location{
 			"market": {Name: "Town Market"},
 		},

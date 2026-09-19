@@ -146,7 +146,7 @@ func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *sta
 		"game_state_id", gs.ID.String(),
 		"duration_ms", time.Since(start).Milliseconds(),
 		"scope", ruling.Scope,
-		"focus_npcs", ruling.Focus.NPCs,
+		"focus_actors", ruling.Focus.Actors,
 		"focus_locations", ruling.Focus.Locations,
 		"ruling", text,
 	)

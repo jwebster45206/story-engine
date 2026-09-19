@@ -110,18 +110,28 @@ func TestParseRulingResponse(t *testing.T) {
 			want:  &chat.Ruling{Allowed: true, Reasoning: long, Scope: chat.RulingScopeOther},
 		},
 		{
-			name:  "parses scope focus npcs and locations",
-			input: `{"allowed":true,"reasoning":"Talk to the bartender.","reaction":null,"scope":"dialogue","focus":{"npcs":["Bartender"],"locations":["The Tavern"]}}`,
+			name:  "parses scope focus actors and locations",
+			input: `{"allowed":true,"reasoning":"Talk to the bartender.","reaction":null,"scope":"dialogue","focus":{"actors":["Bartender"],"locations":["The Tavern"]}}`,
 			want: &chat.Ruling{
 				Allowed:   true,
 				Reasoning: "Talk to the bartender.",
 				Scope:     chat.RulingScopeDialogue,
-				Focus:     chat.RulingFocus{NPCs: []string{"Bartender"}, Locations: []string{"The Tavern"}},
+				Focus:     chat.RulingFocus{Actors: []string{"Bartender"}, Locations: []string{"The Tavern"}},
+			},
+		},
+		{
+			name:  "parses combat actor monster name",
+			input: `{"allowed":true,"reasoning":"The PC attacks the giant rat.","reaction":null,"scope":"combat","focus":{"actors":["Giant Rat"],"locations":[]}}`,
+			want: &chat.Ruling{
+				Allowed:   true,
+				Reasoning: "The PC attacks the giant rat.",
+				Scope:     chat.RulingScopeCombat,
+				Focus:     chat.RulingFocus{Actors: []string{"Giant Rat"}},
 			},
 		},
 		{
 			name:  "unknown scope becomes other",
-			input: `{"allowed":true,"reasoning":null,"reaction":null,"scope":"teleport","focus":{"npcs":[],"locations":[]}}`,
+			input: `{"allowed":true,"reasoning":null,"reaction":null,"scope":"teleport","focus":{"actors":[],"locations":[]}}`,
 			want:  &chat.Ruling{Allowed: true, Scope: chat.RulingScopeOther},
 		},
 	}

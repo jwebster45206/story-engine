@@ -25,7 +25,7 @@ type PromptState struct {
 	TurnCounter      int                          `json:"turn_counter,omitempty"`       // Total number of successful chat interactions
 	SceneTurnCounter int                          `json:"scene_turn_counter,omitempty"` // Number of successful chat interactions in
 	Rules            state.RulesMode              `json:"-"`                            // Narrator ruleset; not sent to reducer JSON
-	FocusedNPCs      []string                     `json:"-"`                            // Referee focus names; not sent to reducer JSON
+	FocusedActors    []string                     `json:"-"`                            // Referee focus.actors names; not sent to reducer JSON
 }
 
 func ToPromptState(gs *state.GameState) *PromptState {
@@ -205,7 +205,7 @@ func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scen
 	}
 
 	if present := presentNPCs(ps.NPCs, ps.Location); len(present) > 0 {
-		if !anyNPCFocused(present, ps.FocusedNPCs) {
+		if !anyNPCFocused(present, ps.FocusedActors) {
 			names := make([]string, len(present))
 			for i, npc := range present {
 				names[i] = npc.Name
@@ -214,7 +214,7 @@ func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scen
 		} else {
 			sb.WriteString("NPCs here:\n")
 			for _, npc := range present {
-				if npcFocused(npc, ps.FocusedNPCs) && npc.Description != "" {
+				if npcFocused(npc, ps.FocusedActors) && npc.Description != "" {
 					fmt.Fprintf(sb, "- %s: %s\n", npc.Name, npc.Description)
 				} else {
 					fmt.Fprintf(sb, "- %s\n", npc.Name)
