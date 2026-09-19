@@ -2,8 +2,24 @@ package chat
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
+
+func TestToLLMMessagesOmitsPersistentFlag(t *testing.T) {
+	msgs := []ChatMessage{
+		{Role: ChatRoleSystem, Content: "stable", IsPersistent: true},
+		{Role: ChatRoleSystem, Content: "turn state"},
+	}
+
+	data, err := json.Marshal(ToLLMMessages(msgs))
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+	if strings.Contains(string(data), "IsPersistent") || strings.Contains(string(data), "is_persistent") {
+		t.Errorf("persistent hint leaked into provider payload: %s", data)
+	}
+}
 
 func TestToLLMMessagesOmitsStoryEventMetadata(t *testing.T) {
 	msgs := []ChatMessage{

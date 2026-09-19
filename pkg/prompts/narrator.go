@@ -140,10 +140,11 @@ func getStatePrompt(gs *state.GameState, s *scenario.Scenario) (chat.ChatMessage
 
 const narratorHistoryDefault = 20
 
-// BuildNarratorMessages assembles the streaming narrator call: system prompt
-// (ruleset, rating, story, world state, contingencies), windowed history, the
-// current user line with <rules> and optional <referee>, and a game-end
-// message when the session has ended.
+// BuildNarratorMessages assembles the streaming narrator call: a persistent
+// system prompt (ruleset, voice, PC), a dynamic system prompt (rating, story,
+// world state, contingencies), windowed history, the current user line with
+// <rules> and optional <referee>, and a game-end message when the session
+// has ended.
 func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessage string, historyLimit int, referee string) ([]chat.ChatMessage, error) {
 	if gs == nil {
 		return nil, fmt.Errorf("gamestate is required")
@@ -155,15 +156,22 @@ func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessa
 		historyLimit = narratorHistoryDefault
 	}
 
-	system, err := narratorSystemPrompt(gs, sc)
+	persistent, dynamic, err := narratorSystemPrompts(gs, sc)
 	if err != nil {
 		return nil, fmt.Errorf("error building system prompt: %w", err)
 	}
 
-	msgs := []chat.ChatMessage{{
-		Role:    chat.ChatRoleSystem,
-		Content: system,
-	}}
+	msgs := []chat.ChatMessage{
+		{
+			Role:         chat.ChatRoleSystem,
+			Content:      persistent,
+			IsPersistent: true,
+		},
+		{
+			Role:    chat.ChatRoleSystem,
+			Content: dynamic,
+		},
+	}
 	msgs = append(msgs, windowHistory(gs.ChatHistory, historyLimit)...)
 	if user := narratorUserTurn(gs, userMessage, referee); user.Content != "" {
 		msgs = append(msgs, user)
@@ -174,18 +182,18 @@ func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessa
 	return msgs, nil
 }
 
-func narratorSystemPrompt(gs *state.GameState, sc *scenario.Scenario) (string, error) {
-	var sb strings.Builder
-	sb.WriteString(buildNarratorPrompt(gs.Narrator, gs.PC, gs.Rules))
+func narratorSystemPrompts(gs *state.GameState, sc *scenario.Scenario) (string, string, error) {
+	persistent := buildNarratorPrompt(gs.Narrator, gs.PC, gs.Rules)
 
-	sb.WriteString("\n\nContent Rating: " + sc.Rating)
+	var sb strings.Builder
+	sb.WriteString("Content Rating: " + sc.Rating)
 	if ratingPrompt := contentRatingPrompt(sc.Rating); ratingPrompt != "" {
 		sb.WriteString(" (" + ratingPrompt + ")")
 	}
 
 	statePrompt, err := getStatePrompt(gs, sc)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	sb.WriteString("\n\n" + statePrompt.Content)
 
@@ -196,7 +204,7 @@ func narratorSystemPrompt(gs *state.GameState, sc *scenario.Scenario) (string, e
 			fmt.Fprintf(&sb, "%d. %s\n", i+1, prompt)
 		}
 	}
-	return sb.String(), nil
+	return persistent, sb.String(), nil
 }
 
 func windowHistory(history []chat.ChatMessage, limit int) []chat.ChatMessage {

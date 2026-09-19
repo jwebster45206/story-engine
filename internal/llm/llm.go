@@ -23,10 +23,12 @@ const (
 
 // Usage is token counts reported by an LLM provider for one call.
 type Usage struct {
-	InputTokens  int
-	OutputTokens int
-	Vendor       string
-	Model        string
+	InputTokens              int
+	OutputTokens             int
+	CacheCreationInputTokens int
+	CacheReadInputTokens     int
+	Vendor                   string
+	Model                    string
 }
 
 type StreamChunk struct {

@@ -36,6 +36,7 @@ type ChatMessage struct {
 	Role         string `json:"role"` // "user", "assistant", "system"
 	Content      string `json:"content"`
 	IsStoryEvent bool   `json:"is_story_event,omitempty"` // True if this message is a story event injected by the engine
+	IsPersistent bool   `json:"-"`
 }
 
 // LLMMessage is the role/content-only payload accepted by LLM provider APIs.

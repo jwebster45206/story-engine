@@ -47,7 +47,7 @@ func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 	tests := []struct {
 		name                   string
 		messages               []chat.ChatMessage
-		expectedSystem         string
+		expectedBlocks         []AnthropicSystemBlock
 		expectedNonSystemCount int
 	}{
 		{
@@ -57,18 +57,30 @@ func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 				{Role: chat.ChatRoleUser, Content: "Hello"},
 				{Role: chat.ChatRoleAgent, Content: "Hi there!"},
 			},
-			expectedSystem:         "You are a helpful assistant.",
+			expectedBlocks: []AnthropicSystemBlock{
+				{Type: "text", Text: "You are a helpful assistant."},
+			},
 			expectedNonSystemCount: 2,
 		},
 		{
-			name: "multiple system messages",
+			name: "persistent then dynamic system messages",
 			messages: []chat.ChatMessage{
-				{Role: chat.ChatRoleSystem, Content: "You are a helpful assistant."},
+				{Role: chat.ChatRoleSystem, Content: "You are a helpful assistant.", IsPersistent: true},
 				{Role: chat.ChatRoleUser, Content: "Hello"},
 				{Role: chat.ChatRoleSystem, Content: "Be concise."},
 				{Role: chat.ChatRoleAgent, Content: "Hi there!"},
 			},
-			expectedSystem:         "You are a helpful assistant.\n\nBe concise.",
+			expectedBlocks: []AnthropicSystemBlock{
+				{
+					Type: "text",
+					Text: "You are a helpful assistant.",
+					CacheControl: &AnthropicCacheControl{
+						Type: "ephemeral",
+						TTL:  anthropicCacheTTLHour,
+					},
+				},
+				{Type: "text", Text: "Be concise."},
+			},
 			expectedNonSystemCount: 2,
 		},
 		{
@@ -77,16 +89,31 @@ func TestAnthropicService_ExtractSystemMessage(t *testing.T) {
 				{Role: chat.ChatRoleUser, Content: "Hello"},
 				{Role: chat.ChatRoleAgent, Content: "Hi there!"},
 			},
-			expectedSystem:         "",
+			expectedBlocks:         nil,
 			expectedNonSystemCount: 2,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			systemPrompt, nonSystemMessages := service.splitChatMessages(tt.messages)
-			if systemPrompt != tt.expectedSystem {
-				t.Errorf("system = %q, want %q", systemPrompt, tt.expectedSystem)
+			systemBlocks, nonSystemMessages := service.splitChatMessages(tt.messages)
+			if len(systemBlocks) != len(tt.expectedBlocks) {
+				t.Fatalf("system blocks = %#v, want %#v", systemBlocks, tt.expectedBlocks)
+			}
+			for i, got := range systemBlocks {
+				want := tt.expectedBlocks[i]
+				if got.Type != want.Type || got.Text != want.Text {
+					t.Errorf("block %d = %#v, want %#v", i, got, want)
+				}
+				if want.CacheControl == nil {
+					if got.CacheControl != nil {
+						t.Errorf("block %d cache_control = %#v, want nil", i, got.CacheControl)
+					}
+					continue
+				}
+				if got.CacheControl == nil || got.CacheControl.Type != want.CacheControl.Type || got.CacheControl.TTL != want.CacheControl.TTL {
+					t.Errorf("block %d cache_control = %#v, want %#v", i, got.CacheControl, want.CacheControl)
+				}
 			}
 			if len(nonSystemMessages) != tt.expectedNonSystemCount {
 				t.Errorf("non-system count = %d", len(nonSystemMessages))
@@ -235,5 +262,83 @@ func TestAnthropicService_GetRuling_ToolUse(t *testing.T) {
 	}
 	if usage.Model != "claude-backend" || usage.InputTokens != 8 || usage.OutputTokens != 3 {
 		t.Fatalf("usage = %+v", usage)
+	}
+}
+
+func TestAnthropicService_ChatStream_PromptCache(t *testing.T) {
+	var gotBody map[string]any
+	var gotBeta string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotBeta = r.Header.Get("anthropic-beta")
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		frames := []string{
+			`event: message_start`,
+			`data: {"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","content":[],"model":"claude-test","usage":{"input_tokens":12,"output_tokens":0,"cache_creation_input_tokens":80,"cache_read_input_tokens":40}}}`,
+			``,
+			`event: content_block_delta`,
+			`data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"ok"}}`,
+			``,
+			`event: message_delta`,
+			`data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":1}}`,
+			``,
+			`event: message_stop`,
+			`data: {"type":"message_stop"}`,
+			``,
+		}
+		for _, f := range frames {
+			_, _ = w.Write([]byte(f + "\n"))
+			if fl, ok := w.(http.Flusher); ok {
+				fl.Flush()
+			}
+		}
+	}))
+	defer server.Close()
+
+	svc := NewAnthropicService(anthropicPC(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
+	ch, err := svc.ChatStream(context.Background(), []chat.ChatMessage{
+		{Role: chat.ChatRoleSystem, Content: "persistent", IsPersistent: true},
+		{Role: chat.ChatRoleSystem, Content: "dynamic"},
+		{Role: chat.ChatRoleUser, Content: "Hi"},
+	}, 0.5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var usage Usage
+	for chunk := range ch {
+		if chunk.Error != nil {
+			t.Fatal(chunk.Error)
+		}
+		if chunk.Done {
+			usage = chunk.Usage
+			break
+		}
+	}
+	if usage.CacheCreationInputTokens != 80 || usage.CacheReadInputTokens != 40 {
+		t.Fatalf("cache usage = %+v", usage)
+	}
+	if gotBeta != anthropicCacheTTLBeta {
+		t.Fatalf("anthropic-beta = %q, want %q", gotBeta, anthropicCacheTTLBeta)
+	}
+	system, _ := gotBody["system"].([]any)
+	if len(system) != 2 {
+		t.Fatalf("system blocks = %#v", gotBody["system"])
+	}
+	first, _ := system[0].(map[string]any)
+	if first["text"] != "persistent" {
+		t.Fatalf("first system text = %#v", first)
+	}
+	cache, _ := first["cache_control"].(map[string]any)
+	if cache["type"] != "ephemeral" || cache["ttl"] != anthropicCacheTTLHour {
+		t.Fatalf("cache_control = %#v", cache)
+	}
+	second, _ := system[1].(map[string]any)
+	if second["text"] != "dynamic" {
+		t.Fatalf("second system text = %#v", second)
+	}
+	if _, ok := second["cache_control"]; ok {
+		t.Fatalf("dynamic block should not have cache_control: %#v", second)
 	}
 }

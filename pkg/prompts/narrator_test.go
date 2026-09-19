@@ -54,6 +54,18 @@ func TestBuildNarratorMessages_BasicMessages(t *testing.T) {
 	if messages[0].Role != chat.ChatRoleSystem {
 		t.Errorf("first message role = %s, want system", messages[0].Role)
 	}
+	if !messages[0].IsPersistent {
+		t.Error("first system message should be persistent")
+	}
+	if len(messages) < 3 {
+		t.Fatalf("expected at least 3 messages (2 system + user), got %d", len(messages))
+	}
+	if messages[1].Role != chat.ChatRoleSystem {
+		t.Errorf("second message role = %s, want system", messages[1].Role)
+	}
+	if messages[1].IsPersistent {
+		t.Error("second system message should not be persistent")
+	}
 	user := messages[len(messages)-1]
 	if user.Role != chat.ChatRoleUser {
 		t.Errorf("last message role = %s, want user", user.Role)
@@ -104,12 +116,11 @@ func TestBuildNarratorMessages_WithPC(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
-	system := messages[0].Content
-	if !strings.Contains(system, "Test Character") {
-		t.Error("expected system prompt to contain PC name")
+	if !strings.Contains(messages[0].Content, "Test Character") {
+		t.Error("expected persistent prompt to contain PC name")
 	}
-	if !strings.Contains(system, "You are playing as a test character.") {
-		t.Error("expected PC contingency prompts in guidelines section")
+	if !strings.Contains(messages[1].Content, "You are playing as a test character.") {
+		t.Error("expected PC contingency prompts in the dynamic block")
 	}
 }
 
@@ -127,10 +138,10 @@ func TestBuildNarratorMessages_WithChatHistory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
-	if len(messages) != 6 {
-		t.Errorf("expected 6 messages (1 system + 4 history + 1 user), got %d", len(messages))
+	if len(messages) != 7 {
+		t.Errorf("expected 7 messages (2 system + 4 history + 1 user), got %d", len(messages))
 	}
-	if messages[1].Content != "Message 1" {
+	if messages[2].Content != "Message 1" {
 		t.Error("expected chat history to be included")
 	}
 }
@@ -149,8 +160,8 @@ func TestBuildNarratorMessages_HistoryWindowing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
-	if len(messages) != 7 {
-		t.Errorf("expected 7 messages (1 system + 5 history + 1 user), got %d", len(messages))
+	if len(messages) != 8 {
+		t.Errorf("expected 8 messages (2 system + 5 history + 1 user), got %d", len(messages))
 	}
 }
 
@@ -188,11 +199,11 @@ func TestBuildNarratorMessages_WithContingencyPrompts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
-	system := messages[0].Content
-	if !strings.Contains(system, "Always show this prompt") {
+	dynamic := messages[1].Content
+	if !strings.Contains(dynamic, "Always show this prompt") {
 		t.Error("expected contingency prompts")
 	}
-	if !strings.Contains(system, "Show when flag is true") {
+	if !strings.Contains(dynamic, "Show when flag is true") {
 		t.Error("expected conditional contingency prompts")
 	}
 }
@@ -206,14 +217,14 @@ func TestBuildNarratorMessages_RelaxedSystemPrompt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
-	system := messages[0].Content
-	if !strings.Contains(system, "You may extend it with plausible architecture") {
+	persistent := messages[0].Content
+	if !strings.Contains(persistent, "You may extend it with plausible architecture") {
 		t.Error("expected relaxed location language")
 	}
-	if strings.Contains(system, "Do not allow the user to control NPCs, create NPCs, invent items") {
+	if strings.Contains(persistent, "Do not allow the user to control NPCs, create NPCs, invent items") {
 		t.Error("strict invention ban should not appear in relaxed mode")
 	}
-	if strings.Contains(system, "HOW YOU INTERPRET USER PROMPTS") {
+	if strings.Contains(persistent, "HOW YOU INTERPRET USER PROMPTS") {
 		t.Error("narrator should not interpret/allow user actions")
 	}
 	user := messages[len(messages)-1].Content
@@ -288,6 +299,82 @@ func TestBuildNarratorMessages_EmptyRefereeOmitsBlock(t *testing.T) {
 	}
 	if !strings.Contains(user, "<rules>") {
 		t.Error("rules block should still be present")
+	}
+}
+
+func TestBuildNarratorMessages_PersistentCacheSafety(t *testing.T) {
+	gs := state.NewGameState("test.json", &scenario.Narrator{
+		Name:    "Classic",
+		Prompts: []string{"Speak plainly."},
+	}, "test-provider", "test-model")
+	gs.PC = &character.PC{ID: "hero", Name: "Hero", Description: "A traveler"}
+	gs.Location = "start"
+	gs.WorldLocations = map[string]scenario.Location{
+		"start": {Name: "Start", Description: "A clearing.", Exits: map[string]string{"east": "cave"}},
+		"cave":  {Name: "Cave", Description: "A dark cave.", Preview: "A dark cave mouth."},
+	}
+	sc := &scenario.Scenario{
+		Name:   "Test Scenario",
+		Story:  "A test adventure",
+		Rating: scenario.RatingPG,
+		Locations: map[string]scenario.Location{
+			"start": gs.WorldLocations["start"],
+			"cave":  gs.WorldLocations["cave"],
+		},
+		ContingencyPrompts: []conditionals.ContingencyPrompt{
+			{Prompt: "Always show this prompt"},
+			{
+				Prompt: "Show when flag is true",
+				When:   &conditionals.ConditionalWhen{Vars: map[string]string{"flag": "true"}},
+			},
+		},
+	}
+
+	first, err := BuildNarratorMessages(gs, sc, "look around", 20, "")
+	if err != nil {
+		t.Fatalf("turn 1: %v", err)
+	}
+	persistent := first[0].Content
+
+	turns := []func(){
+		func() {
+			gs.JustEntered = true
+			gs.Inventory = []string{"torch"}
+			gs.Vars = map[string]string{"flag": "true"}
+		},
+		func() {
+			gs.Location = "cave"
+			gs.JustEntered = true
+			gs.NPCs = map[string]character.NPC{
+				"guide": {Name: "Guide", Location: "cave"},
+			}
+		},
+		func() {
+			gs.JustEntered = false
+			gs.SceneTurnCounter = 3
+			gs.ChatHistory = []chat.ChatMessage{
+				{Role: chat.ChatRoleUser, Content: "I enter the cave"},
+				{Role: chat.ChatRoleAgent, Content: "The cave is cold."},
+			}
+		},
+		func() {
+			gs.Inventory = []string{"torch", "map"}
+			gs.Vars["flag"] = "false"
+		},
+	}
+
+	for i, mutate := range turns {
+		mutate()
+		msgs, err := BuildNarratorMessages(gs, sc, "continue", 20, "Allowed.")
+		if err != nil {
+			t.Fatalf("turn %d: %v", i+2, err)
+		}
+		if msgs[0].Content != persistent {
+			t.Fatalf("persistent block drifted on turn %d\n--- first ---\n%s\n--- later ---\n%s", i+2, persistent, msgs[0].Content)
+		}
+		if !msgs[0].IsPersistent || msgs[1].IsPersistent {
+			t.Fatalf("turn %d persistence flags = %v, %v", i+2, msgs[0].IsPersistent, msgs[1].IsPersistent)
+		}
 	}
 }
 
