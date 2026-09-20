@@ -26,8 +26,8 @@ type LLMResolver interface {
 	Get(name string) (llm.LLMService, error)
 }
 
-// ChatProcessor handles chat processing for the worker (streaming + post-stream state updates).
-type ChatProcessor struct {
+// ChatOrchestrator orchestrates referee, resolve, narrator, and reducer for the worker (streaming + post-stream state updates).
+type ChatOrchestrator struct {
 	storage      storage.Storage
 	resolver     LLMResolver
 	chatQueue    state.ChatQueue
@@ -40,18 +40,18 @@ type ChatProcessor struct {
 	metaCancel   map[uuid.UUID]context.CancelFunc
 }
 
-// NewChatProcessor creates a new chat processor
-func NewChatProcessor(
+// NewChatOrchestrator creates a new chat orchestrator
+func NewChatOrchestrator(
 	storage storage.Storage,
 	resolver LLMResolver,
 	chatQueue state.ChatQueue,
 	logger *slog.Logger,
 	historyLimit int,
-) *ChatProcessor {
+) *ChatOrchestrator {
 	if historyLimit <= 0 {
 		historyLimit = PromptHistoryLimit
 	}
-	return &ChatProcessor{
+	return &ChatOrchestrator{
 		storage:      storage,
 		resolver:     resolver,
 		chatQueue:    chatQueue,
@@ -63,35 +63,36 @@ func NewChatProcessor(
 }
 
 // ProcessChatStream processes a streaming chat request
-func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequest) (<-chan llm.StreamChunk, error) {
+func (p *ChatOrchestrator) ProcessChatStream(ctx context.Context, req chat.ChatRequest) (<-chan llm.StreamChunk, []resolvedAttempt, error) {
 	// Load game state
 	gs, err := p.storage.LoadGameState(ctx, req.GameStateID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load game state: %w", err)
+		return nil, nil, fmt.Errorf("failed to load game state: %w", err)
 	}
 
 	if gs == nil {
-		return nil, fmt.Errorf("game state not found: %s", req.GameStateID.String())
+		return nil, nil, fmt.Errorf("game state not found: %s", req.GameStateID.String())
 	}
 
 	loadedScenario, err := p.storage.GetScenario(ctx, gs.Scenario)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load scenario: %w", err)
+		return nil, nil, fmt.Errorf("failed to load scenario: %w", err)
 	}
 
 	svc, err := p.resolver.Get(gs.Provider)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve LLM provider %q: %w", gs.Provider, err)
+		return nil, nil, fmt.Errorf("failed to resolve LLM provider %q: %w", gs.Provider, err)
 	}
 
 	ruling, err := p.referee(ctx, svc, gs, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to run referee: %w", err)
+		return nil, nil, fmt.Errorf("failed to run referee: %w", err)
 	}
 
-	messages, err := prompts.BuildNarratorMessages(gs, loadedScenario, req.Message, p.historyLimit, ruling, p.resolveAttempts(gs, ruling)...)
+	attempts := p.resolveAttempts(gs, ruling)
+	messages, err := prompts.BuildNarratorMessages(gs, loadedScenario, req.Message, p.historyLimit, ruling, narratorTexts(attempts)...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build chat messages: %w", err)
+		return nil, nil, fmt.Errorf("failed to build chat messages: %w", err)
 	}
 
 	if p.chatQueue != nil {
@@ -104,15 +105,15 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 	p.logger.Debug("Sending streaming chat request to LLM", "game_state_id", gs.ID.String(), "provider", gs.Provider, "messages", messages)
 	streamChan, err := svc.ChatStream(ctx, messages, temperature)
 	if err != nil {
-		return nil, fmt.Errorf("LLM chat stream failed: %w", err)
+		return nil, nil, fmt.Errorf("LLM chat stream failed: %w", err)
 	}
 
-	return streamChan, nil
+	return streamChan, attempts, nil
 }
 
 // referee runs the pre-chat rules pass. LLM failures fail open: a nil ruling
 // means the narrator prompt is unchanged. Message-build errors are returned.
-func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *state.GameState, req chat.ChatRequest) (*chat.Ruling, error) {
+func (p *ChatOrchestrator) referee(ctx context.Context, svc llm.LLMService, gs *state.GameState, req chat.ChatRequest) (*chat.Ruling, error) {
 	if !req.UseReferee {
 		return nil, nil
 	}
@@ -158,7 +159,7 @@ func (p *ChatProcessor) referee(ctx context.Context, svc llm.LLMService, gs *sta
 
 // UpdateGameStateAfterStream updates game state after streaming is complete.
 // This should be called by the worker after consuming the stream.
-func (p *ChatProcessor) UpdateGameStateAfterStream(ctx context.Context, gs *state.GameState, userMessage, responseMessage string, isStoryEvent bool) error {
+func (p *ChatOrchestrator) UpdateGameStateAfterStream(ctx context.Context, gs *state.GameState, userMessage, responseMessage string, isStoryEvent bool) error {
 	// Cancel any in-process gamestate delta for this game state
 	p.metaCancelMu.Lock()
 	if cancel, ok := p.metaCancel[gs.ID]; ok {
@@ -200,7 +201,7 @@ func (p *ChatProcessor) UpdateGameStateAfterStream(ctx context.Context, gs *stat
 }
 
 // syncGameState runs in the background to extract and update the stateful parts of gamestate
-func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, responseMessage string) {
+func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameState, responseMessage string) {
 	start := time.Now()
 	p.logger.Debug("Starting background game gamestate delta", "game_state_id", gs.ID.String(), "response", responseMessage)
 	defer func() {
@@ -317,7 +318,7 @@ func (p *ChatProcessor) syncGameState(ctx context.Context, gs *state.GameState, 
 }
 
 // applyConditionalsCascade recursively evaluates and applies conditionals until none trigger
-func (p *ChatProcessor) applyConditionalsCascade(applier *state.Applier, gameStateID uuid.UUID) {
+func (p *ChatOrchestrator) applyConditionalsCascade(applier *state.Applier, gameStateID uuid.UUID) {
 	const maxConditionalIterations = 10
 	allTriggeredConditionals := make(map[string]bool) // Track all triggered conditional IDs
 
@@ -397,7 +398,7 @@ func (p *ChatProcessor) applyConditionalsCascade(applier *state.Applier, gameSta
 }
 
 // GetGameState loads a game state by ID
-func (p *ChatProcessor) GetGameState(ctx context.Context, gameStateID uuid.UUID) (*state.GameState, error) {
+func (p *ChatOrchestrator) GetGameState(ctx context.Context, gameStateID uuid.UUID) (*state.GameState, error) {
 	gs, err := p.storage.LoadGameState(ctx, gameStateID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load game state: %w", err)

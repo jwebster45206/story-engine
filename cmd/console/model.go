@@ -111,6 +111,9 @@ type ConsoleUI struct {
 	streamingContent    string // accumulated content from streaming chunks
 	streamingMessageIdx int    // index of the message being streamed in ChatHistory
 
+	// Ephemeral dice content from SSE "attempt" events.
+	ephemeralAttempts []string
+
 	// SSE event channel for async request updates
 	eventChan <-chan SSEEvent    // channel for receiving SSE events from the server
 	sseCancel context.CancelFunc // cancels the in-flight SSE request

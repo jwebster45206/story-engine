@@ -28,18 +28,18 @@ const (
 
 // Worker processes messages in the chat queue
 type Worker struct {
-	id          string
-	queue       *queue.ChatQueue
-	processor   *ChatProcessor
-	broadcaster *events.Broadcaster
-	redisClient *redis.Client
-	log         *slog.Logger
-	ctx         context.Context
-	cancel      context.CancelFunc
+	id           string
+	queue        *queue.ChatQueue
+	orchestrator *ChatOrchestrator
+	broadcaster  *events.Broadcaster
+	redisClient  *redis.Client
+	log          *slog.Logger
+	ctx          context.Context
+	cancel       context.CancelFunc
 }
 
 // New creates a new worker instance
-func New(queueClient *queue.ChatQueue, processor *ChatProcessor, redisClient *redis.Client, log *slog.Logger, workerID string) *Worker {
+func New(queueClient *queue.ChatQueue, orchestrator *ChatOrchestrator, redisClient *redis.Client, log *slog.Logger, workerID string) *Worker {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	if workerID == "" {
@@ -49,14 +49,14 @@ func New(queueClient *queue.ChatQueue, processor *ChatProcessor, redisClient *re
 	broadcaster := events.NewBroadcaster(redisClient, log)
 
 	return &Worker{
-		id:          workerID,
-		queue:       queueClient,
-		processor:   processor,
-		broadcaster: broadcaster,
-		redisClient: redisClient,
-		log:         log,
-		ctx:         ctx,
-		cancel:      cancel,
+		id:           workerID,
+		queue:        queueClient,
+		orchestrator: orchestrator,
+		broadcaster:  broadcaster,
+		redisClient:  redisClient,
+		log:          log,
+		ctx:          ctx,
+		cancel:       cancel,
 	}
 }
 
@@ -176,7 +176,7 @@ func (w *Worker) publishFailed(gameStateID uuid.UUID, requestID, errMsg string) 
 	}
 }
 
-// processRequest processes a single request using the ChatProcessor
+// processRequest processes a single request using the ChatOrchestrator
 func (w *Worker) processRequest(req *queuePkg.Request) error {
 	w.log.Info("Processing request",
 		"worker_id", w.id,
@@ -187,7 +187,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 
 	start := time.Now()
 
-	gs, err := w.processor.GetGameState(w.ctx, req.GameStateID)
+	gs, err := w.orchestrator.GetGameState(w.ctx, req.GameStateID)
 	if err != nil {
 		w.log.Error("Failed to load game state",
 			"error", err,
@@ -230,7 +230,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			return err
 		}
 
-		if err := w.processor.UpdateGameStateAfterStream(context.Background(), gs, userMessage, fullMessage, false); err != nil {
+		if err := w.orchestrator.UpdateGameStateAfterStream(context.Background(), gs, userMessage, fullMessage, false); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
@@ -265,7 +265,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			return err
 		}
 
-		gs, err := w.processor.GetGameState(w.ctx, req.GameStateID)
+		gs, err := w.orchestrator.GetGameState(w.ctx, req.GameStateID)
 		if err != nil {
 			w.log.Error("Failed to load game state for update",
 				"error", err,
@@ -275,7 +275,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			return fmt.Errorf("failed to load game state: %w", err)
 		}
 
-		if err := w.processor.UpdateGameStateAfterStream(context.Background(), gs, storyEventMessage, fullMessage, true); err != nil {
+		if err := w.orchestrator.UpdateGameStateAfterStream(context.Background(), gs, storyEventMessage, fullMessage, true); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
@@ -306,7 +306,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 }
 
 func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, errWrap string) (string, error) {
-	streamChan, err := w.processor.ProcessChatStream(w.ctx, chatReq)
+	streamChan, attempts, err := w.orchestrator.ProcessChatStream(w.ctx, chatReq)
 	if err != nil {
 		w.log.Error("Failed to start stream",
 			"error", err,
@@ -316,6 +316,15 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 		)
 		w.publishFailed(req.GameStateID, req.RequestID, err.Error())
 		return "", fmt.Errorf("%s: %w", errWrap, err)
+	}
+
+	for _, a := range attempts {
+		if a.Content == "" {
+			continue
+		}
+		if err := w.broadcaster.PublishAttempt(w.ctx, req.GameStateID, req.RequestID, a.Content, a.Success, string(a.Scope)); err != nil {
+			w.log.Error("Failed to publish attempt", "error", err)
+		}
 	}
 
 	var fullMessage strings.Builder
@@ -348,7 +357,7 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 	}
 
 	// Gamestate needed for getting principal ID for usage tracking
-	gs, err := w.processor.GetGameState(w.ctx, req.GameStateID)
+	gs, err := w.orchestrator.GetGameState(w.ctx, req.GameStateID)
 	if err != nil {
 		w.log.Error("Failed to load game state for usage tracking",
 			"error", err,

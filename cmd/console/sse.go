@@ -27,6 +27,7 @@ func (m *ConsoleUI) stopSSE() {
 	}
 	m.eventChan = nil
 	m.sseGameID = uuid.Nil()
+	m.ephemeralAttempts = nil
 }
 
 // startSSE opens a new event stream for the current game and returns a command

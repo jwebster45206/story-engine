@@ -13,6 +13,13 @@ const defaultDC = 10
 
 var d20Die = d20.MustNewDice(1, 20)
 
+type resolvedAttempt struct {
+	NarratorText string
+	Content      string
+	Success      bool
+	Scope        chat.RulingScope
+}
+
 func strikeLine(attacker, target string, hit bool) string {
 	result := "misses"
 	if hit {
@@ -21,10 +28,22 @@ func strikeLine(attacker, target string, hit bool) string {
 	return fmt.Sprintf("%s strikes %s and %s.", attacker, target, result)
 }
 
+func narratorTexts(attempts []resolvedAttempt) []string {
+	if len(attempts) == 0 {
+		return nil
+	}
+	lines := make([]string, 0, len(attempts))
+	for _, a := range attempts {
+		if a.NarratorText != "" {
+			lines = append(lines, a.NarratorText)
+		}
+	}
+	return lines
+}
+
 // resolveAttempts resolves the attempts of the given ruling.
 // It may roll dice if the ruling needs it.
-// It returns a slice of strings, each representing an attempt and its outcome.
-func (p *ChatProcessor) resolveAttempts(gs *state.GameState, ruling *chat.Ruling) []string {
+func (p *ChatOrchestrator) resolveAttempts(gs *state.GameState, ruling *chat.Ruling) []resolvedAttempt {
 	if ruling == nil || !ruling.Allowed {
 		return nil
 	}
@@ -36,7 +55,7 @@ func (p *ChatProcessor) resolveAttempts(gs *state.GameState, ruling *chat.Ruling
 	}
 }
 
-func (p *ChatProcessor) resolveCombatAttempts(gs *state.GameState, ruling *chat.Ruling) []string {
+func (p *ChatOrchestrator) resolveCombatAttempts(gs *state.GameState, ruling *chat.Ruling) []resolvedAttempt {
 	pcName := "PC"
 	if gs != nil && gs.PC != nil {
 		if name := strings.TrimSpace(gs.PC.Name); name != "" {
@@ -48,31 +67,31 @@ func (p *ChatProcessor) resolveCombatAttempts(gs *state.GameState, ruling *chat.
 		target = ruling.Focus.Actors[0]
 	}
 
-	var lines []string
-	if line := p.attempt(pcName, target); line != "" {
-		lines = append(lines, line)
+	var out []resolvedAttempt
+	if a := p.attempt(pcName, target); a.NarratorText != "" {
+		a.Scope = ruling.Scope
+		out = append(out, a)
 	}
 	// TODO: consider a reaction attempt (focused actor strikes the PC).
-	return lines
+	return out
 }
 
-func (p *ChatProcessor) attempt(actor, target string) string {
+func (p *ChatOrchestrator) attempt(actor, target string) resolvedAttempt {
 	if p == nil || p.roller == nil {
-		return ""
+		return resolvedAttempt{}
 	}
 	outcome, err := p.roller.Roll(d20Die)
 	if err != nil {
 		if p.logger != nil {
 			p.logger.Error("attempt roll failed", "error", err, "actor", actor)
 		}
-		return ""
+		return resolvedAttempt{}
 	}
-	hit := outcome.Value >= defaultDC
-	line := strikeLine(actor, target, hit)
-	// TODO: emit outcome.Detail() as a game SSE event (internal/events.Broadcaster).
-	// Do not send dice breakdown or DC to the narrator.
+	success := outcome.Value >= defaultDC
+	text := strikeLine(actor, target, success)
+	detail := outcome.Detail()
 	if p.logger != nil {
-		p.logger.Info(line, "detail", outcome.Detail())
+		p.logger.Info(text, "detail", detail)
 	}
-	return line
+	return resolvedAttempt{NarratorText: text, Content: detail, Success: success}
 }
