@@ -374,6 +374,34 @@ func TestUpdate_AttemptSSEIsEphemeral(t *testing.T) {
 	}
 }
 
+func TestUpdate_DeniedAttemptSSEShowsReasoning(t *testing.T) {
+	id := uuid.New()
+	m := newTestUI()
+	m.showScenarioModal = false
+	m.sseGameID = id
+	m.gameState = &state.GameState{
+		ID: id,
+		ChatHistory: []chat.ChatMessage{
+			{Role: "user", Content: "I walk north"},
+		},
+	}
+	histLen := len(m.gameState.ChatHistory)
+	reason := "There is no north exit."
+
+	model, _ := m.Update(sseEventMsg{event: SSEEvent{
+		Type:   "attempt",
+		GameID: id,
+		Data:   map[string]any{"content": reason, "success": false, "scope": "all"},
+	}})
+	ui := model.(ConsoleUI)
+	if len(ui.gameState.ChatHistory) != histLen {
+		t.Fatalf("ChatHistory len = %d, want %d", len(ui.gameState.ChatHistory), histLen)
+	}
+	if len(ui.ephemeralAttempts) != 1 || ui.ephemeralAttempts[0] != reason {
+		t.Fatalf("ephemeralAttempts = %v, want %q", ui.ephemeralAttempts, reason)
+	}
+}
+
 func TestFormatAttemptLine(t *testing.T) {
 	tests := []struct {
 		content string
@@ -385,6 +413,7 @@ func TestFormatAttemptLine(t *testing.T) {
 		{"Jack rolled 1d20... 4", false, string(chat.RulingScopeCombat), "Jack rolled 1d20... 4 — miss"},
 		{"Jack rolled 1d20... 15", true, string(chat.RulingScopeExamine), "Jack rolled 1d20... 15 — success"},
 		{"Jack rolled 1d20... 3", false, string(chat.RulingScopeExamine), "Jack rolled 1d20... 3 — fail"},
+		{"There is no north exit.", false, "all", "There is no north exit."},
 	}
 	for _, tt := range tests {
 		if got := formatAttemptLine(tt.content, tt.success, tt.scope); got != tt.want {

@@ -116,8 +116,8 @@ func (b *Broadcaster) PublishChatChunk(ctx context.Context, gameID uuid.UUID, re
 	return b.publishToGame(ctx, gameID, event)
 }
 
-// PublishAttempt publishes an attempt event (dice roll text, not chat).
-// scope is the referee scope (combat, examine, ...); success is whether the check met the DC.
+// PublishAttempt publishes an attempt event (not chat).
+// scope is combat, all, etc.; success is whether the check met the DC (always false for denials).
 func (b *Broadcaster) PublishAttempt(ctx context.Context, gameID uuid.UUID, requestID string, content string, success bool, scope string) error {
 	event := Event{
 		Type:      EventTypeAttempt,

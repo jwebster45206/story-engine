@@ -9,7 +9,10 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
-const defaultDC = 10
+const (
+	defaultDC       = 10
+	attemptScopeAll = "all"
+)
 
 var d20Die = d20.MustNewDice(1, 20)
 
@@ -44,8 +47,11 @@ func narratorTexts(attempts []resolvedAttempt) []string {
 // resolveAttempts resolves the attempts of the given ruling.
 // It may roll dice if the ruling needs it.
 func (p *ChatOrchestrator) resolveAttempts(gs *state.GameState, ruling *chat.Ruling) []resolvedAttempt {
-	if ruling == nil || !ruling.Allowed {
+	if ruling == nil {
 		return nil
+	}
+	if !ruling.Allowed {
+		return deniedAttempt(ruling)
 	}
 	switch ruling.Scope {
 	case chat.RulingScopeCombat:
@@ -53,6 +59,18 @@ func (p *ChatOrchestrator) resolveAttempts(gs *state.GameState, ruling *chat.Rul
 	default:
 		return nil
 	}
+}
+
+func deniedAttempt(ruling *chat.Ruling) []resolvedAttempt {
+	reasoning := strings.TrimSpace(ruling.Reasoning)
+	if reasoning == "" {
+		return nil
+	}
+	return []resolvedAttempt{{
+		Content: reasoning,
+		Success: false,
+		Scope:   attemptScopeAll,
+	}}
 }
 
 func (p *ChatOrchestrator) resolveCombatAttempts(gs *state.GameState, ruling *chat.Ruling) []resolvedAttempt {

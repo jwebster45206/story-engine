@@ -117,6 +117,21 @@ func TestResolveAttempts(t *testing.T) {
 		}
 	})
 
+	t.Run("denied with reasoning", func(t *testing.T) {
+		got := p.resolveAttempts(gs, &chat.Ruling{
+			Allowed:   false,
+			Reasoning: "There is no north exit.",
+			Scope:     chat.RulingScopeMovement,
+		})
+		if len(got) != 1 {
+			t.Fatalf("len = %d, want 1", len(got))
+		}
+		a := got[0]
+		if a.Content != "There is no north exit." || a.Success || a.Scope != attemptScopeAll || a.NarratorText != "" {
+			t.Errorf("got %+v, want content=reasoning success=false scope=all empty narrator", a)
+		}
+	})
+
 	for _, ruling := range []*chat.Ruling{
 		nil,
 		{Allowed: false, Scope: chat.RulingScopeCombat, Focus: chat.RulingFocus{Actors: []string{"Giant Rat"}}},
