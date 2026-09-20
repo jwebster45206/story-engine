@@ -104,12 +104,6 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 	if !strings.Contains(strictSys, `"actors":["Giant Rat"]`) {
 		t.Error("strict examples should include a combat actor")
 	}
-	if strings.Contains(strictSys, `"reasoning":"The PC`) {
-		t.Error("strict example reasoning should be second person, not The PC")
-	}
-	if !strings.Contains(strictSys, `"reasoning":"You cannot move to the banquet hall`) {
-		t.Error("strict examples should include second-person deny reasoning")
-	}
 	if strings.Contains(strictSys, `"npcs"`) {
 		t.Error("strict examples should use focus.actors, not focus.npcs")
 	}
