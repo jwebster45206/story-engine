@@ -304,6 +304,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "request.processing":
 			// Request has been picked up by worker - can stop showing progress bar
 			m.loading = false
+			m.ephemeralAttempts = nil
 
 			// Add the user message from the event data (if present)
 			if userMsg, ok := msg.event.Data["user_message"].(string); ok && userMsg != "" {
@@ -315,6 +316,17 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.pendingUserMessages = append(m.pendingUserMessages, userMessage)
 
 				// Reformat content to include the new user message
+				m.writeChatContent()
+				if !m.userPinned {
+					m.chatViewport.GotoBottom()
+				}
+			}
+
+		case "attempt":
+			if content, ok := msg.event.Data["content"].(string); ok && content != "" {
+				success, _ := msg.event.Data["success"].(bool)
+				scope, _ := msg.event.Data["scope"].(string)
+				m.ephemeralAttempts = append(m.ephemeralAttempts, formatAttemptLine(content, success, scope))
 				m.writeChatContent()
 				if !m.userPinned {
 					m.chatViewport.GotoBottom()
@@ -377,6 +389,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Request failed
 			m.isStreaming = false
 			m.loading = false
+			m.ephemeralAttempts = nil
 
 			// Get error message from the data map
 			errorMsg := "Request failed"
@@ -461,6 +474,20 @@ func (m ConsoleUI) refreshGameState() tea.Cmd {
 	}
 }
 
+func formatAttemptLine(content string, success bool, scope string) string {
+	result := "fail"
+	if success {
+		result = "success"
+	}
+	if scope == string(chat.RulingScopeCombat) {
+		result = "miss"
+		if success {
+			result = "hit"
+		}
+	}
+	return content + " — " + result
+}
+
 func (m ConsoleUI) consumeSSEEvents(events <-chan SSEEvent) tea.Cmd {
 	gameID := m.sseGameID
 	return func() tea.Msg {
@@ -479,6 +506,7 @@ func (m ConsoleUI) handleSSEDisconnected(msg sseDisconnectedMsg) (tea.Model, tea
 	wasWaiting := m.loading || m.isStreaming
 	m.loading = false
 	m.isStreaming = false
+	m.ephemeralAttempts = nil
 	if wasWaiting {
 		m.gameState.ChatHistory = append(m.gameState.ChatHistory, chat.ChatMessage{
 			Role:    "system",

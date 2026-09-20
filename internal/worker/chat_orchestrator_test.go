@@ -34,7 +34,7 @@ func TestApplyConditionalsCascade_NoConditionals(t *testing.T) {
 		},
 	}
 
-	processor := &ChatProcessor{logger: logger}
+	processor := &ChatOrchestrator{logger: logger}
 	applier := state.NewApplier(gs, delta, s, logger)
 
 	// Execute
@@ -79,7 +79,7 @@ func TestApplyConditionalsCascade_OneIteration(t *testing.T) {
 		},
 	}
 
-	processor := &ChatProcessor{logger: logger}
+	processor := &ChatOrchestrator{logger: logger}
 	applier := state.NewApplier(gs, delta, s, logger)
 
 	// Execute
@@ -143,7 +143,7 @@ func TestApplyConditionalsCascade_TwoIterations(t *testing.T) {
 		},
 	}
 
-	processor := &ChatProcessor{logger: logger}
+	processor := &ChatOrchestrator{logger: logger}
 	applier := state.NewApplier(gs, delta, s, logger)
 
 	// Execute
@@ -285,7 +285,7 @@ func countNonSystem(msgs []chat.ChatMessage) int {
 	return n
 }
 
-func newTestSetup(historyCount, historyLimit int) (*ChatProcessor, *stubLLMService, chat.ChatRequest) {
+func newTestSetup(historyCount, historyLimit int) (*ChatOrchestrator, *stubLLMService, chat.ChatRequest) {
 	gsID := uuid.New()
 	gs := &state.GameState{
 		ID:          gsID,
@@ -303,7 +303,7 @@ func newTestSetup(historyCount, historyLimit int) (*ChatProcessor, *stubLLMServi
 	}
 	llm := &stubLLMService{}
 	stor := &stubStorage{gs: gs, sc: sc}
-	processor := NewChatProcessor(stor, stubResolver{llm}, nil, slog.Default(), historyLimit)
+	processor := NewChatOrchestrator(stor, stubResolver{llm}, nil, slog.Default(), historyLimit)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "hello"}
 	return processor, llm, req
 }
@@ -316,7 +316,7 @@ func TestProcessChatStream_HistoryLimitRespected(t *testing.T) {
 
 	processor, llm, req := newTestSetup(historyInState, limit)
 
-	_, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
@@ -336,7 +336,7 @@ func TestProcessChatStream_HistoryLimitZeroUsesDefault(t *testing.T) {
 
 	processor, llm, req := newTestSetup(historyInState, 0) // 0 → default
 
-	_, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
@@ -354,7 +354,7 @@ func TestProcessChatStream_HistoryLimitZeroUsesDefault(t *testing.T) {
 
 func TestProcessChatStream_UsesDefaultTemperature(t *testing.T) {
 	processor, stub, req := newTestSetup(2, 10)
-	_, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
@@ -381,10 +381,10 @@ func TestProcessChatStream_UsesGameStateTemperature(t *testing.T) {
 	}
 	llm := &stubLLMService{}
 	stor := &stubStorage{gs: gs, sc: sc}
-	processor := NewChatProcessor(stor, stubResolver{llm}, nil, slog.Default(), 10)
+	processor := NewChatOrchestrator(stor, stubResolver{llm}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "hello"}
 
-	_, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
@@ -417,10 +417,10 @@ func TestProcessChatStream_RefereeInjectedAfterRules(t *testing.T) {
 		rulingUsage: llm.Usage{InputTokens: 4, OutputTokens: 2, Model: "stub-adj", Vendor: "stub"},
 	}
 	stor := &stubStorage{gs: gs, sc: sc}
-	processor := NewChatProcessor(stor, stubResolver{stub}, nil, slog.Default(), 10)
+	processor := NewChatOrchestrator(stor, stubResolver{stub}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "I walk north", UseReferee: true}
 
-	_, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
@@ -464,10 +464,10 @@ func TestProcessChatStream_RefereeFailOpenOmitsBlock(t *testing.T) {
 	}
 	sc := &scenario.Scenario{Name: "Test", Story: "A test story", Rating: scenario.RatingPG}
 	stub := &stubLLMService{rulingErr: fmt.Errorf("referee down")}
-	processor := NewChatProcessor(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
+	processor := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "hello", UseReferee: true}
 
-	_, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
@@ -483,7 +483,7 @@ func TestProcessChatStream_RefereeFailOpenOmitsBlock(t *testing.T) {
 func TestProcessChatStream_StoryEventSkipsReferee(t *testing.T) {
 	processor, stub, req := newTestSetup(2, 10)
 
-	_, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
@@ -523,13 +523,19 @@ func TestProcessChatStream_CombatAppendsStrikeLines(t *testing.T) {
 		},
 	}
 	const seed int64 = 1
-	processor := NewChatProcessor(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
+	processor := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
 	processor.roller = d20.NewRoller(seed)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "I attack the giant rat", UseReferee: true}
 
-	_, err := processor.ProcessChatStream(context.Background(), req)
+	_, attempts, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
+	}
+	if len(attempts) != 1 || !strings.HasPrefix(attempts[0].Content, "Felix rolled ") {
+		t.Fatalf("expected named roll content, got %+v", attempts)
+	}
+	if strings.Contains(strings.ToLower(attempts[0].NarratorText), "rolled") || strings.Contains(attempts[0].NarratorText, "DC") {
+		t.Errorf("narrator line must not include dice mechanics, got %q", attempts[0].NarratorText)
 	}
 	user := lastUserContent(stub.capturedMessages)
 	wantLines := expectedStrikes(t, seed, "Felix", "Giant Rat")
@@ -547,7 +553,7 @@ func TestProcessChatStream_CombatAppendsStrikeLines(t *testing.T) {
 	if !strings.Contains(user, "strikes") {
 		t.Errorf("expected strike prose, got %q", user)
 	}
-	if strings.Contains(user, "Rolled") || strings.Contains(user, "DC") {
+	if strings.Contains(strings.ToLower(user), "rolled") || strings.Contains(user, "DC") {
 		t.Errorf("narrator must not include dice mechanics, got %q", user)
 	}
 }
@@ -571,10 +577,10 @@ func TestProcessChatStream_DeniedCombatOmitsStrikes(t *testing.T) {
 			Focus:     chat.RulingFocus{Actors: []string{"Giant Rat"}},
 		},
 	}
-	processor := NewChatProcessor(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
+	processor := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "I attack", UseReferee: true}
 
-	_, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}

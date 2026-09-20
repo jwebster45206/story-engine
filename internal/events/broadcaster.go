@@ -19,6 +19,7 @@ const (
 	EventTypeRequestCompleted  EventType = "request.completed"
 	EventTypeRequestFailed     EventType = "request.failed"
 	EventTypeChatChunk         EventType = "chat.chunk"
+	EventTypeAttempt           EventType = "attempt"
 	EventTypeGameStateUpdated  EventType = "game.state_updated"
 )
 
@@ -110,6 +111,22 @@ func (b *Broadcaster) PublishChatChunk(ctx context.Context, gameID uuid.UUID, re
 		Data: map[string]any{
 			"content": content,
 			"done":    done,
+		},
+	}
+	return b.publishToGame(ctx, gameID, event)
+}
+
+// PublishAttempt publishes an attempt event (dice roll text, not chat).
+// scope is the referee scope (combat, examine, ...); success is whether the check met the DC.
+func (b *Broadcaster) PublishAttempt(ctx context.Context, gameID uuid.UUID, requestID string, content string, success bool, scope string) error {
+	event := Event{
+		Type:      EventTypeAttempt,
+		RequestID: requestID,
+		GameID:    gameID.String(),
+		Data: map[string]any{
+			"content": content,
+			"success": success,
+			"scope":   scope,
 		},
 	}
 	return b.publishToGame(ctx, gameID, event)

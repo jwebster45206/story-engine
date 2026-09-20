@@ -66,9 +66,9 @@ func main() {
 	}
 	log.Info("LLM providers initialized successfully", "default", registry.Default(), "count", len(registry.Names()))
 
-	// Create ChatProcessor
-	processor := worker.NewChatProcessor(storageService, registry, chatQueue, log, cfg.ChatHistoryLimit)
-	log.Info("Chat processor initialized successfully")
+	// Create ChatOrchestrator
+	orchestrator := worker.NewChatOrchestrator(storageService, registry, chatQueue, log, cfg.ChatHistoryLimit)
+	log.Info("Chat orchestrator initialized successfully")
 
 	// Create a separate Redis client for worker locking
 	// (separate from queue client to avoid connection conflicts)
@@ -91,8 +91,8 @@ func main() {
 
 	log.Info("Redis connection established successfully")
 
-	// Create and start worker with processor
-	w := worker.New(chatQueue, processor, redisClient, log, os.Getenv("WORKER_ID"))
+	// Create and start worker with orchestrator
+	w := worker.New(chatQueue, orchestrator, redisClient, log, os.Getenv("WORKER_ID"))
 
 	// Handle graceful shutdown
 	quit := make(chan os.Signal, 1)

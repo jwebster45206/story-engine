@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/state"
 	"github.com/muesli/reflow/wordwrap"
 )
@@ -185,7 +186,7 @@ func (m *ConsoleUI) writeChatContent() {
 	content.WriteString("Welcome to " + titleStyle.Render(m.scenarioDisplayName()) + "...\n\n")
 	content.WriteString(separatorStyle.Render(strings.Repeat("─ ", chatWidth/2-6)) + "\n\n")
 
-	for _, msg := range m.gameState.ChatHistory {
+	for i, msg := range m.gameState.ChatHistory {
 		switch msg.Role {
 		case "assistant":
 			formattedMsg := formatNarratorResponse(msg.Content, chatWidth)
@@ -203,6 +204,11 @@ func (m *ConsoleUI) writeChatContent() {
 		case "user":
 			userMsg := userStyle.Render(wordwrap.String(msg.Content, chatWidth-3))
 			content.WriteString(userMsg + "\n\n")
+			if isLastUserMessage(m.gameState.ChatHistory, i) {
+				for _, detail := range m.ephemeralAttempts {
+					content.WriteString(speakerStyle.Render(wordwrap.String(detail, chatWidth)) + "\n\n")
+				}
+			}
 		}
 	}
 
@@ -217,6 +223,15 @@ func (m *ConsoleUI) writeChatContent() {
 		// Restore previous offset (viewport clamps internally). If pinned, stay pinned; if not at bottom before, preserve context.
 		m.chatViewport.YOffset = prevOffset
 	}
+}
+
+func isLastUserMessage(history []chat.ChatMessage, i int) bool {
+	for _, msg := range history[i+1:] {
+		if msg.Role == "user" {
+			return false
+		}
+	}
+	return true
 }
 
 func formatNarratorResponse(response string, width int) string {
