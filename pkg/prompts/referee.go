@@ -28,12 +28,19 @@ func refereeWindow(narratorLimit int) int {
 	return narratorLimit
 }
 
-func formatRefereeBlock(text string) string {
-	text = strings.TrimSpace(text)
-	if text == "" {
+func formatRefereeBlock(parts ...string) string {
+	var lines []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		lines = append(lines, p)
+	}
+	if len(lines) == 0 {
 		return ""
 	}
-	return "<referee>\n" + text + "\n</referee>\n" + refereeHonorLine
+	return "<referee>\n" + strings.Join(lines, "\n") + "\n</referee>\n" + refereeHonorLine
 }
 
 // BuildRefereeMessages assembles the pre-chat referee call: RuleSet referee

@@ -152,7 +152,8 @@ func getStatePromptWithFocus(gs *state.GameState, s *scenario.Scenario, ruling *
 
 const narratorHistoryDefault = 20
 
-// BuildNarratorMessages assembles the streaming narrator call.
+// BuildNarratorMessages assembles a slice of ChatMessages
+// for the streaming narrator call.
 func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessage string, historyLimit int, ruling *chat.Ruling, refereeExtra ...string) ([]chat.ChatMessage, error) {
 	if gs == nil {
 		return nil, fmt.Errorf("gamestate is required")
@@ -164,7 +165,13 @@ func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessa
 		historyLimit = narratorHistoryDefault
 	}
 
-	history := windowHistory(gs.ChatHistory, historyLimit)
+	// build truncated chat history; needed for dynamic system prompt
+	history := gs.ChatHistory
+	n := len(history)
+	if n > historyLimit {
+		history = history[n-historyLimit:]
+	}
+
 	dynamicNarratorPrompt, err := getDynamicNarratorPrompt(gs, sc, history, ruling)
 	if err != nil {
 		return nil, fmt.Errorf("error building system prompt: %w", err)
@@ -177,18 +184,19 @@ func BuildNarratorMessages(gs *state.GameState, sc *scenario.Scenario, userMessa
 			Content:      getPersistentNarratorPrompt(gs.Narrator, gs.PC, gs.Rules, sc.Rating),
 			IsPersistent: true,
 		},
+		// Dynamic systemprompt built from current game state
 		{
 			Role:    chat.ChatRoleSystem,
 			Content: dynamicNarratorPrompt,
 		},
 	}
+
+	// add truncatedchat history
 	msgs = append(msgs, history...)
-	extra := ""
-	if len(refereeExtra) > 0 {
-		extra = refereeExtra[0]
-	}
-	userMsg := narratorUserTurn(gs, userMessage, ruling, extra)
-	msgs = append(msgs, userMsg)
+
+	// add user prompt with referee rulings
+	msgs = append(msgs, getUserPrompt(gs, userMessage, ruling, refereeExtra...))
+
 	if gs.IsEnded {
 		msgs = append(msgs, narratorGameEndMessage(sc))
 	}
@@ -263,18 +271,10 @@ func historyHasStoryEvent(history []chat.ChatMessage) bool {
 	return false
 }
 
-func windowHistory(history []chat.ChatMessage, limit int) []chat.ChatMessage {
-	n := len(history)
-	if n == 0 {
-		return nil
-	}
-	if n > limit {
-		return history[n-limit:]
-	}
-	return history
-}
-
-func narratorUserTurn(gs *state.GameState, userMessage string, ruling *chat.Ruling, refereeExtra string) chat.ChatMessage {
+// getUserPrompt constructs the user prompt with referee rulings.
+// extra rulings are appended to the narrator rules and the overall
+// allow/disallow ruling.
+func getUserPrompt(gs *state.GameState, userMessage string, ruling *chat.Ruling, extra ...string) chat.ChatMessage {
 	if userMessage == "" {
 		return chat.ChatMessage{}
 	}
@@ -284,27 +284,17 @@ func narratorUserTurn(gs *state.GameState, userMessage string, ruling *chat.Ruli
 	if gs.Narrator != nil && len(gs.Narrator.Rules) > 0 {
 		allRules = append(allRules, gs.Narrator.Rules...)
 	}
+	rulesBlock := "\n\n" + formatRulesBlock(allRules)
 
-	content := userMessage
-	if rulesBlock := formatRulesBlock(allRules); rulesBlock != "" {
-		content += "\n\n" + rulesBlock
-	}
+	refereeBlock := ""
 	if ruling != nil {
-		body := ruling.NarratorText()
-		if extra := strings.TrimSpace(refereeExtra); extra != "" {
-			if body != "" {
-				body += "\n" + extra
-			} else {
-				body = extra
-			}
-		}
-		if refBlock := formatRefereeBlock(body); refBlock != "" {
-			content += "\n\n" + refBlock
-		}
+		parts := append([]string{ruling.NarratorText()}, extra...)
+		refereeBlock = "\n\n" + formatRefereeBlock(parts...)
 	}
+
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleUser,
-		Content: content,
+		Content: userMessage + rulesBlock + refereeBlock,
 	}
 }
 
