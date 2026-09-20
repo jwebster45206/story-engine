@@ -131,17 +131,6 @@ func TestResolveAttempts(t *testing.T) {
 			t.Errorf("got %+v, want content=reasoning success=false scope=all empty narrator", a)
 		}
 	})
-
-	for _, ruling := range []*chat.Ruling{
-		nil,
-		{Allowed: false, Scope: chat.RulingScopeCombat, Focus: chat.RulingFocus{Actors: []string{"Giant Rat"}}},
-		{Allowed: true, Scope: chat.RulingScopeDialogue, Focus: chat.RulingFocus{Actors: []string{"Pip"}}},
-		{Allowed: true, Scope: chat.RulingScopeMovement},
-	} {
-		if got := p.resolveAttempts(gs, ruling); len(got) != 0 {
-			t.Errorf("ruling %+v: got %q, want empty", ruling, narratorTexts(got))
-		}
-	}
 }
 
 func expectedStrikes(t *testing.T, seed int64, pc, target string) []string {

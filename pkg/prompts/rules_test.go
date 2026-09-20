@@ -71,4 +71,7 @@ func TestSystemPromptTemplate_SharedNarratorVoiceHeading(t *testing.T) {
 	if strings.Contains(systemPromptTemplate, "### Monsters") {
 		t.Error("monsters copy should not be in the persistent template")
 	}
+	if !strings.Contains(systemPromptTemplate, "different response structure than that immediately previous") {
+		t.Error("persistent template should ask the narrator to vary structure from the previous reply")
+	}
 }

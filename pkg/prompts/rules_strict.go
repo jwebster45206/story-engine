@@ -39,9 +39,9 @@ const strictRefereeGlobal = `- The player roleplays as the Player Character (PC)
 - Only listed monsters may be engaged.
 - Ordinary PC actions that stay in that sandbox are allowed.`
 
-const strictRefereeExamples = `Example:	{"allowed":true,"reasoning":"The PC can move to the drawbridge.","reaction":null,"scope":"movement","focus":{"actors":[],"locations":["drawbridge"]}}
-Example:	{"allowed":false,"reasoning":"The PC cannot move to the banquet hall because it is blocked.","reaction":"The PC would be stopped by the guard.","scope":"movement","focus":{"actors":[],"locations":["banquet hall"]}}
+const strictRefereeExamples = `Example:	{"allowed":true,"reasoning":"You can move to the drawbridge.","reaction":null,"scope":"movement","focus":{"actors":[],"locations":["drawbridge"]}}
+Example:	{"allowed":false,"reasoning":"You cannot move to the banquet hall because it is blocked.","reaction":"The PC would be stopped by the guard.","scope":"movement","focus":{"actors":[],"locations":["banquet hall"]}}
 
-Example:	{"allowed":true,"reasoning":"The PC attacks the giant rat.","reaction":null,"scope":"combat","focus":{"actors":["Giant Rat"],"locations":[]}}
+Example:	{"allowed":true,"reasoning":"You attack the giant rat.","reaction":null,"scope":"combat","focus":{"actors":["Giant Rat"],"locations":[]}}
 Example:	{"allowed":false,"reasoning":"There is no giant rat to attack.","reaction":null,"scope":"combat","focus":{"actors":[],"locations":[]}}
-Example:	{"allowed":false,"reasoning":"The PC cannot dictate that the guard is defeated in the attack. The PC's attack occurs, but outcome is decided by the narrator.","reaction":null,"scope":"combat","focus":{"actors":["guard"],"locations":[]}}`
+Example:	{"allowed":false,"reasoning":"You cannot dictate that the guard is defeated in the attack. Your attack occurs, but the outcome is decided by the narrator.","reaction":null,"scope":"combat","focus":{"actors":["guard"],"locations":[]}}`

@@ -74,6 +74,9 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 	if !strings.Contains(strictSys, "allowed:") {
 		t.Error("expected allowed field in preamble")
 	}
+	if !strings.Contains(strictSys, "second person") {
+		t.Error("reasoning should be instructed as second person")
+	}
 	if !strings.Contains(strictSys, "reaction:") {
 		t.Error("expected reaction field in preamble")
 	}
@@ -103,6 +106,12 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 	}
 	if !strings.Contains(strictSys, `"actors":["Giant Rat"]`) {
 		t.Error("strict examples should include a combat actor")
+	}
+	if strings.Contains(strictSys, `"reasoning":"The PC`) {
+		t.Error("strict example reasoning should be second person, not The PC")
+	}
+	if !strings.Contains(strictSys, `"reasoning":"You cannot move to the banquet hall`) {
+		t.Error("strict examples should include second-person deny reasoning")
 	}
 	if strings.Contains(strictSys, `"npcs"`) {
 		t.Error("strict examples should use focus.actors, not focus.npcs")

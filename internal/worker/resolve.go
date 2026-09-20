@@ -51,7 +51,11 @@ func (p *ChatOrchestrator) resolveAttempts(gs *state.GameState, ruling *chat.Rul
 		return nil
 	}
 	if !ruling.Allowed {
-		return deniedAttempt(ruling)
+		return []resolvedAttempt{{
+			Content: strings.TrimSpace(ruling.Reasoning),
+			Success: false,
+			Scope:   attemptScopeAll,
+		}}
 	}
 	switch ruling.Scope {
 	case chat.RulingScopeCombat:
@@ -59,18 +63,6 @@ func (p *ChatOrchestrator) resolveAttempts(gs *state.GameState, ruling *chat.Rul
 	default:
 		return nil
 	}
-}
-
-func deniedAttempt(ruling *chat.Ruling) []resolvedAttempt {
-	reasoning := strings.TrimSpace(ruling.Reasoning)
-	if reasoning == "" {
-		return nil
-	}
-	return []resolvedAttempt{{
-		Content: reasoning,
-		Success: false,
-		Scope:   attemptScopeAll,
-	}}
 }
 
 func (p *ChatOrchestrator) resolveCombatAttempts(gs *state.GameState, ruling *chat.Ruling) []resolvedAttempt {
