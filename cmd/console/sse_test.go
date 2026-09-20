@@ -341,13 +341,13 @@ func TestUpdate_AttemptSSEIsEphemeral(t *testing.T) {
 	model, _ := m.Update(sseEventMsg{event: SSEEvent{
 		Type:   "attempt",
 		GameID: id,
-		Data:   map[string]any{"content": "Rolled 1d20... 12; *Result: 12*", "success": true, "scope": "combat"},
+		Data:   map[string]any{"content": "Jack rolled 1d20... 12; *Result: 12*", "success": true, "scope": "combat"},
 	}})
 	ui := model.(ConsoleUI)
 	if len(ui.gameState.ChatHistory) != histLen {
 		t.Fatalf("ChatHistory len = %d, want %d", len(ui.gameState.ChatHistory), histLen)
 	}
-	want := "Rolled 1d20... 12; *Result: 12* — hit"
+	want := "Jack rolled 1d20... 12; *Result: 12* — hit"
 	if len(ui.ephemeralAttempts) != 1 || ui.ephemeralAttempts[0] != want {
 		t.Fatalf("ephemeralAttempts = %v, want %q", ui.ephemeralAttempts, want)
 	}
@@ -355,10 +355,10 @@ func TestUpdate_AttemptSSEIsEphemeral(t *testing.T) {
 	model, _ = ui.Update(sseEventMsg{event: SSEEvent{
 		Type:   "attempt",
 		GameID: id,
-		Data:   map[string]any{"content": "Rolled 1d20... 4; *Result: 4*", "success": false, "scope": "combat"},
+		Data:   map[string]any{"content": "Jack rolled 1d20... 4; *Result: 4*", "success": false, "scope": "combat"},
 	}})
 	ui = model.(ConsoleUI)
-	wantMiss := "Rolled 1d20... 4; *Result: 4* — miss"
+	wantMiss := "Jack rolled 1d20... 4; *Result: 4* — miss"
 	if len(ui.ephemeralAttempts) != 2 || ui.ephemeralAttempts[1] != wantMiss {
 		t.Fatalf("ephemeralAttempts = %v, want second %q", ui.ephemeralAttempts, wantMiss)
 	}
@@ -381,10 +381,10 @@ func TestFormatAttemptLine(t *testing.T) {
 		scope   string
 		want    string
 	}{
-		{"Rolled 1d20... 12", true, string(chat.RulingScopeCombat), "Rolled 1d20... 12 — hit"},
-		{"Rolled 1d20... 4", false, string(chat.RulingScopeCombat), "Rolled 1d20... 4 — miss"},
-		{"Rolled 1d20... 15", true, string(chat.RulingScopeExamine), "Rolled 1d20... 15 — success"},
-		{"Rolled 1d20... 3", false, string(chat.RulingScopeExamine), "Rolled 1d20... 3 — fail"},
+		{"Jack rolled 1d20... 12", true, string(chat.RulingScopeCombat), "Jack rolled 1d20... 12 — hit"},
+		{"Jack rolled 1d20... 4", false, string(chat.RulingScopeCombat), "Jack rolled 1d20... 4 — miss"},
+		{"Jack rolled 1d20... 15", true, string(chat.RulingScopeExamine), "Jack rolled 1d20... 15 — success"},
+		{"Jack rolled 1d20... 3", false, string(chat.RulingScopeExamine), "Jack rolled 1d20... 3 — fail"},
 	}
 	for _, tt := range tests {
 		if got := formatAttemptLine(tt.content, tt.success, tt.scope); got != tt.want {

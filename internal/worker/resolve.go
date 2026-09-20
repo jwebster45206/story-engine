@@ -89,9 +89,16 @@ func (p *ChatOrchestrator) attempt(actor, target string) resolvedAttempt {
 	}
 	success := outcome.Value >= defaultDC
 	text := strikeLine(actor, target, success)
-	detail := outcome.Detail()
+	content := rollContent(actor, outcome.Detail())
 	if p.logger != nil {
-		p.logger.Info(text, "detail", detail)
+		p.logger.Info(text, "content", content)
 	}
-	return resolvedAttempt{NarratorText: text, Content: detail, Success: success}
+	return resolvedAttempt{NarratorText: text, Content: content, Success: success}
+}
+
+func rollContent(actor, detail string) string {
+	if strings.HasPrefix(detail, "R") {
+		detail = "r" + detail[1:]
+	}
+	return actor + " " + detail
 }

@@ -39,11 +39,11 @@ func TestAttempt_SeededHitAndMiss(t *testing.T) {
 	if got.NarratorText != want {
 		t.Errorf("attempt = %q, want %q", got.NarratorText, want)
 	}
-	if strings.Contains(got.NarratorText, "DC") || strings.Contains(got.NarratorText, "Rolled") {
+	if strings.Contains(got.NarratorText, "DC") || strings.Contains(strings.ToLower(got.NarratorText), "rolled") {
 		t.Errorf("narrator line must not include dice mechanics, got %q", got.NarratorText)
 	}
-	if !strings.Contains(got.Content, "Rolled") {
-		t.Errorf("content should include roll breakdown, got %q", got.Content)
+	if !strings.HasPrefix(got.Content, "Felix rolled ") {
+		t.Errorf("content should name the actor, got %q", got.Content)
 	}
 
 	if got.Success != wantHit {
@@ -173,4 +173,18 @@ func seedForMiss(t *testing.T) int64 {
 	}
 	t.Fatal("no miss seed")
 	return 0
+}
+
+func TestRollContent(t *testing.T) {
+	tests := []struct {
+		actor, detail, want string
+	}{
+		{"Jack", "Rolled 1d20... 12; *Result: 12*", "Jack rolled 1d20... 12; *Result: 12*"},
+		{"Jack", "rolled 1d20... 12; *Result: 12*", "Jack rolled 1d20... 12; *Result: 12*"},
+	}
+	for _, tt := range tests {
+		if got := rollContent(tt.actor, tt.detail); got != tt.want {
+			t.Errorf("rollContent(%q, %q) = %q, want %q", tt.actor, tt.detail, got, tt.want)
+		}
+	}
 }

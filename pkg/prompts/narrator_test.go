@@ -326,7 +326,7 @@ func TestBuildNarratorMessages_CombatStrikeLinesAfterRuling(t *testing.T) {
 	if strings.Contains(body, "Giant Rat strikes") {
 		t.Errorf("should not include a reaction strike, got %q", body)
 	}
-	if strings.Contains(user, "Rolled") || strings.Contains(user, "DC") {
+	if strings.Contains(strings.ToLower(user), "rolled") || strings.Contains(user, "DC") {
 		t.Errorf("narrator must not include dice mechanics, got %q", user)
 	}
 }

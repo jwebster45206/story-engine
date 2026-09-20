@@ -531,10 +531,10 @@ func TestProcessChatStream_CombatAppendsStrikeLines(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
-	if len(attempts) != 1 || !strings.Contains(attempts[0].Content, "Rolled") {
-		t.Fatalf("expected attempt detail, got %+v", attempts)
+	if len(attempts) != 1 || !strings.HasPrefix(attempts[0].Content, "Felix rolled ") {
+		t.Fatalf("expected named roll content, got %+v", attempts)
 	}
-	if strings.Contains(attempts[0].NarratorText, "Rolled") || strings.Contains(attempts[0].NarratorText, "DC") {
+	if strings.Contains(strings.ToLower(attempts[0].NarratorText), "rolled") || strings.Contains(attempts[0].NarratorText, "DC") {
 		t.Errorf("narrator line must not include dice mechanics, got %q", attempts[0].NarratorText)
 	}
 	user := lastUserContent(stub.capturedMessages)
@@ -553,7 +553,7 @@ func TestProcessChatStream_CombatAppendsStrikeLines(t *testing.T) {
 	if !strings.Contains(user, "strikes") {
 		t.Errorf("expected strike prose, got %q", user)
 	}
-	if strings.Contains(user, "Rolled") || strings.Contains(user, "DC") {
+	if strings.Contains(strings.ToLower(user), "rolled") || strings.Contains(user, "DC") {
 		t.Errorf("narrator must not include dice mechanics, got %q", user)
 	}
 }
