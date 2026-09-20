@@ -475,6 +475,9 @@ func (m ConsoleUI) refreshGameState() tea.Cmd {
 }
 
 func formatAttemptLine(content string, success bool, scope string) string {
+	if scope == "all" {
+		return content
+	}
 	result := "fail"
 	if success {
 		result = "success"

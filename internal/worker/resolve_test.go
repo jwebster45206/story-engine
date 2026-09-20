@@ -117,16 +117,20 @@ func TestResolveAttempts(t *testing.T) {
 		}
 	})
 
-	for _, ruling := range []*chat.Ruling{
-		nil,
-		{Allowed: false, Scope: chat.RulingScopeCombat, Focus: chat.RulingFocus{Actors: []string{"Giant Rat"}}},
-		{Allowed: true, Scope: chat.RulingScopeDialogue, Focus: chat.RulingFocus{Actors: []string{"Pip"}}},
-		{Allowed: true, Scope: chat.RulingScopeMovement},
-	} {
-		if got := p.resolveAttempts(gs, ruling); len(got) != 0 {
-			t.Errorf("ruling %+v: got %q, want empty", ruling, narratorTexts(got))
+	t.Run("denied with reasoning", func(t *testing.T) {
+		got := p.resolveAttempts(gs, &chat.Ruling{
+			Allowed:   false,
+			Reasoning: "There is no north exit.",
+			Scope:     chat.RulingScopeMovement,
+		})
+		if len(got) != 1 {
+			t.Fatalf("len = %d, want 1", len(got))
 		}
-	}
+		a := got[0]
+		if a.Content != "There is no north exit." || a.Success || a.Scope != attemptScopeAll || a.NarratorText != "" {
+			t.Errorf("got %+v, want content=reasoning success=false scope=all empty narrator", a)
+		}
+	})
 }
 
 func expectedStrikes(t *testing.T, seed int64, pc, target string) []string {

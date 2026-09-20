@@ -580,9 +580,12 @@ func TestProcessChatStream_DeniedCombatOmitsStrikes(t *testing.T) {
 	processor := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "I attack", UseReferee: true}
 
-	_, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, attempts, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
+	}
+	if len(attempts) != 1 || attempts[0].Content != "There is no one to fight." || attempts[0].Success || attempts[0].Scope != attemptScopeAll || attempts[0].NarratorText != "" {
+		t.Errorf("deny attempt = %+v", attempts)
 	}
 	user := lastUserContent(stub.capturedMessages)
 	if strings.Contains(user, "strikes") {
