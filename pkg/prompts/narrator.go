@@ -225,7 +225,7 @@ func getDynamicNarratorPrompt(gs *state.GameState, sc *scenario.Scenario, histor
 			name = dests[0].Key
 		}
 		sb.WriteString("\n\n")
-		sb.WriteString(fmt.Sprintf("The PC is arriving at %s. Briefly describe the new location.", name))
+		fmt.Fprintf(&sb, "The PC is arriving at %s. Briefly describe the new location.", name)
 	}
 
 	if historyHasStoryEvent(history) {
