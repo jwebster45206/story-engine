@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"uuid"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
+	"github.com/jwebster45206/story-engine/pkg/queue"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -178,6 +180,8 @@ type stubLLMService struct {
 	ruling           *chat.Ruling
 	rulingErr        error
 	rulingUsage      llm.Usage
+	delta            *conditionals.GameStateDelta
+	deltaErr         error
 }
 
 func (s *stubLLMService) ChatStream(_ context.Context, messages []chat.ChatMessage, temperature float64) (<-chan llm.StreamChunk, error) {
@@ -189,6 +193,13 @@ func (s *stubLLMService) ChatStream(_ context.Context, messages []chat.ChatMessa
 	return ch, nil
 }
 func (s *stubLLMService) DeltaUpdate(_ context.Context, _ []chat.ChatMessage) (*conditionals.GameStateDelta, llm.Usage, error) {
+	s.calls = append(s.calls, "delta")
+	if s.deltaErr != nil {
+		return nil, llm.Usage{}, s.deltaErr
+	}
+	if s.delta != nil {
+		return s.delta, llm.Usage{Model: "stub-reducer"}, nil
+	}
 	return nil, llm.Usage{}, nil
 }
 func (s *stubLLMService) GetRuling(_ context.Context, messages []chat.ChatMessage) (*chat.Ruling, llm.Usage, error) {
@@ -316,7 +327,7 @@ func TestProcessChatStream_HistoryLimitRespected(t *testing.T) {
 
 	processor, llm, req := newTestSetup(historyInState, limit)
 
-	_, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
@@ -336,7 +347,7 @@ func TestProcessChatStream_HistoryLimitZeroUsesDefault(t *testing.T) {
 
 	processor, llm, req := newTestSetup(historyInState, 0) // 0 → default
 
-	_, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
@@ -354,7 +365,7 @@ func TestProcessChatStream_HistoryLimitZeroUsesDefault(t *testing.T) {
 
 func TestProcessChatStream_UsesDefaultTemperature(t *testing.T) {
 	processor, stub, req := newTestSetup(2, 10)
-	_, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
@@ -384,7 +395,7 @@ func TestProcessChatStream_UsesGameStateTemperature(t *testing.T) {
 	processor := NewChatOrchestrator(stor, stubResolver{llm}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "hello"}
 
-	_, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
@@ -420,7 +431,7 @@ func TestProcessChatStream_RefereeInjectedAfterRules(t *testing.T) {
 	processor := NewChatOrchestrator(stor, stubResolver{stub}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "I walk north", UseReferee: true}
 
-	_, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
@@ -467,7 +478,7 @@ func TestProcessChatStream_RefereeFailOpenOmitsBlock(t *testing.T) {
 	processor := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "hello", UseReferee: true}
 
-	_, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
@@ -483,7 +494,7 @@ func TestProcessChatStream_RefereeFailOpenOmitsBlock(t *testing.T) {
 func TestProcessChatStream_StoryEventSkipsReferee(t *testing.T) {
 	processor, stub, req := newTestSetup(2, 10)
 
-	_, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
@@ -519,7 +530,7 @@ func TestProcessChatStream_CombatAppendsStrikeLines(t *testing.T) {
 			Allowed:   true,
 			Reasoning: "The PC can strike the Giant Rat.",
 			Scope:     chat.RulingScopeCombat,
-			Focus:     chat.RulingFocus{Actors: []string{"Giant Rat"}},
+			Object:    "Giant Rat",
 		},
 	}
 	const seed int64 = 1
@@ -527,7 +538,7 @@ func TestProcessChatStream_CombatAppendsStrikeLines(t *testing.T) {
 	processor.roller = d20.NewRoller(seed)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "I attack the giant rat", UseReferee: true}
 
-	_, attempts, err := processor.ProcessChatStream(context.Background(), req)
+	_, attempts, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
@@ -574,13 +585,13 @@ func TestProcessChatStream_DeniedCombatOmitsStrikes(t *testing.T) {
 			Allowed:   false,
 			Reasoning: "There is no one to fight.",
 			Scope:     chat.RulingScopeCombat,
-			Focus:     chat.RulingFocus{Actors: []string{"Giant Rat"}},
+			Object:    "Giant Rat",
 		},
 	}
 	processor := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "I attack", UseReferee: true}
 
-	_, attempts, err := processor.ProcessChatStream(context.Background(), req)
+	_, attempts, _, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
@@ -594,4 +605,164 @@ func TestProcessChatStream_DeniedCombatOmitsStrikes(t *testing.T) {
 	if !strings.Contains(user, stub.ruling.NarratorText()) {
 		t.Errorf("missing ruling prose, got %q", user)
 	}
+}
+
+func TestProcessChatStream_AttachedRulingSkipsReferee(t *testing.T) {
+	processor, stub, req := newTestSetup(2, 10)
+	processor.roller = d20.NewRoller(1)
+	req.Message = "Giant Rat strikes Felix."
+	req.Ruling = &chat.Ruling{
+		Allowed: true,
+		Scope:   chat.RulingScopeCombat,
+		Subject: "Giant Rat",
+		Object:  "Felix",
+	}
+
+	_, attempts, ruling, err := processor.ProcessChatStream(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ProcessChatStream: %v", err)
+	}
+	for _, c := range stub.calls {
+		if c == "ruling" {
+			t.Fatal("attached ruling should skip GetRuling")
+		}
+	}
+	if ruling == nil || ruling.Subject != "Giant Rat" || ruling.Object != "Felix" {
+		t.Fatalf("ruling = %#v", ruling)
+	}
+	want := expectedStrikes(t, 1, "Giant Rat", "Felix")
+	if !slices.Equal(narratorTexts(attempts), want) {
+		t.Errorf("got %q, want %q", narratorTexts(attempts), want)
+	}
+	user := lastUserContent(stub.capturedMessages)
+	if !strings.Contains(user, want[0]) {
+		t.Errorf("missing reaction strike %q in %q", want[0], user)
+	}
+	if pendingCombatReaction(&state.GameState{PC: &character.PC{Name: "Felix"}}, ruling) != nil {
+		t.Error("reaction should not chain another event")
+	}
+}
+
+type recordingQueue struct {
+	mu   sync.Mutex
+	reqs []*queue.Request
+}
+
+func (q *recordingQueue) GetFormattedEvents(context.Context, uuid.UUID) (string, error) {
+	return "", nil
+}
+func (q *recordingQueue) Clear(context.Context, uuid.UUID) error { return nil }
+func (q *recordingQueue) EnqueueRequest(_ context.Context, req *queue.Request) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	copied := *req
+	if req.Ruling != nil {
+		r := *req.Ruling
+		copied.Ruling = &r
+	}
+	q.reqs = append(q.reqs, &copied)
+	return nil
+}
+func (q *recordingQueue) all() []*queue.Request {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	out := make([]*queue.Request, len(q.reqs))
+	copy(out, q.reqs)
+	return out
+}
+
+func tavernCombatFixture() (*state.GameState, *scenario.Scenario, *character.Monster) {
+	rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 5, MaxHP: 5}
+	gs := &state.GameState{
+		ID:       uuid.New(),
+		Scenario: "test.json",
+		Location: "tavern",
+		PC:       &character.PC{Name: "Felix"},
+		WorldLocations: map[string]scenario.Location{
+			"tavern": {Name: "The Tavern", Monsters: map[string]*character.Monster{"rat_1": rat}},
+		},
+		Vars: make(map[string]string),
+	}
+	sc := &scenario.Scenario{Name: "Test", Story: "A test story", Rating: scenario.RatingPG}
+	return gs, sc, rat
+}
+
+func TestSyncGameState_EnqueuesCombatReaction(t *testing.T) {
+	gs, sc, _ := tavernCombatFixture()
+	q := &recordingQueue{}
+	stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
+	p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
+	pending := pendingCombatReaction(gs, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
+	p.syncGameState(context.Background(), gs, "Felix strikes the rat.", pending)
+	got := q.all()
+	if len(got) != 1 {
+		t.Fatalf("enqueued %d, want 1", len(got))
+	}
+	req := got[0]
+	if req.Type != queue.RequestTypeStoryEvent || req.EventPrompt != "Giant Rat strikes Felix." {
+		t.Errorf("request = %#v", req)
+	}
+	if req.Ruling == nil || req.Ruling.Subject != "Giant Rat" || req.Ruling.Object != "Felix" || !req.Ruling.Allowed || req.Ruling.Scope != chat.RulingScopeCombat {
+		t.Errorf("ruling = %#v", req.Ruling)
+	}
+}
+
+func TestSyncGameState_SkipsCombatReaction(t *testing.T) {
+	player := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
+
+	t.Run("reducer failure", func(t *testing.T) {
+		gs, sc, _ := tavernCombatFixture()
+		q := &recordingQueue{}
+		stub := &stubLLMService{deltaErr: fmt.Errorf("reducer down")}
+		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
+		p.syncGameState(context.Background(), gs, "strike", pendingCombatReaction(gs, player))
+		if n := len(q.all()); n != 0 {
+			t.Fatalf("enqueued %d, want 0", n)
+		}
+	})
+	t.Run("canceled", func(t *testing.T) {
+		gs, sc, _ := tavernCombatFixture()
+		q := &recordingQueue{}
+		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
+		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		p.syncGameState(ctx, gs, "strike", pendingCombatReaction(gs, player))
+		if n := len(q.all()); n != 0 {
+			t.Fatalf("enqueued %d, want 0", n)
+		}
+	})
+	t.Run("actor gone", func(t *testing.T) {
+		gs, sc, _ := tavernCombatFixture()
+		gs.WorldLocations["tavern"] = scenario.Location{Name: "The Tavern"}
+		q := &recordingQueue{}
+		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
+		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
+		p.syncGameState(context.Background(), gs, "strike", pendingCombatReaction(gs, player))
+		if n := len(q.all()); n != 0 {
+			t.Fatalf("enqueued %d, want 0", n)
+		}
+	})
+	t.Run("game ended", func(t *testing.T) {
+		gs, sc, _ := tavernCombatFixture()
+		gs.IsEnded = true
+		q := &recordingQueue{}
+		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
+		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
+		p.syncGameState(context.Background(), gs, "strike", pendingCombatReaction(gs, player))
+		if n := len(q.all()); n != 0 {
+			t.Fatalf("enqueued %d, want 0", n)
+		}
+	})
+	t.Run("non-PC subject", func(t *testing.T) {
+		gs, sc, _ := tavernCombatFixture()
+		q := &recordingQueue{}
+		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
+		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
+		reaction := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Subject: "Giant Rat", Object: "Felix"}
+		p.syncGameState(context.Background(), gs, "strike", pendingCombatReaction(gs, reaction))
+		if n := len(q.all()); n != 0 {
+			t.Fatalf("enqueued %d, want 0", n)
+		}
+	})
 }

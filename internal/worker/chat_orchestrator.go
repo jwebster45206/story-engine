@@ -15,6 +15,7 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/prompts"
+	"github.com/jwebster45206/story-engine/pkg/queue"
 	"github.com/jwebster45206/story-engine/pkg/state"
 	"github.com/jwebster45206/story-engine/pkg/storage"
 )
@@ -63,36 +64,36 @@ func NewChatOrchestrator(
 }
 
 // ProcessChatStream processes a streaming chat request
-func (p *ChatOrchestrator) ProcessChatStream(ctx context.Context, req chat.ChatRequest) (<-chan llm.StreamChunk, []resolvedAttempt, error) {
+func (p *ChatOrchestrator) ProcessChatStream(ctx context.Context, req chat.ChatRequest) (<-chan llm.StreamChunk, []resolvedAttempt, *chat.Ruling, error) {
 	// Load game state
 	gs, err := p.storage.LoadGameState(ctx, req.GameStateID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load game state: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to load game state: %w", err)
 	}
 
 	if gs == nil {
-		return nil, nil, fmt.Errorf("game state not found: %s", req.GameStateID.String())
+		return nil, nil, nil, fmt.Errorf("game state not found: %s", req.GameStateID.String())
 	}
 
 	loadedScenario, err := p.storage.GetScenario(ctx, gs.Scenario)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load scenario: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to load scenario: %w", err)
 	}
 
 	svc, err := p.resolver.Get(gs.Provider)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to resolve LLM provider %q: %w", gs.Provider, err)
+		return nil, nil, nil, fmt.Errorf("failed to resolve LLM provider %q: %w", gs.Provider, err)
 	}
 
 	ruling, err := p.referee(ctx, svc, gs, req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to run referee: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to run referee: %w", err)
 	}
 
 	attempts := p.resolveAttempts(gs, ruling)
 	messages, err := prompts.BuildNarratorMessages(gs, loadedScenario, req.Message, p.historyLimit, ruling, narratorTexts(attempts)...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to build chat messages: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to build chat messages: %w", err)
 	}
 
 	if p.chatQueue != nil {
@@ -105,15 +106,21 @@ func (p *ChatOrchestrator) ProcessChatStream(ctx context.Context, req chat.ChatR
 	p.logger.Debug("Sending streaming chat request to LLM", "game_state_id", gs.ID.String(), "provider", gs.Provider, "messages", messages)
 	streamChan, err := svc.ChatStream(ctx, messages, temperature)
 	if err != nil {
-		return nil, nil, fmt.Errorf("LLM chat stream failed: %w", err)
+		return nil, nil, nil, fmt.Errorf("LLM chat stream failed: %w", err)
 	}
 
-	return streamChan, attempts, nil
+	return streamChan, attempts, ruling, nil
 }
 
 // referee runs the pre-chat rules pass. LLM failures fail open: a nil ruling
 // means the narrator prompt is unchanged. Message-build errors are returned.
 func (p *ChatOrchestrator) referee(ctx context.Context, svc llm.LLMService, gs *state.GameState, req chat.ChatRequest) (*chat.Ruling, error) {
+	if req.Ruling != nil {
+		ruling := *req.Ruling
+		ruling.Normalize()
+		p.logRuling(gs, &ruling, 0)
+		return &ruling, nil
+	}
 	if !req.UseReferee {
 		return nil, nil
 	}
@@ -141,25 +148,32 @@ func (p *ChatOrchestrator) referee(ctx context.Context, svc llm.LLMService, gs *
 		p.logger.Warn("Referee returned empty ruling", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
 		return nil, nil
 	}
-	text := ruling.NarratorText()
-	if text == "" {
+	if ruling.NarratorText() == "" {
 		p.logger.Warn("Referee returned empty ruling", "game_state_id", gs.ID.String(), "duration_ms", time.Since(start).Milliseconds())
 		return nil, nil
 	}
+	p.logRuling(gs, ruling, time.Since(start).Milliseconds())
+	return ruling, nil
+}
+
+func (p *ChatOrchestrator) logRuling(gs *state.GameState, ruling *chat.Ruling, durationMS int64) {
+	if ruling == nil {
+		return
+	}
+	text := ruling.NarratorText()
 	p.logger.Debug("Referee ruling",
 		"game_state_id", gs.ID.String(),
-		"duration_ms", time.Since(start).Milliseconds(),
+		"duration_ms", durationMS,
 		"scope", ruling.Scope,
-		"focus_actors", ruling.Focus.Actors,
-		"focus_locations", ruling.Focus.Locations,
+		"subject", ruling.Subject,
+		"object", ruling.Object,
 		"ruling", text,
 	)
-	return ruling, nil
 }
 
 // UpdateGameStateAfterStream updates game state after streaming is complete.
 // This should be called by the worker after consuming the stream.
-func (p *ChatOrchestrator) UpdateGameStateAfterStream(ctx context.Context, gs *state.GameState, userMessage, responseMessage string, isStoryEvent bool) error {
+func (p *ChatOrchestrator) UpdateGameStateAfterStream(ctx context.Context, gs *state.GameState, userMessage, responseMessage string, isStoryEvent bool, ruling *chat.Ruling) error {
 	// Cancel any in-process gamestate delta for this game state
 	p.metaCancelMu.Lock()
 	if cancel, ok := p.metaCancel[gs.ID]; ok {
@@ -192,7 +206,7 @@ func (p *ChatOrchestrator) UpdateGameStateAfterStream(ctx context.Context, gs *s
 		if err != nil {
 			p.logger.Error("Failed to copy game state for background sync", "error", err, "game_state_id", gs.ID.String())
 		} else {
-			go p.syncGameState(metaCtx, gsCopy, responseMessage)
+			go p.syncGameState(metaCtx, gsCopy, responseMessage, pendingCombatReaction(gs, ruling))
 		}
 	}
 
@@ -201,7 +215,7 @@ func (p *ChatOrchestrator) UpdateGameStateAfterStream(ctx context.Context, gs *s
 }
 
 // syncGameState runs in the background to extract and update the stateful parts of gamestate
-func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameState, responseMessage string) {
+func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameState, responseMessage string, pendingReaction *chat.Ruling) {
 	start := time.Now()
 	p.logger.Debug("Starting background game gamestate delta", "game_state_id", gs.ID.String(), "response", responseMessage)
 	defer func() {
@@ -315,6 +329,8 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 		"duration_s", time.Since(start).Seconds(),
 		"backend_model", usage.Model,
 	)
+
+	p.enqueueCombatReaction(ctx, latestGS, pendingReaction)
 }
 
 // applyConditionalsCascade recursively evaluates and applies conditionals until none trigger
@@ -407,4 +423,39 @@ func (p *ChatOrchestrator) GetGameState(ctx context.Context, gameStateID uuid.UU
 		return nil, fmt.Errorf("game state not found: %s", gameStateID.String())
 	}
 	return gs, nil
+}
+
+func (p *ChatOrchestrator) enqueueCombatReaction(ctx context.Context, gs *state.GameState, pending *chat.Ruling) {
+	if pending == nil || p.chatQueue == nil || gs == nil {
+		return
+	}
+	if ctx.Err() != nil || gs.IsEnded {
+		return
+	}
+	if !actorPresentAtLocation(gs, pending.Subject) {
+		return
+	}
+	req := &queue.Request{
+		RequestID:   uuid.New().String(),
+		Type:        queue.RequestTypeStoryEvent,
+		GameStateID: gs.ID,
+		EventPrompt: fmt.Sprintf("%s strikes %s.", pending.Subject, pending.Object),
+		Ruling:      pending,
+		EnqueuedAt:  time.Now(),
+	}
+	if err := p.chatQueue.EnqueueRequest(ctx, req); err != nil {
+		p.logger.Error("Failed to enqueue combat reaction",
+			"error", err,
+			"game_state_id", gs.ID.String(),
+			"subject", pending.Subject,
+			"object", pending.Object,
+		)
+		return
+	}
+	p.logger.Info("Combat reaction enqueued",
+		"game_state_id", gs.ID.String(),
+		"request_id", req.RequestID,
+		"subject", pending.Subject,
+		"object", pending.Object,
+	)
 }

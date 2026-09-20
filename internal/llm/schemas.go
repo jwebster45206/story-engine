@@ -131,26 +131,19 @@ func rulingSchema() map[string]any {
 				"type": "string",
 				"enum": []string{"dialogue", "movement", "combat", "examine", "ambient", "other"},
 			},
-			"focus": map[string]any{
-				"type":                 "object",
-				"additionalProperties": false,
-				"properties": map[string]any{
-					"actors": map[string]any{
-						"type": "array",
-						"items": map[string]any{
-							"type": "string",
-						},
-					},
-					"locations": map[string]any{
-						"type": "array",
-						"items": map[string]any{
-							"type": "string",
-						},
-					},
+			"subject": map[string]any{
+				"anyOf": []any{
+					map[string]any{"type": "string"},
+					map[string]any{"type": "null"},
 				},
-				"required": []string{"actors", "locations"},
+			},
+			"object": map[string]any{
+				"anyOf": []any{
+					map[string]any{"type": "string"},
+					map[string]any{"type": "null"},
+				},
 			},
 		},
-		"required": []string{"allowed", "reasoning", "reaction", "scope", "focus"},
+		"required": []string{"allowed", "reasoning", "reaction", "scope", "subject", "object"},
 	}
 }

@@ -110,28 +110,38 @@ func TestParseRulingResponse(t *testing.T) {
 			want:  &chat.Ruling{Allowed: true, Reasoning: long, Scope: chat.RulingScopeOther},
 		},
 		{
-			name:  "parses scope focus actors and locations",
-			input: `{"allowed":true,"reasoning":"Talk to the bartender.","reaction":null,"scope":"dialogue","focus":{"actors":["Bartender"],"locations":["The Tavern"]}}`,
+			name:  "parses subject null and object actor",
+			input: `{"allowed":true,"reasoning":"Talk to the bartender.","reaction":null,"scope":"dialogue","subject":null,"object":"Bartender"}`,
 			want: &chat.Ruling{
 				Allowed:   true,
 				Reasoning: "Talk to the bartender.",
 				Scope:     chat.RulingScopeDialogue,
-				Focus:     chat.RulingFocus{Actors: []string{"Bartender"}, Locations: []string{"The Tavern"}},
+				Object:    "Bartender",
 			},
 		},
 		{
-			name:  "parses combat actor monster name",
-			input: `{"allowed":true,"reasoning":"The PC attacks the giant rat.","reaction":null,"scope":"combat","focus":{"actors":["Giant Rat"],"locations":[]}}`,
+			name:  "parses combat object monster name",
+			input: `{"allowed":true,"reasoning":"You attack the giant rat.","reaction":null,"scope":"combat","subject":null,"object":"Giant Rat"}`,
 			want: &chat.Ruling{
 				Allowed:   true,
-				Reasoning: "The PC attacks the giant rat.",
+				Reasoning: "You attack the giant rat.",
 				Scope:     chat.RulingScopeCombat,
-				Focus:     chat.RulingFocus{Actors: []string{"Giant Rat"}},
+				Object:    "Giant Rat",
+			},
+		},
+		{
+			name:  "parses movement object destination",
+			input: `{"allowed":true,"reasoning":"You can move to the drawbridge.","reaction":null,"scope":"movement","subject":null,"object":"drawbridge"}`,
+			want: &chat.Ruling{
+				Allowed:   true,
+				Reasoning: "You can move to the drawbridge.",
+				Scope:     chat.RulingScopeMovement,
+				Object:    "drawbridge",
 			},
 		},
 		{
 			name:  "unknown scope becomes other",
-			input: `{"allowed":true,"reasoning":null,"reaction":null,"scope":"teleport","focus":{"actors":[],"locations":[]}}`,
+			input: `{"allowed":true,"reasoning":null,"reaction":null,"scope":"teleport","subject":null,"object":null}`,
 			want:  &chat.Ruling{Allowed: true, Scope: chat.RulingScopeOther},
 		},
 	}

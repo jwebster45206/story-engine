@@ -14,6 +14,7 @@ type ChatRequest struct {
 	GameStateID uuid.UUID `json:"gamestate_id"` // Unique ID for the game state
 	Message     string    `json:"message"`
 	UseReferee  bool      `json:"-"` // Set by the worker for player chat turns
+	Ruling      *Ruling   `json:"-"` // Pre-resolved ruling; when set, skip GetRuling
 }
 
 // ChatResponse represents a chat message response returned by the story engine api.

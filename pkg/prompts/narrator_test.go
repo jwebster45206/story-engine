@@ -595,7 +595,7 @@ func TestBuildNarratorMessages_MovementUsesDestAsCurrent(t *testing.T) {
 	dialogue := new(chat.Ruling{
 		Allowed: true,
 		Scope:   chat.RulingScopeDialogue,
-		Focus:   chat.RulingFocus{Actors: []string{"Guide"}},
+		Object:  "Guide",
 	})
 	messages, err = BuildNarratorMessages(gs, sc, "talk", 20, dialogue)
 	if err != nil {
@@ -611,7 +611,7 @@ func TestBuildNarratorMessages_MovementUsesDestAsCurrent(t *testing.T) {
 	denied := new(chat.Ruling{
 		Allowed:   false,
 		Scope:     chat.RulingScopeMovement,
-		Focus:     chat.RulingFocus{Locations: []string{"Dark Cave"}},
+		Object:    "Dark Cave",
 		Reasoning: "The way is blocked.",
 	})
 	messages, err = BuildNarratorMessages(gs, sc, "go east", 20, denied)
@@ -632,7 +632,7 @@ func TestBuildNarratorMessages_MovementUsesDestAsCurrent(t *testing.T) {
 	move := new(chat.Ruling{
 		Allowed: true,
 		Scope:   chat.RulingScopeMovement,
-		Focus:   chat.RulingFocus{Locations: []string{"Dark Cave"}},
+		Object:  "Dark Cave",
 	})
 	messages, err = BuildNarratorMessages(gs, sc, "go east", 20, move)
 	if err != nil {
@@ -687,7 +687,7 @@ func TestBuildNarratorMessages_MovementUsesDestAsCurrent(t *testing.T) {
 	unknown := new(chat.Ruling{
 		Allowed: true,
 		Scope:   chat.RulingScopeMovement,
-		Focus:   chat.RulingFocus{Locations: []string{"The Moon"}},
+		Object:  "The Moon",
 	})
 	messages, err = BuildNarratorMessages(gs, sc, "fly", 20, unknown)
 	if err != nil {
@@ -719,7 +719,7 @@ func TestBuildNarratorMessages_FollowingNPCOnMove(t *testing.T) {
 	move := new(chat.Ruling{
 		Allowed: true,
 		Scope:   chat.RulingScopeMovement,
-		Focus:   chat.RulingFocus{Locations: []string{"cave"}},
+		Object:  "cave",
 	})
 
 	messages, err := BuildNarratorMessages(gs, sc, "go east", 20, move)
@@ -763,7 +763,7 @@ func TestBuildNarratorMessages_FocusedNPCDescription(t *testing.T) {
 	ruling := new(chat.Ruling{
 		Allowed: true,
 		Scope:   chat.RulingScopeDialogue,
-		Focus:   chat.RulingFocus{Actors: []string{"Pip Upton"}},
+		Object:  "Pip Upton",
 	})
 
 	messages, err := BuildNarratorMessages(gs, sc, "talk to Pip", 20, ruling)
@@ -776,6 +776,21 @@ func TestBuildNarratorMessages_FocusedNPCDescription(t *testing.T) {
 	}
 	if !strings.Contains(dynamic, "- Sister Beatrice\n") {
 		t.Errorf("unfocused NPC should be a bare name\n%s", dynamic)
+	}
+
+	subject := new(chat.Ruling{
+		Allowed: true,
+		Scope:   chat.RulingScopeCombat,
+		Subject: "Pip Upton",
+		Object:  "Felix",
+	})
+	messages, err = BuildNarratorMessages(gs, sc, "Giant Rat strikes Felix.", 20, subject)
+	if err != nil {
+		t.Fatalf("subject focus: %v", err)
+	}
+	dynamic = messages[1].Content
+	if !strings.Contains(dynamic, "- Pip Upton: A cheerful deckhand.") {
+		t.Errorf("non-PC subject should expand NPC description\n%s", dynamic)
 	}
 }
 

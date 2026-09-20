@@ -18,8 +18,9 @@ Respond with JSON:
 - allowed: whether the action is permitted
 - reasoning: brief explanation in second person addressed to the player (e.g. "You cannot go that way"), or null
 - reaction: only when the action is not allowed. A terse in-world hint of what would happen if the PC took the exact action. It is not narration. Null when allowed is true.
-- scope: the primary intent of this turn. One of: dialogue, movement, combat, examine, ambient, other.
-- focus: actors and locations the PC is engaging this turn. Actors are any WORLD STATE named entities from "NPCs here" and "Monsters here". Locations are names from exits / adjacent_previews. Empty arrays if none.`
+- subject: who is attempting the action. Null when the PC is acting. Set only when another actor is.
+- object: the primary target of the action — a WORLD STATE actor name (from "NPCs here" or "Monsters here") or a location name (from exits / adjacent_previews). Null if none.
+- scope: the primary intent of this turn. One of: dialogue, movement, combat, examine, ambient, other.`
 
 func refereeWindow(narratorLimit int) int {
 	if narratorLimit <= 0 || narratorLimit > refereeHistoryLimit {

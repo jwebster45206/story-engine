@@ -80,11 +80,17 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 	if !strings.Contains(strictSys, "scope:") {
 		t.Error("expected scope field in preamble")
 	}
-	if !strings.Contains(strictSys, "focus:") {
-		t.Error("expected focus field in preamble")
+	if !strings.Contains(strictSys, "subject:") {
+		t.Error("expected subject field in preamble")
+	}
+	if !strings.Contains(strictSys, "object:") {
+		t.Error("expected object field in preamble")
+	}
+	if strings.Contains(strictSys, "focus:") {
+		t.Error("focus should not be in the referee preamble")
 	}
 	if !strings.Contains(strictSys, `"NPCs here"`) || !strings.Contains(strictSys, `"Monsters here"`) {
-		t.Error("focus preamble should name NPCs here and Monsters here")
+		t.Error("object preamble should name NPCs here and Monsters here")
 	}
 	if strings.Contains(strictSys, "mentioned:") {
 		t.Error("mentioned should not be in the referee preamble")
@@ -98,14 +104,20 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 	if !strings.Contains(strictSys, `"scope":"movement"`) {
 		t.Error("strict examples should include scope")
 	}
-	if !strings.Contains(strictSys, `"locations":["drawbridge"]`) {
-		t.Error("strict examples should include focus.locations")
+	if !strings.Contains(strictSys, `"object":"drawbridge"`) {
+		t.Error("strict examples should include movement object")
 	}
-	if !strings.Contains(strictSys, `"actors":["Giant Rat"]`) {
-		t.Error("strict examples should include a combat actor")
+	if !strings.Contains(strictSys, `"object":"Giant Rat"`) {
+		t.Error("strict examples should include a combat object")
+	}
+	if !strings.Contains(strictSys, `"subject":null`) {
+		t.Error("strict examples should omit PC as subject")
+	}
+	if strings.Contains(strictSys, `"focus"`) {
+		t.Error("strict examples should not include focus")
 	}
 	if strings.Contains(strictSys, `"npcs"`) {
-		t.Error("strict examples should use focus.actors, not focus.npcs")
+		t.Error("strict examples should not use focus.npcs")
 	}
 	if strings.Contains(strictSys, `"items"`) {
 		t.Error("strict examples should not include focus.items")

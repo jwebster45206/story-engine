@@ -65,24 +65,73 @@ func (p *ChatOrchestrator) resolveAttempts(gs *state.GameState, ruling *chat.Rul
 	}
 }
 
-func (p *ChatOrchestrator) resolveCombatAttempts(gs *state.GameState, ruling *chat.Ruling) []resolvedAttempt {
-	pcName := "PC"
+func pcDisplayName(gs *state.GameState) string {
 	if gs != nil && gs.PC != nil {
 		if name := strings.TrimSpace(gs.PC.Name); name != "" {
-			pcName = name
+			return name
 		}
 	}
-	target := ""
-	if len(ruling.Focus.Actors) > 0 {
-		target = ruling.Focus.Actors[0]
+	return "PC"
+}
+
+// pendingCombatReaction builds a strike-back ruling after a PC combat turn.
+// Non-PC subjects do not chain. Empty object does not enqueue.
+func pendingCombatReaction(gs *state.GameState, ruling *chat.Ruling) *chat.Ruling {
+	if ruling == nil || !ruling.Allowed || ruling.Scope != chat.RulingScopeCombat {
+		return nil
 	}
+	if !ruling.IsPCSubject() {
+		return nil
+	}
+	obj := strings.TrimSpace(ruling.Object)
+	if obj == "" {
+		return nil
+	}
+	return &chat.Ruling{
+		Allowed: true,
+		Scope:   chat.RulingScopeCombat,
+		Subject: obj,
+		Object:  pcDisplayName(gs),
+	}
+}
+
+func actorPresentAtLocation(gs *state.GameState, name string) bool {
+	name = strings.TrimSpace(name)
+	if gs == nil || name == "" {
+		return false
+	}
+	for key, npc := range gs.NPCs {
+		if npc.Location != gs.Location {
+			continue
+		}
+		if strings.EqualFold(npc.Name, name) || strings.EqualFold(key, name) {
+			return true
+		}
+	}
+	loc, ok := gs.WorldLocations[gs.Location]
+	if !ok {
+		return false
+	}
+	for id, m := range loc.Monsters {
+		if m == nil || m.HP <= 0 {
+			continue
+		}
+		if strings.EqualFold(m.Name, name) || strings.EqualFold(id, name) || strings.EqualFold(m.ID, name) {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *ChatOrchestrator) resolveCombatAttempts(gs *state.GameState, ruling *chat.Ruling) []resolvedAttempt {
+	actor := ruling.ActorName(pcDisplayName(gs))
+	target := ruling.TargetName(pcDisplayName(gs))
 
 	var out []resolvedAttempt
-	if a := p.attempt(pcName, target); a.NarratorText != "" {
+	if a := p.attempt(actor, target); a.NarratorText != "" {
 		a.Scope = ruling.Scope
 		out = append(out, a)
 	}
-	// TODO: consider a reaction attempt (focused actor strikes the PC).
 	return out
 }
 

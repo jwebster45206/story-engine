@@ -218,7 +218,7 @@ func TestAnthropicService_GetRuling_ToolUse(t *testing.T) {
 		gotMaxTokens, _ = body["max_tokens"].(float64)
 		tools, _ = body["tools"].([]any)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"tool_use","id":"t1","name":"ruling","input":{"allowed":false,"reasoning":"No such exit.","reaction":"The wall stops the PC.","scope":"movement","focus":{"actors":[],"locations":[]}}}],"model":"claude-backend","stop_reason":"tool_use","usage":{"input_tokens":8,"output_tokens":3}}`))
+		_, _ = w.Write([]byte(`{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"tool_use","id":"t1","name":"ruling","input":{"allowed":false,"reasoning":"No such exit.","reaction":"The wall stops the PC.","scope":"movement","subject":null,"object":null}}],"model":"claude-backend","stop_reason":"tool_use","usage":{"input_tokens":8,"output_tokens":3}}`))
 	}))
 	defer server.Close()
 
@@ -257,7 +257,7 @@ func TestAnthropicService_GetRuling_ToolUse(t *testing.T) {
 	if maxLen != 255 {
 		t.Fatalf("reasoning maxLength = %v, want 255", maxLen)
 	}
-	for _, field := range []string{"scope", "focus"} {
+	for _, field := range []string{"scope", "subject", "object"} {
 		if _, ok := props[field]; !ok {
 			t.Errorf("ruling schema missing %q", field)
 		}
@@ -268,7 +268,7 @@ func TestAnthropicService_GetRuling_ToolUse(t *testing.T) {
 		s, _ := v.(string)
 		gotReq[s] = true
 	}
-	for _, field := range []string{"scope", "focus"} {
+	for _, field := range []string{"scope", "subject", "object"} {
 		if !gotReq[field] {
 			t.Errorf("ruling schema required missing %q: %v", field, required)
 		}
