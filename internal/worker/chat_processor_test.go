@@ -9,6 +9,7 @@ import (
 	"testing"
 	"uuid"
 
+	"github.com/jwebster45206/d20"
 	"github.com/jwebster45206/story-engine/internal/llm"
 	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
@@ -494,5 +495,89 @@ func TestProcessChatStream_StoryEventSkipsReferee(t *testing.T) {
 	user := lastUserContent(stub.capturedMessages)
 	if strings.Contains(user, "<referee>") {
 		t.Errorf("story event should not inject referee block, got %q", user)
+	}
+}
+
+func TestProcessChatStream_CombatAppendsStrikeLines(t *testing.T) {
+	gsID := uuid.New()
+	gs := &state.GameState{
+		ID:          gsID,
+		Scenario:    "test.json",
+		Rules:       state.RulesStrict,
+		Temperature: state.DefaultTemperature,
+		IsEnded:     true,
+		Vars:        make(map[string]string),
+		Location:    "tavern",
+		PC:          &character.PC{Name: "Felix"},
+		WorldLocations: map[string]scenario.Location{
+			"tavern": {Name: "The Tavern", Description: "A smoky taproom."},
+		},
+	}
+	sc := &scenario.Scenario{Name: "Test", Story: "A test story", Rating: scenario.RatingPG}
+	stub := &stubLLMService{
+		ruling: &chat.Ruling{
+			Allowed:   true,
+			Reasoning: "The PC can strike the Giant Rat.",
+			Scope:     chat.RulingScopeCombat,
+			Focus:     chat.RulingFocus{Actors: []string{"Giant Rat"}},
+		},
+	}
+	const seed int64 = 1
+	processor := NewChatProcessor(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
+	processor.roller = d20.NewRoller(seed)
+	req := chat.ChatRequest{GameStateID: gsID, Message: "I attack the giant rat", UseReferee: true}
+
+	_, err := processor.ProcessChatStream(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ProcessChatStream: %v", err)
+	}
+	user := lastUserContent(stub.capturedMessages)
+	wantLines := expectedStrikes(t, seed, "Felix", "Giant Rat")
+	if !strings.Contains(user, stub.ruling.NarratorText()) {
+		t.Errorf("missing ruling prose, got %q", user)
+	}
+	if !strings.Contains(user, wantLines) {
+		t.Errorf("missing strike lines %q in %q", wantLines, user)
+	}
+	if !strings.Contains(user, "strikes") {
+		t.Errorf("expected strike prose, got %q", user)
+	}
+	if strings.Contains(user, "Rolled") || strings.Contains(user, "DC") {
+		t.Errorf("narrator must not include dice mechanics, got %q", user)
+	}
+}
+
+func TestProcessChatStream_DeniedCombatOmitsStrikes(t *testing.T) {
+	gsID := uuid.New()
+	gs := &state.GameState{
+		ID:          gsID,
+		Scenario:    "test.json",
+		Temperature: state.DefaultTemperature,
+		IsEnded:     true,
+		Vars:        make(map[string]string),
+		PC:          &character.PC{Name: "Felix"},
+	}
+	sc := &scenario.Scenario{Name: "Test", Story: "A test story", Rating: scenario.RatingPG}
+	stub := &stubLLMService{
+		ruling: &chat.Ruling{
+			Allowed:   false,
+			Reasoning: "There is no one to fight.",
+			Scope:     chat.RulingScopeCombat,
+			Focus:     chat.RulingFocus{Actors: []string{"Giant Rat"}},
+		},
+	}
+	processor := NewChatProcessor(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
+	req := chat.ChatRequest{GameStateID: gsID, Message: "I attack", UseReferee: true}
+
+	_, err := processor.ProcessChatStream(context.Background(), req)
+	if err != nil {
+		t.Fatalf("ProcessChatStream: %v", err)
+	}
+	user := lastUserContent(stub.capturedMessages)
+	if strings.Contains(user, "strikes") {
+		t.Errorf("denied combat should not add strike lines, got %q", user)
+	}
+	if !strings.Contains(user, stub.ruling.NarratorText()) {
+		t.Errorf("missing ruling prose, got %q", user)
 	}
 }

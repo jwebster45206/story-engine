@@ -10,6 +10,7 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/jwebster45206/d20"
 	"github.com/jwebster45206/story-engine/internal/llm"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
@@ -32,6 +33,7 @@ type ChatProcessor struct {
 	chatQueue    state.ChatQueue
 	logger       *slog.Logger
 	historyLimit int
+	roller       *d20.Roller
 
 	// For background gamestate delta cancellation
 	metaCancelMu sync.Mutex
@@ -55,6 +57,7 @@ func NewChatProcessor(
 		chatQueue:    chatQueue,
 		logger:       logger,
 		historyLimit: historyLimit,
+		roller:       d20.NewRandomRoller(),
 		metaCancel:   make(map[uuid.UUID]context.CancelFunc),
 	}
 }
@@ -86,7 +89,7 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 		return nil, fmt.Errorf("failed to run referee: %w", err)
 	}
 
-	messages, err := prompts.BuildNarratorMessages(gs, loadedScenario, req.Message, p.historyLimit, ruling)
+	messages, err := prompts.BuildNarratorMessages(gs, loadedScenario, req.Message, p.historyLimit, ruling, p.combatStrikeLines(gs, ruling))
 	if err != nil {
 		return nil, fmt.Errorf("failed to build chat messages: %w", err)
 	}
