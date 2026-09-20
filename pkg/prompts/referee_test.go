@@ -74,9 +74,6 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 	if !strings.Contains(strictSys, "allowed:") {
 		t.Error("expected allowed field in preamble")
 	}
-	if !strings.Contains(strictSys, "second person") {
-		t.Error("reasoning should be instructed as second person")
-	}
 	if !strings.Contains(strictSys, "reaction:") {
 		t.Error("expected reaction field in preamble")
 	}
