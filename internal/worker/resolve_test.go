@@ -2,6 +2,7 @@ package worker
 
 import (
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 
@@ -19,8 +20,8 @@ func TestStrikeLine(t *testing.T) {
 	}{
 		{"Felix", "Giant Rat", true, "Felix strikes Giant Rat and hits."},
 		{"Felix", "Giant Rat", false, "Felix strikes Giant Rat and misses."},
-		{"Felix", "", true, "Felix strikes and hits."},
-		{"Felix", "", false, "Felix strikes and misses."},
+		{"Felix", "", true, "Felix strikes  and hits."},
+		{"Felix", "", false, "Felix strikes  and misses."},
 	}
 	for _, tt := range tests {
 		if got := strikeLine(tt.attacker, tt.target, tt.hit); got != tt.want {
@@ -29,14 +30,14 @@ func TestStrikeLine(t *testing.T) {
 	}
 }
 
-func TestRollStrike_SeededHitAndMiss(t *testing.T) {
+func TestAttempt_SeededHitAndMiss(t *testing.T) {
 	probe := d20.NewRoller(1)
-	wantHit := mustRoll(t, probe).Value >= combatDC
+	wantHit := mustRoll(t, probe).Value >= defaultDC
 	p := &ChatProcessor{roller: d20.NewRoller(1), logger: slog.Default()}
-	got := p.rollStrike("Felix", "Giant Rat")
+	got := p.attempt("Felix", "Giant Rat")
 	want := strikeLine("Felix", "Giant Rat", wantHit)
 	if got != want {
-		t.Errorf("rollStrike = %q, want %q", got, want)
+		t.Errorf("attempt = %q, want %q", got, want)
 	}
 	if strings.Contains(got, "DC") || strings.Contains(got, "Rolled") {
 		t.Errorf("narrator line must not include dice mechanics, got %q", got)
@@ -44,19 +45,19 @@ func TestRollStrike_SeededHitAndMiss(t *testing.T) {
 
 	missSeed := seedForMiss(t)
 	p = &ChatProcessor{roller: d20.NewRoller(missSeed), logger: slog.Default()}
-	got = p.rollStrike("Felix", "Giant Rat")
+	got = p.attempt("Felix", "Giant Rat")
 	if !strings.HasSuffix(got, "misses.") {
 		t.Errorf("expected a miss line, got %q", got)
 	}
 	hitSeed := seedForHit(t)
 	p = &ChatProcessor{roller: d20.NewRoller(hitSeed), logger: slog.Default()}
-	got = p.rollStrike("Felix", "Giant Rat")
+	got = p.attempt("Felix", "Giant Rat")
 	if !strings.HasSuffix(got, "hits.") {
 		t.Errorf("expected a hit line, got %q", got)
 	}
 }
 
-func TestCombatStrikeLines(t *testing.T) {
+func TestResolveAttempts(t *testing.T) {
 	gs := &state.GameState{PC: &character.PC{Name: "Felix"}}
 	p := &ChatProcessor{roller: d20.NewRoller(1), logger: slog.Default()}
 
@@ -66,34 +67,33 @@ func TestCombatStrikeLines(t *testing.T) {
 			Scope:   chat.RulingScopeCombat,
 			Focus:   chat.RulingFocus{Actors: []string{"Giant Rat"}},
 		}
-		got := p.combatStrikeLines(gs, ruling)
+		got := p.resolveAttempts(gs, ruling)
 		want := expectedStrikes(t, 1, "Felix", "Giant Rat")
-		if got != want {
+		if !slices.Equal(got, want) {
 			t.Errorf("got %q, want %q", got, want)
 		}
-		lines := strings.Split(got, "\n")
-		if len(lines) != 2 {
-			t.Fatalf("want 2 lines, got %d: %q", len(lines), got)
+		if len(got) != 1 {
+			t.Fatalf("want 1 line, got %d: %q", len(got), got)
 		}
 	})
 
 	t.Run("allowed combat without actors", func(t *testing.T) {
 		p := &ChatProcessor{roller: d20.NewRoller(1), logger: slog.Default()}
 		ruling := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat}
-		got := p.combatStrikeLines(gs, ruling)
+		got := p.resolveAttempts(gs, ruling)
 		want := expectedStrikes(t, 1, "Felix", "")
-		if got != want {
+		if !slices.Equal(got, want) {
 			t.Errorf("got %q, want %q", got, want)
 		}
-		if strings.Contains(got, "\n") {
+		if len(got) != 1 {
 			t.Errorf("want one line, got %q", got)
 		}
 	})
 
 	t.Run("unnamed PC", func(t *testing.T) {
 		p := &ChatProcessor{roller: d20.NewRoller(1), logger: slog.Default()}
-		got := p.combatStrikeLines(&state.GameState{}, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat})
-		if !strings.HasPrefix(got, "PC strikes") {
+		got := p.resolveAttempts(&state.GameState{}, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat})
+		if len(got) != 1 || !strings.HasPrefix(got[0], "PC strikes") {
 			t.Errorf("got %q, want PC prefix", got)
 		}
 	})
@@ -104,22 +104,17 @@ func TestCombatStrikeLines(t *testing.T) {
 		{Allowed: true, Scope: chat.RulingScopeDialogue, Focus: chat.RulingFocus{Actors: []string{"Pip"}}},
 		{Allowed: true, Scope: chat.RulingScopeMovement},
 	} {
-		if got := p.combatStrikeLines(gs, ruling); got != "" {
+		if got := p.resolveAttempts(gs, ruling); len(got) != 0 {
 			t.Errorf("ruling %+v: got %q, want empty", ruling, got)
 		}
 	}
 }
 
-func expectedStrikes(t *testing.T, seed int64, pc, target string) string {
+func expectedStrikes(t *testing.T, seed int64, pc, target string) []string {
 	t.Helper()
 	r := d20.NewRoller(seed)
-	pcHit := mustRoll(t, r).Value >= combatDC
-	lines := []string{strikeLine(pc, target, pcHit)}
-	if target != "" {
-		foeHit := mustRoll(t, r).Value >= combatDC
-		lines = append(lines, strikeLine(target, pc, foeHit))
-	}
-	return strings.Join(lines, "\n")
+	pcHit := mustRoll(t, r).Value >= defaultDC
+	return []string{strikeLine(pc, target, pcHit)}
 }
 
 func mustRoll(t *testing.T, r *d20.Roller) d20.RollOutcome {
@@ -138,7 +133,7 @@ func seedForHit(t *testing.T) int64 {
 		if err != nil {
 			t.Fatalf("Roll: %v", err)
 		}
-		if o.Value >= combatDC {
+		if o.Value >= defaultDC {
 			return seed
 		}
 	}
@@ -153,7 +148,7 @@ func seedForMiss(t *testing.T) int64 {
 		if err != nil {
 			t.Fatalf("Roll: %v", err)
 		}
-		if o.Value < combatDC {
+		if o.Value < defaultDC {
 			return seed
 		}
 	}

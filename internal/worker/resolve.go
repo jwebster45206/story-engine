@@ -9,33 +9,34 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
-const combatDC = 10
+const defaultDC = 10
 
-var d20Die = mustDie(1, 20)
-
-func mustDie(count, faces uint) d20.Dice {
-	d, err := d20.NewDice(count, faces)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
+var d20Die = d20.MustNewDice(1, 20)
 
 func strikeLine(attacker, target string, hit bool) string {
 	result := "misses"
 	if hit {
 		result = "hits"
 	}
-	if target == "" {
-		return fmt.Sprintf("%s strikes and %s.", attacker, result)
-	}
 	return fmt.Sprintf("%s strikes %s and %s.", attacker, target, result)
 }
 
-func (p *ChatProcessor) combatStrikeLines(gs *state.GameState, ruling *chat.Ruling) string {
-	if ruling == nil || !ruling.Allowed || ruling.Scope != chat.RulingScopeCombat {
-		return ""
+// resolveAttempts resolves the attempts of the given ruling.
+// It may roll dice if the ruling needs it.
+// It returns a slice of strings, each representing an attempt and its outcome.
+func (p *ChatProcessor) resolveAttempts(gs *state.GameState, ruling *chat.Ruling) []string {
+	if ruling == nil || !ruling.Allowed {
+		return nil
 	}
+	switch ruling.Scope {
+	case chat.RulingScopeCombat:
+		return p.resolveCombatAttempts(gs, ruling)
+	default:
+		return nil
+	}
+}
+
+func (p *ChatProcessor) resolveCombatAttempts(gs *state.GameState, ruling *chat.Ruling) []string {
 	pcName := "PC"
 	if gs != nil && gs.PC != nil {
 		if name := strings.TrimSpace(gs.PC.Name); name != "" {
@@ -48,30 +49,26 @@ func (p *ChatProcessor) combatStrikeLines(gs *state.GameState, ruling *chat.Ruli
 	}
 
 	var lines []string
-	if line := p.rollStrike(pcName, target); line != "" {
+	if line := p.attempt(pcName, target); line != "" {
 		lines = append(lines, line)
 	}
-	if target != "" {
-		if line := p.rollStrike(target, pcName); line != "" {
-			lines = append(lines, line)
-		}
-	}
-	return strings.Join(lines, "\n")
+	// TODO: consider a reaction attempt (focused actor strikes the PC).
+	return lines
 }
 
-func (p *ChatProcessor) rollStrike(attacker, target string) string {
+func (p *ChatProcessor) attempt(actor, target string) string {
 	if p == nil || p.roller == nil {
 		return ""
 	}
 	outcome, err := p.roller.Roll(d20Die)
 	if err != nil {
 		if p.logger != nil {
-			p.logger.Error("combat roll failed", "error", err, "attacker", attacker)
+			p.logger.Error("attempt roll failed", "error", err, "actor", actor)
 		}
 		return ""
 	}
-	hit := outcome.Value >= combatDC
-	line := strikeLine(attacker, target, hit)
+	hit := outcome.Value >= defaultDC
+	line := strikeLine(actor, target, hit)
 	// TODO: emit outcome.Detail() as a game SSE event (internal/events.Broadcaster).
 	// Do not send dice breakdown or DC to the narrator.
 	if p.logger != nil {

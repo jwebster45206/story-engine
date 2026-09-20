@@ -305,9 +305,8 @@ func TestBuildNarratorMessages_CombatStrikeLinesAfterRuling(t *testing.T) {
 	sc := basicScenario()
 	ruling := &chat.Ruling{Allowed: true, Reasoning: "The PC can strike the Giant Rat."}
 	hit := "Felix strikes Giant Rat and hits."
-	miss := "Giant Rat strikes Felix and misses."
 
-	messages, err := BuildNarratorMessages(gs, sc, "I attack the rat", 20, ruling, hit, miss)
+	messages, err := BuildNarratorMessages(gs, sc, "I attack the rat", 20, ruling, hit)
 	if err != nil {
 		t.Fatalf("BuildNarratorMessages: %v", err)
 	}
@@ -324,8 +323,8 @@ func TestBuildNarratorMessages_CombatStrikeLinesAfterRuling(t *testing.T) {
 	if !strings.Contains(body, hit) {
 		t.Errorf("missing hit line in %q", body)
 	}
-	if !strings.Contains(body, miss) {
-		t.Errorf("missing miss line in %q", body)
+	if strings.Contains(body, "Giant Rat strikes") {
+		t.Errorf("should not include a reaction strike, got %q", body)
 	}
 	if strings.Contains(user, "Rolled") || strings.Contains(user, "DC") {
 		t.Errorf("narrator must not include dice mechanics, got %q", user)

@@ -89,7 +89,7 @@ func (p *ChatProcessor) ProcessChatStream(ctx context.Context, req chat.ChatRequ
 		return nil, fmt.Errorf("failed to run referee: %w", err)
 	}
 
-	messages, err := prompts.BuildNarratorMessages(gs, loadedScenario, req.Message, p.historyLimit, ruling, p.combatStrikeLines(gs, ruling))
+	messages, err := prompts.BuildNarratorMessages(gs, loadedScenario, req.Message, p.historyLimit, ruling, p.resolveAttempts(gs, ruling)...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build chat messages: %w", err)
 	}

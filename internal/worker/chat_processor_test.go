@@ -536,8 +536,13 @@ func TestProcessChatStream_CombatAppendsStrikeLines(t *testing.T) {
 	if !strings.Contains(user, stub.ruling.NarratorText()) {
 		t.Errorf("missing ruling prose, got %q", user)
 	}
-	if !strings.Contains(user, wantLines) {
-		t.Errorf("missing strike lines %q in %q", wantLines, user)
+	for _, line := range wantLines {
+		if !strings.Contains(user, line) {
+			t.Errorf("missing strike line %q in %q", line, user)
+		}
+	}
+	if strings.Contains(user, "Giant Rat strikes") {
+		t.Errorf("should not include a reaction strike, got %q", user)
 	}
 	if !strings.Contains(user, "strikes") {
 		t.Errorf("expected strike prose, got %q", user)
