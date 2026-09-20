@@ -28,6 +28,20 @@ func TestRefereeWindow(t *testing.T) {
 	}
 }
 
+func TestFormatRefereeBlock(t *testing.T) {
+	if got := formatRefereeBlock(); got != "" {
+		t.Errorf("empty args = %q, want empty", got)
+	}
+	if got := formatRefereeBlock("  ", ""); got != "" {
+		t.Errorf("blank parts = %q, want empty", got)
+	}
+	got := formatRefereeBlock("Allowed.", "Felix strikes Giant Rat and hits.", "Giant Rat strikes Felix and misses.")
+	want := "<referee>\nAllowed.\nFelix strikes Giant Rat and hits.\nGiant Rat strikes Felix and misses.\n</referee>\n" + refereeHonorLine
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 func TestBuildRefereeMessages_RequiresGameState(t *testing.T) {
 	_, err := BuildRefereeMessages(nil, "hi", 2)
 	if err == nil {

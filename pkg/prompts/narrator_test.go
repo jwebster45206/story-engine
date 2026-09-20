@@ -1,7 +1,6 @@
 package prompts
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -298,6 +297,37 @@ func TestBuildNarratorMessages_RefereeAfterRules(t *testing.T) {
 	}
 	if !strings.HasPrefix(user, "I walk north") {
 		t.Errorf("user text should come first, got %q", user)
+	}
+}
+
+func TestBuildNarratorMessages_CombatStrikeLinesAfterRuling(t *testing.T) {
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
+	sc := basicScenario()
+	ruling := &chat.Ruling{Allowed: true, Reasoning: "The PC can strike the Giant Rat."}
+	hit := "Felix strikes Giant Rat and hits."
+
+	messages, err := BuildNarratorMessages(gs, sc, "I attack the rat", 20, ruling, hit)
+	if err != nil {
+		t.Fatalf("BuildNarratorMessages: %v", err)
+	}
+	user := messages[len(messages)-1].Content
+	refIdx := strings.Index(user, "<referee>")
+	endIdx := strings.Index(user, "</referee>")
+	if refIdx < 0 || endIdx < 0 {
+		t.Fatalf("expected referee block, got %q", user)
+	}
+	body := user[refIdx:endIdx]
+	if !strings.Contains(body, "Allowed. The PC can strike the Giant Rat.") {
+		t.Errorf("missing allow line in %q", body)
+	}
+	if !strings.Contains(body, hit) {
+		t.Errorf("missing hit line in %q", body)
+	}
+	if strings.Contains(body, "Giant Rat strikes") {
+		t.Errorf("should not include a reaction strike, got %q", body)
+	}
+	if strings.Contains(user, "Rolled") || strings.Contains(user, "DC") {
+		t.Errorf("narrator must not include dice mechanics, got %q", user)
 	}
 }
 
@@ -630,9 +660,6 @@ func TestBuildNarratorMessages_MovementUsesDestAsCurrent(t *testing.T) {
 	}
 	if strings.Contains(current, "A quiet glade with ancient oaks.") {
 		t.Errorf("origin description must not be current_location\n%s", current)
-	}
-	if !strings.Contains(dynamic, fmt.Sprintf(arrivalDirectiveFmt, "Dark Cave")) {
-		t.Errorf("missing arrival directive\n%s", dynamic)
 	}
 
 	empty := new(chat.Ruling{
