@@ -59,7 +59,10 @@ func (p *ChatOrchestrator) resolveAttempts(gs *state.GameState, ruling *chat.Rul
 	}
 	switch ruling.Scope {
 	case chat.RulingScopeCombat:
-		return p.resolveCombatAttempts(gs, ruling)
+		if a := p.resolveCombatAttempt(gs, ruling); a.NarratorText != "" {
+			return []resolvedAttempt{a}
+		}
+		return nil
 	default:
 		return nil
 	}
@@ -112,18 +115,15 @@ func actorPresentAtLocation(gs *state.GameState, name string) bool {
 	return false
 }
 
-func (p *ChatOrchestrator) resolveCombatAttempts(gs *state.GameState, ruling *chat.Ruling) []resolvedAttempt {
+func (p *ChatOrchestrator) resolveCombatAttempt(gs *state.GameState, ruling *chat.Ruling) resolvedAttempt {
 	pcName := gs.PCName()
 	target := ruling.TargetName(pcName)
 	if target == "" {
-		return nil
+		return resolvedAttempt{}
 	}
 	a := p.attempt(ruling.ActorName(pcName), target)
-	if a.NarratorText == "" {
-		return nil
-	}
 	a.Scope = ruling.Scope
-	return []resolvedAttempt{a}
+	return a
 }
 
 func (p *ChatOrchestrator) attempt(actor, target string) resolvedAttempt {
