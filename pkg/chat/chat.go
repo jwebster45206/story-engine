@@ -11,10 +11,11 @@ const MaxMessageLength = 255
 // ChatRequest represents a chat message request made by the user
 // to the story engine api.
 type ChatRequest struct {
-	GameStateID uuid.UUID `json:"gamestate_id"` // Unique ID for the game state
-	Message     string    `json:"message"`
-	UseReferee  bool      `json:"-"` // Set by the worker for player chat turns
-	Ruling      *Ruling   `json:"-"` // Pre-resolved ruling; when set, skip GetRuling
+	GameStateID  uuid.UUID `json:"gamestate_id"` // Unique ID for the game state
+	Message      string    `json:"message"`
+	UseReferee   bool      `json:"-"` // Set by the worker for player chat turns
+	Ruling       *Ruling   `json:"-"` // Pre-resolved ruling; when set, skip GetRuling
+	IsStoryEvent bool      `json:"-"` // Set by the worker for engine-injected turns
 }
 
 // ChatResponse represents a chat message response returned by the story engine api.

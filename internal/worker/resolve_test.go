@@ -101,18 +101,14 @@ func TestResolveAttempts(t *testing.T) {
 		p := &ChatOrchestrator{roller: d20.NewRoller(1), logger: slog.Default()}
 		ruling := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat}
 		got := p.resolveAttempts(gs, ruling)
-		want := expectedStrikes(t, 1, "Felix", "")
-		if !slices.Equal(narratorTexts(got), want) {
-			t.Errorf("got %q, want %q", narratorTexts(got), want)
-		}
-		if len(got) != 1 {
-			t.Errorf("want one line, got %q", narratorTexts(got))
+		if len(got) != 0 {
+			t.Errorf("empty object should not roll, got %q", narratorTexts(got))
 		}
 	})
 
 	t.Run("unnamed PC", func(t *testing.T) {
 		p := &ChatOrchestrator{roller: d20.NewRoller(1), logger: slog.Default()}
-		got := p.resolveAttempts(&state.GameState{}, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat})
+		got := p.resolveAttempts(&state.GameState{}, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
 		if len(got) != 1 || !strings.HasPrefix(got[0].NarratorText, "PC strikes") {
 			t.Errorf("got %q, want PC prefix", narratorTexts(got))
 		}
@@ -217,6 +213,10 @@ func TestPendingCombatReaction(t *testing.T) {
 	if pendingCombatReaction(gs, got) != nil {
 		t.Error("non-PC subject should not chain")
 	}
+	namedPC := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Subject: "Felix", Object: "Giant Rat"}
+	if pendingCombatReaction(gs, namedPC) == nil {
+		t.Error("PC name as subject should pending")
+	}
 	if pendingCombatReaction(gs, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeMovement, Object: "drawbridge"}) != nil {
 		t.Error("movement should not pending")
 	}
@@ -235,10 +235,6 @@ func TestActorPresentAtLocation(t *testing.T) {
 	}
 	if !actorPresentAtLocation(gs, "Giant Rat") || !actorPresentAtLocation(gs, "Pip Upton") {
 		t.Fatal("expected present actors")
-	}
-	rat.HP = 0
-	if actorPresentAtLocation(gs, "Giant Rat") {
-		t.Error("dead monster should not be present")
 	}
 	gs.NPCs["pip"] = character.NPC{Name: "Pip Upton", Location: "cellar"}
 	if actorPresentAtLocation(gs, "Pip Upton") {

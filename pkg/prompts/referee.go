@@ -93,11 +93,11 @@ func BuildRefereeMessages(gs *state.GameState, userMessage string, historyLimit 
 }
 
 func pcRefereeLine(gs *state.GameState) string {
-	if gs == nil || gs.PC == nil {
+	if gs == nil {
 		return ""
 	}
-	name := strings.TrimSpace(gs.PC.Name)
-	if name == "" {
+	name := gs.PCName()
+	if name == "PC" {
 		return ""
 	}
 	return fmt.Sprintf("Player Character (PC): %s. User lines prefixed with that name are the player acting as the PC, not an NPC.", name)

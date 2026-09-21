@@ -57,16 +57,19 @@ func TestRuling_Normalize_Scope(t *testing.T) {
 }
 
 func TestRuling_IsPCSubject(t *testing.T) {
-	if !((*Ruling)(nil)).IsPCSubject() {
+	if !((*Ruling)(nil)).IsPCSubject("Felix") {
 		t.Error("nil ruling should be PC subject")
 	}
-	if !(&Ruling{}).IsPCSubject() {
+	if !(&Ruling{}).IsPCSubject("Felix") {
 		t.Error("empty subject should be PC")
 	}
-	if !(&Ruling{Subject: "PC"}).IsPCSubject() {
+	if !(&Ruling{Subject: "PC"}).IsPCSubject("Felix") {
 		t.Error("PC should be PC subject")
 	}
-	if (&Ruling{Subject: "Giant Rat"}).IsPCSubject() {
+	if !(&Ruling{Subject: "Felix"}).IsPCSubject("Felix") {
+		t.Error("PC name should be PC subject")
+	}
+	if (&Ruling{Subject: "Giant Rat"}).IsPCSubject("Felix") {
 		t.Error("Giant Rat should not be PC subject")
 	}
 }

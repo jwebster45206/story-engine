@@ -886,3 +886,18 @@ func TestGameState_Normalize(t *testing.T) {
 		})
 	}
 }
+
+func TestGameState_PCName(t *testing.T) {
+	if got := (*GameState)(nil).PCName(); got != "PC" {
+		t.Errorf("nil = %q, want PC", got)
+	}
+	if got := (&GameState{}).PCName(); got != "PC" {
+		t.Errorf("no PC = %q, want PC", got)
+	}
+	if got := (&GameState{PC: &character.PC{}}).PCName(); got != "PC" {
+		t.Errorf("unnamed = %q, want PC", got)
+	}
+	if got := (&GameState{PC: &character.PC{Name: "  Felix  "}}).PCName(); got != "Felix" {
+		t.Errorf("named = %q, want Felix", got)
+	}
+}

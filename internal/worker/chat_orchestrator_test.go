@@ -327,7 +327,7 @@ func TestProcessChatStream_HistoryLimitRespected(t *testing.T) {
 
 	processor, llm, req := newTestSetup(historyInState, limit)
 
-	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
@@ -347,7 +347,7 @@ func TestProcessChatStream_HistoryLimitZeroUsesDefault(t *testing.T) {
 
 	processor, llm, req := newTestSetup(historyInState, 0) // 0 → default
 
-	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
@@ -365,7 +365,7 @@ func TestProcessChatStream_HistoryLimitZeroUsesDefault(t *testing.T) {
 
 func TestProcessChatStream_UsesDefaultTemperature(t *testing.T) {
 	processor, stub, req := newTestSetup(2, 10)
-	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
@@ -395,7 +395,7 @@ func TestProcessChatStream_UsesGameStateTemperature(t *testing.T) {
 	processor := NewChatOrchestrator(stor, stubResolver{llm}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "hello"}
 
-	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream returned error: %v", err)
 	}
@@ -431,7 +431,7 @@ func TestProcessChatStream_RefereeInjectedAfterRules(t *testing.T) {
 	processor := NewChatOrchestrator(stor, stubResolver{stub}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "I walk north", UseReferee: true}
 
-	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
@@ -478,7 +478,7 @@ func TestProcessChatStream_RefereeFailOpenOmitsBlock(t *testing.T) {
 	processor := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "hello", UseReferee: true}
 
-	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
@@ -494,7 +494,7 @@ func TestProcessChatStream_RefereeFailOpenOmitsBlock(t *testing.T) {
 func TestProcessChatStream_StoryEventSkipsReferee(t *testing.T) {
 	processor, stub, req := newTestSetup(2, 10)
 
-	_, _, _, err := processor.ProcessChatStream(context.Background(), req)
+	_, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
@@ -538,10 +538,11 @@ func TestProcessChatStream_CombatAppendsStrikeLines(t *testing.T) {
 	processor.roller = d20.NewRoller(seed)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "I attack the giant rat", UseReferee: true}
 
-	_, attempts, _, err := processor.ProcessChatStream(context.Background(), req)
+	out, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
+	attempts := out.Attempts
 	if len(attempts) != 1 || !strings.HasPrefix(attempts[0].Content, "Felix rolled ") {
 		t.Fatalf("expected named roll content, got %+v", attempts)
 	}
@@ -591,10 +592,11 @@ func TestProcessChatStream_DeniedCombatOmitsStrikes(t *testing.T) {
 	processor := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, nil, slog.Default(), 10)
 	req := chat.ChatRequest{GameStateID: gsID, Message: "I attack", UseReferee: true}
 
-	_, attempts, _, err := processor.ProcessChatStream(context.Background(), req)
+	out, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
+	attempts := out.Attempts
 	if len(attempts) != 1 || attempts[0].Content != "There is no one to fight." || attempts[0].Success || attempts[0].Scope != attemptScopeAll || attempts[0].NarratorText != "" {
 		t.Errorf("deny attempt = %+v", attempts)
 	}
@@ -618,7 +620,7 @@ func TestProcessChatStream_AttachedRulingSkipsReferee(t *testing.T) {
 		Object:  "Felix",
 	}
 
-	_, attempts, ruling, err := processor.ProcessChatStream(context.Background(), req)
+	out, err := processor.ProcessChatStream(context.Background(), req)
 	if err != nil {
 		t.Fatalf("ProcessChatStream: %v", err)
 	}
@@ -627,12 +629,13 @@ func TestProcessChatStream_AttachedRulingSkipsReferee(t *testing.T) {
 			t.Fatal("attached ruling should skip GetRuling")
 		}
 	}
+	ruling := out.Ruling
 	if ruling == nil || ruling.Subject != "Giant Rat" || ruling.Object != "Felix" {
 		t.Fatalf("ruling = %#v", ruling)
 	}
 	want := expectedStrikes(t, 1, "Giant Rat", "Felix")
-	if !slices.Equal(narratorTexts(attempts), want) {
-		t.Errorf("got %q, want %q", narratorTexts(attempts), want)
+	if !slices.Equal(narratorTexts(out.Attempts), want) {
+		t.Errorf("got %q, want %q", narratorTexts(out.Attempts), want)
 	}
 	user := lastUserContent(stub.capturedMessages)
 	if !strings.Contains(user, want[0]) {
@@ -694,7 +697,9 @@ func TestEnqueueReaction_AfterSync(t *testing.T) {
 	p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
 	player := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
 	latest := p.syncGameState(context.Background(), gs, "Felix strikes the rat.")
-	p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player))
+	if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player)); err != nil {
+		t.Fatalf("enqueueReaction: %v", err)
+	}
 	got := q.all()
 	if len(got) != 1 {
 		t.Fatalf("enqueued %d, want 1", len(got))
@@ -717,7 +722,9 @@ func TestEnqueueReaction_Skips(t *testing.T) {
 		stub := &stubLLMService{deltaErr: fmt.Errorf("reducer down")}
 		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
 		latest := p.syncGameState(context.Background(), gs, "strike")
-		p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player))
+		if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player)); err != nil {
+			t.Fatalf("enqueueReaction: %v", err)
+		}
 		if n := len(q.all()); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
@@ -730,7 +737,9 @@ func TestEnqueueReaction_Skips(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		latest := p.syncGameState(ctx, gs, "strike")
-		p.enqueueReaction(ctx, latest, pendingCombatReaction(gs, player))
+		if err := p.enqueueReaction(ctx, latest, pendingCombatReaction(gs, player)); err != nil && ctx.Err() == nil {
+			t.Fatalf("enqueueReaction: %v", err)
+		}
 		if n := len(q.all()); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
@@ -742,7 +751,9 @@ func TestEnqueueReaction_Skips(t *testing.T) {
 		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
 		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
 		latest := p.syncGameState(context.Background(), gs, "strike")
-		p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player))
+		if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player)); err != nil {
+			t.Fatalf("enqueueReaction: %v", err)
+		}
 		if n := len(q.all()); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
@@ -754,7 +765,9 @@ func TestEnqueueReaction_Skips(t *testing.T) {
 		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
 		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
 		latest := p.syncGameState(context.Background(), gs, "strike")
-		p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player))
+		if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player)); err != nil {
+			t.Fatalf("enqueueReaction: %v", err)
+		}
 		if n := len(q.all()); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
@@ -766,7 +779,9 @@ func TestEnqueueReaction_Skips(t *testing.T) {
 		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
 		reaction := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Subject: "Giant Rat", Object: "Felix"}
 		latest := p.syncGameState(context.Background(), gs, "strike")
-		p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, reaction))
+		if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, reaction)); err != nil {
+			t.Fatalf("enqueueReaction: %v", err)
+		}
 		if n := len(q.all()); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
@@ -777,7 +792,9 @@ func TestEnqueueReaction_Skips(t *testing.T) {
 		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
 		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
 		latest := p.syncGameState(context.Background(), gs, "strike")
-		p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, nil))
+		if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, nil)); err != nil {
+			t.Fatalf("enqueueReaction: %v", err)
+		}
 		if n := len(q.all()); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}

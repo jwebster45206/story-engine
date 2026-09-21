@@ -65,34 +65,23 @@ func (p *ChatOrchestrator) resolveAttempts(gs *state.GameState, ruling *chat.Rul
 	}
 }
 
-func pcDisplayName(gs *state.GameState) string {
-	if gs != nil && gs.PC != nil {
-		if name := strings.TrimSpace(gs.PC.Name); name != "" {
-			return name
-		}
-	}
-	return "PC"
-}
-
-// pendingCombatReaction builds a strike-back ruling after a PC combat turn.
-// Non-PC subjects do not chain. Empty object does not enqueue.
 func pendingCombatReaction(gs *state.GameState, ruling *chat.Ruling) *chat.Ruling {
 	if ruling == nil || !ruling.Allowed || ruling.Scope != chat.RulingScopeCombat {
 		return nil
 	}
-	if !ruling.IsPCSubject() {
+	if !ruling.IsPCSubject(gs.PCName()) {
 		return nil
 	}
 	obj := strings.TrimSpace(ruling.Object)
 	if obj == "" {
 		return nil
 	}
-	return &chat.Ruling{
+	return new(chat.Ruling{
 		Allowed: true,
 		Scope:   chat.RulingScopeCombat,
 		Subject: obj,
-		Object:  pcDisplayName(gs),
-	}
+		Object:  gs.PCName(),
+	})
 }
 
 func actorPresentAtLocation(gs *state.GameState, name string) bool {
@@ -113,7 +102,7 @@ func actorPresentAtLocation(gs *state.GameState, name string) bool {
 		return false
 	}
 	for id, m := range loc.Monsters {
-		if m == nil || m.HP <= 0 {
+		if m == nil {
 			continue
 		}
 		if strings.EqualFold(m.Name, name) || strings.EqualFold(id, name) || strings.EqualFold(m.ID, name) {
@@ -124,15 +113,17 @@ func actorPresentAtLocation(gs *state.GameState, name string) bool {
 }
 
 func (p *ChatOrchestrator) resolveCombatAttempts(gs *state.GameState, ruling *chat.Ruling) []resolvedAttempt {
-	actor := ruling.ActorName(pcDisplayName(gs))
-	target := ruling.TargetName(pcDisplayName(gs))
-
-	var out []resolvedAttempt
-	if a := p.attempt(actor, target); a.NarratorText != "" {
-		a.Scope = ruling.Scope
-		out = append(out, a)
+	pcName := gs.PCName()
+	target := ruling.TargetName(pcName)
+	if target == "" {
+		return nil
 	}
-	return out
+	a := p.attempt(ruling.ActorName(pcName), target)
+	if a.NarratorText == "" {
+		return nil
+	}
+	a.Scope = ruling.Scope
+	return []resolvedAttempt{a}
 }
 
 func (p *ChatOrchestrator) attempt(actor, target string) resolvedAttempt {

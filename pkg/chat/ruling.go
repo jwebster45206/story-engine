@@ -18,13 +18,12 @@ const (
 )
 
 // Ruling is the referee's structured allow/deny decision for a player action.
-// Empty Subject means the PC is acting. Object is the primary target (actor or location).
 type Ruling struct {
 	Allowed   bool        `json:"allowed"`
 	Reasoning string      `json:"reasoning,omitempty"`
 	Reaction  string      `json:"reaction,omitempty"`
 	Scope     RulingScope `json:"scope,omitempty"`
-	Subject   string      `json:"subject,omitempty"`
+	Subject   string      `json:"subject,omitempty"` // empty or "PC" means the player
 	Object    string      `json:"object,omitempty"`
 }
 
@@ -74,18 +73,22 @@ func (r *Ruling) Normalize() {
 	r.Scope = normalizeRulingScope(string(r.Scope))
 }
 
-// IsPCSubject reports whether the PC is the acting character (empty or "PC").
-func (r *Ruling) IsPCSubject() bool {
+// IsPCSubject reports whether the PC is acting (empty, "PC", or the PC's name).
+func (r *Ruling) IsPCSubject(pcName string) bool {
 	if r == nil {
 		return true
 	}
 	s := strings.TrimSpace(r.Subject)
-	return s == "" || strings.EqualFold(s, "PC")
+	if s == "" || strings.EqualFold(s, "PC") {
+		return true
+	}
+	pcName = strings.TrimSpace(pcName)
+	return pcName != "" && strings.EqualFold(s, pcName)
 }
 
 // ActorName is the display name of who is acting. Empty subject uses pcName, or "PC".
 func (r *Ruling) ActorName(pcName string) string {
-	if r.IsPCSubject() {
+	if r.IsPCSubject(pcName) {
 		if name := strings.TrimSpace(pcName); name != "" {
 			return name
 		}
@@ -94,8 +97,8 @@ func (r *Ruling) ActorName(pcName string) string {
 	return strings.TrimSpace(r.Subject)
 }
 
-// TargetName is the display name of the action's object. Empty object uses pcName when
-// the subject is not the PC (a reaction targeting the player).
+// TargetName is the display name of the action's object. Empty object is empty.
+// "PC" maps to pcName, or "PC" if pcName is empty.
 func (r *Ruling) TargetName(pcName string) string {
 	if r == nil {
 		return ""

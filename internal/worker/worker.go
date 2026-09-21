@@ -229,8 +229,9 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 		if err != nil {
 			return err
 		}
+		chatReq.Ruling = ruling
 
-		if err := w.orchestrator.HandleAfterStream(context.Background(), gs, userMessage, fullMessage, false, ruling); err != nil {
+		if err := w.orchestrator.HandleAfterStream(context.Background(), gs, chatReq, fullMessage); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
@@ -256,15 +257,17 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 	case queuePkg.RequestTypeStoryEvent:
 		storyEventMessage := req.EventPrompt
 		chatReq := chat.ChatRequest{
-			GameStateID: req.GameStateID,
-			Message:     storyEventMessage,
-			Ruling:      req.Ruling,
+			GameStateID:  req.GameStateID,
+			Message:      storyEventMessage,
+			Ruling:       req.Ruling,
+			IsStoryEvent: true,
 		}
 
-		fullMessage, _, err := w.consumeStream(chatReq, req, "failed to process story event")
+		fullMessage, ruling, err := w.consumeStream(chatReq, req, "failed to process story event")
 		if err != nil {
 			return err
 		}
+		chatReq.Ruling = ruling
 
 		gs, err := w.orchestrator.GetGameState(w.ctx, req.GameStateID)
 		if err != nil {
@@ -276,7 +279,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			return fmt.Errorf("failed to load game state: %w", err)
 		}
 
-		if err := w.orchestrator.HandleAfterStream(context.Background(), gs, storyEventMessage, fullMessage, true, nil); err != nil {
+		if err := w.orchestrator.HandleAfterStream(context.Background(), gs, chatReq, fullMessage); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
@@ -307,7 +310,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 }
 
 func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, errWrap string) (string, *chat.Ruling, error) {
-	streamChan, attempts, ruling, err := w.orchestrator.ProcessChatStream(w.ctx, chatReq)
+	out, err := w.orchestrator.ProcessChatStream(w.ctx, chatReq)
 	if err != nil {
 		w.log.Error("Failed to start stream",
 			"error", err,
@@ -319,7 +322,7 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 		return "", nil, fmt.Errorf("%s: %w", errWrap, err)
 	}
 
-	for _, a := range attempts {
+	for _, a := range out.Attempts {
 		if a.Content == "" {
 			continue
 		}
@@ -332,7 +335,7 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 	var streamErr error
 	var done bool
 	var usage llm.Usage
-	for chunk := range streamChan {
+	for chunk := range out.Stream {
 		if chunk.Done || chunk.Error != nil {
 			usage = chunk.Usage
 		}
@@ -380,5 +383,5 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 		w.publishFailed(req.GameStateID, req.RequestID, streamErr.Error())
 		return "", nil, fmt.Errorf("%s: %w", errWrap, streamErr)
 	}
-	return fullMessage.String(), ruling, nil
+	return fullMessage.String(), out.Ruling, nil
 }
