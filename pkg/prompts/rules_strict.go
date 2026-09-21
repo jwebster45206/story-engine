@@ -35,6 +35,7 @@ const strictRefereeItems = `- Interact only with items in user_inventory or "Ite
 const strictRefereeNPCs = `- Only NPCs listed as "NPCs here" may be spoken to or acted on. NPCs elsewhere are out of reach this turn.`
 
 const strictRefereeGlobal = `- The player roleplays as the Player Character (PC) only; never as any NPC.
+- The PC's name is not an NPC. A "Name: " prefix on the user line is the player when Name is the PC.
 - Stay within the WORLD STATE sandbox: only listed locations, items, NPCs, and monsters exist. Invented creatures, places, items, or powers are not allowed.
 - Only listed monsters may be engaged.
 - Ordinary PC actions that stay in that sandbox are allowed.`

@@ -17,7 +17,7 @@ func TestRefereeWindow(t *testing.T) {
 		{0, refereeHistoryLimit},
 		{-1, refereeHistoryLimit},
 		{1, 1},
-		{2, 2},
+		{2, refereeHistoryLimit},
 		{4, refereeHistoryLimit},
 		{16, refereeHistoryLimit},
 	}
@@ -130,6 +130,15 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 			t.Errorf("relaxed prompt missing heading %q", heading)
 		}
 	}
+	if !strings.Contains(strictSys, "The player roleplays as the Player Character") {
+		t.Error("expected strict PC-only global rule")
+	}
+	if !strings.Contains(strictSys, `A "Name: " prefix on the user line is the player when Name is the PC`) {
+		t.Error("expected strict PC name-prefix rule")
+	}
+	if strings.Contains(strictSys, "Player Character (PC):") {
+		t.Error("PC identity line should be omitted when gs.PC is nil")
+	}
 	if !strings.Contains(strictSys, "The player may only travel listed exits") {
 		t.Error("expected strict movement rule")
 	}
@@ -226,11 +235,69 @@ func TestBuildRefereeMessages_HistoryWindow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRefereeMessages: %v", err)
 	}
-	if len(msgs) != 4 {
-		t.Fatalf("len = %d, want 4", len(msgs))
+	if len(msgs) != 3 {
+		t.Fatalf("len = %d, want 3", len(msgs))
 	}
-	if msgs[1].Content != "keep-a" || msgs[2].Content != "keep-b" {
-		t.Errorf("history window = %q, %q", msgs[1].Content, msgs[2].Content)
+	if msgs[1].Content != "keep-b" {
+		t.Errorf("history window = %q, want keep-b", msgs[1].Content)
+	}
+	if msgs[2].Content != "now" {
+		t.Errorf("current user = %q, want now", msgs[2].Content)
+	}
+}
+
+func TestBuildRefereeMessages_NamesPC(t *testing.T) {
+	gs := refereeTestGS(state.RulesStrict)
+	gs.PC = &character.PC{Name: "Captain Jack Sparrow"}
+
+	msgs, err := BuildRefereeMessages(gs, "I slash the skeleton.", 1)
+	if err != nil {
+		t.Fatalf("BuildRefereeMessages: %v", err)
+	}
+	sys := msgs[0].Content
+	want := "Player Character (PC): Captain Jack Sparrow. User lines prefixed with that name are the player acting as the PC, not an NPC."
+	if !strings.Contains(sys, want) {
+		t.Errorf("system prompt missing PC identity, got %q", sys)
+	}
+	worldIdx := strings.Index(sys, "<world_state>")
+	pcIdx := strings.Index(sys, "Player Character (PC):")
+	if worldIdx < 0 || pcIdx < 0 || pcIdx > worldIdx {
+		t.Error("PC identity should appear before WORLD STATE")
+	}
+}
+
+func TestBuildRefereeMessages_AfterStrikeBack(t *testing.T) {
+	gs := refereeTestGS(state.RulesStrict)
+	gs.PC = &character.PC{Name: "Captain Jack Sparrow"}
+	gs.ChatHistory = []chat.ChatMessage{
+		{Role: chat.ChatRoleAgent, Content: "You are Captain Jack Sparrow."},
+		{Role: chat.ChatRoleUser, Content: "Captain Jack Sparrow: I slash the skeleton."},
+		{Role: chat.ChatRoleAgent, Content: "You crack a rib off the skeleton."},
+		{Role: chat.ChatRoleUser, Content: "Skeleton strikes Captain Jack Sparrow.", IsStoryEvent: true},
+		{Role: chat.ChatRoleAgent, Content: "The skeleton's bony knuckles catch you square across the jaw."},
+	}
+	current := "Captain Jack Sparrow: I hit it again."
+
+	msgs, err := BuildRefereeMessages(gs, current, 16)
+	if err != nil {
+		t.Fatalf("BuildRefereeMessages: %v", err)
+	}
+	if len(msgs) != 3 {
+		t.Fatalf("len = %d, want 3 (system, last assistant, current user)", len(msgs))
+	}
+	if !strings.Contains(msgs[0].Content, "Player Character (PC): Captain Jack Sparrow") {
+		t.Error("expected named PC in system prompt")
+	}
+	if msgs[1].Role != chat.ChatRoleAgent || !strings.Contains(msgs[1].Content, "bony knuckles") {
+		t.Errorf("history = %+v, want last assistant narration", msgs[1])
+	}
+	for _, m := range msgs {
+		if strings.Contains(m.Content, "Skeleton strikes Captain Jack Sparrow.") {
+			t.Fatalf("story-event user line should not be in referee messages: %+v", m)
+		}
+	}
+	if msgs[2].Role != chat.ChatRoleUser || msgs[2].Content != current {
+		t.Errorf("current user = %+v", msgs[2])
 	}
 }
 

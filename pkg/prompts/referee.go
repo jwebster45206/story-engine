@@ -8,7 +8,7 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
-const refereeHistoryLimit = 2
+const refereeHistoryLimit = 1
 
 const refereeHonorLine = "Honor this mechanical resolution. Narrate the outcome; do not re-decide."
 
@@ -59,6 +59,10 @@ func BuildRefereeMessages(gs *state.GameState, userMessage string, historyLimit 
 		sb.WriteString("\n\n")
 		sb.WriteString(rules)
 	}
+	if line := pcRefereeLine(gs); line != "" {
+		sb.WriteString("\n\n")
+		sb.WriteString(line)
+	}
 	sb.WriteString("\n\n")
 	sb.WriteString(ToPromptState(gs).ToSlimString())
 	if examples := strings.TrimSpace(rs.Examples); examples != "" {
@@ -86,4 +90,15 @@ func BuildRefereeMessages(gs *state.GameState, userMessage string, historyLimit 
 		})
 	}
 	return msgs, nil
+}
+
+func pcRefereeLine(gs *state.GameState) string {
+	if gs == nil || gs.PC == nil {
+		return ""
+	}
+	name := strings.TrimSpace(gs.PC.Name)
+	if name == "" {
+		return ""
+	}
+	return fmt.Sprintf("Player Character (PC): %s. User lines prefixed with that name are the player acting as the PC, not an NPC.", name)
 }
