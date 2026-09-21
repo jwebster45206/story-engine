@@ -687,13 +687,14 @@ func tavernCombatFixture() (*state.GameState, *scenario.Scenario, *character.Mon
 	return gs, sc, rat
 }
 
-func TestSyncGameState_EnqueuesCombatReaction(t *testing.T) {
+func TestEnqueueReaction_AfterSync(t *testing.T) {
 	gs, sc, _ := tavernCombatFixture()
 	q := &recordingQueue{}
 	stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
 	p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
-	pending := pendingCombatReaction(gs, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
-	p.syncGameState(context.Background(), gs, "Felix strikes the rat.", pending)
+	player := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
+	latest := p.syncGameState(context.Background(), gs, "Felix strikes the rat.")
+	p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player))
 	got := q.all()
 	if len(got) != 1 {
 		t.Fatalf("enqueued %d, want 1", len(got))
@@ -707,7 +708,7 @@ func TestSyncGameState_EnqueuesCombatReaction(t *testing.T) {
 	}
 }
 
-func TestSyncGameState_SkipsCombatReaction(t *testing.T) {
+func TestEnqueueReaction_Skips(t *testing.T) {
 	player := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
 
 	t.Run("reducer failure", func(t *testing.T) {
@@ -715,7 +716,8 @@ func TestSyncGameState_SkipsCombatReaction(t *testing.T) {
 		q := &recordingQueue{}
 		stub := &stubLLMService{deltaErr: fmt.Errorf("reducer down")}
 		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
-		p.syncGameState(context.Background(), gs, "strike", pendingCombatReaction(gs, player))
+		latest := p.syncGameState(context.Background(), gs, "strike")
+		p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player))
 		if n := len(q.all()); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
@@ -727,7 +729,8 @@ func TestSyncGameState_SkipsCombatReaction(t *testing.T) {
 		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		p.syncGameState(ctx, gs, "strike", pendingCombatReaction(gs, player))
+		latest := p.syncGameState(ctx, gs, "strike")
+		p.enqueueReaction(ctx, latest, pendingCombatReaction(gs, player))
 		if n := len(q.all()); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
@@ -738,7 +741,8 @@ func TestSyncGameState_SkipsCombatReaction(t *testing.T) {
 		q := &recordingQueue{}
 		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
 		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
-		p.syncGameState(context.Background(), gs, "strike", pendingCombatReaction(gs, player))
+		latest := p.syncGameState(context.Background(), gs, "strike")
+		p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player))
 		if n := len(q.all()); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
@@ -749,7 +753,8 @@ func TestSyncGameState_SkipsCombatReaction(t *testing.T) {
 		q := &recordingQueue{}
 		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
 		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
-		p.syncGameState(context.Background(), gs, "strike", pendingCombatReaction(gs, player))
+		latest := p.syncGameState(context.Background(), gs, "strike")
+		p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player))
 		if n := len(q.all()); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
@@ -760,7 +765,19 @@ func TestSyncGameState_SkipsCombatReaction(t *testing.T) {
 		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
 		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
 		reaction := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Subject: "Giant Rat", Object: "Felix"}
-		p.syncGameState(context.Background(), gs, "strike", pendingCombatReaction(gs, reaction))
+		latest := p.syncGameState(context.Background(), gs, "strike")
+		p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, reaction))
+		if n := len(q.all()); n != 0 {
+			t.Fatalf("enqueued %d, want 0", n)
+		}
+	})
+	t.Run("story event passes nil ruling", func(t *testing.T) {
+		gs, sc, _ := tavernCombatFixture()
+		q := &recordingQueue{}
+		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
+		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
+		latest := p.syncGameState(context.Background(), gs, "strike")
+		p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, nil))
 		if n := len(q.all()); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}

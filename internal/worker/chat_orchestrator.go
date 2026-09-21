@@ -171,9 +171,9 @@ func (p *ChatOrchestrator) logRuling(gs *state.GameState, ruling *chat.Ruling, d
 	)
 }
 
-// UpdateGameStateAfterStream updates game state after streaming is complete.
-// This should be called by the worker after consuming the stream.
-func (p *ChatOrchestrator) UpdateGameStateAfterStream(ctx context.Context, gs *state.GameState, userMessage, responseMessage string, isStoryEvent bool, ruling *chat.Ruling) error {
+// HandleAfterStream saves chat history after streaming, then runs the background
+// reducer and may enqueue a combat reaction.
+func (p *ChatOrchestrator) HandleAfterStream(ctx context.Context, gs *state.GameState, userMessage, responseMessage string, isStoryEvent bool, ruling *chat.Ruling) error {
 	// Cancel any in-process gamestate delta for this game state
 	p.metaCancelMu.Lock()
 	if cancel, ok := p.metaCancel[gs.ID]; ok {
@@ -206,7 +206,11 @@ func (p *ChatOrchestrator) UpdateGameStateAfterStream(ctx context.Context, gs *s
 		if err != nil {
 			p.logger.Error("Failed to copy game state for background sync", "error", err, "game_state_id", gs.ID.String())
 		} else {
-			go p.syncGameState(metaCtx, gsCopy, responseMessage, pendingCombatReaction(gs, ruling))
+			pending := pendingCombatReaction(gs, ruling)
+			go func() {
+				latest := p.syncGameState(metaCtx, gsCopy, responseMessage)
+				p.enqueueReaction(metaCtx, latest, pending)
+			}()
 		}
 	}
 
@@ -214,8 +218,9 @@ func (p *ChatOrchestrator) UpdateGameStateAfterStream(ctx context.Context, gs *s
 	return nil
 }
 
-// syncGameState runs in the background to extract and update the stateful parts of gamestate
-func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameState, responseMessage string, pendingReaction *chat.Ruling) {
+// syncGameState runs in the background to extract and update the stateful parts of gamestate.
+// It returns the saved post-apply state, or nil if the reducer did not apply.
+func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameState, responseMessage string) *state.GameState {
 	start := time.Now()
 	p.logger.Debug("Starting background game gamestate delta", "game_state_id", gs.ID.String(), "response", responseMessage)
 	defer func() {
@@ -227,13 +232,13 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 	s, err := p.storage.GetScenario(ctx, gs.Scenario)
 	if err != nil {
 		p.logger.Error("Failed to get scenario from storage", "error", err, "game_state_id", gs.ID.String())
-		return
+		return nil
 	}
 
 	messages, err := prompts.BuildReducerMessages(gs, s, responseMessage)
 	if err != nil {
 		p.logger.Error("Failed to build reducer messages", "error", err, "game_state_id", gs.ID.String())
-		return
+		return nil
 	}
 
 	// Send the gamestate delta request to the LLM
@@ -245,7 +250,7 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 	svc, err := p.resolver.Get(gs.Provider)
 	if err != nil {
 		p.logger.Error("Failed to resolve LLM provider for delta", "error", err, "provider", gs.Provider, "game_state_id", gs.ID.String())
-		return
+		return nil
 	}
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		if attempt > 1 {
@@ -261,17 +266,17 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 		switch {
 		case ctx.Err() != nil:
 			p.logger.Error("Gamestate delta extraction canceled", "error", ctx.Err(), "game_state_id", gs.ID.String(), "attempt", attempt)
-			return
+			return nil
 		case errors.Is(deltaErr, context.DeadlineExceeded):
 			// Attempt already used llmRequestTimeout; HTTP client has the same budget.
 			p.logger.Error("Gamestate delta extraction timed out", "error", deltaErr, "game_state_id", gs.ID.String(), "attempt", attempt)
-			return
+			return nil
 		case deltaErr != nil && attempt < maxAttempts:
 			p.logger.Warn("Gamestate delta extraction failed, will retry", "error", deltaErr, "game_state_id", gs.ID.String(), "attempt", attempt)
 			continue
 		case deltaErr != nil:
 			p.logger.Error("Failed to get meta extraction response from LLM after retries", "error", deltaErr, "game_state_id", gs.ID.String(), "attempts", maxAttempts)
-			return
+			return nil
 		}
 
 		p.logger.Info("llm usage",
@@ -286,17 +291,17 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 	}
 
 	if delta == nil {
-		return
+		return nil
 	}
 
 	latestGS, err := p.storage.LoadGameState(ctx, gs.ID)
 	if err != nil {
 		p.logger.Error("Failed to load latest game state for gamestate delta", "error", err, "game_state_id", gs.ID.String())
-		return
+		return nil
 	}
 	if latestGS == nil {
 		p.logger.Warn("Game state not found during gamestate delta", "game_state_id", gs.ID.String())
-		return
+		return nil
 	}
 
 	// Increment turn counters on the latest game state
@@ -312,7 +317,7 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 	applier.ApplyVars()
 	if err := applier.Apply(); err != nil {
 		p.logger.Error("Failed to apply initial delta", "error", err, "game_state_id", latestGS.ID.String())
-		return
+		return nil
 	}
 
 	p.applyConditionalsCascade(applier, latestGS.ID)
@@ -320,7 +325,7 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 	// Save the updated game state
 	if err := p.storage.UpdateGameState(ctx, latestGS.ID, latestGS); err != nil {
 		p.logger.Error("Failed to save updated game state after meta extraction", "error", err, "game_state_id", latestGS.ID.String())
-		return
+		return nil
 	}
 
 	p.logger.Debug("Updated game meta",
@@ -330,7 +335,7 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 		"backend_model", usage.Model,
 	)
 
-	p.enqueueCombatReaction(ctx, latestGS, pendingReaction)
+	return latestGS
 }
 
 // applyConditionalsCascade recursively evaluates and applies conditionals until none trigger
@@ -425,7 +430,7 @@ func (p *ChatOrchestrator) GetGameState(ctx context.Context, gameStateID uuid.UU
 	return gs, nil
 }
 
-func (p *ChatOrchestrator) enqueueCombatReaction(ctx context.Context, gs *state.GameState, pending *chat.Ruling) {
+func (p *ChatOrchestrator) enqueueReaction(ctx context.Context, gs *state.GameState, pending *chat.Ruling) {
 	if pending == nil || p.chatQueue == nil || gs == nil {
 		return
 	}
@@ -444,7 +449,7 @@ func (p *ChatOrchestrator) enqueueCombatReaction(ctx context.Context, gs *state.
 		EnqueuedAt:  time.Now(),
 	}
 	if err := p.chatQueue.EnqueueRequest(ctx, req); err != nil {
-		p.logger.Error("Failed to enqueue combat reaction",
+		p.logger.Error("Failed to enqueue reaction",
 			"error", err,
 			"game_state_id", gs.ID.String(),
 			"subject", pending.Subject,
@@ -452,7 +457,7 @@ func (p *ChatOrchestrator) enqueueCombatReaction(ctx context.Context, gs *state.
 		)
 		return
 	}
-	p.logger.Info("Combat reaction enqueued",
+	p.logger.Info("Reaction enqueued",
 		"game_state_id", gs.ID.String(),
 		"request_id", req.RequestID,
 		"subject", pending.Subject,

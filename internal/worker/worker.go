@@ -230,7 +230,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			return err
 		}
 
-		if err := w.orchestrator.UpdateGameStateAfterStream(context.Background(), gs, userMessage, fullMessage, false, ruling); err != nil {
+		if err := w.orchestrator.HandleAfterStream(context.Background(), gs, userMessage, fullMessage, false, ruling); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
@@ -261,7 +261,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			Ruling:      req.Ruling,
 		}
 
-		fullMessage, ruling, err := w.consumeStream(chatReq, req, "failed to process story event")
+		fullMessage, _, err := w.consumeStream(chatReq, req, "failed to process story event")
 		if err != nil {
 			return err
 		}
@@ -276,7 +276,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			return fmt.Errorf("failed to load game state: %w", err)
 		}
 
-		if err := w.orchestrator.UpdateGameStateAfterStream(context.Background(), gs, storyEventMessage, fullMessage, true, ruling); err != nil {
+		if err := w.orchestrator.HandleAfterStream(context.Background(), gs, storyEventMessage, fullMessage, true, nil); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
