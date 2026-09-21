@@ -373,6 +373,17 @@ func (gs *GameState) GetUserLocation() string {
 	return gs.Location
 }
 
+// PCName is the player character's display name, or "PC" if unset.
+func (gs *GameState) PCName() string {
+	if gs == nil || gs.PC == nil {
+		return "PC"
+	}
+	if name := strings.TrimSpace(gs.PC.Name); name != "" {
+		return name
+	}
+	return "PC"
+}
+
 // SpawnMonster creates a new monster instance from a template.
 func (gs *GameState) SpawnMonster(template *character.Monster, monsterDef *character.Monster) *character.Monster {
 	if monsterDef == nil || template == nil {

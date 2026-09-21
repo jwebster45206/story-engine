@@ -59,31 +59,71 @@ func (p *ChatOrchestrator) resolveAttempts(gs *state.GameState, ruling *chat.Rul
 	}
 	switch ruling.Scope {
 	case chat.RulingScopeCombat:
-		return p.resolveCombatAttempts(gs, ruling)
+		if a := p.resolveCombatAttempt(gs, ruling); a.NarratorText != "" {
+			return []resolvedAttempt{a}
+		}
+		return nil
 	default:
 		return nil
 	}
 }
 
-func (p *ChatOrchestrator) resolveCombatAttempts(gs *state.GameState, ruling *chat.Ruling) []resolvedAttempt {
-	pcName := "PC"
-	if gs != nil && gs.PC != nil {
-		if name := strings.TrimSpace(gs.PC.Name); name != "" {
-			pcName = name
+func pendingCombatReaction(gs *state.GameState, ruling *chat.Ruling) *chat.Ruling {
+	if ruling == nil || !ruling.Allowed || ruling.Scope != chat.RulingScopeCombat {
+		return nil
+	}
+	if !ruling.IsPCSubject(gs.PCName()) {
+		return nil
+	}
+	obj := strings.TrimSpace(ruling.Object)
+	if obj == "" {
+		return nil
+	}
+	return new(chat.Ruling{
+		Allowed: true,
+		Scope:   chat.RulingScopeCombat,
+		Subject: obj,
+		Object:  gs.PCName(),
+	})
+}
+
+func actorPresentAtLocation(gs *state.GameState, name string) bool {
+	name = strings.TrimSpace(name)
+	if gs == nil || name == "" {
+		return false
+	}
+	for key, npc := range gs.NPCs {
+		if npc.Location != gs.Location {
+			continue
+		}
+		if strings.EqualFold(npc.Name, name) || strings.EqualFold(key, name) {
+			return true
 		}
 	}
-	target := ""
-	if len(ruling.Focus.Actors) > 0 {
-		target = ruling.Focus.Actors[0]
+	loc, ok := gs.WorldLocations[gs.Location]
+	if !ok {
+		return false
 	}
+	for id, m := range loc.Monsters {
+		if m == nil {
+			continue
+		}
+		if strings.EqualFold(m.Name, name) || strings.EqualFold(id, name) || strings.EqualFold(m.ID, name) {
+			return true
+		}
+	}
+	return false
+}
 
-	var out []resolvedAttempt
-	if a := p.attempt(pcName, target); a.NarratorText != "" {
-		a.Scope = ruling.Scope
-		out = append(out, a)
+func (p *ChatOrchestrator) resolveCombatAttempt(gs *state.GameState, ruling *chat.Ruling) resolvedAttempt {
+	pcName := gs.PCName()
+	target := ruling.TargetName(pcName)
+	if target == "" {
+		return resolvedAttempt{}
 	}
-	// TODO: consider a reaction attempt (focused actor strikes the PC).
-	return out
+	a := p.attempt(ruling.ActorName(pcName), target)
+	a.Scope = ruling.Scope
+	return a
 }
 
 func (p *ChatOrchestrator) attempt(actor, target string) resolvedAttempt {

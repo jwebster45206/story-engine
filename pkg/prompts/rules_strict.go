@@ -35,13 +35,14 @@ const strictRefereeItems = `- Interact only with items in user_inventory or "Ite
 const strictRefereeNPCs = `- Only NPCs listed as "NPCs here" may be spoken to or acted on. NPCs elsewhere are out of reach this turn.`
 
 const strictRefereeGlobal = `- The player roleplays as the Player Character (PC) only; never as any NPC.
+- The PC's name is not an NPC. A "Name: " prefix on the user line is the player when Name is the PC.
 - Stay within the WORLD STATE sandbox: only listed locations, items, NPCs, and monsters exist. Invented creatures, places, items, or powers are not allowed.
 - Only listed monsters may be engaged.
 - Ordinary PC actions that stay in that sandbox are allowed.`
 
-const strictRefereeExamples = `Example:	{"allowed":true,"reasoning":"You can move to the drawbridge.","reaction":null,"scope":"movement","focus":{"actors":[],"locations":["drawbridge"]}}
-Example:	{"allowed":false,"reasoning":"You cannot move to the banquet hall because it is blocked.","reaction":"The PC would be stopped by the guard.","scope":"movement","focus":{"actors":[],"locations":["banquet hall"]}}
+const strictRefereeExamples = `Example:	{"allowed":true,"reasoning":"You can move to the drawbridge.","reaction":null,"scope":"movement","subject":null,"object":"drawbridge"}
+Example:	{"allowed":false,"reasoning":"You cannot move to the banquet hall because it is blocked.","reaction":"The PC would be stopped by the guard.","scope":"movement","subject":null,"object":"banquet hall"}
 
-Example:	{"allowed":true,"reasoning":"You attack the giant rat.","reaction":null,"scope":"combat","focus":{"actors":["Giant Rat"],"locations":[]}}
-Example:	{"allowed":false,"reasoning":"There is no giant rat to attack.","reaction":null,"scope":"combat","focus":{"actors":[],"locations":[]}}
-Example:	{"allowed":false,"reasoning":"You cannot dictate that the guard is defeated in the attack. Your attack occurs, but the outcome is decided by the narrator.","reaction":null,"scope":"combat","focus":{"actors":["guard"],"locations":[]}}`
+Example:	{"allowed":true,"reasoning":"You attack the giant rat.","reaction":null,"scope":"combat","subject":null,"object":"Giant Rat"}
+Example:	{"allowed":false,"reasoning":"There is no giant rat to attack.","reaction":null,"scope":"combat","subject":null,"object":null}
+Example:	{"allowed":false,"reasoning":"You cannot dictate that the guard is defeated in the attack. Your attack occurs, but the outcome is decided by the narrator.","reaction":null,"scope":"combat","subject":null,"object":"guard"}`

@@ -9,6 +9,7 @@ import (
 	"github.com/jwebster45206/d20"
 	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
@@ -78,7 +79,7 @@ func TestResolveAttempts(t *testing.T) {
 		ruling := &chat.Ruling{
 			Allowed: true,
 			Scope:   chat.RulingScopeCombat,
-			Focus:   chat.RulingFocus{Actors: []string{"Giant Rat"}},
+			Object:  "Giant Rat",
 		}
 		got := p.resolveAttempts(gs, ruling)
 		want := expectedStrikes(t, 1, "Felix", "Giant Rat")
@@ -100,20 +101,37 @@ func TestResolveAttempts(t *testing.T) {
 		p := &ChatOrchestrator{roller: d20.NewRoller(1), logger: slog.Default()}
 		ruling := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat}
 		got := p.resolveAttempts(gs, ruling)
-		want := expectedStrikes(t, 1, "Felix", "")
-		if !slices.Equal(narratorTexts(got), want) {
-			t.Errorf("got %q, want %q", narratorTexts(got), want)
-		}
-		if len(got) != 1 {
-			t.Errorf("want one line, got %q", narratorTexts(got))
+		if len(got) != 0 {
+			t.Errorf("empty object should not roll, got %q", narratorTexts(got))
 		}
 	})
 
 	t.Run("unnamed PC", func(t *testing.T) {
 		p := &ChatOrchestrator{roller: d20.NewRoller(1), logger: slog.Default()}
-		got := p.resolveAttempts(&state.GameState{}, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat})
+		got := p.resolveAttempts(&state.GameState{}, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
 		if len(got) != 1 || !strings.HasPrefix(got[0].NarratorText, "PC strikes") {
 			t.Errorf("got %q, want PC prefix", narratorTexts(got))
+		}
+	})
+
+	t.Run("actor strikes PC", func(t *testing.T) {
+		p := &ChatOrchestrator{roller: d20.NewRoller(1), logger: slog.Default()}
+		ruling := &chat.Ruling{
+			Allowed: true,
+			Scope:   chat.RulingScopeCombat,
+			Subject: "Giant Rat",
+			Object:  "Felix",
+		}
+		got := p.resolveAttempts(gs, ruling)
+		want := expectedStrikes(t, 1, "Giant Rat", "Felix")
+		if !slices.Equal(narratorTexts(got), want) {
+			t.Errorf("got %q, want %q", narratorTexts(got), want)
+		}
+		if len(got) != 1 {
+			t.Fatalf("want 1 line, got %d", len(got))
+		}
+		if !strings.HasPrefix(got[0].Content, "Giant Rat rolled ") {
+			t.Errorf("content should name the actor, got %q", got[0].Content)
 		}
 	})
 
@@ -177,6 +195,51 @@ func seedForMiss(t *testing.T) int64 {
 	}
 	t.Fatal("no miss seed")
 	return 0
+}
+
+func TestPendingCombatReaction(t *testing.T) {
+	gs := &state.GameState{PC: &character.PC{Name: "Felix"}}
+	player := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
+	got := pendingCombatReaction(gs, player)
+	if got == nil || !got.Allowed || got.Scope != chat.RulingScopeCombat || got.Subject != "Giant Rat" || got.Object != "Felix" {
+		t.Fatalf("player combat pending = %#v", got)
+	}
+	if pendingCombatReaction(gs, &chat.Ruling{Allowed: false, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}) != nil {
+		t.Error("denied combat should not pending")
+	}
+	if pendingCombatReaction(gs, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat}) != nil {
+		t.Error("empty object should not pending")
+	}
+	if pendingCombatReaction(gs, got) != nil {
+		t.Error("non-PC subject should not chain")
+	}
+	namedPC := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Subject: "Felix", Object: "Giant Rat"}
+	if pendingCombatReaction(gs, namedPC) == nil {
+		t.Error("PC name as subject should pending")
+	}
+	if pendingCombatReaction(gs, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeMovement, Object: "drawbridge"}) != nil {
+		t.Error("movement should not pending")
+	}
+}
+
+func TestActorPresentAtLocation(t *testing.T) {
+	rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 5, MaxHP: 5}
+	gs := &state.GameState{
+		Location: "tavern",
+		NPCs: map[string]character.NPC{
+			"pip": {Name: "Pip Upton", Location: "tavern"},
+		},
+		WorldLocations: map[string]scenario.Location{
+			"tavern": {Name: "The Tavern", Monsters: map[string]*character.Monster{"rat_1": rat}},
+		},
+	}
+	if !actorPresentAtLocation(gs, "Giant Rat") || !actorPresentAtLocation(gs, "Pip Upton") {
+		t.Fatal("expected present actors")
+	}
+	gs.NPCs["pip"] = character.NPC{Name: "Pip Upton", Location: "cellar"}
+	if actorPresentAtLocation(gs, "Pip Upton") {
+		t.Error("NPC in another room should not be present")
+	}
 }
 
 func TestRollContent(t *testing.T) {

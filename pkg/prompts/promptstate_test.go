@@ -624,7 +624,7 @@ func TestPromptState_ToString_MovementUsesDestAsCurrent(t *testing.T) {
 	move := &chat.Ruling{
 		Allowed: true,
 		Scope:   chat.RulingScopeMovement,
-		Focus:   chat.RulingFocus{Locations: []string{"Dark Cave"}},
+		Object:  "Dark Cave",
 	}
 	ps := toPromptStateAt(gs, narratorViewLocation(gs, move))
 	if gs.Location != "start" {
@@ -657,7 +657,7 @@ func TestPromptState_ToString_FollowingNPCOnMove(t *testing.T) {
 	move := &chat.Ruling{
 		Allowed: true,
 		Scope:   chat.RulingScopeMovement,
-		Focus:   chat.RulingFocus{Locations: []string{"cave"}},
+		Object:  "cave",
 	}
 	ps := toPromptStateAt(gs, narratorViewLocation(gs, move))
 	got := ps.ToString(move)

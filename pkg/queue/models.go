@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 	"uuid"
+
+	"github.com/jwebster45206/story-engine/pkg/chat"
 )
 
 // RequestType identifies the type of request in the queue
@@ -28,7 +30,8 @@ type Request struct {
 	Actor   string `json:"actor,omitempty"`
 
 	// Story event-specific fields
-	EventPrompt string `json:"event_prompt,omitempty"`
+	EventPrompt string       `json:"event_prompt,omitempty"`
+	Ruling      *chat.Ruling `json:"ruling,omitempty"`
 
 	EnqueuedAt time.Time `json:"enqueued_at"`
 }

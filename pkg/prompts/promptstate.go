@@ -25,7 +25,7 @@ type PromptState struct {
 	TurnCounter      int                          `json:"turn_counter,omitempty"`       // Total number of successful chat interactions
 	SceneTurnCounter int                          `json:"scene_turn_counter,omitempty"` // Number of successful chat interactions in
 	Rules            state.RulesMode              `json:"-"`                            // Narrator ruleset; not sent to reducer JSON
-	FocusedActors    []string                     `json:"-"`                            // Referee focus.actors names; not sent to reducer JSON
+	FocusedActors    []string                     `json:"-"`                            // Non-PC ruling subject/object names; not sent to reducer JSON
 }
 
 func ToPromptState(gs *state.GameState) *PromptState {

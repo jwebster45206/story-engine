@@ -143,7 +143,7 @@ func getStatePromptWithFocus(gs *state.GameState, s *scenario.Scenario, ruling *
 
 	ps := toPromptStateAt(gs, narratorViewLocation(gs, ruling))
 	if ruling != nil {
-		ps.FocusedActors = ruling.Focus.Actors
+		ps.FocusedActors = ruling.FocusedNames(gs.PCName())
 	}
 	return chat.ChatMessage{
 		Role:    chat.ChatRoleSystem,
@@ -249,7 +249,10 @@ func movementDestinations(gs *state.GameState, ruling *chat.Ruling) []resolvedLo
 	if !movementAllowed(ruling) {
 		return nil
 	}
-	return resolveMovementDestinations(gs, ruling.Focus.Locations)
+	if ruling.Object == "" {
+		return nil
+	}
+	return resolveMovementDestinations(gs, []string{ruling.Object})
 }
 
 func movementAllowed(ruling *chat.Ruling) bool {
