@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
-	"uuid"
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
@@ -86,7 +84,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Update metadata panel content as well
 			if m.gameState != nil {
-				m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
+				m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.processing))
 			}
 		}
 
@@ -108,7 +106,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.gameState != nil {
 				_ = clipboard.WriteAll(m.gameState.ID.String())
 				// Optionally append a tiny notice to metadata (non-intrusive)
-				m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
+				m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.processing))
 			}
 			return m, nil
 
@@ -134,7 +132,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case tea.KeyEnter:
-			if m.loading || m.isStreaming {
+			if m.loading || m.isStreaming || m.processing {
 				return m, nil
 			}
 
@@ -153,6 +151,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.textarea.Reset()
 			m.loading = true
+			m.processing = true
 			m.progressTick = 0   // Reset progress animation
 			m.userPinned = false // user intent to append at bottom
 
@@ -164,6 +163,9 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Don't add user message here - it will be added when we receive the request.processing event
 			// This allows us to handle external chat messages as well
 
+			if m.gameState != nil {
+				m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.processing))
+			}
 			return m, tea.Batch(m.sendChatMessage(input), progressTick())
 		}
 
@@ -203,6 +205,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case chatErrorMsg:
 		m.loading = false
+		m.processing = false
 		m.err = msg.err
 
 		// Remove the failed user message from pending messages and chat history
@@ -228,70 +231,8 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.userPinned {
 			m.chatViewport.GotoBottom()
 		}
-		return m, nil
-
-	case pollTickMsg:
-		// Don't poll if the game has ended
-		if m.gameState != nil && m.gameState.IsEnded {
-			return m, nil
-		}
-
-		// Time to initiate a poll (if we have a game state and are actively waiting for updates)
-		if m.gameState != nil && m.pollingActive {
-			if m.pollInFlight {
-				// Start a fresh poll by bumping the sequence; result from older poll will be ignored when it arrives
-				m.pollSeq++
-				m.activePollSeq = m.pollSeq
-				m.pollInFlight = true
-				return m, tea.Batch(startPoll(m.activePollSeq, m.client, m.config.APIBaseURL, m.gameState.ID), schedulePoll())
-			}
-			// No poll in flight; start one
-			m.pollSeq++
-			m.activePollSeq = m.pollSeq
-			m.pollInFlight = true
-			return m, tea.Batch(startPoll(m.activePollSeq, m.client, m.config.APIBaseURL, m.gameState.ID), schedulePoll())
-		} else if m.gameState != nil {
-			// We have a game state but aren't actively waiting - reschedule with a longer interval
-			return m, tea.Tick(30*time.Second, func(time.Time) tea.Msg { return pollTickMsg{} })
-		}
-		// No game state yet; just reschedule
-		return m, schedulePoll()
-
-	case pollResultMsg:
-		// Only apply if this is the latest active sequence
-		if msg.seq == m.activePollSeq {
-			m.pollInFlight = false
-			if msg.err == nil && msg.gameState != nil && m.gameState != nil {
-				// Check if the game has ended and stop polling
-				if msg.gameState.IsEnded {
-					m.pollingActive = false
-					m.mergeServerGameState(msg.gameState)
-					m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
-				} else if m.pollingActive && msg.gameState.UpdatedAt.After(m.pollingStartedAt) {
-					// Check if we got an updated timestamp and should stop active polling
-					m.pollingActive = false
-					// Apply the full updated gamestate
-					m.mergeServerGameState(msg.gameState)
-					m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
-				} else {
-					// Just refresh metadata fields to avoid reordering chat mid-turn
-					m.gameState.ID = msg.gameState.ID
-					m.gameState.ModelName = msg.gameState.ModelName
-					m.gameState.Scenario = msg.gameState.Scenario
-					m.gameState.SceneName = msg.gameState.SceneName
-					m.gameState.NPCs = msg.gameState.NPCs
-					m.gameState.WorldLocations = msg.gameState.WorldLocations
-					m.gameState.Location = msg.gameState.Location
-					m.gameState.Inventory = msg.gameState.Inventory
-					m.gameState.TurnCounter = msg.gameState.TurnCounter
-					m.gameState.SceneTurnCounter = msg.gameState.SceneTurnCounter
-					m.gameState.Vars = msg.gameState.Vars
-					m.gameState.IsEnded = msg.gameState.IsEnded
-					m.gameState.ContingencyPrompts = msg.gameState.ContingencyPrompts
-					m.gameState.UpdatedAt = msg.gameState.UpdatedAt
-					m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
-				}
-			}
+		if m.gameState != nil {
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.processing))
 		}
 		return m, nil
 
@@ -302,9 +243,12 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle SSE events from the async request processing
 		switch msg.event.Type {
 		case "request.processing":
-			// Request has been picked up by worker - can stop showing progress bar
+			// Worker picked up the request. Drop the chat progress bar; keep
+			// sidebar Processing... until request.completed.
 			m.loading = false
+			m.processing = true
 			m.ephemeralAttempts = nil
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.processing))
 
 			// Add the user message from the event data (if present)
 			if userMsg, ok := msg.event.Data["user_message"].(string); ok && userMsg != "" {
@@ -359,37 +303,23 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "request.completed":
-			// Streaming complete
 			m.isStreaming = false
 			m.loading = false
+			m.processing = false
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.processing))
 
-			// Start polling now that request is complete (only if game hasn't ended)
-			var startPollingCmd tea.Cmd
-			if m.gameState != nil && !m.gameState.IsEnded {
-				wasPollingActive := m.pollingActive
-				m.pollingActive = true
-				m.pollingStartedAt = time.Now()
-
-				if !wasPollingActive {
-					startPollingCmd = schedulePoll()
-				}
-			}
-
-			// Update metadata to show polling indicator
-			m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
-
-			// Continue consuming SSE events while also refreshing gamestate
 			var sseCmd tea.Cmd
 			if m.eventChan != nil {
 				sseCmd = m.consumeSSEEvents(m.eventChan)
 			}
-			return m, tea.Batch(m.refreshGameState(), startPollingCmd, sseCmd)
+			return m, tea.Batch(m.refreshGameState(), sseCmd)
 
 		case "request.failed":
-			// Request failed
 			m.isStreaming = false
 			m.loading = false
+			m.processing = false
 			m.ephemeralAttempts = nil
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.processing))
 
 			// Get error message from the data map
 			errorMsg := "Request failed"
@@ -431,7 +361,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gameStateMsg:
 		if msg.err == nil && msg.gameState != nil {
 			m.mergeServerGameState(msg.gameState)
-			m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
+			m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.processing))
 			if m.forceRerender {
 				m.forceRerender = false
 				m.writeChatContent()
@@ -506,9 +436,10 @@ func (m ConsoleUI) handleSSEDisconnected(msg sseDisconnectedMsg) (tea.Model, tea
 	if msg.gameID != m.sseGameID || m.gameState == nil || m.gameState.ID != msg.gameID {
 		return m, nil
 	}
-	wasWaiting := m.loading || m.isStreaming
+	wasWaiting := m.loading || m.isStreaming || m.processing
 	m.loading = false
 	m.isStreaming = false
+	m.processing = false
 	m.ephemeralAttempts = nil
 	if wasWaiting {
 		m.gameState.ChatHistory = append(m.gameState.ChatHistory, chat.ChatMessage{
@@ -519,6 +450,9 @@ func (m ConsoleUI) handleSSEDisconnected(msg sseDisconnectedMsg) (tea.Model, tea
 		if !m.userPinned {
 			m.chatViewport.GotoBottom()
 		}
+	}
+	if m.gameState != nil {
+		m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.processing))
 	}
 	return m, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
 		return sseReconnectMsg(msg)
@@ -565,17 +499,4 @@ func progressTick() tea.Cmd {
 	return tea.Tick(time.Millisecond*200, func(time.Time) tea.Msg {
 		return progressTickMsg{}
 	})
-}
-
-// schedulePoll returns a command that triggers a pollTickMsg after the interval
-func schedulePoll() tea.Cmd {
-	return tea.Tick(1*time.Second, func(time.Time) tea.Msg { return pollTickMsg{} })
-}
-
-// startPoll begins an HTTP fetch for the latest game state; old sequences are ignored
-func startPoll(seq int, client *http.Client, baseURL string, id uuid.UUID) tea.Cmd {
-	return func() tea.Msg {
-		gs, err := getGameState(client, baseURL, id)
-		return pollResultMsg{seq: seq, gameState: gs, err: err}
-	}
 }

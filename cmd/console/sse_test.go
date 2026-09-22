@@ -421,3 +421,115 @@ func TestFormatAttemptLine(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdate_ProcessingStaysThroughProcessingAndChunks(t *testing.T) {
+	id := uuid.New()
+	m := newTestUI()
+	m.showScenarioModal = false
+	m.sseGameID = id
+	m.loading = true
+	m.processing = true
+	m.gameState = &state.GameState{ID: id}
+
+	model, _ := m.Update(sseEventMsg{event: SSEEvent{
+		Type:   "request.processing",
+		GameID: id,
+		Data:   map[string]any{"user_message": "look around"},
+	}})
+	ui := model.(ConsoleUI)
+	if ui.loading {
+		t.Fatal("loading should clear on request.processing")
+	}
+	if !ui.processing {
+		t.Fatal("processing should stay true through request.processing")
+	}
+
+	model, _ = ui.Update(sseEventMsg{event: SSEEvent{
+		Type:   "chat.chunk",
+		GameID: id,
+		Data:   map[string]any{"content": "You see the harbor."},
+	}})
+	ui = model.(ConsoleUI)
+	if !ui.processing {
+		t.Fatal("processing should stay true through chat.chunk")
+	}
+	if !ui.isStreaming {
+		t.Fatal("expected streaming after chat.chunk")
+	}
+}
+
+func TestUpdate_CompletedClearsProcessing(t *testing.T) {
+	id := uuid.New()
+	m := newTestUI()
+	m.showScenarioModal = false
+	m.sseGameID = id
+	m.processing = true
+	m.isStreaming = true
+	m.gameState = &state.GameState{ID: id}
+
+	model, cmd := m.Update(sseEventMsg{event: SSEEvent{
+		Type:   "request.completed",
+		GameID: id,
+		Data:   map[string]any{"status": "completed"},
+	}})
+	ui := model.(ConsoleUI)
+	if ui.processing {
+		t.Fatal("processing should clear on request.completed")
+	}
+	if ui.isStreaming || ui.loading {
+		t.Fatal("streaming/loading should clear on request.completed")
+	}
+	if cmd == nil {
+		t.Fatal("expected refreshGameState after request.completed")
+	}
+
+	model, _ = ui.Update(gameStateMsg{gameState: &state.GameState{
+		ID:          id,
+		Location:    "harbor",
+		TurnCounter: 2,
+	}})
+	ui = model.(ConsoleUI)
+	if ui.processing {
+		t.Fatal("processing should stay cleared after game-state merge")
+	}
+	if ui.gameState.Location != "harbor" {
+		t.Fatalf("Location = %q, want harbor", ui.gameState.Location)
+	}
+}
+
+func TestUpdate_FailedClearsProcessing(t *testing.T) {
+	id := uuid.New()
+	m := newTestUI()
+	m.showScenarioModal = false
+	m.sseGameID = id
+	m.processing = true
+	m.gameState = &state.GameState{ID: id}
+
+	model, _ := m.Update(sseEventMsg{event: SSEEvent{
+		Type:   "request.failed",
+		GameID: id,
+		Data:   map[string]any{"error": "boom"},
+	}})
+	ui := model.(ConsoleUI)
+	if ui.processing {
+		t.Fatal("processing should clear on request.failed")
+	}
+}
+
+func TestUpdate_StoryEventProcessingSetsFlag(t *testing.T) {
+	id := uuid.New()
+	m := newTestUI()
+	m.showScenarioModal = false
+	m.sseGameID = id
+	m.gameState = &state.GameState{ID: id}
+
+	model, _ := m.Update(sseEventMsg{event: SSEEvent{
+		Type:   "request.processing",
+		GameID: id,
+		Data:   map[string]any{"user_message": "Giant Rat strikes Felix."},
+	}})
+	ui := model.(ConsoleUI)
+	if !ui.processing {
+		t.Fatal("story-event request.processing should set processing")
+	}
+}

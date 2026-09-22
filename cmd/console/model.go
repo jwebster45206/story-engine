@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"net/http"
-	"time"
 	"uuid"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -92,12 +91,9 @@ type ConsoleUI struct {
 	// Auto-scroll suppression
 	userPinned bool // true when user has scrolled away from bottom
 
-	// Polling state
-	pollSeq          int       // incrementing sequence for polls
-	activePollSeq    int       // sequence number of poll in flight
-	pollInFlight     bool      // whether a poll HTTP request is active
-	pollingActive    bool      // whether we're actively waiting for an updated gamestate
-	pollingStartedAt time.Time // timestamp when we started waiting for updates
+	// processing is true from send (or a story-event request.processing) until
+	// request.completed / request.failed. Sidebar shows Processing... while set.
+	processing bool
 
 	// Game ending state
 	finalMessageSent bool // whether we've already sent the final message after game end
@@ -146,12 +142,6 @@ type gameStateCreatedMsg struct {
 }
 
 type progressTickMsg struct{}
-type pollTickMsg struct{}
-type pollResultMsg struct {
-	seq       int
-	gameState *state.GameState
-	err       error
-}
 
 type sseEventMsg struct {
 	event SSEEvent
@@ -242,6 +232,5 @@ func (m ConsoleUI) Init() tea.Cmd {
 	if m.showScenarioModal {
 		return m.loadScenarios()
 	}
-	// Start polling even before game state; scheduler will requeue until game state exists
-	return tea.Batch(textarea.Blink, schedulePoll())
+	return textarea.Blink
 }

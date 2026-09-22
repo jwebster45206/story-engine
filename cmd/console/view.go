@@ -112,7 +112,7 @@ func (m *ConsoleUI) scenarioDisplayName() string {
 	return file // fallback to file name
 }
 
-func writeSidebar(gs *state.GameState, scenarioDisplay string, pollingActive bool) string {
+func writeSidebar(gs *state.GameState, scenarioDisplay string, processing bool) string {
 	var content strings.Builder
 
 	content.WriteString("\n" + titleStyle.Render(sidebarCastle) + "\n\n")
@@ -148,8 +148,8 @@ func writeSidebar(gs *state.GameState, scenarioDisplay string, pollingActive boo
 		content.WriteString("\n" + titleStyle.Render("GAME ENDED") + "\n")
 	}
 
-	if pollingActive {
-		content.WriteString("\n" + loadingStyle.Render("Syncing game state...") + "\n")
+	if processing {
+		content.WriteString("\n" + loadingStyle.Render("Processing...") + "\n")
 	}
 
 	content.WriteString("\n")

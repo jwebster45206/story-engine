@@ -15,6 +15,7 @@ func TestMergeServerGameState(t *testing.T) {
 	assistant := chat.ChatMessage{Role: "assistant", Content: "You are on deck."}
 	user := chat.ChatMessage{Role: "user", Content: "look around"}
 	followUp := chat.ChatMessage{Role: "assistant", Content: "Waves crash."}
+	strike := chat.ChatMessage{Role: "user", Content: "Giant Rat strikes Felix."}
 
 	tests := []struct {
 		name   string
@@ -51,7 +52,7 @@ func TestMergeServerGameState(t *testing.T) {
 			},
 		},
 		{
-			name: "pending user not on server is appended then cleared from pending",
+			name: "pending user not on server stays pending after prefix keep",
 			setup: func(m *ConsoleUI) {
 				m.gameState = &state.GameState{ChatHistory: []chat.ChatMessage{assistant, user}}
 				m.pendingUserMessages = []chat.ChatMessage{user}
@@ -61,15 +62,18 @@ func TestMergeServerGameState(t *testing.T) {
 				ChatHistory: []chat.ChatMessage{assistant},
 			},
 			check: func(t *testing.T, m ConsoleUI) {
+				if m.gameState.SceneName != "deck" {
+					t.Fatalf("SceneName = %q, want deck", m.gameState.SceneName)
+				}
 				if got := len(m.gameState.ChatHistory); got != 2 {
-					t.Fatalf("ChatHistory len = %d, want 2 (server + pending)", got)
+					t.Fatalf("ChatHistory len = %d, want 2 (kept local suffix)", got)
 				}
 				last := m.gameState.ChatHistory[len(m.gameState.ChatHistory)-1]
 				if last != user {
-					t.Fatalf("pending user not appended: %+v", last)
+					t.Fatalf("local user suffix lost: %+v", last)
 				}
-				if len(m.pendingUserMessages) != 0 {
-					t.Fatalf("pending is cleared after merge into history, got %d", len(m.pendingUserMessages))
+				if len(m.pendingUserMessages) != 1 {
+					t.Fatalf("pending should stay until server echoes, got %d", len(m.pendingUserMessages))
 				}
 			},
 		},
@@ -107,6 +111,74 @@ func TestMergeServerGameState(t *testing.T) {
 				}
 				if len(m.pendingUserMessages) != 0 {
 					t.Fatalf("pending should be empty after server echo, got %d", len(m.pendingUserMessages))
+				}
+			},
+		},
+		{
+			name: "stale player snapshot keeps repeated strike-back suffix",
+			setup: func(m *ConsoleUI) {
+				m.gameState = &state.GameState{
+					Location: "deck",
+					ChatHistory: []chat.ChatMessage{
+						{Role: "user", Content: "I attack"},
+						{Role: "assistant", Content: "You swing."},
+						strike,
+						{Role: "assistant", Content: "The rat staggers."},
+						{Role: "user", Content: "I attack again"},
+						{Role: "assistant", Content: "Another blow."},
+						strike,
+					},
+				}
+				m.pendingUserMessages = []chat.ChatMessage{strike}
+				m.isStreaming = true
+				m.streamingContent = "The rat lunges"
+				m.streamingMessageIdx = 6
+			},
+			server: &state.GameState{
+				Location: "hold",
+				ChatHistory: []chat.ChatMessage{
+					{Role: "user", Content: "I attack"},
+					{Role: "assistant", Content: "You swing."},
+					strike,
+					{Role: "assistant", Content: "The rat staggers."},
+					{Role: "user", Content: "I attack again"},
+					{Role: "assistant", Content: "Another blow."},
+				},
+			},
+			check: func(t *testing.T, m ConsoleUI) {
+				if m.gameState.Location != "hold" {
+					t.Fatalf("Location = %q, want hold (metadata from server)", m.gameState.Location)
+				}
+				if got := len(m.gameState.ChatHistory); got != 7 {
+					t.Fatalf("ChatHistory len = %d, want 7 (kept local suffix)", got)
+				}
+				last := m.gameState.ChatHistory[len(m.gameState.ChatHistory)-1]
+				if last != strike {
+					t.Fatalf("second strike-back dropped: %+v", last)
+				}
+				if !m.isStreaming || m.streamingContent != "The rat lunges" || m.streamingMessageIdx != 6 {
+					t.Fatalf("streaming should stay on prefix keep: streaming=%v idx=%d content=%q",
+						m.isStreaming, m.streamingMessageIdx, m.streamingContent)
+				}
+			},
+		},
+		{
+			name: "occurrence count appends a second copy of a pending user line",
+			setup: func(m *ConsoleUI) {
+				m.gameState = &state.GameState{ChatHistory: []chat.ChatMessage{assistant}}
+				m.pendingUserMessages = []chat.ChatMessage{strike, strike}
+			},
+			server: &state.GameState{ChatHistory: []chat.ChatMessage{strike, user, followUp}},
+			check: func(t *testing.T, m ConsoleUI) {
+				if got := len(m.gameState.ChatHistory); got != 4 {
+					t.Fatalf("ChatHistory len = %d, want 4 (server + extra strike)", got)
+				}
+				last := m.gameState.ChatHistory[len(m.gameState.ChatHistory)-1]
+				if last != strike {
+					t.Fatalf("second strike not appended: %+v", last)
+				}
+				if len(m.pendingUserMessages) != 1 {
+					t.Fatalf("extra strike should stay pending, got %d", len(m.pendingUserMessages))
 				}
 			},
 		},
