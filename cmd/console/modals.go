@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -183,7 +182,7 @@ func (m ConsoleUI) handleGameStateCreated(msg gameStateCreatedMsg) (tea.Model, t
 	}
 	// Use display name instead of raw file name
 	m.chatViewport.SetContent(writeInitialContent(m.gameState, m.scenarioDisplayName(), m.chatViewport.Width-6))
-	m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.pollingActive))
+	m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.processing))
 	m.textarea.Focus() // Ensure textarea gets focus when modal closes
 	m.ready = true
 
@@ -448,12 +447,7 @@ func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
 	m.selectedProviderID = ""
 	m.selectedRules = ""
 	m.selectedTemp = 0
-	// Reset polling state
-	m.pollSeq = 0
-	m.activePollSeq = 0
-	m.pollInFlight = false
-	m.pollingActive = false
-	m.pollingStartedAt = time.Time{}
+	m.processing = false
 	m.finalMessageSent = false
 	m.err = nil // Clear any stale errors when starting new game
 	return m, m.loadScenarios()
