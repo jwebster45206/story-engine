@@ -69,15 +69,6 @@ Copy `config.template.json` to `config.json` (or `config.docker.json` for Compos
       "api_key": "sk-ant-api03-...",
       "model": "claude-sonnet-4-6",
       "backend_model": "claude-haiku-4-5"
-    },
-    "venice-rp": {
-      "vendor": "venice",
-      "display_name": "Venice Roleplay",
-      "api_key": "venice-...",
-      "model": "venice-uncensored-role-play",
-      "backend_vendor": "anthropic",
-      "backend_api_key": "sk-ant-api03-...",
-      "backend_model": "claude-haiku-4-5"
     }
   },
   "redis_url": "localhost:6379"
