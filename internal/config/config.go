@@ -16,22 +16,13 @@ const (
 // ProviderConfig is one named vendor+model pairing in the providers map.
 // Adding a provider is JSON-only; adding a vendor requires Go.
 type ProviderConfig struct {
-	// Vendor selects the wire protocol: "anthropic" or "venice".
-	Vendor string `json:"vendor"`
-	// DisplayName is shown in the console picker; optional.
-	DisplayName string `json:"display_name,omitempty"`
-	// Model is the primary chat model id.
-	Model string `json:"model"`
-	// BackendModel is the non-narrator model; falls back to Model when empty.
-	BackendModel string `json:"backend_model,omitempty"`
-	// BackendVendor, when set and different from Vendor, runs referee/reducer
-	// on a second vendor. Requires BackendModel and BackendAPIKey.
+	Vendor        string `json:"vendor"`
+	DisplayName   string `json:"display_name,omitempty"`
+	Model         string `json:"model"`
+	BackendModel  string `json:"backend_model,omitempty"`
 	BackendVendor string `json:"backend_vendor,omitempty"`
-	// BackendAPIKey is the credential for BackendVendor. Required when
-	// BackendVendor differs from Vendor; rejected when unused.
 	BackendAPIKey string `json:"backend_api_key,omitempty"`
-	// APIKey is the provider credential.
-	APIKey string `json:"api_key,omitempty"`
+	APIKey        string `json:"api_key,omitempty"`
 }
 
 // SplitBackend reports whether referee/reducer use a different vendor than the narrator.
