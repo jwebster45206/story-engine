@@ -92,6 +92,9 @@ func (v *ScenarioValidator) validateScenario(s *scenario.Scenario, filename stri
 	// Validate NPC IDs and their contingency prompts
 	for npcID, npc := range s.NPCs {
 		v.validateIDFormat("NPC ID", npcID)
+		if npc == nil {
+			continue
+		}
 		for _, cp := range npc.ContingencyPrompts {
 			v.validateContingencyPrompt(&cp)
 		}
@@ -124,6 +127,9 @@ func (v *ScenarioValidator) validateScene(scene *scenario.Scene, sceneID string)
 	// Validate NPC IDs and their contingency prompts within the scene
 	for npcID, npc := range scene.NPCs {
 		v.validateIDFormat("scene NPC ID", npcID)
+		if npc == nil {
+			continue
+		}
 		for _, cp := range npc.ContingencyPrompts {
 			v.validateContingencyPrompt(&cp)
 		}
@@ -252,19 +258,31 @@ func (v *ScenarioValidator) validateFollowingReferences(s *scenario.Scenario) {
 	// Collect all NPC IDs and names from scenario level
 	allNPCs := make(map[string]string) // map[id]name
 	for npcID, npc := range s.NPCs {
+		if npc == nil {
+			continue
+		}
 		allNPCs[npcID] = npc.Name
 	}
 	for _, scene := range s.Scenes {
 		for npcID, npc := range scene.NPCs {
+			if npc == nil {
+				continue
+			}
 			allNPCs[npcID] = npc.Name
 		}
 	}
 
 	for npcID, npc := range s.NPCs {
+		if npc == nil {
+			continue
+		}
 		v.validateNPCFollowing(npcID, npc.Following, allNPCs)
 	}
 	for sceneID, scene := range s.Scenes {
 		for npcID, npc := range scene.NPCs {
+			if npc == nil {
+				continue
+			}
 			v.validateNPCFollowing(fmt.Sprintf("%s (scene: %s)", npcID, sceneID), npc.Following, allNPCs)
 		}
 	}

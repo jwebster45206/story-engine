@@ -398,7 +398,7 @@ func TestBuildNarratorMessages_PersistentCacheSafety(t *testing.T) {
 		},
 		func() {
 			gs.Location = "cave"
-			gs.NPCs = map[string]character.NPC{
+			gs.NPCs = map[string]*character.NPC{
 				"guide": {Name: "Guide", Location: "cave"},
 			}
 		},
@@ -568,7 +568,7 @@ func TestBuildNarratorMessages_MovementUsesDestAsCurrent(t *testing.T) {
 			Exits:       map[string]string{"west": "start"},
 		},
 	}
-	gs.NPCs = map[string]character.NPC{
+	gs.NPCs = map[string]*character.NPC{
 		"hermit": {Name: "The Hermit", Location: "cave"},
 	}
 	sc := basicScenario()
@@ -711,7 +711,7 @@ func TestBuildNarratorMessages_FollowingNPCOnMove(t *testing.T) {
 		"start": {Name: "Forest Clearing", Description: "A quiet glade.", Exits: map[string]string{"east": "cave"}},
 		"cave":  {Name: "Dark Cave", Description: "A dripping limestone cave.", Exits: map[string]string{"west": "start"}},
 	}
-	gs.NPCs = map[string]character.NPC{
+	gs.NPCs = map[string]*character.NPC{
 		"pip": {Name: "Pip Upton", Location: "start", Following: "pc"},
 	}
 	sc := basicScenario()
@@ -747,7 +747,7 @@ func currentLocationBlock(s string) string {
 func TestBuildNarratorMessages_FocusedNPCDescription(t *testing.T) {
 	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "tavern"
-	gs.NPCs = map[string]character.NPC{
+	gs.NPCs = map[string]*character.NPC{
 		"pip": {
 			Name:        "Pip Upton",
 			Description: "A cheerful deckhand.",

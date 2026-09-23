@@ -93,7 +93,7 @@ func actorPresentAtLocation(gs *state.GameState, name string) bool {
 		return false
 	}
 	for key, npc := range gs.NPCs {
-		if npc.Location != gs.Location {
+		if npc == nil || npc.Location != gs.Location {
 			continue
 		}
 		if strings.EqualFold(npc.Name, name) || strings.EqualFold(key, name) {

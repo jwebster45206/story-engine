@@ -335,7 +335,7 @@ func TestGetLocation_NilLocations(t *testing.T) {
 func TestGetNPC(t *testing.T) {
 	// Create a test scenario with various NPCs
 	scenario := &Scenario{
-		NPCs: map[string]character.NPC{
+		NPCs: map[string]*character.NPC{
 			"gibbs": {
 				Name:        "Gibbs",
 				Type:        "pirate",
@@ -533,7 +533,7 @@ func TestGetNPC(t *testing.T) {
 
 func TestGetNPC_EmptyScenario(t *testing.T) {
 	scenario := &Scenario{
-		NPCs: map[string]character.NPC{},
+		NPCs: map[string]*character.NPC{},
 	}
 
 	key, found := scenario.GetNPC("anyone")

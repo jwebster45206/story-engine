@@ -168,7 +168,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "no duplicates",
 			gameState: &GameState{
 				Inventory: []string{"sword", "shield"},
-				NPCs: map[string]character.NPC{
+				NPCs: map[string]*character.NPC{
 					"guard":    {Items: []string{"key", "armor"}},
 					"merchant": {Items: []string{"potion", "gold"}},
 				},
@@ -192,7 +192,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "user inventory takes priority over NPCs",
 			gameState: &GameState{
 				Inventory: []string{"sword", "key"},
-				NPCs: map[string]character.NPC{
+				NPCs: map[string]*character.NPC{
 					"guard":    {Items: []string{"key", "armor", "sword"}},
 					"merchant": {Items: []string{"potion", "key"}},
 				},
@@ -214,7 +214,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "user inventory takes priority over locations",
 			gameState: &GameState{
 				Inventory: []string{"sword", "gem"},
-				NPCs: map[string]character.NPC{
+				NPCs: map[string]*character.NPC{
 					"guard": {Items: []string{"key", "armor"}},
 				},
 				WorldLocations: map[string]scenario.Location{
@@ -236,7 +236,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "NPC items take priority over locations",
 			gameState: &GameState{
 				Inventory: []string{"sword"},
-				NPCs: map[string]character.NPC{
+				NPCs: map[string]*character.NPC{
 					"guard":    {Items: []string{"key", "armor"}},
 					"merchant": {Items: []string{"potion", "gem"}},
 				},
@@ -260,7 +260,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "complex scenario with all priorities",
 			gameState: &GameState{
 				Inventory: []string{"legendary_sword", "master_key"},
-				NPCs: map[string]character.NPC{
+				NPCs: map[string]*character.NPC{
 					"guard":    {Items: []string{"iron_key", "chain_mail", "legendary_sword"}},
 					"merchant": {Items: []string{"health_potion", "master_key", "gold_coin"}},
 					"wizard":   {Items: []string{"spell_book", "iron_key"}},
@@ -279,7 +279,7 @@ func TestGameState_NormalizeItems(t *testing.T) {
 			name: "empty collections",
 			gameState: &GameState{
 				Inventory:      []string{},
-				NPCs:           map[string]character.NPC{},
+				NPCs:           map[string]*character.NPC{},
 				WorldLocations: map[string]scenario.Location{},
 			},
 			expectedInventory: []string{},
@@ -469,7 +469,7 @@ func TestGameState_GetContingencyPrompts_WithNPCs(t *testing.T) {
 			name: "NPC at same location shows prompts",
 			gameState: &GameState{
 				Location: "tavern",
-				NPCs: map[string]character.NPC{
+				NPCs: map[string]*character.NPC{
 					"bartender": {
 						Name:     "Bartender",
 						Location: "tavern",
@@ -492,7 +492,7 @@ func TestGameState_GetContingencyPrompts_WithNPCs(t *testing.T) {
 			name: "NPC at different location does not show prompts",
 			gameState: &GameState{
 				Location: "market",
-				NPCs: map[string]character.NPC{
+				NPCs: map[string]*character.NPC{
 					"bartender": {
 						Name:     "Bartender",
 						Location: "tavern",
@@ -517,7 +517,7 @@ func TestGameState_GetContingencyPrompts_WithNPCs(t *testing.T) {
 					"met_bartender": "true",
 					"bar_tab_paid":  "false",
 				},
-				NPCs: map[string]character.NPC{
+				NPCs: map[string]*character.NPC{
 					"bartender": {
 						Name:     "Bartender",
 						Location: "tavern",
@@ -564,7 +564,7 @@ func TestGameState_GetContingencyPrompts_WithNPCs(t *testing.T) {
 			name: "Multiple NPCs at same location",
 			gameState: &GameState{
 				Location: "market",
-				NPCs: map[string]character.NPC{
+				NPCs: map[string]*character.NPC{
 					"merchant": {
 						Name:     "Merchant",
 						Location: "market",
@@ -604,7 +604,7 @@ func TestGameState_GetContingencyPrompts_WithNPCs(t *testing.T) {
 			gameState: &GameState{
 				Location:  "tavern",
 				SceneName: "opening",
-				NPCs: map[string]character.NPC{
+				NPCs: map[string]*character.NPC{
 					"bartender": {
 						Name:     "Bartender",
 						Location: "tavern",

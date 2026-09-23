@@ -2,6 +2,7 @@ package character
 
 import (
 	"maps"
+	"slices"
 
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
@@ -122,6 +123,22 @@ func NewNPCFromTemplate(template *NPC, overrides *NPC) *NPC {
 	}
 
 	return &n
+}
+
+// Clone returns a deep copy with its own maps and slices. Game state holds
+// NPCs by pointer, so anything built from a scenario template must be cloned
+// first or later mutation would write back into the template.
+// ContingencyPrompts share their When pointers, which are read-only config.
+func (n *NPC) Clone() *NPC {
+	if n == nil {
+		return nil
+	}
+	c := *n
+	c.Items = slices.Clone(n.Items)
+	c.Attributes = maps.Clone(n.Attributes)
+	c.CombatMods = maps.Clone(n.CombatMods)
+	c.ContingencyPrompts = slices.Clone(n.ContingencyPrompts)
+	return &c
 }
 
 // TakeDamage reduces the NPC's HP by the specified amount (floor: 0).

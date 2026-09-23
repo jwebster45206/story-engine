@@ -106,7 +106,7 @@ func TestPromptState_ToString_WithNPCsHere(t *testing.T) {
 				Description: "A bustling marketplace.",
 			},
 		},
-		NPCs: map[string]character.NPC{
+		NPCs: map[string]*character.NPC{
 			"merchant": {
 				Name:        "Greedy Merchant",
 				Disposition: "neutral",
@@ -133,7 +133,7 @@ func TestPromptState_ToString_FocusedNPCGetsDescription(t *testing.T) {
 		WorldLocations: map[string]scenario.Location{
 			"market": {Name: "Town Market"},
 		},
-		NPCs: map[string]character.NPC{
+		NPCs: map[string]*character.NPC{
 			"merchant": {
 				Name:        "Greedy Merchant",
 				Description: "A rotund man with a calculating look in his eyes.",
@@ -162,7 +162,7 @@ func TestPromptState_ToString_NPCsElsewhere(t *testing.T) {
 				Name: "Sleepy Mermaid",
 			},
 		},
-		NPCs: map[string]character.NPC{
+		NPCs: map[string]*character.NPC{
 			"calypso": {
 				Name:        "Calypso",
 				Description: "A bartender known for her enchanting stories.",
@@ -218,7 +218,7 @@ func TestPromptState_ToString_Comprehensive(t *testing.T) {
 				Preview:     "The cargo hold below decks.",
 			},
 		},
-		NPCs: map[string]character.NPC{
+		NPCs: map[string]*character.NPC{
 			"captain": {
 				Name:        "Captain Blackbeard",
 				Disposition: "hostile",
@@ -525,7 +525,7 @@ func TestPromptState_ToSlimString(t *testing.T) {
 				Preview:     "The cargo hold below decks.",
 			},
 		},
-		NPCs: map[string]character.NPC{
+		NPCs: map[string]*character.NPC{
 			"captain": {
 				Name:     "Captain Blackbeard",
 				Location: "deck",
@@ -617,7 +617,7 @@ func TestPromptState_ToString_MovementUsesDestAsCurrent(t *testing.T) {
 				},
 			},
 		},
-		NPCs: map[string]character.NPC{
+		NPCs: map[string]*character.NPC{
 			"hermit": {Name: "The Hermit", Location: "cave"},
 		},
 	}
@@ -650,7 +650,7 @@ func TestPromptState_ToString_FollowingNPCOnMove(t *testing.T) {
 			"start": {Name: "Forest Clearing", Exits: map[string]string{"east": "cave"}},
 			"cave":  {Name: "Dark Cave", Exits: map[string]string{"west": "start"}},
 		},
-		NPCs: map[string]character.NPC{
+		NPCs: map[string]*character.NPC{
 			"pip": {Name: "Pip Upton", Location: "start", Following: "pc"},
 		},
 	}

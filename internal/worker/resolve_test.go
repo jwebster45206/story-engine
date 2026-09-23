@@ -226,7 +226,7 @@ func TestActorPresentAtLocation(t *testing.T) {
 	rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 5, MaxHP: 5}
 	gs := &state.GameState{
 		Location: "tavern",
-		NPCs: map[string]character.NPC{
+		NPCs: map[string]*character.NPC{
 			"pip": {Name: "Pip Upton", Location: "tavern"},
 		},
 		WorldLocations: map[string]scenario.Location{
@@ -236,7 +236,7 @@ func TestActorPresentAtLocation(t *testing.T) {
 	if !actorPresentAtLocation(gs, "Giant Rat") || !actorPresentAtLocation(gs, "Pip Upton") {
 		t.Fatal("expected present actors")
 	}
-	gs.NPCs["pip"] = character.NPC{Name: "Pip Upton", Location: "cellar"}
+	gs.NPCs["pip"] = &character.NPC{Name: "Pip Upton", Location: "cellar"}
 	if actorPresentAtLocation(gs, "Pip Upton") {
 		t.Error("NPC in another room should not be present")
 	}
