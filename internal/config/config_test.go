@@ -123,3 +123,110 @@ func TestProviderConfigJSONRoundTrip(t *testing.T) {
 		t.Fatalf("unexpected %#v", pc)
 	}
 }
+
+func TestLoad_SameVendorBackendVendor(t *testing.T) {
+	path := writeConfig(t, `{
+		"providers":{"only":{"vendor":"anthropic","api_key":"k","model":"m","backend_vendor":"anthropic","backend_model":"b"}},
+		"redis_url":"localhost:6379"
+	}`)
+	cfg, err := loadFrom(t, path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	p := cfg.Providers["only"]
+	if p.BackendVendor != VendorAnthropic {
+		t.Fatalf("backend_vendor = %q", p.BackendVendor)
+	}
+	if p.SplitBackend() {
+		t.Fatal("same-vendor backend_vendor should not split")
+	}
+}
+
+func TestLoad_SplitBackendVendor(t *testing.T) {
+	path := writeConfig(t, `{
+		"providers":{"venice-rp":{
+			"vendor":"venice",
+			"api_key":"vk",
+			"model":"rp",
+			"backend_vendor":"anthropic",
+			"backend_api_key":"ak",
+			"backend_model":"claude-haiku-4-5"
+		}},
+		"redis_url":"localhost:6379"
+	}`)
+	cfg, err := loadFrom(t, path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	p := cfg.Providers["venice-rp"]
+	if p.Vendor != VendorVenice || p.BackendVendor != VendorAnthropic {
+		t.Fatalf("vendors = %q / %q", p.Vendor, p.BackendVendor)
+	}
+	if p.BackendAPIKey != "ak" || p.BackendModel != "claude-haiku-4-5" {
+		t.Fatalf("backend fields = %#v", p)
+	}
+	if !p.SplitBackend() {
+		t.Fatal("expected split backend")
+	}
+}
+
+func TestLoad_SplitBackendMissingModel(t *testing.T) {
+	path := writeConfig(t, `{
+		"providers":{"x":{"vendor":"venice","api_key":"vk","model":"rp","backend_vendor":"anthropic","backend_api_key":"ak"}},
+		"redis_url":"localhost:6379"
+	}`)
+	if _, err := loadFrom(t, path); err == nil {
+		t.Fatal("expected error for missing backend_model")
+	}
+}
+
+func TestLoad_SplitBackendMissingAPIKey(t *testing.T) {
+	path := writeConfig(t, `{
+		"providers":{"x":{"vendor":"venice","api_key":"vk","model":"rp","backend_vendor":"anthropic","backend_model":"haiku"}},
+		"redis_url":"localhost:6379"
+	}`)
+	if _, err := loadFrom(t, path); err == nil {
+		t.Fatal("expected error for missing backend_api_key")
+	}
+}
+
+func TestLoad_UnknownBackendVendor(t *testing.T) {
+	path := writeConfig(t, `{
+		"providers":{"x":{"vendor":"venice","api_key":"vk","model":"rp","backend_vendor":"groq","backend_api_key":"ak","backend_model":"m"}},
+		"redis_url":"localhost:6379"
+	}`)
+	if _, err := loadFrom(t, path); err == nil {
+		t.Fatal("expected error for unknown backend_vendor")
+	}
+}
+
+func TestLoad_UnusedBackendAPIKeyWithoutVendor(t *testing.T) {
+	path := writeConfig(t, `{
+		"providers":{"x":{"vendor":"anthropic","api_key":"k","model":"m","backend_api_key":"ak"}},
+		"redis_url":"localhost:6379"
+	}`)
+	if _, err := loadFrom(t, path); err == nil {
+		t.Fatal("expected error for unused backend_api_key")
+	}
+}
+
+func TestLoad_UnusedBackendAPIKeySameVendor(t *testing.T) {
+	path := writeConfig(t, `{
+		"providers":{"x":{"vendor":"anthropic","api_key":"k","model":"m","backend_vendor":"anthropic","backend_api_key":"ak"}},
+		"redis_url":"localhost:6379"
+	}`)
+	if _, err := loadFrom(t, path); err == nil {
+		t.Fatal("expected error for unused backend_api_key when vendors match")
+	}
+}
+
+func TestProviderConfigJSONRoundTripSplit(t *testing.T) {
+	raw := []byte(`{"vendor":"venice","model":"rp","backend_vendor":"anthropic","backend_api_key":"ak","backend_model":"haiku"}`)
+	var pc ProviderConfig
+	if err := json.Unmarshal(raw, &pc); err != nil {
+		t.Fatal(err)
+	}
+	if pc.BackendVendor != "anthropic" || pc.BackendAPIKey != "ak" || pc.BackendModel != "haiku" {
+		t.Fatalf("unexpected %#v", pc)
+	}
+}

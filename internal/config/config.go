@@ -24,8 +24,22 @@ type ProviderConfig struct {
 	Model string `json:"model"`
 	// BackendModel is the non-narrator model; falls back to Model when empty.
 	BackendModel string `json:"backend_model,omitempty"`
+	// BackendVendor, when set and different from Vendor, runs referee/reducer
+	// on a second vendor. Requires BackendModel and BackendAPIKey.
+	BackendVendor string `json:"backend_vendor,omitempty"`
+	// BackendAPIKey is the credential for BackendVendor. Required when
+	// BackendVendor differs from Vendor; rejected when unused.
+	BackendAPIKey string `json:"backend_api_key,omitempty"`
 	// APIKey is the provider credential.
 	APIKey string `json:"api_key,omitempty"`
+}
+
+// SplitBackend reports whether referee/reducer use a different vendor than the narrator.
+func (p *ProviderConfig) SplitBackend() bool {
+	if p == nil {
+		return false
+	}
+	return p.BackendVendor != "" && p.BackendVendor != p.Vendor
 }
 
 type Config struct {
@@ -72,18 +86,19 @@ func (c *Config) validateProviders() error {
 		if p == nil {
 			return fmt.Errorf("providers[%q]: entry is null", name)
 		}
-		vendor := strings.ToLower(strings.TrimSpace(p.Vendor))
-		switch vendor {
-		case VendorAnthropic, VendorVenice:
-			p.Vendor = vendor
-		default:
-			return fmt.Errorf("providers[%q]: unknown vendor %q (supported: %s, %s)", name, p.Vendor, VendorAnthropic, VendorVenice)
+		vendor, err := parseVendor(name, "vendor", p.Vendor)
+		if err != nil {
+			return err
 		}
+		p.Vendor = vendor
 		if strings.TrimSpace(p.Model) == "" {
 			return fmt.Errorf("providers[%q]: model is required", name)
 		}
 		if strings.TrimSpace(p.APIKey) == "" {
 			return fmt.Errorf("providers[%q]: api_key is required", name)
+		}
+		if err := p.validateBackend(name); err != nil {
+			return err
 		}
 	}
 
@@ -99,6 +114,47 @@ func (c *Config) validateProviders() error {
 	if _, ok := c.Providers[c.DefaultProvider]; !ok {
 		return fmt.Errorf("default_provider %q does not match any entry in providers", c.DefaultProvider)
 	}
+	return nil
+}
+
+func parseVendor(name, field, value string) (string, error) {
+	vendor := strings.ToLower(strings.TrimSpace(value))
+	switch vendor {
+	case VendorAnthropic, VendorVenice:
+		return vendor, nil
+	default:
+		return "", fmt.Errorf("providers[%q]: unknown %s %q (supported: %s, %s)", name, field, value, VendorAnthropic, VendorVenice)
+	}
+}
+
+func (p *ProviderConfig) validateBackend(name string) error {
+	backendVendorRaw := strings.TrimSpace(p.BackendVendor)
+	backendKey := strings.TrimSpace(p.BackendAPIKey)
+	if backendVendorRaw == "" {
+		if backendKey != "" {
+			return fmt.Errorf("providers[%q]: backend_api_key is unused without backend_vendor", name)
+		}
+		p.BackendVendor = ""
+		return nil
+	}
+	backendVendor, err := parseVendor(name, "backend_vendor", backendVendorRaw)
+	if err != nil {
+		return err
+	}
+	p.BackendVendor = backendVendor
+	if backendVendor == p.Vendor {
+		if backendKey != "" {
+			return fmt.Errorf("providers[%q]: backend_api_key is unused when backend_vendor matches vendor", name)
+		}
+		return nil
+	}
+	if strings.TrimSpace(p.BackendModel) == "" {
+		return fmt.Errorf("providers[%q]: backend_model is required when backend_vendor differs from vendor", name)
+	}
+	if backendKey == "" {
+		return fmt.Errorf("providers[%q]: backend_api_key is required when backend_vendor differs from vendor", name)
+	}
+	p.BackendAPIKey = backendKey
 	return nil
 }
 

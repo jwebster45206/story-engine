@@ -43,6 +43,19 @@ func NewRegistry(cfg *config.Config, logger *slog.Logger) (*Registry, error) {
 		if err != nil {
 			return nil, err
 		}
+		if pc.SplitBackend() {
+			backendPC := &config.ProviderConfig{
+				Vendor:       pc.BackendVendor,
+				APIKey:       pc.BackendAPIKey,
+				Model:        pc.BackendModel,
+				BackendModel: pc.BackendModel,
+			}
+			backend, err := newServiceForVendor(name, backendPC, logger)
+			if err != nil {
+				return nil, err
+			}
+			svc = &splitService{narrator: svc, backend: backend}
+		}
 		display := pc.DisplayName
 		if display == "" {
 			display = name

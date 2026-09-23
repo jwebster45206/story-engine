@@ -33,7 +33,7 @@ An optional console TUI lives under `cmd/console`.
 
 ### LLM layer
 
-Each player turn uses three agents: a **referee** (backend model) that allows or denies the attempt, a **narrator** that streams to the player, then a **reducer** (often the same cheaper backend model) that extracts structured game changes. Named providers in config pick the vendor and the narrator vs backend models; the game stores the provider name.
+Each player turn uses three agents: a **referee** (backend model) that allows or denies the attempt, a **narrator** that streams to the player, then a **reducer** (often the same cheaper backend model) that extracts structured game changes. Named providers in config pick the vendor and the narrator vs backend models; the game stores the provider name. Optional `backend_vendor` / `backend_api_key` on a provider run referee and reducer on a second vendor (for example a Venice roleplay narrator with an Anthropic Haiku backend) without changing what clients select.
 
 ### Authentication
 
@@ -68,6 +68,15 @@ Copy `config.template.json` to `config.json` (or `config.docker.json` for Compos
       "display_name": "Claude Sonnet 4.6",
       "api_key": "sk-ant-api03-...",
       "model": "claude-sonnet-4-6",
+      "backend_model": "claude-haiku-4-5"
+    },
+    "venice-rp": {
+      "vendor": "venice",
+      "display_name": "Venice Roleplay",
+      "api_key": "venice-...",
+      "model": "venice-uncensored-role-play",
+      "backend_vendor": "anthropic",
+      "backend_api_key": "sk-ant-api03-...",
       "backend_model": "claude-haiku-4-5"
     }
   },
