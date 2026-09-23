@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -18,121 +19,209 @@ func testLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
-func TestNewRegistry_Dispatch(t *testing.T) {
-	cfg := &config.Config{
+type wantService struct {
+	kind     string
+	narrator string
+	backend  string
+	info     ProviderInfo
+}
+
+func serviceKind(svc LLMService) (kind, narrator, backend string) {
+	switch s := svc.(type) {
+	case *splitService:
+		n, _, _ := serviceKind(s.narrator)
+		b, _, _ := serviceKind(s.backend)
+		return "split", n, b
+	case *AnthropicService:
+		return "anthropic", "", ""
+	case *VeniceService:
+		return "venice", "", ""
+	default:
+		return fmt.Sprintf("%T", svc), "", ""
+	}
+}
+
+func TestNewRegistry(t *testing.T) {
+	tests := []struct {
+		name        string
+		cfg         *config.Config
+		wantErr     string
+		wantDefault string
+		want        map[string]wantService
+	}{
+		{
+			name: "dispatches by vendor",
+			cfg: &config.Config{
+				DefaultProvider: "sonnet",
+				Providers: map[string]*config.ProviderConfig{
+					"sonnet": {Vendor: config.VendorAnthropic, APIKey: "k", Model: "m1"},
+					"uncen":  {Vendor: config.VendorVenice, APIKey: "k", Model: "m2"},
+				},
+			},
+			wantDefault: "sonnet",
+			want: map[string]wantService{
+				"sonnet": {
+					kind: "anthropic",
+					info: ProviderInfo{Name: "sonnet", DisplayName: "sonnet", Vendor: config.VendorAnthropic, Model: "m1"},
+				},
+				"uncen": {
+					kind: "venice",
+					info: ProviderInfo{Name: "uncen", DisplayName: "uncen", Vendor: config.VendorVenice, Model: "m2"},
+				},
+			},
+		},
+		{
+			name: "split backend wraps narrator and backend vendors",
+			cfg: &config.Config{
+				DefaultProvider: "venice-rp",
+				Providers: map[string]*config.ProviderConfig{
+					"venice-rp": {
+						Vendor:        config.VendorVenice,
+						DisplayName:   "Venice Roleplay",
+						APIKey:        "vk",
+						Model:         "venice-uncensored-role-play",
+						BackendVendor: config.VendorAnthropic,
+						BackendAPIKey: "ak",
+						BackendModel:  "claude-haiku-4-5",
+					},
+				},
+			},
+			wantDefault: "venice-rp",
+			want: map[string]wantService{
+				"venice-rp": {
+					kind:     "split",
+					narrator: "venice",
+					backend:  "anthropic",
+					info: ProviderInfo{
+						Name:        "venice-rp",
+						DisplayName: "Venice Roleplay",
+						Vendor:      config.VendorVenice,
+						Model:       "venice-uncensored-role-play",
+					},
+				},
+			},
+		},
+		{
+			name: "same-vendor backend_vendor is not a split",
+			cfg: &config.Config{
+				DefaultProvider: "sonnet",
+				Providers: map[string]*config.ProviderConfig{
+					"sonnet": {
+						Vendor:        config.VendorAnthropic,
+						APIKey:        "k",
+						Model:         "m1",
+						BackendVendor: config.VendorAnthropic,
+						BackendModel:  "haiku",
+					},
+				},
+			},
+			wantDefault: "sonnet",
+			want: map[string]wantService{
+				"sonnet": {
+					kind: "anthropic",
+					info: ProviderInfo{Name: "sonnet", DisplayName: "sonnet", Vendor: config.VendorAnthropic, Model: "m1"},
+				},
+			},
+		},
+		{
+			name:    "nil config",
+			wantErr: "config is required",
+		},
+		{
+			name: "unsupported vendor",
+			cfg: &config.Config{
+				DefaultProvider: "x",
+				Providers: map[string]*config.ProviderConfig{
+					"x": {Vendor: "groq", APIKey: "k", Model: "m"},
+				},
+			},
+			wantErr: `unsupported vendor "groq"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reg, err := NewRegistry(tt.cfg, testLogger())
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("error %q, want substring %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("NewRegistry: %v", err)
+			}
+			if reg.Default() != tt.wantDefault {
+				t.Fatalf("Default = %q, want %q", reg.Default(), tt.wantDefault)
+			}
+			for name, want := range tt.want {
+				svc, err := reg.Get(name)
+				if err != nil {
+					t.Fatalf("Get(%q): %v", name, err)
+				}
+				kind, narrator, backend := serviceKind(svc)
+				if kind != want.kind || narrator != want.narrator || backend != want.backend {
+					t.Fatalf("%s: got kind=%s narrator=%s backend=%s, want %+v", name, kind, narrator, backend, want)
+				}
+				info, ok := reg.Info(name)
+				if !ok || info != want.info {
+					t.Fatalf("%s info = %#v ok=%v, want %#v", name, info, ok, want.info)
+				}
+			}
+		})
+	}
+}
+
+func TestRegistry_Get(t *testing.T) {
+	reg, err := NewRegistry(&config.Config{
 		DefaultProvider: "sonnet",
 		Providers: map[string]*config.ProviderConfig{
 			"sonnet": {Vendor: config.VendorAnthropic, APIKey: "k", Model: "m1"},
 			"uncen":  {Vendor: config.VendorVenice, APIKey: "k", Model: "m2"},
 		},
-	}
-	reg, err := NewRegistry(cfg, testLogger())
+	}, testLogger())
 	if err != nil {
 		t.Fatalf("NewRegistry: %v", err)
 	}
-	if reg.Default() != "sonnet" {
-		t.Fatalf("Default = %q", reg.Default())
-	}
 
-	svc, err := reg.Get("sonnet")
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name     string
+		get      string
+		wantKind string
+		wantErr  string
+	}{
+		{name: "named anthropic", get: "sonnet", wantKind: "anthropic"},
+		{name: "named venice", get: "uncen", wantKind: "venice"},
+		{name: "empty uses default", get: "", wantKind: "anthropic"},
+		{name: "unknown", get: "nope", wantErr: `unknown provider "nope"`},
 	}
-	if _, ok := svc.(*AnthropicService); !ok {
-		t.Fatalf("expected *AnthropicService, got %T", svc)
-	}
-
-	svc, err = reg.Get("uncen")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := svc.(*VeniceService); !ok {
-		t.Fatalf("expected *VeniceService, got %T", svc)
-	}
-
-	svc, err = reg.Get("")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := svc.(*AnthropicService); !ok {
-		t.Fatalf("empty name should resolve default anthropic, got %T", svc)
-	}
-
-	if _, err := reg.Get("nope"); err == nil {
-		t.Fatal("expected error for unknown provider")
-	}
-
-	info, ok := reg.Info("sonnet")
-	if !ok || info.Model != "m1" || info.Vendor != config.VendorAnthropic {
-		t.Fatalf("unexpected info: %#v", info)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, err := reg.Get(tt.get)
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("error %q, want substring %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			kind, _, _ := serviceKind(svc)
+			if kind != tt.wantKind {
+				t.Fatalf("kind = %s, want %s", kind, tt.wantKind)
+			}
+		})
 	}
 }
 
-func TestNewRegistry_SplitBackend(t *testing.T) {
-	cfg := &config.Config{
-		DefaultProvider: "venice-rp",
-		Providers: map[string]*config.ProviderConfig{
-			"venice-rp": {
-				Vendor:        config.VendorVenice,
-				APIKey:        "vk",
-				Model:         "venice-uncensored-role-play",
-				BackendVendor: config.VendorAnthropic,
-				BackendAPIKey: "ak",
-				BackendModel:  "claude-haiku-4-5",
-			},
-		},
-	}
-	reg, err := NewRegistry(cfg, testLogger())
-	if err != nil {
-		t.Fatalf("NewRegistry: %v", err)
-	}
-	svc, err := reg.Get("venice-rp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	split, ok := svc.(*splitService)
-	if !ok {
-		t.Fatalf("expected *splitService, got %T", svc)
-	}
-	if _, ok := split.narrator.(*VeniceService); !ok {
-		t.Fatalf("narrator = %T", split.narrator)
-	}
-	if _, ok := split.backend.(*AnthropicService); !ok {
-		t.Fatalf("backend = %T", split.backend)
-	}
-	info, ok := reg.Info("venice-rp")
-	if !ok || info.Vendor != config.VendorVenice || info.Model != "venice-uncensored-role-play" {
-		t.Fatalf("catalog should stay narrator-facing: %#v", info)
-	}
-}
-
-func TestNewRegistry_SameVendorBackendDoesNotSplit(t *testing.T) {
-	cfg := &config.Config{
-		DefaultProvider: "sonnet",
-		Providers: map[string]*config.ProviderConfig{
-			"sonnet": {
-				Vendor:        config.VendorAnthropic,
-				APIKey:        "k",
-				Model:         "m1",
-				BackendVendor: config.VendorAnthropic,
-				BackendModel:  "haiku",
-			},
-		},
-	}
-	reg, err := NewRegistry(cfg, testLogger())
-	if err != nil {
-		t.Fatalf("NewRegistry: %v", err)
-	}
-	svc, err := reg.Get("sonnet")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := svc.(*AnthropicService); !ok {
-		t.Fatalf("expected *AnthropicService, got %T", svc)
-	}
-}
-
-func TestNewRegistry_SplitBackendHTTP(t *testing.T) {
+func TestRegistry_SplitBackendHTTP(t *testing.T) {
 	var veniceHits, anthropicHits int
 	veniceServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		veniceHits++
@@ -160,7 +249,7 @@ func TestNewRegistry_SplitBackendHTTP(t *testing.T) {
 	}))
 	defer anthropicServer.Close()
 
-	cfg := &config.Config{
+	reg, err := NewRegistry(&config.Config{
 		DefaultProvider: "venice-rp",
 		Providers: map[string]*config.ProviderConfig{
 			"venice-rp": {
@@ -172,8 +261,7 @@ func TestNewRegistry_SplitBackendHTTP(t *testing.T) {
 				BackendModel:  "claude-haiku-4-5",
 			},
 		},
-	}
-	reg, err := NewRegistry(cfg, testLogger())
+	}, testLogger())
 	if err != nil {
 		t.Fatalf("NewRegistry: %v", err)
 	}
