@@ -33,7 +33,7 @@ An optional console TUI lives under `cmd/console`.
 
 ### LLM layer
 
-Each player turn uses three agents: a **referee** (backend model) that allows or denies the attempt, a **narrator** that streams to the player, then a **reducer** (often the same cheaper backend model) that extracts structured game changes. Named providers in config pick the vendor and the narrator vs backend models; the game stores the provider name. Optional `backend_vendor` / `backend_api_key` on a provider run referee and reducer on a second vendor (for example a Venice roleplay narrator with an Anthropic Haiku backend) without changing what clients select.
+Each player turn uses three agents: a **referee** (backend model) that allows or denies the attempt, a **narrator** that streams to the player, then a **reducer** (often the same cheaper backend model) that extracts structured game changes. Named providers in config pick the vendor and the narrator vs backend models; the game stores the provider name.
 
 ### Authentication
 
