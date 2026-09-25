@@ -5,7 +5,7 @@
   "ac": 13,
   "hp": 15,
   "max_hp": 15,
-  "attributes": {
+  "abilities": {
     "strength": 16,
     "dexterity": 12,
     "constitution": 16,
@@ -13,9 +13,23 @@
     "wisdom": 11,
     "charisma": 10
   },
-  "combat_modifiers": {
+  "modifiers": {
     "greataxe": 5,
     "javelin": 5
+  },
+  "actions": {
+    "greataxe": {
+      "name": "Greataxe",
+      "type": "attack",
+      "attempt": "1d20+5",
+      "effect": "1d12"
+    },
+    "javelin": {
+      "name": "Javelin",
+      "type": "attack",
+      "attempt": "1d20+5",
+      "effect": "1d6"
+    }
   },
   "items": ["rusty greataxe"],
   "drop_items_on_defeat": true

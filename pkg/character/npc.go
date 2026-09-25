@@ -26,14 +26,9 @@ type NPC struct {
 	Following   string   `json:"following,omitempty"`   // ID of character being followed ("pc" or NPC ID); empty = not following
 	Items       []string `json:"items,omitempty"`       // items the NPC has or can give
 
-	// Combat stats — only populated for standalone NPCs loaded from templates.
-	// These are optional even in standalone files; omit them for purely narrative NPCs.
-	AC                int            `json:"ac,omitempty"`
-	HP                int            `json:"hp,omitempty"`
-	MaxHP             int            `json:"max_hp,omitempty"`
-	Attributes        map[string]int `json:"attributes,omitempty"`       // e.g. {"strength": 14, "dexterity": 12}
-	CombatMods        map[string]int `json:"combat_modifiers,omitempty"` // e.g. {"sword": 3}
-	DropItemsOnDefeat bool           `json:"drop_items_on_defeat,omitempty"`
+	// Mechanical stats. Optional; omit them for purely narrative NPCs.
+	Stats
+	DropItemsOnDefeat bool `json:"drop_items_on_defeat,omitempty"`
 
 	ContingencyPrompts []conditionals.ContingencyPrompt `json:"contingency_prompts,omitempty"` // NPC-specific prompts shown when at player location
 }
@@ -48,8 +43,8 @@ func NewNPCFromTemplate(template *NPC, overrides *NPC) *NPC {
 		return nil
 	}
 
-	// Start with a copy of the template
-	n := *template
+	// Clone so map overlays do not write back into the template.
+	n := *template.Clone()
 
 	// Always carry the template reference forward
 	n.TemplateID = template.TemplateID
@@ -93,6 +88,8 @@ func NewNPCFromTemplate(template *NPC, overrides *NPC) *NPC {
 		n.MaxHP = overrides.MaxHP
 	}
 
+	n.Abilities = n.Abilities.merge(overrides.Abilities)
+
 	// Map overrides (merge on top of template)
 	if len(overrides.Attributes) > 0 {
 		if n.Attributes == nil {
@@ -100,11 +97,17 @@ func NewNPCFromTemplate(template *NPC, overrides *NPC) *NPC {
 		}
 		maps.Copy(n.Attributes, overrides.Attributes)
 	}
-	if len(overrides.CombatMods) > 0 {
-		if n.CombatMods == nil {
-			n.CombatMods = make(map[string]int)
+	if len(overrides.Modifiers) > 0 {
+		if n.Modifiers == nil {
+			n.Modifiers = make(map[string]int)
 		}
-		maps.Copy(n.CombatMods, overrides.CombatMods)
+		maps.Copy(n.Modifiers, overrides.Modifiers)
+	}
+	if len(overrides.Actions) > 0 {
+		if n.Actions == nil {
+			n.Actions = make(map[string]Action)
+		}
+		maps.Copy(n.Actions, overrides.Actions)
 	}
 
 	// Items: overrides replace template items if provided
@@ -131,32 +134,20 @@ func (n *NPC) Clone() *NPC {
 	}
 	c := *n
 	c.Items = slices.Clone(n.Items)
-	c.Attributes = maps.Clone(n.Attributes)
-	c.CombatMods = maps.Clone(n.CombatMods)
 	c.ContingencyPrompts = slices.Clone(n.ContingencyPrompts)
+	c.Stats = n.Stats.Clone()
 	return &c
 }
 
-// TakeDamage reduces the NPC's HP by the specified amount (floor: 0).
-// Only meaningful for standalone NPCs with combat stats (HP > 0).
-func (n *NPC) TakeDamage(amount int) {
-	if amount <= 0 {
-		return
+// UnmarshalJSON accepts the deprecated "combat_modifiers" key.
+// Embedding promotes Stats fields, so Stats.UnmarshalJSON does not run here.
+func (n *NPC) UnmarshalJSON(data []byte) error {
+	type plain NPC
+	var decoded plain
+	if err := unmarshalAliased(data, &decoded); err != nil {
+		return err
 	}
-	n.HP -= amount
-	if n.HP < 0 {
-		n.HP = 0
-	}
-}
-
-// Heal increases the NPC's HP by the specified amount (ceiling: MaxHP).
-// Only meaningful for standalone NPCs with combat stats (MaxHP > 0).
-func (n *NPC) Heal(amount int) {
-	if amount <= 0 {
-		return
-	}
-	n.HP += amount
-	if n.MaxHP > 0 && n.HP > n.MaxHP {
-		n.HP = n.MaxHP
-	}
+	decoded.liftAbilityAttributes()
+	*n = NPC(decoded)
+	return nil
 }

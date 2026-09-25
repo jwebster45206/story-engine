@@ -98,6 +98,7 @@ func (v *ScenarioValidator) validateScenario(s *scenario.Scenario, filename stri
 		for _, cp := range npc.ContingencyPrompts {
 			v.validateContingencyPrompt(&cp)
 		}
+		v.validateActorActions(npc.Stats, fmt.Sprintf("NPC '%s'", npcID))
 	}
 
 	// Validate scene IDs and their contents
@@ -133,6 +134,7 @@ func (v *ScenarioValidator) validateScene(scene *scenario.Scene, sceneID string)
 		for _, cp := range npc.ContingencyPrompts {
 			v.validateContingencyPrompt(&cp)
 		}
+		v.validateActorActions(npc.Stats, fmt.Sprintf("scene NPC '%s'", npcID))
 	}
 
 	// Validate conditional keys (map keys are the conditional IDs)
@@ -324,11 +326,21 @@ func isValidScenarioFilename(name string) bool {
 	return validFilenameRegex.MatchString(name)
 }
 
+func (v *ScenarioValidator) validateActorActions(stats character.Stats, what string) {
+	if err := stats.ValidateActions(); err != nil {
+		v.addError(fmt.Sprintf("%s: %v", what, err))
+	}
+}
+
 // validateLocationMonsters validates monsters in a location
 func (v *ScenarioValidator) validateLocationMonsters(monsters map[string]*character.Monster, locationID string, context string) {
 	for instanceID, monster := range monsters {
+		if monster == nil {
+			continue
+		}
 		// Validate instance ID format
 		v.validateIDFormat(fmt.Sprintf("monster instance ID in location %s (%s)", locationID, context), instanceID)
+		v.validateActorActions(monster.Stats, fmt.Sprintf("monster '%s' in location %s (%s)", instanceID, locationID, context))
 
 		// Validate required fields
 		if monster.TemplateID == "" {

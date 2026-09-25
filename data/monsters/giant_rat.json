@@ -5,8 +5,16 @@
   "ac": 8,
   "hp": 4,
   "max_hp": 4,
-  "combat_modifiers": {
+  "modifiers": {
     "bite": 2
+  },
+  "actions": {
+    "bite": {
+      "name": "Bite",
+      "type": "attack",
+      "attempt": "1d20+2",
+      "effect": "1d4"
+    }
   },
   "items": ["rat_pelt"],
   "drop_items_on_defeat": true

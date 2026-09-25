@@ -5,7 +5,7 @@
   "pronouns": "he/him",
   "description": "A curious wanderer.",
   "opening_prompt": "You are a wandering adventurer. ",
-  "stats": {
+  "abilities": {
     "strength": 10,
     "dexterity": 10,
     "constitution": 10,
@@ -15,5 +15,13 @@
   },
   "hp": 10,
   "max_hp": 10,
-  "ac": 10
+  "ac": 10,
+  "actions": {
+    "strike": {
+      "name": "Strike",
+      "type": "attack",
+      "attempt": "1d20",
+      "effect": "1d4"
+    }
+  }
 }

@@ -14,13 +14,9 @@ type Monster struct {
 	Description string `json:"description,omitempty"`
 	Location    string `json:"location,omitempty"`
 
-	AC    int `json:"ac,omitempty"`
-	HP    int `json:"hp,omitempty"`
-	MaxHP int `json:"max_hp,omitempty"`
-
-	Attributes map[string]int `json:"attributes,omitempty"`       // Flexible key-value attributes (e.g., "strength": 16)
-	CombatMods map[string]int `json:"combat_modifiers,omitempty"` // Combat modifiers (e.g., "bite": 5)
-	Items      []string       `json:"items,omitempty"`            // Items dropped on defeat
+	// Mechanical stats. Optional for a template that is only a name and description.
+	Stats
+	Items []string `json:"items,omitempty"` // Items dropped on defeat
 
 	DropItemsOnDefeat bool `json:"drop_items_on_defeat,omitempty"`
 }
@@ -42,8 +38,8 @@ func NewMonster(template *Monster, overrides *Monster) *Monster {
 		return nil
 	}
 
-	// Set the instance ID and location from overrides (required fields)
-	m := *template
+	// Clone so map overlays do not write back into the template.
+	m := *template.Clone()
 	m.ID = overrides.ID
 	m.Location = overrides.Location
 
@@ -62,17 +58,24 @@ func NewMonster(template *Monster, overrides *Monster) *Monster {
 	if overrides.MaxHP != 0 {
 		m.MaxHP = overrides.MaxHP
 	}
+	m.Abilities = m.Abilities.merge(overrides.Abilities)
 	if len(overrides.Attributes) > 0 {
 		if m.Attributes == nil {
 			m.Attributes = make(map[string]int)
 		}
 		maps.Copy(m.Attributes, overrides.Attributes)
 	}
-	if len(overrides.CombatMods) > 0 {
-		if m.CombatMods == nil {
-			m.CombatMods = make(map[string]int)
+	if len(overrides.Modifiers) > 0 {
+		if m.Modifiers == nil {
+			m.Modifiers = make(map[string]int)
 		}
-		maps.Copy(m.CombatMods, overrides.CombatMods)
+		maps.Copy(m.Modifiers, overrides.Modifiers)
+	}
+	if len(overrides.Actions) > 0 {
+		if m.Actions == nil {
+			m.Actions = make(map[string]Action)
+		}
+		maps.Copy(m.Actions, overrides.Actions)
 	}
 	if len(overrides.Items) > 0 {
 		m.Items = overrides.Items
@@ -91,39 +94,22 @@ func (m *Monster) Clone() *Monster {
 		return nil
 	}
 	c := *m
-	c.Attributes = maps.Clone(m.Attributes)
-	c.CombatMods = maps.Clone(m.CombatMods)
+	c.Stats = m.Stats.Clone()
 	c.Items = slices.Clone(m.Items)
 	return &c
 }
 
-// TakeDamage reduces the monster's HP by the specified amount.
-// HP cannot go below 0.
-func (m *Monster) TakeDamage(n int) {
-	if n <= 0 {
-		return
+// UnmarshalJSON accepts the deprecated "combat_modifiers" key.
+// Embedding promotes Stats fields, so Stats.UnmarshalJSON does not run here.
+func (m *Monster) UnmarshalJSON(data []byte) error {
+	type plain Monster
+	var decoded plain
+	if err := unmarshalAliased(data, &decoded); err != nil {
+		return err
 	}
-	m.HP -= n
-	if m.HP < 0 {
-		m.HP = 0
-	}
-}
-
-// Heal increases the monster's HP by the specified amount.
-// HP cannot exceed MaxHP.
-func (m *Monster) Heal(n int) {
-	if n <= 0 {
-		return
-	}
-	m.HP += n
-	if m.HP > m.MaxHP {
-		m.HP = m.MaxHP
-	}
-}
-
-// IsDefeated returns true if the monster's HP is 0 or less.
-func (m *Monster) IsDefeated() bool {
-	return m.HP <= 0
+	decoded.liftAbilityAttributes()
+	*m = Monster(decoded)
+	return nil
 }
 
 // MoveTo updates the monster's location.

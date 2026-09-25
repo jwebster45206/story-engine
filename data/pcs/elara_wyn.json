@@ -7,7 +7,7 @@
   "description": "A young apprentice mage with an inquisitive mind and a spark of wild talent. Her robes are singed from too many experiments, but her confidence never wavers.",
   "background": "Raised among dusty tomes and the smell of candle wax, Elara was taken in by a reclusive archmage who saw potential in her chaotic magical talent. She has mastered only a handful of spells, but her curiosity drives her toward greatness—and occasional disaster.",
   "opening_prompt": "You are Elara Wyn, a young mage apprentice eager to prove yourself. Magic hums beneath your skin, unpredictable yet intoxicating. The world beyond the tower awaits, and so does your destiny.",
-  "stats": {
+  "abilities": {
     "strength": 8,
     "dexterity": 13,
     "constitution": 12,
@@ -18,9 +18,17 @@
   "hp": 20,
   "max_hp": 20,
   "ac": 12,
-  "combat_modifiers": {
+  "modifiers": {
     "intelligence": 3,
     "proficiency": 2
+  },
+  "actions": {
+    "arcane_bolt": {
+      "name": "Arcane Bolt",
+      "type": "attack",
+      "attempt": "1d20+5",
+      "effect": "1d10"
+    }
   },
   "attributes": {
     "arcana": 6,

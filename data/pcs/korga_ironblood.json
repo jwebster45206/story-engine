@@ -7,7 +7,7 @@
   "description": "A towering warrior from the frost-bitten northlands, clad in furs and bearing scars like medals. Korga trusts in his strength, his instincts, and the bite of his great axe.",
   "background": "Born in a land of endless snow, Korga survived by strength and rage. After slaying the beast that destroyed his village, he wandered south in search of glory and a worthy death. Civilization both fascinates and disgusts him. His laughter is loud, his fury legendary, and his word ironbound.",
   "opening_prompt": "You are Korga Ironblood, a northern barbarian whose legend grows with each battle. The fire of your ancestors burns within, calling you to prove your might in this soft southern world.",
-  "stats": {
+  "abilities": {
     "strength": 18,
     "dexterity": 12,
     "constitution": 16,
@@ -18,9 +18,17 @@
   "hp": 45,
   "max_hp": 45,
   "ac": 14,
-  "combat_modifiers": {
+  "modifiers": {
     "strength": 4,
     "proficiency": 2
+  },
+  "actions": {
+    "greataxe": {
+      "name": "Greataxe",
+      "type": "attack",
+      "attempt": "1d20+6",
+      "effect": "1d12"
+    }
   },
   "attributes": {
     "athletics": 6,

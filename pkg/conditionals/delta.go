@@ -58,7 +58,7 @@ type MonsterEvent struct {
 	HP                int            `json:"hp,omitempty"`
 	MaxHP             int            `json:"max_hp,omitempty"`
 	Attributes        map[string]int `json:"attributes,omitempty"`
-	CombatMods        map[string]int `json:"combat_modifiers,omitempty"`
+	Modifiers         map[string]int `json:"modifiers,omitempty"`
 	Items             []string       `json:"items,omitempty"`
 	DropItemsOnDefeat *bool          `json:"drop_items_on_defeat,omitempty"`
 }

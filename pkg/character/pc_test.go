@@ -7,8 +7,8 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
-func TestStats5e_ToAttributes(t *testing.T) {
-	stats := Stats5e{
+func TestAbilities_ToAttributes(t *testing.T) {
+	stats := Abilities{
 		Strength:     16,
 		Dexterity:    14,
 		Constitution: 15,
@@ -50,7 +50,7 @@ func TestPC_MarshalJSON(t *testing.T) {
 		Pronouns:    "she/her",
 		Description: "A test character",
 		Background:  "Test background",
-		Stats: Stats5e{
+		Abilities: Abilities{
 			Strength:     10,
 			Dexterity:    18,
 			Constitution: 12,
@@ -61,7 +61,7 @@ func TestPC_MarshalJSON(t *testing.T) {
 		HP:    20,
 		MaxHP: 20,
 		AC:    15,
-		CombatModifiers: map[string]int{
+		Modifiers: map[string]int{
 			"dexterity":   4,
 			"proficiency": 2,
 		},
@@ -102,12 +102,12 @@ func TestPC_MarshalJSON(t *testing.T) {
 		t.Errorf("Marshaled ac = %v, want %d", result["ac"], 15)
 	}
 
-	stats, ok := result["stats"].(map[string]any)
+	abilities, ok := result["abilities"].(map[string]any)
 	if !ok {
-		t.Fatal("Marshaled stats missing or wrong type")
+		t.Fatal("Marshaled abilities missing or wrong type")
 	}
-	if strength, ok := stats["strength"].(float64); !ok || int(strength) != 10 {
-		t.Errorf("Marshaled stats.strength = %v, want %d", stats["strength"], 10)
+	if strength, ok := abilities["strength"].(float64); !ok || int(strength) != 10 {
+		t.Errorf("Marshaled abilities.strength = %v, want %d", abilities["strength"], 10)
 	}
 
 	attrs, ok := result["attributes"].(map[string]any)
@@ -151,7 +151,7 @@ func TestPC_MarshalUnmarshalRoundTrip(t *testing.T) {
 		Pronouns:    "they/them",
 		Description: "A skilled tracker",
 		Background:  "Outlander",
-		Stats: Stats5e{
+		Abilities: Abilities{
 			Strength:     14,
 			Dexterity:    18,
 			Constitution: 13,
@@ -162,7 +162,7 @@ func TestPC_MarshalUnmarshalRoundTrip(t *testing.T) {
 		HP:    35,
 		MaxHP: 40,
 		AC:    16,
-		CombatModifiers: map[string]int{
+		Modifiers: map[string]int{
 			"dexterity":   4,
 			"proficiency": 3,
 		},
@@ -202,14 +202,14 @@ func TestPC_MarshalUnmarshalRoundTrip(t *testing.T) {
 	if restored.AC != original.AC {
 		t.Errorf("AC = %d, want %d", restored.AC, original.AC)
 	}
-	if restored.Stats.Dexterity != 18 {
-		t.Errorf("Stats.Dexterity = %d, want 18", restored.Stats.Dexterity)
+	if restored.Abilities.Dexterity != 18 {
+		t.Errorf("Abilities.Dexterity = %d, want 18", restored.Abilities.Dexterity)
 	}
 	if restored.Attributes["survival"] != 8 {
 		t.Errorf("Attributes[survival] = %d, want 8", restored.Attributes["survival"])
 	}
-	if len(restored.CombatModifiers) != 2 {
-		t.Errorf("CombatModifiers count = %d, want 2", len(restored.CombatModifiers))
+	if len(restored.Modifiers) != 2 {
+		t.Errorf("Modifiers count = %d, want 2", len(restored.Modifiers))
 	}
 }
 
@@ -348,7 +348,7 @@ func TestPC_MarshalJSON_WithContingencyPrompts(t *testing.T) {
 		ID:       "test_pc",
 		Name:     "Test",
 		Pronouns: "they/them",
-		Stats: Stats5e{
+		Abilities: Abilities{
 			Strength:     10,
 			Dexterity:    10,
 			Constitution: 10,

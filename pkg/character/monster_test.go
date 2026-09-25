@@ -124,7 +124,7 @@ func TestNewMonster(t *testing.T) {
 				"strength":  8,
 				"dexterity": 14,
 			},
-			CombatMods: map[string]int{
+			Modifiers: map[string]int{
 				"dagger": 4,
 			},
 			Items: []string{"dagger", "gold_coin"},
@@ -145,6 +145,9 @@ func TestNewMonster(t *testing.T) {
 		}
 		if len(m.Items) != 2 {
 			t.Errorf("expected 2 items, got %d", len(m.Items))
+		}
+		if m.Modifiers["dagger"] != 4 {
+			t.Errorf("expected dagger modifier 4, got %d", m.Modifiers["dagger"])
 		}
 	})
 
@@ -182,78 +185,35 @@ func TestNewMonster(t *testing.T) {
 	})
 }
 
-func TestMonster_TakeDamage(t *testing.T) {
-	t.Run("reduces HP by damage amount", func(t *testing.T) {
-		m := &Monster{HP: 20, MaxHP: 20}
-		m.TakeDamage(5)
-
-		if m.HP != 15 {
-			t.Errorf("expected HP 15, got %d", m.HP)
+func TestStats_ApplyEffect(t *testing.T) {
+	t.Run("damage reduces HP", func(t *testing.T) {
+		s := &Stats{HP: 20, MaxHP: 20}
+		hp, defeated := s.ApplyEffect(5)
+		if hp != 15 || s.HP != 15 || defeated {
+			t.Errorf("ApplyEffect(5) = %d, defeated %v, HP %d; want 15, false", hp, defeated, s.HP)
 		}
 	})
 
-	t.Run("clamps HP at 0", func(t *testing.T) {
-		m := &Monster{HP: 5, MaxHP: 20}
-		m.TakeDamage(10)
-
-		if m.HP != 0 {
-			t.Errorf("expected HP to be clamped at 0, got %d", m.HP)
+	t.Run("damage clamps at 0", func(t *testing.T) {
+		s := &Stats{HP: 5, MaxHP: 20}
+		hp, defeated := s.ApplyEffect(10)
+		if hp != 0 || !defeated {
+			t.Errorf("ApplyEffect(10) = %d, defeated %v; want 0, true", hp, defeated)
 		}
 	})
 
-	t.Run("ignores 0 damage", func(t *testing.T) {
-		m := &Monster{HP: 20, MaxHP: 20}
-		m.TakeDamage(0)
-
-		if m.HP != 20 {
-			t.Errorf("expected HP to remain 20, got %d", m.HP)
+	t.Run("zero leaves HP unchanged", func(t *testing.T) {
+		s := &Stats{HP: 20, MaxHP: 20}
+		if hp, _ := s.ApplyEffect(0); hp != 20 {
+			t.Errorf("ApplyEffect(0) HP = %d, want 20", hp)
 		}
 	})
 
-	t.Run("ignores negative damage", func(t *testing.T) {
-		m := &Monster{HP: 20, MaxHP: 20}
-		m.TakeDamage(-5)
-
-		if m.HP != 20 {
-			t.Errorf("expected HP to remain 20, got %d", m.HP)
-		}
-	})
-}
-
-func TestMonster_Heal(t *testing.T) {
-	t.Run("increases HP by heal amount", func(t *testing.T) {
-		m := &Monster{HP: 10, MaxHP: 20}
-		m.Heal(5)
-
-		if m.HP != 15 {
-			t.Errorf("expected HP 15, got %d", m.HP)
-		}
-	})
-
-	t.Run("clamps HP at MaxHP", func(t *testing.T) {
-		m := &Monster{HP: 18, MaxHP: 20}
-		m.Heal(5)
-
-		if m.HP != 20 {
-			t.Errorf("expected HP to be clamped at MaxHP (20), got %d", m.HP)
-		}
-	})
-
-	t.Run("ignores 0 healing", func(t *testing.T) {
-		m := &Monster{HP: 10, MaxHP: 20}
-		m.Heal(0)
-
-		if m.HP != 10 {
-			t.Errorf("expected HP to remain 10, got %d", m.HP)
-		}
-	})
-
-	t.Run("ignores negative healing", func(t *testing.T) {
-		m := &Monster{HP: 10, MaxHP: 20}
-		m.Heal(-5)
-
-		if m.HP != 10 {
-			t.Errorf("expected HP to remain 10, got %d", m.HP)
+	t.Run("negative heals and clamps at MaxHP", func(t *testing.T) {
+		s := &Stats{HP: 18, MaxHP: 20}
+		hp, defeated := s.ApplyEffect(-5)
+		if hp != 20 || defeated {
+			t.Errorf("ApplyEffect(-5) = %d, defeated %v; want 20, false", hp, defeated)
 		}
 	})
 }

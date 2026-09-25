@@ -940,7 +940,7 @@ components:
         background:
           type: string
           description: Character background story
-        stats:
+        abilities:
           $ref: '#/components/schemas/CharacterStats'
         hp:
           type: integer
@@ -951,7 +951,7 @@ components:
         ac:
           type: integer
           description: Armor class
-        combat_modifiers:
+        modifiers:
           type: object
           additionalProperties:
             type: integer
@@ -1126,16 +1126,14 @@ components:
           type: integer
           description: Maximum hit points
           example: 9
+        abilities:
+          $ref: '#/components/schemas/CharacterStats'
         attributes:
           type: object
           additionalProperties:
             type: integer
-          description: Monster attributes (e.g., strength, dexterity, constitution)
-          example:
-            strength: 7
-            dexterity: 15
-            constitution: 11
-        combat_modifiers:
+          description: Other named numbers, such as skill bonuses
+        modifiers:
           type: object
           additionalProperties:
             type: integer

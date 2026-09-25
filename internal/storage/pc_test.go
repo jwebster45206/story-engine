@@ -19,7 +19,7 @@ func TestMockStorage_AddAndGetPC(t *testing.T) {
 		Class: "fighter",
 		Level: 5,
 		Race:  "human",
-		Stats: character.Stats5e{
+		Abilities: character.Abilities{
 			Strength:     18,
 			Dexterity:    14,
 			Constitution: 16,
@@ -51,8 +51,8 @@ func TestMockStorage_AddAndGetPC(t *testing.T) {
 		t.Errorf("Expected class 'fighter', got %v", loaded.Class)
 	}
 
-	if loaded.Stats.Strength != 18 {
-		t.Errorf("Expected strength 18, got %d", loaded.Stats.Strength)
+	if loaded.Abilities.Strength != 18 {
+		t.Errorf("Expected strength 18, got %d", loaded.Abilities.Strength)
 	}
 
 	// Get it back by ID
