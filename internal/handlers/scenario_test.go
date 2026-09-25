@@ -31,7 +31,7 @@ func TestScenarioHandler_ServeHTTP(t *testing.T) {
 				Exits:       map[string]string{"north": "captain_cabin"},
 			},
 		},
-		NPCs: map[string]character.NPC{
+		NPCs: map[string]*character.NPC{
 			"Captain Blackbeard": {
 				Name:        "Captain Blackbeard",
 				Type:        "captain",

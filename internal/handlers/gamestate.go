@@ -180,9 +180,15 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	gs.Temperature = req.Temperature
 
 	// Initialize game state with scenario-level values
-	gs.NPCs = s.NPCs
+	gs.NPCs = make(map[string]*character.NPC, len(s.NPCs))
+	for name, npc := range s.NPCs {
+		gs.NPCs[name] = npc.Clone()
+	}
+	gs.WorldLocations = make(map[string]scenario.Location, len(s.Locations))
+	for name, loc := range s.Locations {
+		gs.WorldLocations[name] = loc.Clone()
+	}
 	gs.Location = s.OpeningLocation
-	gs.WorldLocations = s.Locations
 	gs.Vars = s.Vars
 	// ContingencyPrompts field is for runtime-added custom prompts only
 	// Scenario-level prompts are already filtered and added in GetContingencyPrompts()
@@ -277,20 +283,20 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	// definition (which may supply overrides like location or disposition).
 	// This runs after LoadScene so that scene-level NPCs with TemplateIDs are also resolved.
 	for npcKey, npc := range gs.NPCs {
-		if npc.TemplateID == "" {
-			continue // fully inline NPC, nothing to do
+		if npc == nil || npc.TemplateID == "" {
+			continue // missing entry, or fully inline NPC
 		}
 		template, err := h.storage.GetNPC(r.Context(), npc.TemplateID)
 		if err != nil {
 			h.logger.Warn("Failed to load NPC template, keeping inline definition", "npc_key", npcKey, "template_id", npc.TemplateID, "error", err)
 			continue
 		}
-		merged := character.NewNPCFromTemplate(template, &npc)
+		merged := character.NewNPCFromTemplate(template, npc)
 		if merged == nil {
 			h.logger.Warn("Failed to merge NPC template, keeping inline definition", "npc_key", npcKey, "template_id", npc.TemplateID)
 			continue
 		}
-		gs.NPCs[npcKey] = *merged
+		gs.NPCs[npcKey] = merged
 		h.logger.Debug("Loaded NPC from template", "npc_key", npcKey, "template_id", npc.TemplateID, "name", merged.Name)
 	}
 

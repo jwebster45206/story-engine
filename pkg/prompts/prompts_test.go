@@ -29,7 +29,7 @@ func TestGetStatePrompt(t *testing.T) {
 				Scenario:  "test.json",
 				Location:  "Tortuga",
 				Inventory: []string{"cutlass", "spyglass"},
-				NPCs: map[string]character.NPC{
+				NPCs: map[string]*character.NPC{
 					"Gibbs": {
 						Name:        "Gibbs",
 						Type:        "pirate",
@@ -93,7 +93,7 @@ func TestGetStatePrompt(t *testing.T) {
 								Exits:       map[string]string{"east": "Black Pearl"},
 							},
 						},
-						NPCs: map[string]character.NPC{
+						NPCs: map[string]*character.NPC{
 							"Shipwright": {
 								Name:        "Shipwright",
 								Type:        "craftsman",

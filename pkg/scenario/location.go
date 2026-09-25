@@ -1,6 +1,9 @@
 package scenario
 
 import (
+	"maps"
+	"slices"
+
 	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
@@ -16,4 +19,19 @@ type Location struct {
 	Monsters           map[string]*character.Monster    `json:"monsters,omitempty"`            // Active monster instances at this location (instance ID → Monster)
 	IsImportant        bool                             `json:"important,omitempty"`           // whether this location is important to always show
 	ContingencyPrompts []conditionals.ContingencyPrompt `json:"contingency_prompts,omitempty"` // Location-specific prompts shown when at player location
+}
+
+func (l Location) Clone() Location {
+	c := l
+	c.Exits = maps.Clone(l.Exits)
+	c.BlockedExits = maps.Clone(l.BlockedExits)
+	c.Items = slices.Clone(l.Items)
+	c.ContingencyPrompts = slices.Clone(l.ContingencyPrompts)
+	if l.Monsters != nil {
+		c.Monsters = make(map[string]*character.Monster, len(l.Monsters))
+		for id, m := range l.Monsters {
+			c.Monsters[id] = m.Clone()
+		}
+	}
+	return c
 }

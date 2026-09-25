@@ -10,28 +10,28 @@ import (
 // handleNPCEvent processes an NPC state change event
 func (a *Applier) handleNPCEvent(event conditionals.NPCEvent) {
 	npcKey := strings.ToLower(strings.TrimSpace(event.NPCID))
-	npc, npcExists := a.gs.NPCs[npcKey]
-	if !npcExists {
+	npc := a.gs.NPCs[npcKey]
+	if npc == nil {
 		// Try matching by NPC name
 		for key, n := range a.gs.NPCs {
+			if n == nil {
+				continue
+			}
 			if strings.ToLower(n.Name) == npcKey {
 				npcKey = key
 				npc = n
-				npcExists = true
 				break
 			}
 		}
 	}
 
-	if !npcExists {
+	if npc == nil {
 		if a.logger != nil {
 			a.logger.Warn("NPC not found for event",
 				"npc_id", event.NPCID)
 		}
 		return
 	}
-
-	modified := false
 
 	// Handle location change
 	if event.SetLocation != nil {
@@ -52,7 +52,6 @@ func (a *Applier) handleNPCEvent(event conditionals.NPCEvent) {
 		if locationExists {
 			oldLocation := npc.Location
 			npc.Location = locationKey
-			modified = true
 
 			if a.logger != nil {
 				a.logger.Info("NPC location changed",
@@ -79,6 +78,9 @@ func (a *Applier) handleNPCEvent(event conditionals.NPCEvent) {
 				// Try case-insensitive match
 				found := false
 				for key, n := range a.gs.NPCs {
+					if n == nil {
+						continue
+					}
 					if strings.EqualFold(n.Name, following) {
 						following = key
 						found = true
@@ -94,18 +96,12 @@ func (a *Applier) handleNPCEvent(event conditionals.NPCEvent) {
 		}
 
 		npc.Following = following
-		modified = true
 
 		if a.logger != nil {
 			a.logger.Info("NPC following changed",
 				"npc", npcKey,
 				"following", following)
 		}
-	}
-
-	// Save changes
-	if modified {
-		a.gs.NPCs[npcKey] = npc
 	}
 }
 
@@ -237,8 +233,8 @@ func (a *Applier) syncFollowingNPCs() {
 	for {
 		changed := false
 		for npcKey, npc := range a.gs.NPCs {
-			if npc.Following == "" {
-				continue // Not following anyone
+			if npc == nil || npc.Following == "" {
+				continue // Missing entry, or not following anyone
 			}
 
 			var targetLocation string
@@ -248,19 +244,21 @@ func (a *Applier) syncFollowingNPCs() {
 				targetLocation = a.gs.Location
 			} else {
 				// Following another NPC
-				followedNPC, exists := a.gs.NPCs[npc.Following]
-				if !exists {
+				followedNPC := a.gs.NPCs[npc.Following]
+				if followedNPC == nil {
 					// Try case-insensitive match
 					for _, n := range a.gs.NPCs {
+						if n == nil {
+							continue
+						}
 						if strings.EqualFold(n.Name, npc.Following) {
 							followedNPC = n
-							exists = true
 							break
 						}
 					}
 				}
 
-				if !exists {
+				if followedNPC == nil {
 					if a.logger != nil {
 						a.logger.Warn("NPC following target not found",
 							"npc", npcKey,
@@ -276,7 +274,6 @@ func (a *Applier) syncFollowingNPCs() {
 			if npc.Location != targetLocation {
 				oldLocation := npc.Location
 				npc.Location = targetLocation
-				a.gs.NPCs[npcKey] = npc
 				changed = true
 
 				if a.logger != nil {

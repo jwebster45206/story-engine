@@ -39,7 +39,7 @@ type GameState struct {
 	Temperature        float64                      `json:"temperature,omitempty"`        // LLM sampling temperature (0.0-1.0)
 	Narrator           *scenario.Narrator           `json:"narrator,omitempty"`           // Embedded narrator for this game session (loaded once at creation)
 	PC                 *character.PC                `json:"pc,omitempty"`                 // Player Character for this game session
-	NPCs               map[string]character.NPC     `json:"npcs,omitempty"`               // All NPCs in the game world
+	NPCs               map[string]*character.NPC    `json:"npcs,omitempty"`               // All NPCs in the game world
 	WorldLocations     map[string]scenario.Location `json:"locations,omitempty"`          // Current locations in the game world
 	Location           string                       `json:"user_location,omitempty"`      // Current location in the game world
 	Inventory          []string                     `json:"user_inventory,omitempty"`     // User's inventory items
@@ -69,7 +69,7 @@ func NewGameState(scenarioFileName string, narrator *scenario.Narrator, provider
 		Vars:               make(map[string]string),
 		FiredStoryEvents:   make([]string, 0),
 		ContingencyPrompts: make([]string, 0),
-		NPCs:               make(map[string]character.NPC),
+		NPCs:               make(map[string]*character.NPC),
 		WorldLocations:     make(map[string]scenario.Location),
 		CreatedAt:          time.Now(),
 		UpdatedAt:          time.Now(),
@@ -200,7 +200,7 @@ func (gs *GameState) GetContingencyPrompts(s *scenario.Scenario) []string {
 	// NPC-level contingency prompts
 	for _, npc := range gs.NPCs {
 		// Only include prompts for NPCs at the player's current location
-		if npc.Location != gs.Location {
+		if npc == nil || npc.Location != gs.Location {
 			continue
 		}
 		prompts = append(prompts, scenario.FilterContingencyPrompts(npc.ContingencyPrompts, gs)...)
@@ -256,12 +256,12 @@ func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 		gs.WorldLocations = make(map[string]scenario.Location)
 	}
 	if gs.NPCs == nil {
-		gs.NPCs = make(map[string]character.NPC)
+		gs.NPCs = make(map[string]*character.NPC)
 	}
 
-	// Copy locations from scene
-	if scene.Locations != nil {
-		maps.Copy(gs.WorldLocations, scene.Locations)
+	// Copy locations from scene. Cloned so that play does not mutate the scene.
+	for locName, loc := range scene.Locations {
+		gs.WorldLocations[locName] = loc.Clone()
 	}
 
 	// Remove any locations that are not in the global scenario locations,
@@ -274,9 +274,9 @@ func (gs *GameState) LoadScene(s *scenario.Scenario, sceneName string) error {
 		}
 	}
 
-	// Copy NPCs from scene
-	if scene.NPCs != nil {
-		maps.Copy(gs.NPCs, scene.NPCs)
+	// Copy NPCs from scene. Cloned so that play does not mutate the scene.
+	for npcName, npc := range scene.NPCs {
+		gs.NPCs[npcName] = npc.Clone()
 	}
 
 	// Remove any NPCs that are not in the global scenario NPCs,
@@ -324,7 +324,10 @@ func (gs *GameState) NormalizeItems() {
 
 	// Remove duplicates from NPCs and enforce singletons within NPC collection
 	npcItems := make(map[string]bool)
-	for npcName, npc := range gs.NPCs {
+	for _, npc := range gs.NPCs {
+		if npc == nil {
+			continue
+		}
 		var filteredItems []string
 		for _, item := range npc.Items {
 			// Keep item only if it's not in user inventory and not already claimed by another NPC
@@ -333,9 +336,7 @@ func (gs *GameState) NormalizeItems() {
 				npcItems[item] = true
 			}
 		}
-		// Update the NPC in the map
 		npc.Items = filteredItems
-		gs.NPCs[npcName] = npc
 	}
 
 	// Remove duplicates from locations

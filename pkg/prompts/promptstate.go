@@ -15,7 +15,7 @@ import (
 // for LLM context. For background processing, Vars are also populated.
 type PromptState struct {
 	SceneName        string                       `json:"scene_name,omitempty"`         // Current scene name
-	NPCs             map[string]character.NPC     `json:"npcs,omitempty"`               // Map of key NPCs
+	NPCs             map[string]*character.NPC    `json:"npcs,omitempty"`               // Map of key NPCs
 	Monsters         map[string]character.Monster `json:"monsters,omitempty"`           // Monsters at current location
 	WorldLocations   map[string]scenario.Location `json:"locations,omitempty"`          // Current locations in the game world
 	Location         string                       `json:"user_location,omitempty"`      // User's current location
@@ -37,10 +37,13 @@ func ToPromptState(gs *state.GameState) *PromptState {
 // follow the PC are treated as present there so companions do not vanish on
 // the arrival prompt; Apply still syncs their locations after narration.
 func toPromptStateAt(gs *state.GameState, viewLoc string) *PromptState {
-	filteredNPCs := make(map[string]character.NPC)
+	filteredNPCs := make(map[string]*character.NPC)
 	for name, npc := range gs.NPCs {
+		if npc == nil {
+			continue
+		}
 		if viewLoc != gs.Location && strings.EqualFold(npc.Following, "pc") {
-			clone := npc
+			clone := npc.Clone()
 			clone.Location = viewLoc
 			filteredNPCs[name] = clone
 			continue
@@ -98,8 +101,11 @@ func filterLocations(worldLocations map[string]scenario.Location, currentLocatio
 
 func ToBackgroundPromptState(gs *state.GameState) *PromptState {
 	// Filter NPCs: only include those in the same location as user OR marked as important
-	filteredNPCs := make(map[string]character.NPC)
+	filteredNPCs := make(map[string]*character.NPC)
 	for name, npc := range gs.NPCs {
+		if npc == nil {
+			continue
+		}
 		if npc.Location == gs.Location || npc.IsImportant {
 			filteredNPCs[name] = npc
 		}
@@ -344,7 +350,7 @@ func (ps *PromptState) writeNPCsElsewhere(sb *strings.Builder) {
 	entries := make([]string, 0)
 	for _, k := range npcKeys {
 		npc := ps.NPCs[k]
-		if npc.Location == ps.Location {
+		if npc == nil || npc.Location == ps.Location {
 			continue
 		}
 		locName := ps.locationDisplayName(npc.Location)
@@ -419,10 +425,10 @@ func collectExitDirections(loc scenario.Location) []string {
 	return dirs
 }
 
-func presentNPCs(npcs map[string]character.NPC, location string) []character.NPC {
-	present := make([]character.NPC, 0)
+func presentNPCs(npcs map[string]*character.NPC, location string) []*character.NPC {
+	present := make([]*character.NPC, 0)
 	for _, npc := range npcs {
-		if npc.Location == location {
+		if npc != nil && npc.Location == location {
 			present = append(present, npc)
 		}
 	}
@@ -430,7 +436,10 @@ func presentNPCs(npcs map[string]character.NPC, location string) []character.NPC
 	return present
 }
 
-func npcFocused(npc character.NPC, focused []string) bool {
+func npcFocused(npc *character.NPC, focused []string) bool {
+	if npc == nil {
+		return false
+	}
 	for _, name := range focused {
 		if strings.EqualFold(name, npc.Name) {
 			return true
@@ -439,7 +448,7 @@ func npcFocused(npc character.NPC, focused []string) bool {
 	return false
 }
 
-func anyNPCFocused(npcs []character.NPC, focused []string) bool {
+func anyNPCFocused(npcs []*character.NPC, focused []string) bool {
 	for _, npc := range npcs {
 		if npcFocused(npc, focused) {
 			return true

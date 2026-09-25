@@ -1,6 +1,9 @@
 package character
 
-import "maps"
+import (
+	"maps"
+	"slices"
+)
 
 // Monster represents a creature or enemy in the game world.
 // Monsters are spawned from external JSON templates and managed by GameState.
@@ -81,6 +84,17 @@ func NewMonster(template *Monster, overrides *Monster) *Monster {
 		m.HP = m.MaxHP
 	}
 	return &m
+}
+
+func (m *Monster) Clone() *Monster {
+	if m == nil {
+		return nil
+	}
+	c := *m
+	c.Attributes = maps.Clone(m.Attributes)
+	c.CombatMods = maps.Clone(m.CombatMods)
+	c.Items = slices.Clone(m.Items)
+	return &c
 }
 
 // TakeDamage reduces the monster's HP by the specified amount.

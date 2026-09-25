@@ -309,7 +309,7 @@ func refereeTestGS(mode state.RulesMode) *state.GameState {
 	gs.Rules = mode
 	gs.Location = "tavern"
 	gs.Inventory = []string{"torch"}
-	gs.NPCs = map[string]character.NPC{
+	gs.NPCs = map[string]*character.NPC{
 		"bartender": {Name: "Bartender", Location: "tavern"},
 	}
 	gs.WorldLocations = map[string]scenario.Location{

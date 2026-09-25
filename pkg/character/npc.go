@@ -2,6 +2,7 @@ package character
 
 import (
 	"maps"
+	"slices"
 
 	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
@@ -122,6 +123,18 @@ func NewNPCFromTemplate(template *NPC, overrides *NPC) *NPC {
 	}
 
 	return &n
+}
+
+func (n *NPC) Clone() *NPC {
+	if n == nil {
+		return nil
+	}
+	c := *n
+	c.Items = slices.Clone(n.Items)
+	c.Attributes = maps.Clone(n.Attributes)
+	c.CombatMods = maps.Clone(n.CombatMods)
+	c.ContingencyPrompts = slices.Clone(n.ContingencyPrompts)
+	return &c
 }
 
 // TakeDamage reduces the NPC's HP by the specified amount (floor: 0).

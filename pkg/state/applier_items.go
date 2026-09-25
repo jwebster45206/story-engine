@@ -132,11 +132,10 @@ func (a *Applier) removeItemFromSource(item string, from *struct {
 		npcKey := strings.ToLower(strings.TrimSpace(from.Name))
 
 		// Try to find NPC in game state by key first
-		if npc, ok := gs.NPCs[npcKey]; ok {
+		if npc, ok := gs.NPCs[npcKey]; ok && npc != nil {
 			for i, invItem := range npc.Items {
 				if invItem == item {
 					npc.Items = append(npc.Items[:i], npc.Items[i+1:]...)
-					gs.NPCs[npcKey] = npc // Write back
 					break
 				}
 			}
@@ -144,12 +143,14 @@ func (a *Applier) removeItemFromSource(item string, from *struct {
 		}
 
 		// Try matching by NPC name
-		for key, npc := range gs.NPCs {
+		for _, npc := range gs.NPCs {
+			if npc == nil {
+				continue
+			}
 			if strings.ToLower(npc.Name) == npcKey {
 				for i, invItem := range npc.Items {
 					if invItem == item {
 						npc.Items = append(npc.Items[:i], npc.Items[i+1:]...)
-						gs.NPCs[key] = npc // Write back
 						break
 					}
 				}
@@ -192,23 +193,24 @@ func (a *Applier) addItemToDestination(item string, to *struct {
 		npcKey := strings.ToLower(strings.TrimSpace(to.Name))
 
 		// Try to find NPC in game state by key first
-		if npc, ok := gs.NPCs[npcKey]; ok {
+		if npc, ok := gs.NPCs[npcKey]; ok && npc != nil {
 			if npc.Items == nil {
 				npc.Items = make([]string, 0)
 			}
 			npc.Items = append(npc.Items, item)
-			gs.NPCs[npcKey] = npc // Write back
 			return
 		}
 
 		// Try matching by NPC name
-		for key, npc := range gs.NPCs {
+		for _, npc := range gs.NPCs {
+			if npc == nil {
+				continue
+			}
 			if strings.ToLower(npc.Name) == npcKey {
 				if npc.Items == nil {
 					npc.Items = make([]string, 0)
 				}
 				npc.Items = append(npc.Items, item)
-				gs.NPCs[key] = npc // Write back
 				break
 			}
 		}
