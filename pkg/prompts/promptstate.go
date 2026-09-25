@@ -43,8 +43,6 @@ func toPromptStateAt(gs *state.GameState, viewLoc string) *PromptState {
 			continue
 		}
 		if viewLoc != gs.Location && strings.EqualFold(npc.Following, "pc") {
-			// Must be a real clone: NPCs are pointers, so assigning Location
-			// on a shared one would move it in live game state.
 			clone := npc.Clone()
 			clone.Location = viewLoc
 			filteredNPCs[name] = clone

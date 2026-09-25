@@ -86,9 +86,6 @@ func NewMonster(template *Monster, overrides *Monster) *Monster {
 	return &m
 }
 
-// Clone returns a deep copy with its own maps and slices. Locations hold
-// monsters by pointer, so an instance spawned from a scenario template must be
-// cloned first or later mutation would write back into the template.
 func (m *Monster) Clone() *Monster {
 	if m == nil {
 		return nil

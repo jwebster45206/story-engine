@@ -179,8 +179,7 @@ func (h *GameStateHandler) handleCreate(w http.ResponseWriter, r *http.Request) 
 	gs.Rules = req.Rules
 	gs.Temperature = req.Temperature
 
-	// Initialize game state with scenario-level values. NPCs and locations are
-	// cloned: they hold pointers now, and the scenario must not be mutated by play.
+	// Initialize game state with scenario-level values
 	gs.NPCs = make(map[string]*character.NPC, len(s.NPCs))
 	for name, npc := range s.NPCs {
 		gs.NPCs[name] = npc.Clone()

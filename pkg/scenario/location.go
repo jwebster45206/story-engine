@@ -21,9 +21,6 @@ type Location struct {
 	ContingencyPrompts []conditionals.ContingencyPrompt `json:"contingency_prompts,omitempty"` // Location-specific prompts shown when at player location
 }
 
-// Clone returns a deep copy. Monsters are held by pointer and mutated in play,
-// so a location taken from a scenario template must be cloned before game
-// state edits it, or those edits land in the template.
 func (l Location) Clone() Location {
 	c := l
 	c.Exits = maps.Clone(l.Exits)

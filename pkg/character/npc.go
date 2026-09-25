@@ -125,10 +125,6 @@ func NewNPCFromTemplate(template *NPC, overrides *NPC) *NPC {
 	return &n
 }
 
-// Clone returns a deep copy with its own maps and slices. Game state holds
-// NPCs by pointer, so anything built from a scenario template must be cloned
-// first or later mutation would write back into the template.
-// ContingencyPrompts share their When pointers, which are read-only config.
 func (n *NPC) Clone() *NPC {
 	if n == nil {
 		return nil
