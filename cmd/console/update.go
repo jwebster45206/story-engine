@@ -405,7 +405,7 @@ func (m ConsoleUI) refreshGameState() tea.Cmd {
 }
 
 func formatAttemptLine(content string, success bool, scope string) string {
-	if scope == "all" {
+	if scope == "all" || strings.Contains(content, "*Result ") {
 		return content
 	}
 	result := "fail"

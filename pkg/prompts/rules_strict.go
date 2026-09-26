@@ -40,9 +40,9 @@ const strictRefereeGlobal = `- The player roleplays as the Player Character (PC)
 - Only listed monsters may be engaged.
 - Ordinary PC actions that stay in that sandbox are allowed.`
 
-const strictRefereeExamples = `Example:	{"allowed":true,"reasoning":"You can move to the drawbridge.","reaction":null,"scope":"movement","subject":null,"object":"drawbridge"}
-Example:	{"allowed":false,"reasoning":"You cannot move to the banquet hall because it is blocked.","reaction":"The PC would be stopped by the guard.","scope":"movement","subject":null,"object":"banquet hall"}
+const strictRefereeExamples = `Example:	{"allowed":true,"reasoning":"You can move to the drawbridge.","reaction":null,"scope":"movement","subject":null,"object":"drawbridge","action_id":null}
+Example:	{"allowed":false,"reasoning":"You cannot move to the banquet hall because it is blocked.","reaction":"The PC would be stopped by the guard.","scope":"movement","subject":null,"object":"banquet hall","action_id":null}
 
-Example:	{"allowed":true,"reasoning":"You attack the giant rat.","reaction":null,"scope":"combat","subject":null,"object":"Giant Rat"}
-Example:	{"allowed":false,"reasoning":"There is no giant rat to attack.","reaction":null,"scope":"combat","subject":null,"object":null}
-Example:	{"allowed":false,"reasoning":"You cannot dictate that the guard is defeated in the attack. Your attack occurs, but the outcome is decided by the narrator.","reaction":null,"scope":"combat","subject":null,"object":"guard"}`
+Example:	{"allowed":true,"reasoning":"You attack the giant rat.","reaction":null,"scope":"combat","subject":null,"object":"Giant Rat","action_id":"bite"}
+Example:	{"allowed":false,"reasoning":"There is no giant rat to attack.","reaction":null,"scope":"combat","subject":null,"object":null,"action_id":null}
+Example:	{"allowed":false,"reasoning":"You cannot dictate that the guard is defeated in the attack. Your attack occurs, but the outcome is decided by the narrator.","reaction":null,"scope":"combat","subject":null,"object":"guard","action_id":null}`

@@ -140,6 +140,22 @@ func TestParseRulingResponse(t *testing.T) {
 			},
 		},
 		{
+			name:  "null action_id",
+			input: `{"allowed":true,"reasoning":null,"reaction":null,"scope":"dialogue","subject":null,"object":null,"action_id":null}`,
+			want:  &chat.Ruling{Allowed: true, Scope: chat.RulingScopeDialogue},
+		},
+		{
+			name:  "action_id survives normalize",
+			input: `{"allowed":true,"reasoning":"You attack.","reaction":null,"scope":"combat","subject":null,"object":"Giant Rat","action_id":"  bite  "}`,
+			want: &chat.Ruling{
+				Allowed:   true,
+				Reasoning: "You attack.",
+				Scope:     chat.RulingScopeCombat,
+				Object:    "Giant Rat",
+				ActionID:  "bite",
+			},
+		},
+		{
 			name:  "unknown scope becomes other",
 			input: `{"allowed":true,"reasoning":null,"reaction":null,"scope":"teleport","subject":null,"object":null}`,
 			want:  &chat.Ruling{Allowed: true, Scope: chat.RulingScopeOther},

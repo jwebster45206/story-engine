@@ -713,6 +713,33 @@ func TestEnqueueReaction_AfterSync(t *testing.T) {
 	}
 }
 
+func TestEnqueueReaction_NamesAction(t *testing.T) {
+	gs, sc, rat := tavernCombatFixture()
+	rat.Actions = map[string]character.Action{
+		"shortbow": {Name: "Shortbow", Type: "attack", Attempt: "1d20+4"},
+		"bite":     {Name: "Bite", Type: "attack", Attempt: "1d20+2"},
+	}
+	q := &recordingQueue{}
+	stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
+	p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
+	player := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
+	latest := p.syncGameState(context.Background(), gs, "Felix strikes the rat.")
+	if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player)); err != nil {
+		t.Fatalf("enqueueReaction: %v", err)
+	}
+	got := q.all()
+	if len(got) != 1 {
+		t.Fatalf("enqueued %d, want 1", len(got))
+	}
+	req := got[0]
+	if req.EventPrompt != "Giant Rat strikes Felix with Bite." {
+		t.Errorf("EventPrompt = %q", req.EventPrompt)
+	}
+	if req.Ruling == nil || req.Ruling.ActionID != "bite" {
+		t.Errorf("ruling = %#v", req.Ruling)
+	}
+}
+
 func TestEnqueueReaction_Skips(t *testing.T) {
 	player := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
 
