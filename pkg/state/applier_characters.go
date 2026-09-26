@@ -184,8 +184,8 @@ func (a *Applier) handleMonsterSpawn(event conditionals.MonsterEvent) {
 	if len(event.Attributes) > 0 {
 		monsterDef.Attributes = event.Attributes
 	}
-	if len(event.CombatMods) > 0 {
-		monsterDef.CombatMods = event.CombatMods
+	if len(event.Modifiers) > 0 {
+		monsterDef.Modifiers = event.Modifiers
 	}
 	if len(event.Items) > 0 {
 		monsterDef.Items = event.Items

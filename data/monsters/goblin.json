@@ -5,7 +5,7 @@
   "ac": 15,
   "hp": 7,
   "max_hp": 7,
-  "attributes": {
+  "abilities": {
     "strength": 8,
     "dexterity": 14,
     "constitution": 10,
@@ -13,9 +13,23 @@
     "wisdom": 8,
     "charisma": 8
   },
-  "combat_modifiers": {
+  "modifiers": {
     "scimitar": 4,
     "shortbow": 4
+  },
+  "actions": {
+    "scimitar": {
+      "name": "Scimitar",
+      "type": "attack",
+      "attempt": "1d20+4",
+      "effect": "1d6"
+    },
+    "shortbow": {
+      "name": "Shortbow",
+      "type": "attack",
+      "attempt": "1d20+4",
+      "effect": "1d6"
+    }
   },
   "items": ["dagger", "gold_coin"],
   "drop_items_on_defeat": true

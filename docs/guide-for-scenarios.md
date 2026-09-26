@@ -370,12 +370,12 @@ Monster templates are JSON files in `data/monsters/`. See `data/monsters/README.
   "ac": 12,
   "hp": 7,
   "max_hp": 7,
-  "attributes": {
+  "abilities": {
     "strength": 10,
     "dexterity": 15,
     "constitution": 12
   },
-  "combat_modifiers": {
+  "modifiers": {
     "bite": 3
   },
   "items": [],
@@ -485,8 +485,10 @@ Combat fields supported on standalone NPCs (all optional):
 | `ac` | Armor class |
 | `hp` | Current hit points |
 | `max_hp` | Maximum hit points |
-| `attributes` | Key/value stat map (e.g. `{"strength": 16}`) |
-| `combat_modifiers` | Key/value modifier map (e.g. `{"longsword": 5}`) |
+| `abilities` | The six ability scores (e.g. `{"strength": 16}`) |
+| `attributes` | Other named numbers, such as skill bonuses |
+| `modifiers` | Roll bonuses (e.g. `{"longsword": 5}`) |
+| `actions` | Named attacks with dice notation (`attempt`, `effect`) |
 | `drop_items_on_defeat` | Whether items are dropped when HP reaches 0 |
 
 See `data/npcs/README.md` for full template format details and examples.

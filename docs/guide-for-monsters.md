@@ -25,7 +25,7 @@ Monster templates are JSON files. Here's a minimal example:
 }
 ```
 
-And a more complete example with attributes and combat modifiers:
+And a more complete example with abilities and modifiers:
 
 ```json
 {
@@ -35,7 +35,7 @@ And a more complete example with attributes and combat modifiers:
   "ac": 13,
   "hp": 15,
   "max_hp": 15,
-  "attributes": {
+  "abilities": {
     "strength": 16,
     "dexterity": 12,
     "constitution": 16,
@@ -43,7 +43,7 @@ And a more complete example with attributes and combat modifiers:
     "wisdom": 11,
     "charisma": 10
   },
-  "combat_modifiers": {
+  "modifiers": {
     "greataxe": 5,
     "javelin": 5
   },
@@ -62,8 +62,10 @@ And a more complete example with attributes and combat modifiers:
 | `ac` | integer | Yes | Armor Class - difficulty to hit (typical range: 6-20) |
 | `hp` | integer | Yes | Starting hit points |
 | `max_hp` | integer | Yes | Maximum hit points (usually same as hp) |
-| `attributes` | object | No | D20-style attributes (strength, dexterity, constitution, etc.) |
-| `combat_modifiers` | object | No | Attack bonuses by attack type (e.g., "bite": 3, "claw": 1) |
+| `abilities` | object | No | The six ability scores (strength, dexterity, constitution, intelligence, wisdom, charisma) |
+| `attributes` | object | No | Other named numbers, such as skill bonuses |
+| `modifiers` | object | No | Roll bonuses (e.g., "bite": 3, "claw": 1) |
+| `actions` | object | No | Named attacks. `attempt` and `effect` are dice notation (`"1d20+4"`, `"1d6"`) |
 | `items` | array | No | Items the monster is carrying |
 | `drop_items_on_defeat` | boolean | No | Whether items should drop when defeated (default: false) |
 

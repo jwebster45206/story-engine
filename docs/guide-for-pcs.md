@@ -20,7 +20,7 @@ Every PC file must include these fields:
   "pronouns": "he/him",
   "description": "A one-sentence character summary for narrative use",
   "background": "A longer backstory that provides depth and context",
-  "stats": {
+  "abilities": {
     "strength": 16,
     "dexterity": 13,
     "constitution": 15,
@@ -31,7 +31,7 @@ Every PC file must include these fields:
   "hp": 12,
   "max_hp": 12,
   "ac": 16,
-  "combat_modifiers": {
+  "modifiers": {
     "strength": 3,
     "proficiency": 2
   },
@@ -65,9 +65,9 @@ Every PC file must include these fields:
 - **description** (string, recommended): A concise 1-2 sentence summary of the character. Used in narrative prompts.
 - **background** (string, optional): Extended backstory and personality details. Provides rich context for storytelling.
 
-### Combat Stats (D&D 5e Compatible)
+### Mechanical stats
 
-- **stats** (object, required): The six core ability scores:
+- **abilities** (object, required): The six core ability scores:
   - **strength** (integer): Physical power and melee combat
   - **dexterity** (integer): Agility, reflexes, and ranged combat
   - **constitution** (integer): Endurance and hit points
@@ -83,9 +83,12 @@ Every PC file must include these fields:
 
 ### Advanced Attributes
 
-- **combat_modifiers** (object, optional): Modifiers applied to attack rolls.
+- **modifiers** (object, optional): Bonuses applied to rolls.
   - Common modifiers: `"strength"`, `"dexterity"`, `"proficiency"`, `"magic_weapon"`, etc.
-  - Example: `{"strength": 3, "proficiency": 2}` adds +5 to melee attacks
+  - Example: `{"strength": 3, "proficiency": 2}`
+
+- **actions** (object, optional): Named attacks. `attempt` and `effect` are dice notation.
+  - Example: `{"cutlass": {"name": "Cutlass", "type": "attack", "attempt": "1d20+7", "effect": "1d6"}}`
   
 - **attributes** (object, optional): Skills, proficiencies, and custom abilities.
   - D&D 5e skills: `"athletics"`, `"acrobatics"`, `"stealth"`, `"perception"`, `"investigation"`, etc.
@@ -214,7 +217,7 @@ Good examples:
 
 Example for level 5 Fighter with STR 16:
 ```json
-"combat_modifiers": {
+"modifiers": {
   "strength": 3,      // (16-10)/2 = +3
   "proficiency": 3    // Level 5 = +3
 }
@@ -249,7 +252,7 @@ For scenarios that don't require specific character details:
   "race": "Human",
   "pronouns": "they/them",
   "description": "A capable adventurer seeking fortune and glory.",
-  "stats": {
+  "abilities": {
     "strength": 12,
     "dexterity": 12,
     "constitution": 12,
@@ -276,7 +279,7 @@ For scenarios that don't require specific character details:
   "pronouns": "he/him",
   "description": "A disciplined soldier who distrusts magic and fights to protect the weak.",
   "background": "Veteran of the northern border wars, Aric learned discipline and honor in the shield wall. He seeks to earn a captain's commission while staying true to his principles.",
-  "stats": {
+  "abilities": {
     "strength": 16,
     "dexterity": 13,
     "constitution": 15,
@@ -287,7 +290,7 @@ For scenarios that don't require specific character details:
   "hp": 26,
   "max_hp": 26,
   "ac": 18,
-  "combat_modifiers": {
+  "modifiers": {
     "strength": 3,
     "proficiency": 2
   },
@@ -312,7 +315,7 @@ For scenarios that don't require specific character details:
   "pronouns": "she/her",
   "description": "A nimble thief with a silver tongue and quick fingers.",
   "background": "Mira grew up on the streets, learning to survive by wit and stealth. She has a code: steal from the rich, help the desperate, and never leave a friend behind.",
-  "stats": {
+  "abilities": {
     "strength": 8,
     "dexterity": 18,
     "constitution": 12,
@@ -323,7 +326,7 @@ For scenarios that don't require specific character details:
   "hp": 28,
   "max_hp": 28,
   "ac": 15,
-  "combat_modifiers": {
+  "modifiers": {
     "dexterity": 4,
     "proficiency": 3
   },
@@ -351,7 +354,7 @@ For scenarios that don't require specific character details:
   "pronouns": "she/her",
   "description": "A sharp-eyed detective with a reputation for solving impossible cases.",
   "background": "Former police detective turned private investigator after uncovering corruption in the department. She combines street smarts with academic knowledge to unravel mysteries others can't solve.",
-  "stats": {
+  "abilities": {
     "strength": 10,
     "dexterity": 14,
     "constitution": 12,
@@ -388,7 +391,7 @@ This example shows how to use contingency prompts to create a dynamic, responsiv
   "pronouns": "he/him",
   "description": "A battle-hardened veteran with a commanding presence and protective instincts.",
   "background": "Marcus served fifteen years in the royal guard before retiring. He's seen too much combat and carries both physical and emotional scars. Despite his gruff exterior, he has a soft spot for civilians in danger.",
-  "stats": {
+  "abilities": {
     "strength": 16,
     "dexterity": 12,
     "constitution": 16,
@@ -399,7 +402,7 @@ This example shows how to use contingency prompts to create a dynamic, responsiv
   "hp": 52,
   "max_hp": 52,
   "ac": 17,
-  "combat_modifiers": {
+  "modifiers": {
     "strength": 3,
     "proficiency": 3
   },

@@ -5,8 +5,16 @@
   "ac": 1,
   "hp": 1,
   "max_hp": 1,
-  "combat_modifiers": {
+  "modifiers": {
     "bite": 0
+  },
+  "actions": {
+    "bite": {
+      "name": "Bite",
+      "type": "attack",
+      "attempt": "1d20",
+      "effect": "1d4"
+    }
   },
   "items": [],
   "drop_items_on_defeat": false

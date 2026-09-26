@@ -7,7 +7,7 @@
   "ac": 16,
   "hp": 45,
   "max_hp": 45,
-  "attributes": {
+  "abilities": {
     "strength": 16,
     "dexterity": 12,
     "constitution": 14,
@@ -15,8 +15,16 @@
     "wisdom": 13,
     "charisma": 12
   },
-  "combat_modifiers": {
+  "modifiers": {
     "longsword": 5
+  },
+  "actions": {
+    "longsword": {
+      "name": "Longsword",
+      "type": "attack",
+      "attempt": "1d20+5",
+      "effect": "1d8"
+    }
   },
   "contingency_prompts": [
     "The Guard Captain is vigilant and enforces the law without hesitation.",

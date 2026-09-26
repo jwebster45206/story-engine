@@ -24,7 +24,7 @@ func TestPCHandler_ListPCs(t *testing.T) {
 		Level:    5,
 		Race:     "human",
 		Pronouns: "he/him",
-		Stats: character.Stats5e{
+		Abilities: character.Abilities{
 			Strength:     10,
 			Dexterity:    18,
 			Constitution: 12,
@@ -40,7 +40,7 @@ func TestPCHandler_ListPCs(t *testing.T) {
 		Level:    1,
 		Race:     "human",
 		Pronouns: "they/them",
-		Stats: character.Stats5e{
+		Abilities: character.Abilities{
 			Strength:     15,
 			Dexterity:    14,
 			Constitution: 13,
@@ -56,7 +56,7 @@ func TestPCHandler_ListPCs(t *testing.T) {
 		Level:    3,
 		Race:     "elf",
 		Pronouns: "she/her",
-		Stats: character.Stats5e{
+		Abilities: character.Abilities{
 			Strength:     8,
 			Dexterity:    14,
 			Constitution: 10,
@@ -120,7 +120,7 @@ func TestPCHandler_GetPC(t *testing.T) {
 		Level: 5,
 		HP:    35,
 		MaxHP: 35,
-		Stats: character.Stats5e{
+		Abilities: character.Abilities{
 			Strength:  10,
 			Dexterity: 18,
 		},
@@ -153,9 +153,9 @@ func TestPCHandler_GetPC(t *testing.T) {
 		t.Errorf("GetPC() class = %v, want 'rogue'", pc["class"])
 	}
 
-	// Check that stats are present
-	if _, ok := pc["stats"]; !ok {
-		t.Error("GetPC() response missing 'stats' field")
+	// Check that abilities are present
+	if _, ok := pc["abilities"]; !ok {
+		t.Error("GetPC() response missing 'abilities' field")
 	}
 }
 

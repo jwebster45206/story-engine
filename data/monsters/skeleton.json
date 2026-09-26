@@ -5,7 +5,7 @@
   "ac": 13,
   "hp": 13,
   "max_hp": 13,
-  "attributes": {
+  "abilities": {
     "strength": 10,
     "dexterity": 14,
     "constitution": 15,
@@ -13,9 +13,23 @@
     "wisdom": 8,
     "charisma": 5
   },
-  "combat_modifiers": {
+  "modifiers": {
     "shortsword": 4,
     "shortbow": 4
+  },
+  "actions": {
+    "shortsword": {
+      "name": "Shortsword",
+      "type": "attack",
+      "attempt": "1d20+4",
+      "effect": "1d6"
+    },
+    "shortbow": {
+      "name": "Shortbow",
+      "type": "attack",
+      "attempt": "1d20+4",
+      "effect": "1d6"
+    }
   },
   "items": ["old_bones", "rusty_sword"],
   "drop_items_on_defeat": true

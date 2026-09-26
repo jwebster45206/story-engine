@@ -48,7 +48,7 @@ Each NPC template is a JSON file named `{template_id}.json`.
   "ac": 16,
   "hp": 45,
   "max_hp": 45,
-  "attributes": {
+  "abilities": {
     "strength": 16,
     "dexterity": 12,
     "constitution": 14,
@@ -56,8 +56,16 @@ Each NPC template is a JSON file named `{template_id}.json`.
     "wisdom": 13,
     "charisma": 12
   },
-  "combat_modifiers": {
+  "modifiers": {
     "longsword": 5
+  },
+  "actions": {
+    "longsword": {
+      "name": "Longsword",
+      "type": "attack",
+      "attempt": "1d20+5",
+      "effect": "1d8"
+    }
   },
   "drop_items_on_defeat": true,
   "contingency_prompts": [
@@ -97,11 +105,12 @@ inline definition.
 
 ---
 
-## Combat stats
+## Mechanical stats
 
-Combat stats (`ac`, `hp`, `max_hp`, `attributes`, `combat_modifiers`,
-`drop_items_on_defeat`) are **optional**. A template without them is perfectly
-valid — it's just a reusable narrative character. Combat stats appear in the
-prompt output alongside those of monsters when present.
+Mechanical stats (`ac`, `hp`, `max_hp`, `abilities`, `attributes`, `modifiers`,
+`actions`, `drop_items_on_defeat`) are **optional**. A template without them is
+perfectly valid — it's just a reusable narrative character. `abilities` is the
+six scores. `attributes` is other named numbers, such as skill bonuses.
+`actions` use dice notation (`"1d20+5"`, `"1d8"`).
 
 See `docs/guide-for-scenarios.md` for the complete NPC reference.
