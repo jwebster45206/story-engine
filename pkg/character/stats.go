@@ -137,10 +137,10 @@ func (s Stats) Clone() Stats {
 	return c
 }
 
-// ApplyEffect applies n to HP. Positive n deals damage; negative n heals.
+// ApplyHPEffect applies n to HP. Positive n deals damage; negative n heals.
 // HP is clamped to [0, MaxHP] when MaxHP is set, and to 0 otherwise.
 // The returned hp is the value after clamping. defeated is HP <= 0.
-func (s *Stats) ApplyEffect(n int) (hp int, defeated bool) {
+func (s *Stats) ApplyHPEffect(n int) (hp int, defeated bool) {
 	if s == nil {
 		return 0, false
 	}

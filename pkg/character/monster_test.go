@@ -185,35 +185,35 @@ func TestNewMonster(t *testing.T) {
 	})
 }
 
-func TestStats_ApplyEffect(t *testing.T) {
+func TestStats_ApplyHPEffect(t *testing.T) {
 	t.Run("damage reduces HP", func(t *testing.T) {
 		s := &Stats{HP: 20, MaxHP: 20}
-		hp, defeated := s.ApplyEffect(5)
+		hp, defeated := s.ApplyHPEffect(5)
 		if hp != 15 || s.HP != 15 || defeated {
-			t.Errorf("ApplyEffect(5) = %d, defeated %v, HP %d; want 15, false", hp, defeated, s.HP)
+			t.Errorf("ApplyHPEffect(5) = %d, defeated %v, HP %d; want 15, false", hp, defeated, s.HP)
 		}
 	})
 
 	t.Run("damage clamps at 0", func(t *testing.T) {
 		s := &Stats{HP: 5, MaxHP: 20}
-		hp, defeated := s.ApplyEffect(10)
+		hp, defeated := s.ApplyHPEffect(10)
 		if hp != 0 || !defeated {
-			t.Errorf("ApplyEffect(10) = %d, defeated %v; want 0, true", hp, defeated)
+			t.Errorf("ApplyHPEffect(10) = %d, defeated %v; want 0, true", hp, defeated)
 		}
 	})
 
 	t.Run("zero leaves HP unchanged", func(t *testing.T) {
 		s := &Stats{HP: 20, MaxHP: 20}
-		if hp, _ := s.ApplyEffect(0); hp != 20 {
-			t.Errorf("ApplyEffect(0) HP = %d, want 20", hp)
+		if hp, _ := s.ApplyHPEffect(0); hp != 20 {
+			t.Errorf("ApplyHPEffect(0) HP = %d, want 20", hp)
 		}
 	})
 
 	t.Run("negative heals and clamps at MaxHP", func(t *testing.T) {
 		s := &Stats{HP: 18, MaxHP: 20}
-		hp, defeated := s.ApplyEffect(-5)
+		hp, defeated := s.ApplyHPEffect(-5)
 		if hp != 20 || defeated {
-			t.Errorf("ApplyEffect(-5) = %d, defeated %v; want 20, false", hp, defeated)
+			t.Errorf("ApplyHPEffect(-5) = %d, defeated %v; want 20, false", hp, defeated)
 		}
 	})
 }
