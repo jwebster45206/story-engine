@@ -45,8 +45,8 @@ func TestAttempt_SeededHitAndMiss(t *testing.T) {
 	if strings.Contains(got.NarratorText, "DC") || strings.Contains(strings.ToLower(got.NarratorText), "rolled") {
 		t.Errorf("narrator line must not include dice mechanics, got %q", got.NarratorText)
 	}
-	if !strings.HasPrefix(got.Content, "Felix rolled ") {
-		t.Errorf("content should name the actor, got %q", got.Content)
+	if !strings.HasPrefix(got.Content, "Felix rolled ") || !strings.Contains(got.Content, "AC 10") || !strings.Contains(got.Content, "*Result ") {
+		t.Errorf("content should name the actor, AC, and result, got %q", got.Content)
 	}
 
 	if got.Success != wantHit {
@@ -409,14 +409,19 @@ func seedForFace(t *testing.T, min, max int) (int64, int) {
 
 func TestRollContent(t *testing.T) {
 	tests := []struct {
-		actor, detail, want string
+		actor, action, detail string
+		dc                    int
+		hit                   bool
+		want                  string
 	}{
-		{"Jack", "Rolled 1d20... 12; *Result: 12*", "Jack rolled 1d20... 12; *Result: 12*"},
-		{"Jack", "rolled 1d20... 12; *Result: 12*", "Jack rolled 1d20... 12; *Result: 12*"},
+		{"Skeleton", "Bite", "Rolled 1d20... 16; *Result: 16*", 10, true, "Bite: Skeleton rolled 1d20... 16; AC 10; *Result Hit*"},
+		{"Skeleton", "Bite", "rolled 1d20... 16; *Result: 16*", 10, false, "Bite: Skeleton rolled 1d20... 16; AC 10; *Result Miss*"},
+		{"Jack", "", "Rolled 1d20... 12; *Result: 12*", 10, true, "Jack rolled 1d20... 12; AC 10; *Result Hit*"},
+		{"Jack", "Strike", "Rolled 1d20... 12; +4 striking; *Result: 16*", 15, true, "Strike: Jack rolled 1d20... 12; +4 striking; AC 15; *Result Hit*"},
 	}
 	for _, tt := range tests {
-		if got := rollContent(tt.actor, tt.detail); got != tt.want {
-			t.Errorf("rollContent(%q, %q) = %q, want %q", tt.actor, tt.detail, got, tt.want)
+		if got := rollContent(tt.actor, tt.action, tt.detail, tt.dc, tt.hit); got != tt.want {
+			t.Errorf("rollContent() = %q, want %q", got, tt.want)
 		}
 	}
 }

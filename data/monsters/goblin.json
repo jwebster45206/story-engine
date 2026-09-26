@@ -14,18 +14,11 @@
     "charisma": 8
   },
   "modifiers": {
-    "scimitar": 4,
-    "shortbow": 4
+    "scimitar": 4
   },
   "actions": {
     "scimitar": {
       "name": "Scimitar",
-      "type": "attack",
-      "attempt": "1d20+4",
-      "effect": "1d6"
-    },
-    "shortbow": {
-      "name": "Shortbow",
       "type": "attack",
       "attempt": "1d20+4",
       "effect": "1d6"

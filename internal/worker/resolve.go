@@ -93,6 +93,38 @@ func pendingCombatReaction(gs *state.GameState, ruling *chat.Ruling) *chat.Rulin
 	})
 }
 
+// reactionAction is the attack a counterattack will roll. The queued prompt
+// and the later attempt both use it, so the narrator sees the same action.
+func reactionAction(gs *state.GameState, actorName string) (id, name string) {
+	if gs == nil {
+		return "", ""
+	}
+	stats, _, ok := gs.FindActor(actorName)
+	if !ok {
+		return "", ""
+	}
+	actor, err := stats.ToActor(actorName, actorName)
+	if err != nil {
+		return "", ""
+	}
+	action, ok := pickAction(actor, "")
+	if !ok {
+		return "", ""
+	}
+	name = action.Name
+	if name == "" {
+		name = action.ID
+	}
+	return action.ID, name
+}
+
+func reactionPrompt(actor, target, actionName string) string {
+	if actionName == "" {
+		return fmt.Sprintf("%s strikes %s.", actor, target)
+	}
+	return fmt.Sprintf("%s strikes %s with %s.", actor, target, actionName)
+}
+
 func (p *ChatOrchestrator) resolveActionAttempt(gs *state.GameState, ruling *chat.Ruling) resolvedAttempt {
 	pcName := ""
 	if gs != nil {
@@ -192,16 +224,29 @@ func (p *ChatOrchestrator) rollAttempt(actor, target, actionName string, die d20
 	}
 	success := outcome.Value >= dc
 	text := outcomeLine(actor, target, actionName, success)
-	content := rollContent(actor, outcome.Detail())
+	content := rollContent(actor, actionName, outcome.Detail(), dc, success)
 	if p.logger != nil {
 		p.logger.Info(text, "content", content)
 	}
 	return resolvedAttempt{NarratorText: text, Content: content, Success: success}
 }
 
-func rollContent(actor, detail string) string {
+// rollContent is the player-facing dice line. Detail's numeric *Result* is
+// replaced with hit or miss, and the difficulty is written out as AC.
+func rollContent(actor, actionName, detail string, dc int, hit bool) string {
 	if strings.HasPrefix(detail, "R") {
 		detail = "r" + detail[1:]
 	}
-	return actor + " " + detail
+	if i := strings.LastIndex(detail, "; *Result:"); i >= 0 {
+		detail = detail[:i]
+	}
+	result := "Miss"
+	if hit {
+		result = "Hit"
+	}
+	roll := fmt.Sprintf("%s %s; AC %d; *Result %s*", actor, detail, dc, result)
+	if actionName == "" {
+		return roll
+	}
+	return actionName + ": " + roll
 }

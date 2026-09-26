@@ -444,11 +444,15 @@ func (p *ChatOrchestrator) enqueueReaction(ctx context.Context, gs *state.GameSt
 	if _, _, ok := gs.FindActor(pending.Subject); !ok {
 		return nil
 	}
+	actionID, actionName := reactionAction(gs, pending.Subject)
+	if actionID != "" {
+		pending.ActionID = actionID
+	}
 	req := new(queue.Request{
 		RequestID:   uuid.New().String(),
 		Type:        queue.RequestTypeStoryEvent,
 		GameStateID: gs.ID,
-		EventPrompt: fmt.Sprintf("%s strikes %s.", pending.Subject, pending.Object),
+		EventPrompt: reactionPrompt(pending.Subject, pending.Object, actionName),
 		Ruling:      pending,
 		EnqueuedAt:  time.Now(),
 	})
