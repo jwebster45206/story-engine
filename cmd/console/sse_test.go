@@ -411,6 +411,7 @@ func TestFormatAttemptLine(t *testing.T) {
 	}{
 		{"Jack rolled 1d20... 12", true, string(chat.RulingScopeCombat), "Jack rolled 1d20... 12 — hit"},
 		{"Jack rolled 1d20... 4", false, string(chat.RulingScopeCombat), "Jack rolled 1d20... 4 — miss"},
+		{"Bite: Skeleton rolled 1d20... 16; AC 10; *Result Hit*", true, string(chat.RulingScopeCombat), "Bite: Skeleton rolled 1d20... 16; AC 10; *Result Hit*"},
 		{"Jack rolled 1d20... 15", true, string(chat.RulingScopeExamine), "Jack rolled 1d20... 15 — success"},
 		{"Jack rolled 1d20... 3", false, string(chat.RulingScopeExamine), "Jack rolled 1d20... 3 — fail"},
 		{"There is no north exit.", false, "all", "There is no north exit."},

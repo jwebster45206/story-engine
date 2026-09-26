@@ -143,7 +143,13 @@ func rulingSchema() map[string]any {
 					map[string]any{"type": "null"},
 				},
 			},
+			"action_id": map[string]any{
+				"anyOf": []any{
+					map[string]any{"type": "string"},
+					map[string]any{"type": "null"},
+				},
+			},
 		},
-		"required": []string{"allowed", "reasoning", "reaction", "scope", "subject", "object"},
+		"required": []string{"allowed", "reasoning", "reaction", "scope", "subject", "object", "action_id"},
 	}
 }

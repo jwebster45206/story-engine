@@ -14,18 +14,11 @@
     "charisma": 5
   },
   "modifiers": {
-    "shortsword": 4,
-    "shortbow": 4
+    "bite": 4
   },
   "actions": {
-    "shortsword": {
-      "name": "Shortsword",
-      "type": "attack",
-      "attempt": "1d20+4",
-      "effect": "1d6"
-    },
-    "shortbow": {
-      "name": "Shortbow",
+    "bite": {
+      "name": "Bite",
       "type": "attack",
       "attempt": "1d20+4",
       "effect": "1d6"

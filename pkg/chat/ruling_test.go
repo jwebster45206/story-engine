@@ -12,6 +12,7 @@ func TestRuling_Normalize_DropsReactionWhenAllowed(t *testing.T) {
 		Reaction:  "  would be blocked  ",
 		Subject:   "  Felix  ",
 		Object:    "  Giant Rat  ",
+		ActionID:  "  bite  ",
 	}
 	r.Normalize()
 	if r.Reasoning != "the exit is listed" {
@@ -22,6 +23,9 @@ func TestRuling_Normalize_DropsReactionWhenAllowed(t *testing.T) {
 	}
 	if r.Subject != "Felix" || r.Object != "Giant Rat" {
 		t.Errorf("Subject=%q Object=%q", r.Subject, r.Object)
+	}
+	if r.ActionID != "bite" {
+		t.Errorf("ActionID = %q, want bite", r.ActionID)
 	}
 }
 
@@ -136,13 +140,13 @@ func TestRuling_NarratorText(t *testing.T) {
 
 func TestRuling_UnmarshalJSON_NullOptionals(t *testing.T) {
 	var r Ruling
-	if err := json.Unmarshal([]byte(`{"allowed":true,"reasoning":null,"reaction":null,"scope":"dialogue","subject":null,"object":null}`), &r); err != nil {
+	if err := json.Unmarshal([]byte(`{"allowed":true,"reasoning":null,"reaction":null,"scope":"dialogue","subject":null,"object":null,"action_id":null}`), &r); err != nil {
 		t.Fatalf("Unmarshal: %v", err)
 	}
 	if !r.Allowed {
 		t.Error("Allowed = false")
 	}
-	if r.Reasoning != "" || r.Reaction != "" || r.Subject != "" || r.Object != "" {
+	if r.Reasoning != "" || r.Reaction != "" || r.Subject != "" || r.Object != "" || r.ActionID != "" {
 		t.Errorf("optional strings not empty: %+v", r)
 	}
 	if r.Scope != RulingScopeDialogue {

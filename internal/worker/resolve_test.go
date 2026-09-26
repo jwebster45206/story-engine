@@ -13,20 +13,22 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
-func TestStrikeLine(t *testing.T) {
+func TestOutcomeLine(t *testing.T) {
 	tests := []struct {
-		attacker, target string
-		hit              bool
-		want             string
+		attacker, target, action string
+		hit                      bool
+		want                     string
 	}{
-		{"Felix", "Giant Rat", true, "Felix strikes Giant Rat and hits."},
-		{"Felix", "Giant Rat", false, "Felix strikes Giant Rat and misses."},
-		{"Felix", "", true, "Felix strikes  and hits."},
-		{"Felix", "", false, "Felix strikes  and misses."},
+		{"Felix", "Giant Rat", "", true, "Felix strikes Giant Rat and hits."},
+		{"Felix", "Giant Rat", "", false, "Felix strikes Giant Rat and misses."},
+		{"Felix", "", "", true, "Felix strikes  and hits."},
+		{"Felix", "", "", false, "Felix strikes  and misses."},
+		{"Felix", "Giant Rat", "Cutlass", true, "Felix strikes Giant Rat with Cutlass and hits."},
+		{"Felix", "Giant Rat", "Cutlass", false, "Felix strikes Giant Rat with Cutlass and misses."},
 	}
 	for _, tt := range tests {
-		if got := strikeLine(tt.attacker, tt.target, tt.hit); got != tt.want {
-			t.Errorf("strikeLine(%q, %q, %v) = %q, want %q", tt.attacker, tt.target, tt.hit, got, tt.want)
+		if got := outcomeLine(tt.attacker, tt.target, tt.action, tt.hit); got != tt.want {
+			t.Errorf("outcomeLine(%q, %q, %q, %v) = %q, want %q", tt.attacker, tt.target, tt.action, tt.hit, got, tt.want)
 		}
 	}
 }
@@ -36,15 +38,15 @@ func TestAttempt_SeededHitAndMiss(t *testing.T) {
 	wantHit := mustRoll(t, probe).Value >= defaultDC
 	p := &ChatOrchestrator{roller: d20.NewRoller(1), logger: slog.Default()}
 	got := p.attempt("Felix", "Giant Rat")
-	want := strikeLine("Felix", "Giant Rat", wantHit)
+	want := outcomeLine("Felix", "Giant Rat", "", wantHit)
 	if got.NarratorText != want {
 		t.Errorf("attempt = %q, want %q", got.NarratorText, want)
 	}
 	if strings.Contains(got.NarratorText, "DC") || strings.Contains(strings.ToLower(got.NarratorText), "rolled") {
 		t.Errorf("narrator line must not include dice mechanics, got %q", got.NarratorText)
 	}
-	if !strings.HasPrefix(got.Content, "Felix rolled ") {
-		t.Errorf("content should name the actor, got %q", got.Content)
+	if !strings.HasPrefix(got.Content, "Felix rolled ") || !strings.Contains(got.Content, "AC 10") || !strings.Contains(got.Content, "*Result ") {
+		t.Errorf("content should name the actor, AC, and result, got %q", got.Content)
 	}
 
 	if got.Success != wantHit {
@@ -155,7 +157,7 @@ func expectedStrikes(t *testing.T, seed int64, pc, target string) []string {
 	t.Helper()
 	r := d20.NewRoller(seed)
 	pcHit := mustRoll(t, r).Value >= defaultDC
-	return []string{strikeLine(pc, target, pcHit)}
+	return []string{outcomeLine(pc, target, "", pcHit)}
 }
 
 func mustRoll(t *testing.T, r *d20.Roller) d20.RollOutcome {
@@ -222,36 +224,196 @@ func TestPendingCombatReaction(t *testing.T) {
 	}
 }
 
-func TestActorPresentAtLocation(t *testing.T) {
-	rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 5, MaxHP: 5}
-	gs := &state.GameState{
+func TestResolveActionAttempt_ACAndDefaultDC(t *testing.T) {
+	seed, face := seedForFace(t, defaultDC, 15)
+	p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default()}
+	pc := &character.PC{Name: "Felix", HP: 10}
+
+	t.Run("missing target uses defaultDC", func(t *testing.T) {
+		p.roller = d20.NewRoller(seed)
+		got := p.resolveAttempts(&state.GameState{PC: pc}, &chat.Ruling{
+			Allowed: true,
+			Scope:   chat.RulingScopeCombat,
+			Object:  "Giant Rat",
+		})
+		if len(got) != 1 || got[0].Success != (face >= defaultDC) {
+			t.Fatalf("got %+v, want success=%v", got, face >= defaultDC)
+		}
+		assertNoMechanics(t, got[0].NarratorText)
+	})
+
+	t.Run("zero AC uses defaultDC", func(t *testing.T) {
+		p.roller = d20.NewRoller(seed)
+		got := p.resolveAttempts(combatGS(pc, &character.Monster{
+			ID: "rat_1", Name: "Giant Rat", HP: 4,
+		}), &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
+		if len(got) != 1 || got[0].Success != (face >= defaultDC) {
+			t.Fatalf("AC 0: got %+v, want success=%v", got, face >= defaultDC)
+		}
+	})
+
+	t.Run("same die misses a higher AC", func(t *testing.T) {
+		p.roller = d20.NewRoller(seed)
+		got := p.resolveAttempts(combatGS(pc, &character.Monster{
+			ID: "rat_1", Name: "Giant Rat", HP: 4, AC: face + 1,
+		}), &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
+		if len(got) != 1 || got[0].Success {
+			t.Fatalf("AC %d should miss face %d, got %+v", face+1, face, got)
+		}
+		assertNoMechanics(t, got[0].NarratorText)
+	})
+
+	t.Run("same die hits a lower AC", func(t *testing.T) {
+		p.roller = d20.NewRoller(seed)
+		ac := face
+		if ac > 1 {
+			ac = face - 1
+		}
+		got := p.resolveAttempts(combatGS(pc, &character.Monster{
+			ID: "rat_1", Name: "Giant Rat", HP: 4, AC: ac,
+		}), &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
+		if len(got) != 1 || !got[0].Success {
+			t.Fatalf("AC %d should hit face %d, got %+v", ac, face, got)
+		}
+	})
+}
+
+func TestResolveActionAttempt_UnknownActionID(t *testing.T) {
+	pc := &character.PC{
+		Name: "Felix",
+		HP:   10,
+		Actions: map[string]character.Action{
+			"scimitar": {Name: "Scimitar", Type: "attack", Attempt: "1d20"},
+			"bite":     {Name: "Bite", Type: "attack", Attempt: "1d20"},
+		},
+	}
+	p := &ChatOrchestrator{roller: d20.NewRoller(1), logger: slog.Default()}
+	got := p.resolveAttempts(&state.GameState{PC: pc}, &chat.Ruling{
+		Allowed:  true,
+		Scope:    chat.RulingScopeCombat,
+		Object:   "Giant Rat",
+		ActionID: "fireball",
+	})
+	if len(got) != 1 {
+		t.Fatalf("got %d lines", len(got))
+	}
+	if !strings.Contains(got[0].NarratorText, "with Bite") || strings.Contains(got[0].NarratorText, "Scimitar") {
+		t.Errorf("unknown action_id should fall back to Bite, got %q", got[0].NarratorText)
+	}
+	assertNoMechanics(t, got[0].NarratorText)
+}
+
+func TestResolveActionAttempt_StrikingModifier(t *testing.T) {
+	seed, face := seedForFace(t, 1, 16)
+	ac := face + 1
+	rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 4, AC: ac}
+	ruling := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
+
+	bare := &character.PC{
+		Name: "Felix",
+		HP:   10,
+		Actions: map[string]character.Action{
+			"strike": {Name: "Strike", Type: "attack", Attempt: "1d20"},
+		},
+	}
+	p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default()}
+	got := p.resolveAttempts(combatGS(bare, rat), ruling)
+	if len(got) != 1 || got[0].Success {
+		t.Fatalf("bare 1d20 face %d should miss AC %d, got %+v", face, ac, got)
+	}
+
+	boosted := &character.PC{
+		Name:      "Felix",
+		HP:        10,
+		Modifiers: map[string]int{"striking": 5},
+		Actions: map[string]character.Action{
+			"strike": {Name: "Strike", Type: "attack", Attempt: "1d20"},
+		},
+	}
+	p.roller = d20.NewRoller(seed)
+	got = p.resolveAttempts(combatGS(boosted, rat), ruling)
+	if len(got) != 1 || !got[0].Success {
+		t.Fatalf("striking +5 on face %d should hit AC %d, got %+v", face, ac, got)
+	}
+	assertNoMechanics(t, got[0].NarratorText)
+	if !strings.Contains(got[0].NarratorText, "with Strike") {
+		t.Errorf("named action missing from narrator line: %q", got[0].NarratorText)
+	}
+}
+
+func TestResolveActionAttempt_EmptyAttemptHits(t *testing.T) {
+	pc := &character.PC{
+		Name: "Felix",
+		HP:   10,
+		Actions: map[string]character.Action{
+			"shove": {Name: "Shove", Type: "attack"},
+		},
+	}
+	p := &ChatOrchestrator{roller: d20.NewRoller(1), logger: slog.Default()}
+	got := p.resolveAttempts(&state.GameState{PC: pc}, &chat.Ruling{
+		Allowed:  true,
+		Scope:    chat.RulingScopeCombat,
+		Object:   "Giant Rat",
+		ActionID: "shove",
+	})
+	if len(got) != 1 {
+		t.Fatalf("got %d lines", len(got))
+	}
+	if !got[0].Success || got[0].Content != "" {
+		t.Fatalf("empty attempt = %+v, want success and empty content", got[0])
+	}
+	if got[0].NarratorText != "Felix strikes Giant Rat with Shove and hits." {
+		t.Errorf("line = %q", got[0].NarratorText)
+	}
+}
+
+func combatGS(pc *character.PC, monster *character.Monster) *state.GameState {
+	return &state.GameState{
 		Location: "tavern",
-		NPCs: map[string]*character.NPC{
-			"pip": {Name: "Pip Upton", Location: "tavern"},
-		},
+		PC:       pc,
 		WorldLocations: map[string]scenario.Location{
-			"tavern": {Name: "The Tavern", Monsters: map[string]*character.Monster{"rat_1": rat}},
+			"tavern": {Monsters: map[string]*character.Monster{monster.ID: monster}},
 		},
 	}
-	if !actorPresentAtLocation(gs, "Giant Rat") || !actorPresentAtLocation(gs, "Pip Upton") {
-		t.Fatal("expected present actors")
+}
+
+func assertNoMechanics(t *testing.T, line string) {
+	t.Helper()
+	if strings.Contains(line, "DC") || strings.Contains(strings.ToLower(line), "rolled") {
+		t.Errorf("narrator line must not include dice mechanics, got %q", line)
 	}
-	gs.NPCs["pip"] = &character.NPC{Name: "Pip Upton", Location: "cellar"}
-	if actorPresentAtLocation(gs, "Pip Upton") {
-		t.Error("NPC in another room should not be present")
+}
+
+func seedForFace(t *testing.T, min, max int) (int64, int) {
+	t.Helper()
+	for seed := int64(1); seed < 1000; seed++ {
+		o, err := d20.NewRoller(seed).Roll(d20Die)
+		if err != nil {
+			t.Fatalf("Roll: %v", err)
+		}
+		if o.Value >= min && o.Value < max {
+			return seed, o.Value
+		}
 	}
+	t.Fatalf("no face in [%d, %d)", min, max)
+	return 0, 0
 }
 
 func TestRollContent(t *testing.T) {
 	tests := []struct {
-		actor, detail, want string
+		actor, action, detail string
+		dc                    int
+		hit                   bool
+		want                  string
 	}{
-		{"Jack", "Rolled 1d20... 12; *Result: 12*", "Jack rolled 1d20... 12; *Result: 12*"},
-		{"Jack", "rolled 1d20... 12; *Result: 12*", "Jack rolled 1d20... 12; *Result: 12*"},
+		{"Skeleton", "Bite", "Rolled 1d20... 16; *Result: 16*", 10, true, "Bite: Skeleton rolled 1d20... 16; AC 10; *Result Hit*"},
+		{"Skeleton", "Bite", "rolled 1d20... 16; *Result: 16*", 10, false, "Bite: Skeleton rolled 1d20... 16; AC 10; *Result Miss*"},
+		{"Jack", "", "Rolled 1d20... 12; *Result: 12*", 10, true, "Jack rolled 1d20... 12; AC 10; *Result Hit*"},
+		{"Jack", "Strike", "Rolled 1d20... 12; +4 striking; *Result: 16*", 15, true, "Strike: Jack rolled 1d20... 12; +4 striking; AC 15; *Result Hit*"},
 	}
 	for _, tt := range tests {
-		if got := rollContent(tt.actor, tt.detail); got != tt.want {
-			t.Errorf("rollContent(%q, %q) = %q, want %q", tt.actor, tt.detail, got, tt.want)
+		if got := rollContent(tt.actor, tt.action, tt.detail, tt.dc, tt.hit); got != tt.want {
+			t.Errorf("rollContent() = %q, want %q", got, tt.want)
 		}
 	}
 }

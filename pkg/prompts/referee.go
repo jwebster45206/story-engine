@@ -2,8 +2,11 @@ package prompts
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -20,7 +23,8 @@ Respond with JSON:
 - reaction: only when the action is not allowed. A terse in-world hint of what would happen if the PC took the exact action. It is not narration. Null when allowed is true.
 - subject: who is attempting the action. Null when the PC is acting. Set only when another actor is.
 - object: the primary target of the action — a WORLD STATE actor name (from "NPCs here" or "Monsters here") or a location name (from exits / adjacent_previews). Null if none.
-- scope: the primary intent of this turn. One of: dialogue, movement, combat, examine, ambient, other.`
+- scope: the primary intent of this turn. One of: dialogue, movement, combat, examine, ambient, other.
+- action_id: an id from the acting actor's <actions> menu, or null when the turn does not need a roll. The id must appear in the menu.`
 
 func refereeWindow(narratorLimit int) int {
 	if narratorLimit <= 0 || narratorLimit > refereeHistoryLimit {
@@ -63,6 +67,10 @@ func BuildRefereeMessages(gs *state.GameState, userMessage string, historyLimit 
 		sb.WriteString("\n\n")
 		sb.WriteString(line)
 	}
+	if block := pcActionsBlock(gs); block != "" {
+		sb.WriteString("\n\n")
+		sb.WriteString(block)
+	}
 	sb.WriteString("\n\n")
 	sb.WriteString(ToPromptState(gs).ToSlimString())
 	if examples := strings.TrimSpace(rs.Examples); examples != "" {
@@ -101,4 +109,32 @@ func pcRefereeLine(gs *state.GameState) string {
 		return ""
 	}
 	return fmt.Sprintf("Player Character (PC): %s. User lines prefixed with that name are the player acting as the PC, not an NPC.", name)
+}
+
+// pcActionsBlock is the PC's action menu. Empty when the PC has no actions.
+// Reactions do not call the referee, so this menu is only the player's.
+func pcActionsBlock(gs *state.GameState) string {
+	if gs == nil || gs.PC == nil || len(gs.PC.Actions) == 0 {
+		return ""
+	}
+	ids := slices.Sorted(maps.Keys(gs.PC.Actions))
+	var b strings.Builder
+	b.WriteString("<actions>\n")
+	for _, id := range ids {
+		b.WriteString(formatPCAction(id, gs.PC.Actions[id]))
+		b.WriteByte('\n')
+	}
+	b.WriteString("</actions>")
+	return b.String()
+}
+
+func formatPCAction(id string, a character.Action) string {
+	name := a.Name
+	if name == "" {
+		name = id
+	}
+	if a.Type != "" {
+		return fmt.Sprintf("- %s: %s (%s)", id, name, a.Type)
+	}
+	return fmt.Sprintf("- %s: %s", id, name)
 }

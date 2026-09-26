@@ -14,8 +14,7 @@
     "charisma": 10
   },
   "modifiers": {
-    "greataxe": 5,
-    "javelin": 5
+    "greataxe": 5
   },
   "actions": {
     "greataxe": {
@@ -23,12 +22,6 @@
       "type": "attack",
       "attempt": "1d20+5",
       "effect": "1d12"
-    },
-    "javelin": {
-      "name": "Javelin",
-      "type": "attack",
-      "attempt": "1d20+5",
-      "effect": "1d6"
     }
   },
   "items": ["rusty greataxe"],
