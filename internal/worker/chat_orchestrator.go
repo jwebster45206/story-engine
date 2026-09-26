@@ -441,7 +441,7 @@ func (p *ChatOrchestrator) enqueueReaction(ctx context.Context, gs *state.GameSt
 	if gs.IsEnded {
 		return nil
 	}
-	if !actorPresentAtLocation(gs, pending.Subject) {
+	if _, _, ok := gs.FindActor(pending.Subject); !ok {
 		return nil
 	}
 	req := new(queue.Request{

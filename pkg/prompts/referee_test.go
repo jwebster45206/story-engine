@@ -113,6 +113,18 @@ func TestBuildRefereeMessages_StrictVsRelaxed(t *testing.T) {
 	if !strings.Contains(strictSys, `"subject":null`) {
 		t.Error("strict examples should omit PC as subject")
 	}
+	if !strings.Contains(strictSys, "action_id:") {
+		t.Error("expected action_id field in preamble")
+	}
+	if !strings.Contains(strictSys, `"action_id":"bite"`) {
+		t.Error("strict attack example should set action_id")
+	}
+	if !strings.Contains(strictSys, `"action_id":null`) {
+		t.Error("strict examples should include a null action_id")
+	}
+	if strings.Contains(strictSys, "<actions>\n") {
+		t.Error("actions menu should be omitted when the PC has no actions")
+	}
 	if strings.Contains(strictSys, `"focus"`) {
 		t.Error("strict examples should not include focus")
 	}
@@ -298,6 +310,28 @@ func TestBuildRefereeMessages_AfterStrikeBack(t *testing.T) {
 	}
 	if msgs[2].Role != chat.ChatRoleUser || msgs[2].Content != current {
 		t.Errorf("current user = %+v", msgs[2])
+	}
+}
+
+func TestBuildRefereeMessages_PCActions(t *testing.T) {
+	gs := refereeTestGS(state.RulesStrict)
+	gs.PC = &character.PC{
+		Name: "Felix",
+		Stats: character.Stats{
+			Actions: map[string]character.Action{
+				"cutlass": {Name: "Cutlass", Type: "attack"},
+				"bite":    {Name: "Bite", Type: "attack"},
+				"focus":   {Name: "Focus"},
+			},
+		},
+	}
+	msgs, err := BuildRefereeMessages(gs, "I attack", 2)
+	if err != nil {
+		t.Fatalf("BuildRefereeMessages: %v", err)
+	}
+	want := "<actions>\n- bite: Bite (attack)\n- cutlass: Cutlass (attack)\n- focus: Focus\n</actions>"
+	if !strings.Contains(msgs[0].Content, want) {
+		t.Errorf("system prompt missing action menu %q\n%s", want, msgs[0].Content)
 	}
 }
 

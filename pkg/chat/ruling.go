@@ -25,6 +25,7 @@ type Ruling struct {
 	Scope     RulingScope `json:"scope,omitempty"`
 	Subject   string      `json:"subject,omitempty"` // empty or "PC" means the player
 	Object    string      `json:"object,omitempty"`
+	ActionID  string      `json:"action_id,omitempty"` // id from the acting actor's menu; empty when no roll
 }
 
 // UnmarshalJSON accepts JSON null for optional strings.
@@ -36,6 +37,7 @@ func (r *Ruling) UnmarshalJSON(data []byte) error {
 		Scope     RulingScope `json:"scope"`
 		Subject   *string     `json:"subject"`
 		Object    *string     `json:"object"`
+		ActionID  *string     `json:"action_id"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -54,6 +56,9 @@ func (r *Ruling) UnmarshalJSON(data []byte) error {
 	if raw.Object != nil {
 		r.Object = *raw.Object
 	}
+	if raw.ActionID != nil {
+		r.ActionID = *raw.ActionID
+	}
 	return nil
 }
 
@@ -67,6 +72,7 @@ func (r *Ruling) Normalize() {
 	r.Reaction = strings.TrimSpace(r.Reaction)
 	r.Subject = strings.TrimSpace(r.Subject)
 	r.Object = strings.TrimSpace(r.Object)
+	r.ActionID = strings.TrimSpace(r.ActionID)
 	if r.Allowed {
 		r.Reaction = ""
 	}
