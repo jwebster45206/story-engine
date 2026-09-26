@@ -317,12 +317,10 @@ func TestBuildRefereeMessages_PCActions(t *testing.T) {
 	gs := refereeTestGS(state.RulesStrict)
 	gs.PC = &character.PC{
 		Name: "Felix",
-		Stats: character.Stats{
-			Actions: map[string]character.Action{
-				"cutlass": {Name: "Cutlass", Type: "attack"},
-				"bite":    {Name: "Bite", Type: "attack"},
-				"focus":   {Name: "Focus"},
-			},
+		Actions: map[string]character.Action{
+			"cutlass": {Name: "Cutlass", Type: "attack"},
+			"bite":    {Name: "Bite", Type: "attack"},
+			"focus":   {Name: "Focus"},
 		},
 	}
 	msgs, err := BuildRefereeMessages(gs, "I attack", 2)

@@ -8,15 +8,15 @@ import (
 )
 
 func TestFindActor(t *testing.T) {
-	ratA := &character.Monster{ID: "rat_a", Name: "Giant Rat", Stats: character.Stats{HP: 4, AC: 8}}
-	ratB := &character.Monster{ID: "rat_b", Name: "Giant Rat", Stats: character.Stats{HP: 9, AC: 12}}
-	wolf := &character.Monster{ID: "wolf_1", Name: "Wolf", Stats: character.Stats{HP: 11}}
+	ratA := &character.Monster{ID: "rat_a", Name: "Giant Rat", HP: 4, AC: 8}
+	ratB := &character.Monster{ID: "rat_b", Name: "Giant Rat", HP: 9, AC: 12}
+	wolf := &character.Monster{ID: "wolf_1", Name: "Wolf", HP: 11}
 	gs := &GameState{
 		Location: "tavern",
-		PC:       &character.PC{Name: "Felix", Stats: character.Stats{HP: 12, AC: 14}},
+		PC:       &character.PC{Name: "Felix", HP: 12, AC: 14},
 		NPCs: map[string]*character.NPC{
-			"guard":     {Name: "Guard Captain", Location: "tavern", Stats: character.Stats{HP: 10, AC: 16}},
-			"pip":       {Name: "Pip Upton", Location: "cellar", Stats: character.Stats{HP: 5}},
+			"guard":     {Name: "Guard Captain", Location: "tavern", HP: 10, AC: 16},
+			"pip":       {Name: "Pip Upton", Location: "cellar", HP: 5},
 			"bartender": {Name: "Bartender", Location: "tavern"},
 		},
 		WorldLocations: map[string]scenario.Location{
@@ -62,7 +62,7 @@ func TestFindActor(t *testing.T) {
 }
 
 func TestFindActor_UnnamedPC(t *testing.T) {
-	gs := &GameState{PC: &character.PC{Stats: character.Stats{HP: 8}}}
+	gs := &GameState{PC: &character.PC{HP: 8}}
 	stats, display, ok := gs.FindActor("PC")
 	if !ok || display != "PC" || stats != &gs.PC.Stats {
 		t.Fatalf("unnamed PC = %q ok=%v", display, ok)

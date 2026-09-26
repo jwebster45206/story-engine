@@ -227,7 +227,7 @@ func TestPendingCombatReaction(t *testing.T) {
 func TestResolveActionAttempt_ACAndDefaultDC(t *testing.T) {
 	seed, face := seedForFace(t, defaultDC, 15)
 	p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default()}
-	pc := &character.PC{Name: "Felix", Stats: character.Stats{HP: 10}}
+	pc := &character.PC{Name: "Felix", HP: 10}
 
 	t.Run("missing target uses defaultDC", func(t *testing.T) {
 		p.roller = d20.NewRoller(seed)
@@ -245,7 +245,7 @@ func TestResolveActionAttempt_ACAndDefaultDC(t *testing.T) {
 	t.Run("zero AC uses defaultDC", func(t *testing.T) {
 		p.roller = d20.NewRoller(seed)
 		got := p.resolveAttempts(combatGS(pc, &character.Monster{
-			ID: "rat_1", Name: "Giant Rat", Stats: character.Stats{HP: 4},
+			ID: "rat_1", Name: "Giant Rat", HP: 4,
 		}), &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
 		if len(got) != 1 || got[0].Success != (face >= defaultDC) {
 			t.Fatalf("AC 0: got %+v, want success=%v", got, face >= defaultDC)
@@ -255,7 +255,7 @@ func TestResolveActionAttempt_ACAndDefaultDC(t *testing.T) {
 	t.Run("same die misses a higher AC", func(t *testing.T) {
 		p.roller = d20.NewRoller(seed)
 		got := p.resolveAttempts(combatGS(pc, &character.Monster{
-			ID: "rat_1", Name: "Giant Rat", Stats: character.Stats{HP: 4, AC: face + 1},
+			ID: "rat_1", Name: "Giant Rat", HP: 4, AC: face + 1,
 		}), &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
 		if len(got) != 1 || got[0].Success {
 			t.Fatalf("AC %d should miss face %d, got %+v", face+1, face, got)
@@ -270,7 +270,7 @@ func TestResolveActionAttempt_ACAndDefaultDC(t *testing.T) {
 			ac = face - 1
 		}
 		got := p.resolveAttempts(combatGS(pc, &character.Monster{
-			ID: "rat_1", Name: "Giant Rat", Stats: character.Stats{HP: 4, AC: ac},
+			ID: "rat_1", Name: "Giant Rat", HP: 4, AC: ac,
 		}), &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
 		if len(got) != 1 || !got[0].Success {
 			t.Fatalf("AC %d should hit face %d, got %+v", ac, face, got)
@@ -281,12 +281,10 @@ func TestResolveActionAttempt_ACAndDefaultDC(t *testing.T) {
 func TestResolveActionAttempt_UnknownActionID(t *testing.T) {
 	pc := &character.PC{
 		Name: "Felix",
-		Stats: character.Stats{
-			HP: 10,
-			Actions: map[string]character.Action{
-				"scimitar": {Name: "Scimitar", Type: "attack", Attempt: "1d20"},
-				"bite":     {Name: "Bite", Type: "attack", Attempt: "1d20"},
-			},
+		HP:   10,
+		Actions: map[string]character.Action{
+			"scimitar": {Name: "Scimitar", Type: "attack", Attempt: "1d20"},
+			"bite":     {Name: "Bite", Type: "attack", Attempt: "1d20"},
 		},
 	}
 	p := &ChatOrchestrator{roller: d20.NewRoller(1), logger: slog.Default()}
@@ -308,16 +306,14 @@ func TestResolveActionAttempt_UnknownActionID(t *testing.T) {
 func TestResolveActionAttempt_StrikingModifier(t *testing.T) {
 	seed, face := seedForFace(t, 1, 16)
 	ac := face + 1
-	rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", Stats: character.Stats{HP: 4, AC: ac}}
+	rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 4, AC: ac}
 	ruling := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
 
 	bare := &character.PC{
 		Name: "Felix",
-		Stats: character.Stats{
-			HP: 10,
-			Actions: map[string]character.Action{
-				"strike": {Name: "Strike", Type: "attack", Attempt: "1d20"},
-			},
+		HP:   10,
+		Actions: map[string]character.Action{
+			"strike": {Name: "Strike", Type: "attack", Attempt: "1d20"},
 		},
 	}
 	p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default()}
@@ -327,13 +323,11 @@ func TestResolveActionAttempt_StrikingModifier(t *testing.T) {
 	}
 
 	boosted := &character.PC{
-		Name: "Felix",
-		Stats: character.Stats{
-			HP:        10,
-			Modifiers: map[string]int{"striking": 5},
-			Actions: map[string]character.Action{
-				"strike": {Name: "Strike", Type: "attack", Attempt: "1d20"},
-			},
+		Name:      "Felix",
+		HP:        10,
+		Modifiers: map[string]int{"striking": 5},
+		Actions: map[string]character.Action{
+			"strike": {Name: "Strike", Type: "attack", Attempt: "1d20"},
 		},
 	}
 	p.roller = d20.NewRoller(seed)
@@ -350,11 +344,9 @@ func TestResolveActionAttempt_StrikingModifier(t *testing.T) {
 func TestResolveActionAttempt_EmptyAttemptHits(t *testing.T) {
 	pc := &character.PC{
 		Name: "Felix",
-		Stats: character.Stats{
-			HP: 10,
-			Actions: map[string]character.Action{
-				"shove": {Name: "Shove", Type: "attack"},
-			},
+		HP:   10,
+		Actions: map[string]character.Action{
+			"shove": {Name: "Shove", Type: "attack"},
 		},
 	}
 	p := &ChatOrchestrator{roller: d20.NewRoller(1), logger: slog.Default()}
