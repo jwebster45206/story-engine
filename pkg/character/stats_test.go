@@ -9,57 +9,6 @@ import (
 	"testing"
 )
 
-func TestLegacyKeys(t *testing.T) {
-	var npc NPC
-	if err := json.Unmarshal([]byte(`{"name":"Guard","combat_modifiers":{"longsword":5},"items":["badge"]}`), &npc); err != nil {
-		t.Fatal(err)
-	}
-	if npc.Name != "Guard" || npc.Modifiers["longsword"] != 5 || len(npc.Items) != 1 {
-		t.Fatalf("legacy NPC = %+v", npc)
-	}
-
-	var pc PC
-	raw := []byte(`{"id":"hero","stats":{"strength":14,"dexterity":10,"constitution":10,"intelligence":10,"wisdom":10,"charisma":10},"combat_modifiers":{"proficiency":2}}`)
-	if err := json.Unmarshal(raw, &pc); err != nil {
-		t.Fatal(err)
-	}
-	if pc.ID != "hero" || pc.Abilities.Strength != 14 || pc.Modifiers["proficiency"] != 2 {
-		t.Fatalf("legacy PC = %+v", pc)
-	}
-
-	// The current keys win when both are present.
-	var both PC
-	if err := json.Unmarshal([]byte(`{"id":"hero","abilities":{"strength":8},"stats":{"strength":18},"modifiers":{"proficiency":1},"combat_modifiers":{"proficiency":9}}`), &both); err != nil {
-		t.Fatal(err)
-	}
-	if both.Abilities.Strength != 8 || both.Modifiers["proficiency"] != 1 {
-		t.Fatalf("new keys should win, got strength %d proficiency %d", both.Abilities.Strength, both.Modifiers["proficiency"])
-	}
-}
-
-func TestLiftAbilityAttributes(t *testing.T) {
-	var npc NPC
-	raw := []byte(`{"name":"Chief","attributes":{"strength":18,"constitution":16},"combat_modifiers":{"unarmed":7},"items":["belt"]}`)
-	if err := json.Unmarshal(raw, &npc); err != nil {
-		t.Fatal(err)
-	}
-	if npc.Abilities.Strength != 18 || npc.Abilities.Constitution != 16 {
-		t.Fatalf("abilities = %+v", npc.Abilities)
-	}
-	if len(npc.Attributes) != 0 || npc.Modifiers["unarmed"] != 7 || len(npc.Items) != 1 {
-		t.Fatalf("npc = %+v", npc)
-	}
-
-	// A skill bonus mixed in means this map is not the old ability-score shape.
-	var mixed Monster
-	if err := json.Unmarshal([]byte(`{"name":"Scout","attributes":{"strength":8,"stealth":4}}`), &mixed); err != nil {
-		t.Fatal(err)
-	}
-	if mixed.Abilities != (Abilities{}) || mixed.Attributes["stealth"] != 4 {
-		t.Fatalf("mixed attributes should stay put, got %+v", mixed.Stats)
-	}
-}
-
 func TestToActor_MergesAbilitiesAndAttributes(t *testing.T) {
 	stats := Stats{
 		HP:    20,

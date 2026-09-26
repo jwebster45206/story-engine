@@ -1,7 +1,6 @@
 package character
 
 import (
-	"encoding/json"
 	"fmt"
 	"maps"
 
@@ -21,10 +20,6 @@ type Stats struct {
 	Actions    map[string]Action `json:"actions,omitempty"`
 }
 
-// Abilities holds the six ability scores. Value, not pointer: both forms
-// produce identical JSON, but a pointer would reintroduce the template-
-// aliasing hazard Stage 1 removed, and would need nil guards at every read.
-// omitzero is load-bearing — omitempty does nothing for structs.
 type Abilities struct {
 	Strength     int `json:"strength"`
 	Dexterity    int `json:"dexterity"`
@@ -182,10 +177,7 @@ func (s Stats) ValidateActions() error {
 	return nil
 }
 
-// ToActor parses dice notation and normalizes, so authored content stays
-// human-readable. d20.Actor.Attributes is filled from Abilities merged with
-// Attributes. No d20 mechanic reads that field; rolls are driven by Modifiers.
-// On a key collision, Attributes wins.
+// ToActor creates a transient mechanical representation of the character.
 func (s Stats) ToActor(id, name string) (*d20.Actor, error) {
 	actor := d20.NewActor(id)
 	actor.Name = name
@@ -197,9 +189,7 @@ func (s Stats) ToActor(id, name string) (*d20.Actor, error) {
 	if attrs == nil {
 		attrs = map[string]int{}
 	}
-	for k, v := range s.Attributes {
-		attrs[k] = v
-	}
+	maps.Copy(attrs, s.Attributes)
 	actor.Attributes = attrs
 
 	if s.Modifiers != nil {
@@ -218,83 +208,4 @@ func (s Stats) ToActor(id, name string) (*d20.Actor, error) {
 		return nil, err
 	}
 	return actor, nil
-}
-
-// liftAbilityAttributes moves a pure ability-score map out of Attributes.
-// Older NPC and monster files stored the six scores under "attributes".
-// A map that contains any other key is left alone, and an Abilities value
-// that is already set wins.
-func (s *Stats) liftAbilityAttributes() {
-	if s == nil || s.Abilities != (Abilities{}) || len(s.Attributes) == 0 {
-		return
-	}
-	for k := range s.Attributes {
-		switch k {
-		case vocab.Strength, vocab.Dexterity, vocab.Constitution, vocab.Intelligence, vocab.Wisdom, vocab.Charisma:
-		default:
-			return
-		}
-	}
-	for k, v := range s.Attributes {
-		switch k {
-		case vocab.Strength:
-			s.Abilities.Strength = v
-		case vocab.Dexterity:
-			s.Abilities.Dexterity = v
-		case vocab.Constitution:
-			s.Abilities.Constitution = v
-		case vocab.Intelligence:
-			s.Abilities.Intelligence = v
-		case vocab.Wisdom:
-			s.Abilities.Wisdom = v
-		case vocab.Charisma:
-			s.Abilities.Charisma = v
-		}
-	}
-	s.Attributes = nil
-}
-
-// unmarshalAliased rewrites legacy keys, then decodes into dest.
-//
-// Stats must not implement UnmarshalJSON. Anonymous embedding promotes that
-// method onto PC, NPC, and Monster, and encoding/json would then call it
-// with the whole object and leave every non-stats field empty.
-func unmarshalAliased(data []byte, dest any) error {
-	data, err := aliasLegacyKeys(data)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(data, dest)
-}
-
-// aliasLegacyKeys rewrites top-level keys from the pre-Stats authoring
-// format. "modifiers" and "abilities" win when both the old and new keys
-// are present. The input is returned unchanged when neither legacy key is set.
-func aliasLegacyKeys(data []byte) ([]byte, error) {
-	if len(data) == 0 || data[0] != '{' {
-		return data, nil
-	}
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return nil, err
-	}
-	changed := false
-	if _, ok := raw["modifiers"]; !ok {
-		if legacy, ok := raw["combat_modifiers"]; ok {
-			raw["modifiers"] = legacy
-			delete(raw, "combat_modifiers")
-			changed = true
-		}
-	}
-	if _, ok := raw["abilities"]; !ok {
-		if legacy, ok := raw["stats"]; ok {
-			raw["abilities"] = legacy
-			delete(raw, "stats")
-			changed = true
-		}
-	}
-	if !changed {
-		return data, nil
-	}
-	return json.Marshal(raw)
 }

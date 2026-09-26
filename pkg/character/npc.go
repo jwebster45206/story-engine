@@ -17,20 +17,17 @@ type NPC struct {
 	// Leave empty for fully inline NPCs (original behavior, unchanged).
 	TemplateID string `json:"template_id,omitempty"`
 
-	Name        string   `json:"name"`
-	Type        string   `json:"type"`                  // e.g. "villager", "guard", "merchant"
-	Disposition string   `json:"disposition"`           // e.g. "hostile", "neutral", "friendly"
-	Description string   `json:"description,omitempty"` // short description or backstory
-	IsImportant bool     `json:"important,omitempty"`   // whether this NPC is important to the story
-	Location    string   `json:"location,omitempty"`    // where the NPC is currently located
-	Following   string   `json:"following,omitempty"`   // ID of character being followed ("pc" or NPC ID); empty = not following
-	Items       []string `json:"items,omitempty"`       // items the NPC has or can give
-
-	// Mechanical stats. Optional; omit them for purely narrative NPCs.
-	Stats
-	DropItemsOnDefeat bool `json:"drop_items_on_defeat,omitempty"`
-
+	Name               string                           `json:"name"`
+	Type               string                           `json:"type"`                  // e.g. "villager", "guard", "merchant"
+	Disposition        string                           `json:"disposition"`           // e.g. "hostile", "neutral", "friendly"
+	Description        string                           `json:"description,omitempty"` // short description or backstory
+	IsImportant        bool                             `json:"important,omitempty"`   // whether this NPC is important to the story
+	Location           string                           `json:"location,omitempty"`    // where the NPC is currently located
+	Following          string                           `json:"following,omitempty"`   // ID of character being followed ("pc" or NPC ID); empty = not following
+	Items              []string                         `json:"items,omitempty"`       // items the NPC has or can give
+	DropItemsOnDefeat  bool                             `json:"drop_items_on_defeat,omitempty"`
 	ContingencyPrompts []conditionals.ContingencyPrompt `json:"contingency_prompts,omitempty"` // NPC-specific prompts shown when at player location
+	Stats
 }
 
 // NewNPCFromTemplate creates an NPC by merging a template with scenario-level overrides.
@@ -137,17 +134,4 @@ func (n *NPC) Clone() *NPC {
 	c.ContingencyPrompts = slices.Clone(n.ContingencyPrompts)
 	c.Stats = n.Stats.Clone()
 	return &c
-}
-
-// UnmarshalJSON accepts the deprecated "combat_modifiers" key.
-// Embedding promotes Stats fields, so Stats.UnmarshalJSON does not run here.
-func (n *NPC) UnmarshalJSON(data []byte) error {
-	type plain NPC
-	var decoded plain
-	if err := unmarshalAliased(data, &decoded); err != nil {
-		return err
-	}
-	decoded.liftAbilityAttributes()
-	*n = NPC(decoded)
-	return nil
 }

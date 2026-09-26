@@ -8,7 +8,6 @@ import (
 )
 
 // PC is a player character. Narrative fields (prompts, class, race) live here.
-// Mechanical fields are promoted from Stats, which projects to a d20.Actor.
 type PC struct {
 	ID                 string                           `json:"id"`
 	Name               string                           `json:"name,omitempty"`
@@ -20,20 +19,8 @@ type PC struct {
 	Background         string                           `json:"background,omitempty"`
 	OpeningPrompt      string                           `json:"opening_prompt,omitempty"`
 	ContingencyPrompts []conditionals.ContingencyPrompt `json:"contingency_prompts,omitempty"`
+	Inventory          []string                         `json:"inventory,omitempty"`
 	Stats
-	Inventory []string `json:"inventory,omitempty"`
-}
-
-// UnmarshalJSON accepts the pre-Stats keys "stats" and "combat_modifiers".
-// Embedding promotes Stats fields, so Stats.UnmarshalJSON does not run here.
-func (p *PC) UnmarshalJSON(data []byte) error {
-	type plain PC
-	var decoded plain
-	if err := unmarshalAliased(data, &decoded); err != nil {
-		return err
-	}
-	*p = PC(decoded)
-	return nil
 }
 
 // BuildPrompt constructs the player character section for the system prompt.

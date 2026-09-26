@@ -111,7 +111,6 @@ Mechanical stats (`ac`, `hp`, `max_hp`, `abilities`, `attributes`, `modifiers`,
 `actions`, `drop_items_on_defeat`) are **optional**. A template without them is
 perfectly valid — it's just a reusable narrative character. `abilities` is the
 six scores. `attributes` is other named numbers, such as skill bonuses.
-`actions` use dice notation (`"1d20+5"`, `"1d8"`). The deprecated key
-`combat_modifiers` still loads as `modifiers`.
+`actions` use dice notation (`"1d20+5"`, `"1d8"`).
 
 See `docs/guide-for-scenarios.md` for the complete NPC reference.

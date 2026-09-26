@@ -394,7 +394,7 @@ func TestPC_UnmarshalJSON_WithContingencyPrompts(t *testing.T) {
 		"id": "test",
 		"name": "Test Character",
 		"pronouns": "they/them",
-		"stats": {"strength": 10, "dexterity": 10, "constitution": 10, "intelligence": 10, "wisdom": 10, "charisma": 10},
+		"abilities": {"strength": 10, "dexterity": 10, "constitution": 10, "intelligence": 10, "wisdom": 10, "charisma": 10},
 		"hp": 10,
 		"max_hp": 10,
 		"ac": 10,

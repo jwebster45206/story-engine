@@ -8,17 +8,14 @@ import (
 // Monster represents a creature or enemy in the game world.
 // Monsters are spawned from external JSON templates and managed by GameState.
 type Monster struct {
-	ID          string `json:"id,omitempty"`
-	TemplateID  string `json:"template_id,omitempty"` // Reference to template in data/monsters/ (used in scenarios)
-	Name        string `json:"name,omitempty"`
-	Description string `json:"description,omitempty"`
-	Location    string `json:"location,omitempty"`
-
-	// Mechanical stats. Optional for a template that is only a name and description.
+	ID                string   `json:"id,omitempty"`
+	TemplateID        string   `json:"template_id,omitempty"` // Reference to template in data/monsters/ (used in scenarios)
+	Name              string   `json:"name,omitempty"`
+	Description       string   `json:"description,omitempty"`
+	Location          string   `json:"location,omitempty"`
+	Items             []string `json:"items,omitempty"` // Items dropped on defeat
+	DropItemsOnDefeat bool     `json:"drop_items_on_defeat,omitempty"`
 	Stats
-	Items []string `json:"items,omitempty"` // Items dropped on defeat
-
-	DropItemsOnDefeat bool `json:"drop_items_on_defeat,omitempty"`
 }
 
 // NewMonster creates a new Monster instance from a template with optional overrides.
@@ -97,19 +94,6 @@ func (m *Monster) Clone() *Monster {
 	c.Stats = m.Stats.Clone()
 	c.Items = slices.Clone(m.Items)
 	return &c
-}
-
-// UnmarshalJSON accepts the deprecated "combat_modifiers" key.
-// Embedding promotes Stats fields, so Stats.UnmarshalJSON does not run here.
-func (m *Monster) UnmarshalJSON(data []byte) error {
-	type plain Monster
-	var decoded plain
-	if err := unmarshalAliased(data, &decoded); err != nil {
-		return err
-	}
-	decoded.liftAbilityAttributes()
-	*m = Monster(decoded)
-	return nil
 }
 
 // MoveTo updates the monster's location.
