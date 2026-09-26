@@ -24,7 +24,7 @@ Respond with JSON:
 - subject: who is attempting the action. Null when the PC is acting. Set only when another actor is.
 - object: the primary target of the action — a WORLD STATE actor name (from "NPCs here" or "Monsters here") or a location name (from exits / adjacent_previews). Null if none.
 - scope: the primary intent of this turn. One of: dialogue, movement, combat, examine, ambient, other.
-- action_id: an id from the acting actor's <actions> menu, or null when the turn does not need a roll. The id must appear in the menu.`
+- action_id: the id from the acting actor's <actions> menu that describes this turn's attempted action, or null if the turn does not need an attempt roll. The id must appear in the menu.`
 
 func refereeWindow(narratorLimit int) int {
 	if narratorLimit <= 0 || narratorLimit > refereeHistoryLimit {
@@ -63,14 +63,10 @@ func BuildRefereeMessages(gs *state.GameState, userMessage string, historyLimit 
 		sb.WriteString("\n\n")
 		sb.WriteString(rules)
 	}
-	if line := pcRefereeLine(gs); line != "" {
-		sb.WriteString("\n\n")
-		sb.WriteString(line)
-	}
-	if block := pcActionsBlock(gs); block != "" {
-		sb.WriteString("\n\n")
-		sb.WriteString(block)
-	}
+	sb.WriteString("\n\n")
+	sb.WriteString(pcRefereeLine(gs))
+	sb.WriteString("\n\n")
+	sb.WriteString(pcActionsBlock(gs))
 	sb.WriteString("\n\n")
 	sb.WriteString(ToPromptState(gs).ToSlimString())
 	if examples := strings.TrimSpace(rs.Examples); examples != "" {
