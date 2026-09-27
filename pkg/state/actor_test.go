@@ -7,7 +7,7 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 )
 
-func TestFindActor(t *testing.T) {
+func TestFindCombatant(t *testing.T) {
 	ratA := &character.Monster{ID: "rat_a", Name: "Giant Rat", HP: 4, AC: 8}
 	ratB := &character.Monster{ID: "rat_b", Name: "Giant Rat", HP: 9, AC: 12}
 	wolf := &character.Monster{ID: "wolf_1", Name: "Wolf", HP: 11}
@@ -25,52 +25,57 @@ func TestFindActor(t *testing.T) {
 		},
 	}
 
-	stats, display, ok := gs.FindActor("felix")
-	if !ok || display != "Felix" || stats != &gs.PC.Stats {
-		t.Fatalf("PC = %q ok=%v stats=%p, want Felix live", display, ok, stats)
+	c, ok := gs.FindCombatant("felix")
+	if !ok || c.Display != "Felix" || c.Stats != &gs.PC.Stats {
+		t.Fatalf("PC = %q ok=%v stats=%p, want Felix live", c.Display, ok, c.Stats)
 	}
-	if _, _, ok := gs.FindActor("PC"); ok {
+	if _, ok := gs.FindCombatant("PC"); ok {
 		t.Fatal("literal PC should not match a named PC")
 	}
 
-	stats, display, ok = gs.FindActor("guard")
-	if !ok || display != "Guard Captain" || stats != &gs.NPCs["guard"].Stats {
-		t.Fatalf("NPC key = %q ok=%v", display, ok)
+	c, ok = gs.FindCombatant("guard")
+	if !ok || c.Display != "Guard Captain" || c.Stats != &gs.NPCs["guard"].Stats {
+		t.Fatalf("NPC key = %q ok=%v", c.Display, ok)
 	}
-	stats, _, ok = gs.FindActor("Guard Captain")
-	if !ok || stats != &gs.NPCs["guard"].Stats {
+	c, ok = gs.FindCombatant("Guard Captain")
+	if !ok || c.Stats != &gs.NPCs["guard"].Stats {
 		t.Fatal("NPC name should resolve to the same live stats")
 	}
-	if _, _, ok := gs.FindActor("Pip Upton"); ok {
+	if _, ok := gs.FindCombatant("Pip Upton"); ok {
 		t.Error("NPC in another room should not be found")
 	}
-	if _, _, ok := gs.FindActor("Bartender"); ok {
+	if _, ok := gs.FindCombatant("Bartender"); ok {
 		t.Error("narrative NPC should not be an actor")
 	}
 
-	stats, display, ok = gs.FindActor("rat_b")
-	if !ok || display != "Giant Rat" || stats != &ratB.Stats {
-		t.Fatalf("monster id = %q ok=%v hp=%d", display, ok, hpOf(stats))
+	c, ok = gs.FindCombatant("rat_b")
+	if !ok || c.Display != "Giant Rat" || c.Stats != &ratB.Stats {
+		t.Fatalf("monster id = %q ok=%v hp=%d", c.Display, ok, hpOf(c.Stats))
 	}
-	stats, _, ok = gs.FindActor("Giant Rat")
-	if !ok || stats != &ratA.Stats {
-		t.Fatalf("duplicate name should take the lowest id, hp=%d", hpOf(stats))
+	c, ok = gs.FindCombatant("Giant Rat")
+	if !ok || c.Stats != &ratA.Stats {
+		t.Fatalf("duplicate name should take the lowest id, hp=%d", hpOf(c.Stats))
 	}
-	if _, _, ok := gs.FindActor("Wolf"); ok {
+	if _, ok := gs.FindCombatant("Wolf"); ok {
 		t.Error("monster in another room should not be found")
+	}
+
+	gs.NPCs["guard"].IsDefeated = true
+	if _, ok := gs.FindCombatant("Guard Captain"); ok {
+		t.Fatal("defeated NPC should not be found")
 	}
 }
 
-func TestFindActor_UnnamedPC(t *testing.T) {
+func TestFindCombatant_UnnamedPC(t *testing.T) {
 	gs := &GameState{PC: &character.PC{HP: 8}}
-	stats, display, ok := gs.FindActor("PC")
-	if !ok || display != "PC" || stats != &gs.PC.Stats {
-		t.Fatalf("unnamed PC = %q ok=%v", display, ok)
+	c, ok := gs.FindCombatant("PC")
+	if !ok || c.Display != "PC" || c.Stats != &gs.PC.Stats {
+		t.Fatalf("unnamed PC = %q ok=%v", c.Display, ok)
 	}
-	if _, _, ok := gs.FindActor(""); ok {
+	if _, ok := gs.FindCombatant(""); ok {
 		t.Error("empty name should miss")
 	}
-	if _, _, ok := ((*GameState)(nil)).FindActor("PC"); ok {
+	if _, ok := ((*GameState)(nil)).FindCombatant("PC"); ok {
 		t.Error("nil gamestate should miss")
 	}
 }

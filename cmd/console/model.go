@@ -108,7 +108,8 @@ type ConsoleUI struct {
 	streamingMessageIdx int    // index of the message being streamed in ChatHistory
 
 	// Ephemeral dice content from SSE "attempt" events.
-	ephemeralAttempts []string
+	// The two most recent user turns are kept; older turns drop off.
+	ephemeralTurns []ephemeralTurn
 
 	// SSE event channel for async request updates
 	eventChan <-chan SSEEvent    // channel for receiving SSE events from the server

@@ -38,6 +38,9 @@ VARIABLES
 GAME END
 - true if the narrative is a definitive ending OR a rule ends the game this turn; otherwise false.
 
+MECHANICS
+- HP, damage, and knockout are already resolved. Do not spawn or despawn a monster to reflect a hit.
+
 EXAMPLES
 - "sees a sword" → item_events: []
 - "picks up the sword from the table" → item_events:[{item:"Sword", action:"acquire", from:{type:"location", name:"Sword Chamber"}}]

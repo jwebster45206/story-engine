@@ -26,6 +26,7 @@ type NPC struct {
 	Following          string                           `json:"following,omitempty"`   // ID of character being followed ("pc" or NPC ID); empty = not following
 	Items              []string                         `json:"items,omitempty"`       // items the NPC has or can give
 	DropItemsOnDefeat  bool                             `json:"drop_items_on_defeat,omitempty"`
+	IsDefeated         bool                             `json:"is_defeated,omitempty"`         // knocked out; stays in the scene but cannot act
 	ContingencyPrompts []conditionals.ContingencyPrompt `json:"contingency_prompts,omitempty"` // NPC-specific prompts shown when at player location
 	Stats
 }

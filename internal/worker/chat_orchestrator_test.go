@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -182,12 +183,16 @@ type stubLLMService struct {
 	rulingUsage      llm.Usage
 	delta            *conditionals.GameStateDelta
 	deltaErr         error
+	streamErr        error
 }
 
 func (s *stubLLMService) ChatStream(_ context.Context, messages []chat.ChatMessage, temperature float64) (<-chan llm.StreamChunk, error) {
 	s.calls = append(s.calls, "stream")
 	s.capturedMessages = messages
 	s.capturedTemp = temperature
+	if s.streamErr != nil {
+		return nil, s.streamErr
+	}
 	ch := make(chan llm.StreamChunk)
 	close(ch)
 	return ch, nil
@@ -680,7 +685,12 @@ func tavernCombatFixture() (*state.GameState, *scenario.Scenario, *character.Mon
 		ID:       uuid.New(),
 		Scenario: "test.json",
 		Location: "tavern",
-		PC:       &character.PC{Name: "Felix"},
+		PC: &character.PC{
+			Name: "Felix",
+			Actions: map[string]character.Action{
+				"strike": {Name: "Strike", Type: "attack", Attempt: "1d20", Effect: "1d4"},
+			},
+		},
 		WorldLocations: map[string]scenario.Location{
 			"tavern": {Name: "The Tavern", Monsters: map[string]*character.Monster{"rat_1": rat}},
 		},
@@ -826,4 +836,105 @@ func TestEnqueueReaction_Skips(t *testing.T) {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
 	})
+}
+
+type recordingStorage struct {
+	stubStorage
+	saved *state.GameState
+}
+
+func (s *recordingStorage) UpdateGameState(_ context.Context, _ uuid.UUID, gs *state.GameState) error {
+	s.saved = gs
+	return nil
+}
+
+func (s *recordingStorage) LoadGameState(_ context.Context, _ uuid.UUID) (*state.GameState, error) {
+	src := s.gs
+	if s.saved != nil {
+		src = s.saved
+	}
+	return cloneGameState(src)
+}
+
+func cloneGameState(gs *state.GameState) (*state.GameState, error) {
+	if gs == nil {
+		return nil, nil
+	}
+	b, err := json.Marshal(gs)
+	if err != nil {
+		return nil, err
+	}
+	var out state.GameState
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func TestHP_SaveSurvivesReducer(t *testing.T) {
+	gs, sc, _ := hpSaveFixture(t)
+	seed := hpSaveSeed(t)
+	effect := effectTotal(t, seed, "1d4")
+	wantHP := 8 - effect
+	store := &recordingStorage{gs: gs, sc: sc}
+	stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
+	p := NewChatOrchestrator(store, stubResolver{stub}, nil, slog.Default(), 10)
+	p.roller = d20.NewRoller(seed)
+	out, err := p.ProcessChatStream(context.Background(), hpSaveRequest(gs))
+	if err != nil {
+		t.Fatalf("ProcessChatStream: %v", err)
+	}
+	if out.GameState == nil {
+		t.Fatal("expected resolved game state")
+	}
+	rat := out.GameState.WorldLocations["tavern"].Monsters["rat_1"]
+	if rat == nil || rat.HP != wantHP {
+		t.Fatalf("resolved HP = %v, want %d", rat, wantHP)
+	}
+	if err := p.HandleAfterStream(context.Background(), out.GameState, hpSaveRequest(gs), "Felix strikes the rat."); err != nil {
+		t.Fatalf("HandleAfterStream: %v", err)
+	}
+	if store.saved == nil {
+		t.Fatal("expected a save")
+	}
+	saved := store.saved.WorldLocations["tavern"].Monsters["rat_1"]
+	if saved == nil || saved.HP != wantHP {
+		t.Fatalf("saved HP = %v, want %d", saved, wantHP)
+	}
+}
+
+func hpSaveFixture(t *testing.T) (*state.GameState, *scenario.Scenario, *character.Monster) {
+	t.Helper()
+	rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 8, MaxHP: 8, AC: 10}
+	gs := &state.GameState{
+		ID:       uuid.New(),
+		Scenario: "test.json",
+		Location: "tavern",
+		PC: &character.PC{
+			Name: "Felix",
+			Actions: map[string]character.Action{
+				"strike": {Name: "Strike", Type: "attack", Attempt: "1d20", Effect: "1d4"},
+			},
+		},
+		WorldLocations: map[string]scenario.Location{
+			"tavern": {Name: "The Tavern", Monsters: map[string]*character.Monster{"rat_1": rat}},
+		},
+		Vars: make(map[string]string),
+	}
+	sc := &scenario.Scenario{Name: "Test", Story: "A test story", Rating: scenario.RatingPG}
+	return gs, sc, rat
+}
+
+func hpSaveRequest(gs *state.GameState) chat.ChatRequest {
+	return chat.ChatRequest{
+		GameStateID: gs.ID,
+		Message:     "I strike the rat.",
+		Ruling:      &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"},
+	}
+}
+
+func hpSaveSeed(t *testing.T) int64 {
+	t.Helper()
+	seed, _ := seedForFace(t, 10, 21)
+	return seed
 }

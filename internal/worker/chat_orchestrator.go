@@ -42,9 +42,10 @@ type ChatOrchestrator struct {
 }
 
 type streamResult struct {
-	Stream   <-chan llm.StreamChunk
-	Attempts []resolvedAttempt
-	Ruling   *chat.Ruling
+	Stream    <-chan llm.StreamChunk
+	Attempts  []resolvedAttempt
+	Ruling    *chat.Ruling
+	GameState *state.GameState
 }
 
 // NewChatOrchestrator creates a new chat orchestrator
@@ -115,7 +116,7 @@ func (p *ChatOrchestrator) ProcessChatStream(ctx context.Context, req chat.ChatR
 		return streamResult{}, fmt.Errorf("LLM chat stream failed: %w", err)
 	}
 
-	return streamResult{Stream: streamChan, Attempts: attempts, Ruling: ruling}, nil
+	return streamResult{Stream: streamChan, Attempts: attempts, Ruling: ruling, GameState: gs}, nil
 }
 
 // referee runs the pre-chat rules pass. LLM failures fail open: a nil ruling
@@ -441,7 +442,7 @@ func (p *ChatOrchestrator) enqueueReaction(ctx context.Context, gs *state.GameSt
 	if gs.IsEnded {
 		return nil
 	}
-	if _, _, ok := gs.FindActor(pending.Subject); !ok {
+	if _, ok := gs.FindCombatant(pending.Subject); !ok {
 		return nil
 	}
 	actionID, actionName := reactionAction(gs, pending.Subject)

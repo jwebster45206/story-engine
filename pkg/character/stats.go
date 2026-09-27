@@ -139,10 +139,10 @@ func (s Stats) Clone() Stats {
 
 // ApplyHPEffect applies n to HP. Positive n deals damage; negative n heals.
 // HP is clamped to [0, MaxHP] when MaxHP is set, and to 0 otherwise.
-// The returned hp is the value after clamping. defeated is HP <= 0.
-func (s *Stats) ApplyHPEffect(n int) (hp int, defeated bool) {
+// The returned value is HP after clamping.
+func (s *Stats) ApplyHPEffect(n int) int {
 	if s == nil {
-		return 0, false
+		return 0
 	}
 	s.HP -= n
 	if s.HP < 0 {
@@ -151,12 +151,7 @@ func (s *Stats) ApplyHPEffect(n int) (hp int, defeated bool) {
 	if s.MaxHP > 0 && s.HP > s.MaxHP {
 		s.HP = s.MaxHP
 	}
-	return s.HP, s.HP <= 0
-}
-
-// IsDefeated reports whether HP has reached 0.
-func (s Stats) IsDefeated() bool {
-	return s.HP <= 0
+	return s.HP
 }
 
 // ValidateActions checks that every non-empty attempt and effect is dice

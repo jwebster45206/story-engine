@@ -126,6 +126,19 @@ func TestPromptState_ToString_WithNPCsHere(t *testing.T) {
 	requireNotContains(t, result, "<npcs_elsewhere>")
 }
 
+func TestPromptState_KnockedOutNPC(t *testing.T) {
+	ps := &PromptState{
+		Location: "tavern",
+		WorldLocations: map[string]scenario.Location{
+			"tavern": {Name: "The Tavern"},
+		},
+		NPCs: map[string]*character.NPC{
+			"guard": {Name: "Guard Captain", Location: "tavern", IsDefeated: true},
+		},
+	}
+	requireContains(t, ps.ToSlimString(), "NPCs here: Guard Captain (knocked out)")
+}
+
 func TestPromptState_ToString_FocusedNPCGetsDescription(t *testing.T) {
 	ps := &PromptState{
 		Location:      "market",

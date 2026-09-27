@@ -188,58 +188,29 @@ func TestNewMonster(t *testing.T) {
 func TestStats_ApplyHPEffect(t *testing.T) {
 	t.Run("damage reduces HP", func(t *testing.T) {
 		s := &Stats{HP: 20, MaxHP: 20}
-		hp, defeated := s.ApplyHPEffect(5)
-		if hp != 15 || s.HP != 15 || defeated {
-			t.Errorf("ApplyHPEffect(5) = %d, defeated %v, HP %d; want 15, false", hp, defeated, s.HP)
+		if hp := s.ApplyHPEffect(5); hp != 15 || s.HP != 15 {
+			t.Errorf("ApplyHPEffect(5) = %d, HP %d; want 15", hp, s.HP)
 		}
 	})
 
 	t.Run("damage clamps at 0", func(t *testing.T) {
 		s := &Stats{HP: 5, MaxHP: 20}
-		hp, defeated := s.ApplyHPEffect(10)
-		if hp != 0 || !defeated {
-			t.Errorf("ApplyHPEffect(10) = %d, defeated %v; want 0, true", hp, defeated)
+		if hp := s.ApplyHPEffect(10); hp != 0 || s.HP != 0 {
+			t.Errorf("ApplyHPEffect(10) = %d, HP %d; want 0", hp, s.HP)
 		}
 	})
 
 	t.Run("zero leaves HP unchanged", func(t *testing.T) {
 		s := &Stats{HP: 20, MaxHP: 20}
-		if hp, _ := s.ApplyHPEffect(0); hp != 20 {
+		if hp := s.ApplyHPEffect(0); hp != 20 {
 			t.Errorf("ApplyHPEffect(0) HP = %d, want 20", hp)
 		}
 	})
 
 	t.Run("negative heals and clamps at MaxHP", func(t *testing.T) {
 		s := &Stats{HP: 18, MaxHP: 20}
-		hp, defeated := s.ApplyHPEffect(-5)
-		if hp != 20 || defeated {
-			t.Errorf("ApplyHPEffect(-5) = %d, defeated %v; want 20, false", hp, defeated)
-		}
-	})
-}
-
-func TestMonster_IsDefeated(t *testing.T) {
-	t.Run("returns true when HP is 0", func(t *testing.T) {
-		m := &Monster{HP: 0, MaxHP: 20}
-
-		if !m.IsDefeated() {
-			t.Error("expected IsDefeated to be true when HP is 0")
-		}
-	})
-
-	t.Run("returns true when HP is negative", func(t *testing.T) {
-		m := &Monster{HP: -5, MaxHP: 20}
-
-		if !m.IsDefeated() {
-			t.Error("expected IsDefeated to be true when HP is negative")
-		}
-	})
-
-	t.Run("returns false when HP is positive", func(t *testing.T) {
-		m := &Monster{HP: 1, MaxHP: 20}
-
-		if m.IsDefeated() {
-			t.Error("expected IsDefeated to be false when HP is positive")
+		if hp := s.ApplyHPEffect(-5); hp != 20 || s.HP != 20 {
+			t.Errorf("ApplyHPEffect(-5) = %d, HP %d; want 20", hp, s.HP)
 		}
 	})
 }

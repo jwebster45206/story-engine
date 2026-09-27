@@ -167,10 +167,6 @@ func (a *Applier) Apply() error {
 		a.handleMonsterEvent(monsterEvent)
 	}
 
-	// TODO: Evaluate monster defeats (auto-despawn defeated monsters)
-	// This runs after all delta operations to catch any HP changes
-	// a.gs.EvaluateDefeats()
-
 	// Handle Game End
 	if a.delta.GameEnded != nil && *a.delta.GameEnded {
 		a.gs.IsEnded = true
