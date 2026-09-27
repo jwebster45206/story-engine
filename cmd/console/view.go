@@ -347,8 +347,8 @@ func lastUserMessageIdx(gs *state.GameState) int {
 	if gs == nil {
 		return -1
 	}
-	for i := len(gs.ChatHistory) - 1; i >= 0; i-- {
-		if gs.ChatHistory[i].Role == "user" {
+	for i, msg := range slices.Backward(gs.ChatHistory) {
+		if msg.Role == "user" {
 			return i
 		}
 	}

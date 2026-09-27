@@ -429,15 +429,3 @@ func (gs *GameState) DespawnMonster(instanceID string) {
 		}
 	}
 }
-
-// EvaluateDefeats checks all active monsters and despawns any that are defeated (HP <= 0).
-// This should be called after any action that could change monster HP.
-// func (gs *GameState) EvaluateDefeats() {
-// 	for _, loc := range gs.WorldLocations {
-// 		for id, m := range loc.Monsters {
-// 			if m.IsDefeated() {
-// 				gs.DespawnMonster(id)
-// 			}
-// 		}
-// 	}
-// }

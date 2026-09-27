@@ -145,14 +145,14 @@ func (p *ChatOrchestrator) resolveActionAttempt(gs *state.GameState, ruling *cha
 	}
 	actorName := ruling.ActorName(pcName)
 	var actor, target state.Combatant
-	var actorOK, targetOK bool
-	if gs != nil {
-		actor, actorOK = gs.FindCombatant(actorName)
-		target, targetOK = gs.FindCombatant(targetName)
-	}
 	dc := defaultDC
-	if targetOK && target.Stats != nil && target.Stats.AC > 0 {
-		dc = target.Stats.AC
+	if gs != nil {
+		actor, _ = gs.FindCombatant(actorName)
+		var targetOK bool
+		target, targetOK = gs.FindCombatant(targetName)
+		if targetOK && target.Stats != nil && target.Stats.AC > 0 {
+			dc = target.Stats.AC
+		}
 	}
 
 	d20Actor, action, picked, err := chosenAction(gs, ruling, actorName)
@@ -172,7 +172,7 @@ func (p *ChatOrchestrator) resolveActionAttempt(gs *state.GameState, ruling *cha
 	}
 
 	if auto {
-		return p.finishAttempt(gs, actor, target, actorOK, targetOK, d20Actor, action, actorName, targetName, actionName, "", ruling.Scope)
+		return p.finishAttempt(gs, actor, target, d20Actor, action, actorName, targetName, "", ruling.Scope)
 	}
 	if p == nil || p.roller == nil {
 		return resolvedAttempt{}
@@ -185,7 +185,7 @@ func (p *ChatOrchestrator) resolveActionAttempt(gs *state.GameState, ruling *cha
 		return resolvedAttempt{}
 	}
 	hit := outcome.Value >= dc
-	content := rollContent(actorName, actionName, outcome.Detail(), dc, hit, "")
+	content := rollContent(actorName, actionName, outcome.Detail(), dc, hit)
 	if !hit {
 		text := outcomeLine(actorName, targetName, actionName, false)
 		if p.logger != nil {
@@ -193,7 +193,7 @@ func (p *ChatOrchestrator) resolveActionAttempt(gs *state.GameState, ruling *cha
 		}
 		return resolvedAttempt{NarratorText: text, Content: content, Success: false, Scope: ruling.Scope}
 	}
-	return p.finishAttempt(gs, actor, target, actorOK, targetOK, d20Actor, action, actorName, targetName, actionName, content, ruling.Scope)
+	return p.finishAttempt(gs, actor, target, d20Actor, action, actorName, targetName, content, ruling.Scope)
 }
 
 // attempt rolls a bare 1d20 against defaultDC. Used when the actor has no action.
@@ -255,7 +255,7 @@ func (p *ChatOrchestrator) rollAttempt(actor, target, actionName string, die d20
 	}
 	success := outcome.Value >= dc
 	text := outcomeLine(actor, target, actionName, success)
-	content := rollContent(actor, actionName, outcome.Detail(), dc, success, "")
+	content := rollContent(actor, actionName, outcome.Detail(), dc, success)
 	if p.logger != nil {
 		p.logger.Info(text, "content", content)
 	}
@@ -264,15 +264,19 @@ func (p *ChatOrchestrator) rollAttempt(actor, target, actionName string, die d20
 
 // finishAttempt writes the hit line, and on a damaging effect updates HP.
 // content is the attempt dice line, empty when the attempt was automatic.
-func (p *ChatOrchestrator) finishAttempt(gs *state.GameState, actor, target state.Combatant, actorOK, targetOK bool, d20Actor *d20.Actor, action d20.Action, actorName, targetName, actionName, content string, scope chat.RulingScope) resolvedAttempt {
-	text := outcomeLine(actorName, targetName, actionName, true)
-	wound, clause := p.applyActionEffect(gs, actor, target, actorOK, targetOK, d20Actor, action)
+func (p *ChatOrchestrator) finishAttempt(gs *state.GameState, actor, target state.Combatant, d20Actor *d20.Actor, action d20.Action, actorName, targetName, content string, scope chat.RulingScope) resolvedAttempt {
+	text := outcomeLine(actorName, targetName, action.Name, true)
+	wound, clause := p.applyActionEffect(gs, actor, target, d20Actor, action)
 	text += wound
-	switch {
-	case content != "" && clause != "":
-		content += clause
-	case clause != "":
-		content = effectOnlyContent(actionName, clause)
+	if clause != "" {
+		switch {
+		case content != "":
+			content += "; " + clause
+		case action.Name != "":
+			content = action.Name + ": " + clause
+		default:
+			content = clause
+		}
 	}
 	if p != nil && p.logger != nil {
 		p.logger.Info(text, "content", content)
@@ -283,18 +287,15 @@ func (p *ChatOrchestrator) finishAttempt(gs *state.GameState, actor, target stat
 // applyActionEffect rolls Effect plus the damage modifier and writes HP.
 // Healing lands on the actor. Damage lands on the target. An empty effect,
 // a miss, or a missing recipient changes nothing.
-func (p *ChatOrchestrator) applyActionEffect(gs *state.GameState, actor, target state.Combatant, actorOK, targetOK bool, d20Actor *d20.Actor, action d20.Action) (wound, clause string) {
+func (p *ChatOrchestrator) applyActionEffect(gs *state.GameState, actor, target state.Combatant, d20Actor *d20.Actor, action d20.Action) (wound, clause string) {
 	if action.Effect.Count == 0 || d20Actor == nil || p == nil || p.roller == nil {
 		return "", ""
 	}
-	heal := action.Type == actionHeal
 	recipient := target
-	recipientOK := targetOK
-	if heal {
+	if action.Type == actionHeal {
 		recipient = actor
-		recipientOK = actorOK
 	}
-	if !recipientOK || recipient.Stats == nil {
+	if recipient.Stats == nil {
 		return "", ""
 	}
 	outcome, err := p.roller.Roll(d20Actor.Dice(action.Effect, vocab.Damage))
@@ -304,12 +305,12 @@ func (p *ChatOrchestrator) applyActionEffect(gs *state.GameState, actor, target 
 		}
 		return "", ""
 	}
-	if heal {
-		hp, _ := recipient.Stats.ApplyHPEffect(-outcome.Value)
-		return "", healClause(recipient.Display, outcome.Value, hp, recipient.Stats.MaxHP)
+	if action.Type == actionHeal {
+		hp := recipient.Stats.ApplyHPEffect(-outcome.Value)
+		return "", hpClause("healing", recipient.Display, outcome.Value, hp, recipient.Stats.MaxHP)
 	}
 	before := recipient.Stats.HP
-	hp, _ := recipient.Stats.ApplyHPEffect(outcome.Value)
+	hp := recipient.Stats.ApplyHPEffect(outcome.Value)
 	knocked := before > 0 && hp <= 0
 	if knocked && gs != nil {
 		gs.KnockOut(recipient)
@@ -317,7 +318,7 @@ func (p *ChatOrchestrator) applyActionEffect(gs *state.GameState, actor, target 
 	if outcome.Value > 0 && hp < before {
 		wound = woundSentence(recipient.Display, hp, recipient.Stats.MaxHP, knocked)
 	}
-	return wound, damageClause(recipient.Display, outcome.Value, hp, recipient.Stats.MaxHP)
+	return wound, hpClause("damage", recipient.Display, outcome.Value, hp, recipient.Stats.MaxHP)
 }
 
 func woundSentence(name string, hp, maxHP int, knocked bool) string {
@@ -334,36 +335,20 @@ func woundSentence(name string, hp, maxHP int, knocked bool) string {
 	return fmt.Sprintf(" The %s is %s.", name, band)
 }
 
-func damageClause(target string, amount, hp, maxHP int) string {
-	return "; " + amountClause("damage", target, amount, hp, maxHP)
-}
-
-func healClause(target string, amount, hp, maxHP int) string {
-	return "; " + amountClause("healing", target, amount, hp, maxHP)
-}
-
-func amountClause(kind, target string, amount, hp, maxHP int) string {
-	if maxHP > 0 {
+func hpClause(kind, target string, amount, hp, maxHP int) string {
+	switch {
+	case maxHP > 0:
 		return fmt.Sprintf("%d %s (%s %d/%d)", amount, kind, target, hp, maxHP)
-	}
-	if hp <= 0 {
+	case hp <= 0:
 		return fmt.Sprintf("%d %s (%s knocked out)", amount, kind, target)
+	default:
+		return fmt.Sprintf("%d %s (%s %d)", amount, kind, target, hp)
 	}
-	return fmt.Sprintf("%d %s (%s %d)", amount, kind, target, hp)
-}
-
-func effectOnlyContent(actionName, clause string) string {
-	clause = strings.TrimPrefix(clause, "; ")
-	if actionName == "" {
-		return clause
-	}
-	return actionName + ": " + clause
 }
 
 // rollContent is the player-facing dice line. Detail's numeric *Result* is
 // replaced with hit or miss, and the difficulty is written out as AC.
-// effectNote, when set, is the damage or healing clause including its leading semicolon.
-func rollContent(actor, actionName, detail string, dc int, hit bool, effectNote string) string {
+func rollContent(actor, actionName, detail string, dc int, hit bool) string {
 	if strings.HasPrefix(detail, "R") {
 		detail = "r" + detail[1:]
 	}
@@ -375,9 +360,6 @@ func rollContent(actor, actionName, detail string, dc int, hit bool, effectNote 
 		result = "Hit"
 	}
 	roll := fmt.Sprintf("%s %s; AC %d; *Result %s*", actor, detail, dc, result)
-	if effectNote != "" {
-		roll += effectNote
-	}
 	if actionName == "" {
 		return roll
 	}

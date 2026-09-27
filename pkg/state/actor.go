@@ -8,19 +8,15 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/character"
 )
 
-const (
-	combatantPC      = "pc"
-	combatantNPC     = "npc"
-	combatantMonster = "monster"
-)
-
-// Combatant is a live actor. ID is the NPC map key or the monster instance
-// id, and empty for the PC. Stats points into game state.
+// Combatant is a live actor. Stats points into game state.
+// PC or NPC is the container that owns those stats.
+// MonsterID is the location map key when the actor is a monster.
 type Combatant struct {
-	Stats   *character.Stats
-	Display string
-	Kind    string
-	ID      string
+	Stats     *character.Stats
+	Display   string
+	PC        *character.PC
+	NPC       *character.NPC
+	MonsterID string
 }
 
 // FindActor resolves name to a live mechanical block and its display name.
@@ -61,15 +57,13 @@ func (gs *GameState) KnockOut(c Combatant) {
 	if gs == nil || c.Stats == nil || c.Stats.HP > 0 {
 		return
 	}
-	switch c.Kind {
-	case combatantPC:
+	switch {
+	case c.PC != nil:
 		gs.IsEnded = true
-	case combatantNPC:
-		if npc := gs.NPCs[c.ID]; npc != nil {
-			npc.IsDefeated = true
-		}
-	case combatantMonster:
-		gs.DespawnMonster(c.ID)
+	case c.NPC != nil:
+		c.NPC.IsDefeated = true
+	case c.MonsterID != "":
+		gs.DespawnMonster(c.MonsterID)
 	}
 }
 
@@ -85,7 +79,7 @@ func (gs *GameState) findPCCombatant(name string) (Combatant, bool) {
 	if !ok {
 		return Combatant{}, false
 	}
-	return Combatant{Stats: stats, Display: display, Kind: combatantPC}, true
+	return Combatant{Stats: stats, Display: display, PC: gs.PC}, true
 }
 
 func (gs *GameState) findNPCCombatant(name string) (Combatant, bool) {
@@ -119,7 +113,7 @@ func (gs *GameState) npcCombatant(key, name string, matchKey bool) (Combatant, b
 	if !ok {
 		return Combatant{}, false
 	}
-	return Combatant{Stats: stats, Display: display, Kind: combatantNPC, ID: key}, true
+	return Combatant{Stats: stats, Display: display, NPC: npc}, true
 }
 
 func (gs *GameState) findMonsterCombatant(name string) (Combatant, bool) {
@@ -156,7 +150,7 @@ func monsterCombatant(m *character.Monster, id, name string, matchID bool) (Comb
 	if !ok {
 		return Combatant{}, false
 	}
-	return Combatant{Stats: stats, Display: display, Kind: combatantMonster, ID: id}, true
+	return Combatant{Stats: stats, Display: display, MonsterID: id}, true
 }
 
 func actorStats(s *character.Stats, display, fallback string) (*character.Stats, string, bool) {

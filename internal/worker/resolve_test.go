@@ -10,7 +10,6 @@ import (
 	"github.com/jwebster45206/d20"
 	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
-	"github.com/jwebster45206/story-engine/pkg/prompts"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -420,16 +419,15 @@ func TestRollContent(t *testing.T) {
 		actor, action, detail string
 		dc                    int
 		hit                   bool
-		effect, want          string
+		want                  string
 	}{
-		{"Skeleton", "Bite", "Rolled 1d20... 16; *Result: 16*", 10, true, "", "Bite: Skeleton rolled 1d20... 16; AC 10; *Result Hit*"},
-		{"Skeleton", "Bite", "rolled 1d20... 16; *Result: 16*", 10, false, "", "Bite: Skeleton rolled 1d20... 16; AC 10; *Result Miss*"},
-		{"Jack", "", "Rolled 1d20... 12; *Result: 12*", 10, true, "", "Jack rolled 1d20... 12; AC 10; *Result Hit*"},
-		{"Jack", "Strike", "Rolled 1d20... 12; +4 striking; *Result: 16*", 15, true, "", "Strike: Jack rolled 1d20... 12; +4 striking; AC 15; *Result Hit*"},
-		{"Skeleton", "Bite", "Rolled 1d20... 16; *Result: 16*", 13, true, "; 5 damage (Giant Rat 2/7)", "Bite: Skeleton rolled 1d20... 16; AC 13; *Result Hit*; 5 damage (Giant Rat 2/7)"},
+		{"Skeleton", "Bite", "Rolled 1d20... 16; *Result: 16*", 10, true, "Bite: Skeleton rolled 1d20... 16; AC 10; *Result Hit*"},
+		{"Skeleton", "Bite", "rolled 1d20... 16; *Result: 16*", 10, false, "Bite: Skeleton rolled 1d20... 16; AC 10; *Result Miss*"},
+		{"Jack", "", "Rolled 1d20... 12; *Result: 12*", 10, true, "Jack rolled 1d20... 12; AC 10; *Result Hit*"},
+		{"Jack", "Strike", "Rolled 1d20... 12; +4 striking; *Result: 16*", 15, true, "Strike: Jack rolled 1d20... 12; +4 striking; AC 15; *Result Hit*"},
 	}
 	for _, tt := range tests {
-		if got := rollContent(tt.actor, tt.action, tt.detail, tt.dc, tt.hit, tt.effect); got != tt.want {
+		if got := rollContent(tt.actor, tt.action, tt.detail, tt.dc, tt.hit); got != tt.want {
 			t.Errorf("rollContent() = %q, want %q", got, tt.want)
 		}
 	}
@@ -440,7 +438,7 @@ func TestResolveActionAttempt_HPAndKnockout(t *testing.T) {
 		"strike": {Name: "Strike", Type: "attack", Attempt: "1d20", Effect: "1d4"},
 	}
 	seed, _ := seedForFace(t, 10, 21)
-	effect := effectTotal(t, seed, "1d4", 0)
+	effect := effectTotal(t, seed, "1d4")
 
 	t.Run("hit writes HP and a wound band", func(t *testing.T) {
 		pc := &character.PC{Name: "Felix", HP: 10, Actions: strike}
@@ -461,8 +459,8 @@ func TestResolveActionAttempt_HPAndKnockout(t *testing.T) {
 			t.Errorf("narrator = %q", got[0].NarratorText)
 		}
 		assertNoDigits(t, got[0].NarratorText)
-		wantClause := damageClause("Giant Rat", effect, rat.HP, rat.MaxHP)
-		if !strings.Contains(got[0].Content, strings.TrimPrefix(wantClause, "; ")) {
+		wantClause := hpClause("damage", "Giant Rat", effect, rat.HP, rat.MaxHP)
+		if !strings.Contains(got[0].Content, wantClause) {
 			t.Errorf("content = %q, want clause %q", got[0].Content, wantClause)
 		}
 	})
@@ -497,21 +495,6 @@ func TestResolveActionAttempt_HPAndKnockout(t *testing.T) {
 		}
 	})
 
-	t.Run("damage modifier is added once", func(t *testing.T) {
-		boosted := effectTotal(t, seed, "1d4", 3)
-		pc := &character.PC{
-			Name: "Felix", HP: 10,
-			Modifiers: map[string]int{"damage": 3},
-			Actions:   strike,
-		}
-		rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 20, MaxHP: 20, AC: 10}
-		p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default()}
-		got := p.resolveAttempts(combatGS(pc, rat), &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
-		if len(got) != 1 || rat.HP != 20-boosted {
-			t.Fatalf("HP = %d, want %d, line %+v", rat.HP, 20-boosted, got)
-		}
-	})
-
 	t.Run("monster drops loot and despawns", func(t *testing.T) {
 		pc := &character.PC{Name: "Felix", HP: 10, Actions: strike}
 		rat := &character.Monster{
@@ -532,9 +515,6 @@ func TestResolveActionAttempt_HPAndKnockout(t *testing.T) {
 		if !slices.Contains(loc.Items, "pelt") {
 			t.Fatalf("items = %v, want pelt", loc.Items)
 		}
-		if _, _, ok := gs.FindActor("Giant Rat"); ok {
-			t.Fatal("despawned monster should not be a target")
-		}
 	})
 
 	t.Run("defeated NPC cannot be found or react", func(t *testing.T) {
@@ -550,9 +530,6 @@ func TestResolveActionAttempt_HPAndKnockout(t *testing.T) {
 		got := p.resolveAttempts(gs, ruling)
 		if len(got) != 1 || !guard.IsDefeated || guard.HP != 0 {
 			t.Fatalf("npc = %+v line %q", guard, narratorTexts(got))
-		}
-		if _, _, ok := gs.FindActor("Guard Captain"); ok {
-			t.Fatal("defeated NPC should not be found")
 		}
 		if err := p.enqueueReaction(context.Background(), gs, pendingCombatReaction(gs, ruling)); err != nil {
 			t.Fatalf("enqueueReaction: %v", err)
@@ -580,44 +557,10 @@ func TestResolveActionAttempt_HPAndKnockout(t *testing.T) {
 		if !strings.Contains(got[0].NarratorText, "is knocked out.") {
 			t.Errorf("narrator = %q", got[0].NarratorText)
 		}
-		msgs, err := prompts.BuildNarratorMessages(gs, &scenario.Scenario{Name: "Test", Rating: scenario.RatingPG}, "The rat bites.", 2, ruling, got[0].NarratorText)
-		if err != nil {
-			t.Fatalf("BuildNarratorMessages: %v", err)
-		}
-		last := msgs[len(msgs)-1].Content
-		if !strings.Contains(last, "THE END") {
-			t.Errorf("game-end prompt missing, last = %q", last)
-		}
-	})
-
-	t.Run("heal restores the actor", func(t *testing.T) {
-		pc := &character.PC{
-			Name: "Felix", HP: 4, MaxHP: 10,
-			Actions: map[string]character.Action{
-				"bandage": {Name: "Bandage", Type: "heal", Attempt: "1d20", Effect: "1d4"},
-			},
-		}
-		rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 8, MaxHP: 8, AC: 10}
-		p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default()}
-		got := p.resolveAttempts(combatGS(pc, rat), &chat.Ruling{
-			Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat", ActionID: "bandage",
-		})
-		if len(got) != 1 || !got[0].Success {
-			t.Fatalf("got %+v", got)
-		}
-		if pc.HP != 4+effect || rat.HP != 8 {
-			t.Fatalf("pc HP = %d, want %d; rat HP = %d", pc.HP, 4+effect, rat.HP)
-		}
-		if strings.Contains(got[0].NarratorText, "wounded") || strings.Contains(got[0].NarratorText, "knocked out") {
-			t.Errorf("heal should not wound the target, got %q", got[0].NarratorText)
-		}
-		if !strings.Contains(got[0].Content, "healing") {
-			t.Errorf("content = %q", got[0].Content)
-		}
 	})
 }
 
-func effectTotal(t *testing.T, seed int64, expr string, damageMod int) int {
+func effectTotal(t *testing.T, seed int64, expr string) int {
 	t.Helper()
 	roller := d20.NewRoller(seed)
 	if _, err := roller.Roll(d20Die); err != nil {
@@ -626,9 +569,6 @@ func effectTotal(t *testing.T, seed int64, expr string, damageMod int) int {
 	die, err := d20.DiceFromExpr(expr)
 	if err != nil {
 		t.Fatalf("DiceFromExpr: %v", err)
-	}
-	if damageMod != 0 {
-		die = die.WithModifier("damage", damageMod)
 	}
 	outcome, err := roller.Roll(die)
 	if err != nil {

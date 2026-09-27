@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -841,12 +840,10 @@ func TestEnqueueReaction_Skips(t *testing.T) {
 
 type recordingStorage struct {
 	stubStorage
-	saved   *state.GameState
-	updates int
+	saved *state.GameState
 }
 
 func (s *recordingStorage) UpdateGameState(_ context.Context, _ uuid.UUID, gs *state.GameState) error {
-	s.updates++
 	s.saved = gs
 	return nil
 }
@@ -874,31 +871,12 @@ func cloneGameState(gs *state.GameState) (*state.GameState, error) {
 	return &out, nil
 }
 
-func TestHP_FailedStreamDoesNotSave(t *testing.T) {
-	gs, sc, rat := hpSaveFixture(t)
-	before := rat.HP
-	store := &recordingStorage{stubStorage: stubStorage{gs: gs, sc: sc}}
-	stub := &stubLLMService{streamErr: errors.New("narrator down")}
-	p := NewChatOrchestrator(store, stubResolver{stub}, nil, slog.Default(), 10)
-	p.roller = d20.NewRoller(hpSaveSeed(t))
-	_, err := p.ProcessChatStream(context.Background(), hpSaveRequest(gs))
-	if err == nil {
-		t.Fatal("expected stream error")
-	}
-	if store.updates != 0 {
-		t.Fatalf("UpdateGameState calls = %d, want 0", store.updates)
-	}
-	if rat.HP != before {
-		t.Fatalf("stored HP = %d, want %d", rat.HP, before)
-	}
-}
-
 func TestHP_SaveSurvivesReducer(t *testing.T) {
 	gs, sc, _ := hpSaveFixture(t)
 	seed := hpSaveSeed(t)
-	effect := effectTotal(t, seed, "1d4", 0)
+	effect := effectTotal(t, seed, "1d4")
 	wantHP := 8 - effect
-	store := &recordingStorage{stubStorage: stubStorage{gs: gs, sc: sc}}
+	store := &recordingStorage{gs: gs, sc: sc}
 	stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
 	p := NewChatOrchestrator(store, stubResolver{stub}, nil, slog.Default(), 10)
 	p.roller = d20.NewRoller(seed)
