@@ -95,11 +95,19 @@ func pendingCombatReaction(gs *state.GameState, ruling *chat.Ruling) *chat.Rulin
 }
 
 func actionHasEffect(gs *state.GameState, ruling *chat.Ruling) bool {
-	_, action, ok, err := chosenAction(gs, ruling, ruling.ActorName(gs.PCName()))
+	if gs == nil || ruling == nil {
+		return false
+	}
+	name := ruling.ActorName(gs.PCName())
+	actor, ok := gs.FindCombatant(name)
+	if !ok {
+		return false
+	}
+	_, action, picked, err := chosenAction(actor, ruling, name)
 	if err != nil {
 		return false
 	}
-	return ok && action.Effect.Count > 0
+	return picked && action.Effect.Count > 0
 }
 
 // reactionAction is the attack a counterattack will roll. The queued prompt
@@ -108,11 +116,11 @@ func reactionAction(gs *state.GameState, actorName string) (id, name string) {
 	if gs == nil {
 		return "", ""
 	}
-	stats, _, ok := gs.FindActor(actorName)
+	c, ok := gs.FindCombatant(actorName)
 	if !ok {
 		return "", ""
 	}
-	actor, err := stats.ToActor(actorName, actorName)
+	actor, err := c.Stats.ToActor(actorName, actorName)
 	if err != nil {
 		return "", ""
 	}
@@ -155,7 +163,7 @@ func (p *ChatOrchestrator) resolveActionAttempt(gs *state.GameState, ruling *cha
 		}
 	}
 
-	d20Actor, action, picked, err := chosenAction(gs, ruling, actorName)
+	d20Actor, action, picked, err := chosenAction(actor, ruling, actorName)
 	if err != nil && p != nil && p.logger != nil {
 		p.logger.Error("actor projection failed", "error", err, "actor", actorName)
 	}
@@ -201,17 +209,13 @@ func (p *ChatOrchestrator) attempt(actor, target string) resolvedAttempt {
 	return p.rollAttempt(actor, target, "", d20Die, defaultDC)
 }
 
-// chosenAction projects the actor and picks the ruling's action.
+// chosenAction projects the combatant and picks the ruling's action.
 // ok is false when the actor has no usable action, which is a bare 1d20.
-func chosenAction(gs *state.GameState, ruling *chat.Ruling, actorName string) (*d20.Actor, d20.Action, bool, error) {
-	if gs == nil || ruling == nil {
+func chosenAction(c state.Combatant, ruling *chat.Ruling, actorName string) (*d20.Actor, d20.Action, bool, error) {
+	if ruling == nil || c.Stats == nil {
 		return nil, d20.Action{}, false, nil
 	}
-	stats, _, ok := gs.FindActor(actorName)
-	if !ok {
-		return nil, d20.Action{}, false, nil
-	}
-	actor, err := stats.ToActor(actorName, actorName)
+	actor, err := c.Stats.ToActor(actorName, actorName)
 	if err != nil {
 		return nil, d20.Action{}, false, err
 	}

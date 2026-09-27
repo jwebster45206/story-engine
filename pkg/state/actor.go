@@ -19,7 +19,7 @@ type Combatant struct {
 	MonsterID string
 }
 
-// FindActor resolves name to a live mechanical block and its display name.
+// FindCombatant resolves name to a live combatant.
 // The PC matches by display name. The literal "PC" matches only when that is
 // PCName. NPCs match by map key or name at the current location. Monsters
 // match by instance id, Monster.ID, or name in the current location; a shared
@@ -27,16 +27,6 @@ type Combatant struct {
 //
 // ok is true only when the match IsActor, so a narrative NPC is not a target.
 // A knocked-out NPC is not a target either.
-func (gs *GameState) FindActor(name string) (*character.Stats, string, bool) {
-	c, ok := gs.FindCombatant(name)
-	if !ok {
-		return nil, "", false
-	}
-	return c.Stats, c.Display, true
-}
-
-// FindCombatant resolves name the same way as FindActor and also reports
-// which container the stats belong to, so a knockout can despawn or flag it.
 func (gs *GameState) FindCombatant(name string) (Combatant, bool) {
 	name = strings.TrimSpace(name)
 	if gs == nil || name == "" {
@@ -75,11 +65,10 @@ func (gs *GameState) findPCCombatant(name string) (Combatant, bool) {
 	if !strings.EqualFold(name, pcName) {
 		return Combatant{}, false
 	}
-	stats, display, ok := actorStats(&gs.PC.Stats, pcName, pcName)
-	if !ok {
+	if !gs.PC.IsActor() {
 		return Combatant{}, false
 	}
-	return Combatant{Stats: stats, Display: display, PC: gs.PC}, true
+	return Combatant{Stats: &gs.PC.Stats, Display: pcName, PC: gs.PC}, true
 }
 
 func (gs *GameState) findNPCCombatant(name string) (Combatant, bool) {
@@ -109,11 +98,10 @@ func (gs *GameState) npcCombatant(key, name string, matchKey bool) (Combatant, b
 	if !match {
 		return Combatant{}, false
 	}
-	stats, display, ok := actorStats(&npc.Stats, npc.Name, key)
-	if !ok {
+	if !npc.IsActor() {
 		return Combatant{}, false
 	}
-	return Combatant{Stats: stats, Display: display, NPC: npc}, true
+	return Combatant{Stats: &npc.Stats, Display: npc.Name, NPC: npc}, true
 }
 
 func (gs *GameState) findMonsterCombatant(name string) (Combatant, bool) {
@@ -146,19 +134,8 @@ func monsterCombatant(m *character.Monster, id, name string, matchID bool) (Comb
 	if !match {
 		return Combatant{}, false
 	}
-	stats, display, ok := actorStats(&m.Stats, m.Name, id)
-	if !ok {
+	if !m.IsActor() {
 		return Combatant{}, false
 	}
-	return Combatant{Stats: stats, Display: display, MonsterID: id}, true
-}
-
-func actorStats(s *character.Stats, display, fallback string) (*character.Stats, string, bool) {
-	if s == nil || !s.IsActor() {
-		return nil, "", false
-	}
-	if strings.TrimSpace(display) == "" {
-		display = fallback
-	}
-	return s, display, true
+	return Combatant{Stats: &m.Stats, Display: m.Name, MonsterID: id}, true
 }

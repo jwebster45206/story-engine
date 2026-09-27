@@ -442,7 +442,7 @@ func (p *ChatOrchestrator) enqueueReaction(ctx context.Context, gs *state.GameSt
 	if gs.IsEnded {
 		return nil
 	}
-	if _, _, ok := gs.FindActor(pending.Subject); !ok {
+	if _, ok := gs.FindCombatant(pending.Subject); !ok {
 		return nil
 	}
 	actionID, actionName := reactionAction(gs, pending.Subject)
