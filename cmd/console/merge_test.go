@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -191,5 +192,14 @@ func TestMergeServerGameState(t *testing.T) {
 			m.mergeServerGameState(tt.server)
 			tt.check(t, m)
 		})
+	}
+}
+
+func TestMergeServerGameState_CopiesPC(t *testing.T) {
+	m := newTestUI()
+	m.gameState = &state.GameState{PC: &character.PC{Name: "Old", HP: 1}}
+	m.mergeServerGameState(&state.GameState{PC: &character.PC{Name: "Felix", HP: 8, AC: 12}})
+	if m.gameState.PC == nil || m.gameState.PC.Name != "Felix" || m.gameState.PC.HP != 8 || m.gameState.PC.AC != 12 {
+		t.Fatalf("PC = %+v", m.gameState.PC)
 	}
 }

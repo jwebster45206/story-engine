@@ -8,6 +8,21 @@ import (
 	"github.com/jwebster45206/story-engine/pkg/character"
 )
 
+const (
+	combatantPC      = "pc"
+	combatantNPC     = "npc"
+	combatantMonster = "monster"
+)
+
+// Combatant is a live actor. ID is the NPC map key or the monster instance
+// id, and empty for the PC. Stats points into game state.
+type Combatant struct {
+	Stats   *character.Stats
+	Display string
+	Kind    string
+	ID      string
+}
+
 // FindActor resolves name to a live mechanical block and its display name.
 // The PC matches by display name. The literal "PC" matches only when that is
 // PCName. NPCs match by map key or name at the current location. Monsters
@@ -15,79 +30,133 @@ import (
 // name resolves to the lowest sorted instance id.
 //
 // ok is true only when the match IsActor, so a narrative NPC is not a target.
+// A knocked-out NPC is not a target either.
 func (gs *GameState) FindActor(name string) (*character.Stats, string, bool) {
-	name = strings.TrimSpace(name)
-	if gs == nil || name == "" {
-		return nil, "", false
-	}
-	if stats, display, ok := gs.findPCActor(name); ok {
-		return stats, display, true
-	}
-	if stats, display, ok := gs.findNPCActor(name); ok {
-		return stats, display, true
-	}
-	return gs.findMonsterActor(name)
-}
-
-func (gs *GameState) findPCActor(name string) (*character.Stats, string, bool) {
-	if gs.PC == nil {
-		return nil, "", false
-	}
-	pcName := gs.PCName()
-	if !strings.EqualFold(name, pcName) {
-		return nil, "", false
-	}
-	return actorStats(&gs.PC.Stats, pcName, pcName)
-}
-
-func (gs *GameState) findNPCActor(name string) (*character.Stats, string, bool) {
-	keys := slices.Sorted(maps.Keys(gs.NPCs))
-	for _, key := range keys {
-		npc := gs.NPCs[key]
-		if npc == nil || npc.Location != gs.Location {
-			continue
-		}
-		if strings.EqualFold(key, name) {
-			return actorStats(&npc.Stats, npc.Name, key)
-		}
-	}
-	for _, key := range keys {
-		npc := gs.NPCs[key]
-		if npc == nil || npc.Location != gs.Location {
-			continue
-		}
-		if strings.EqualFold(npc.Name, name) {
-			return actorStats(&npc.Stats, npc.Name, key)
-		}
-	}
-	return nil, "", false
-}
-
-func (gs *GameState) findMonsterActor(name string) (*character.Stats, string, bool) {
-	loc, ok := gs.WorldLocations[gs.Location]
+	c, ok := gs.FindCombatant(name)
 	if !ok {
 		return nil, "", false
 	}
+	return c.Stats, c.Display, true
+}
+
+// FindCombatant resolves name the same way as FindActor and also reports
+// which container the stats belong to, so a knockout can despawn or flag it.
+func (gs *GameState) FindCombatant(name string) (Combatant, bool) {
+	name = strings.TrimSpace(name)
+	if gs == nil || name == "" {
+		return Combatant{}, false
+	}
+	if c, ok := gs.findPCCombatant(name); ok {
+		return c, true
+	}
+	if c, ok := gs.findNPCCombatant(name); ok {
+		return c, true
+	}
+	return gs.findMonsterCombatant(name)
+}
+
+// KnockOut applies the 0 HP outcome for the combatant who just fell.
+// Monsters drop loot and leave. NPCs stay, marked defeated. The PC ends the game.
+func (gs *GameState) KnockOut(c Combatant) {
+	if gs == nil || c.Stats == nil || c.Stats.HP > 0 {
+		return
+	}
+	switch c.Kind {
+	case combatantPC:
+		gs.IsEnded = true
+	case combatantNPC:
+		if npc := gs.NPCs[c.ID]; npc != nil {
+			npc.IsDefeated = true
+		}
+	case combatantMonster:
+		gs.DespawnMonster(c.ID)
+	}
+}
+
+func (gs *GameState) findPCCombatant(name string) (Combatant, bool) {
+	if gs.PC == nil {
+		return Combatant{}, false
+	}
+	pcName := gs.PCName()
+	if !strings.EqualFold(name, pcName) {
+		return Combatant{}, false
+	}
+	stats, display, ok := actorStats(&gs.PC.Stats, pcName, pcName)
+	if !ok {
+		return Combatant{}, false
+	}
+	return Combatant{Stats: stats, Display: display, Kind: combatantPC}, true
+}
+
+func (gs *GameState) findNPCCombatant(name string) (Combatant, bool) {
+	keys := slices.Sorted(maps.Keys(gs.NPCs))
+	for _, key := range keys {
+		if c, ok := gs.npcCombatant(key, name, true); ok {
+			return c, true
+		}
+	}
+	for _, key := range keys {
+		if c, ok := gs.npcCombatant(key, name, false); ok {
+			return c, true
+		}
+	}
+	return Combatant{}, false
+}
+
+func (gs *GameState) npcCombatant(key, name string, matchKey bool) (Combatant, bool) {
+	npc := gs.NPCs[key]
+	if npc == nil || npc.IsDefeated || npc.Location != gs.Location {
+		return Combatant{}, false
+	}
+	match := strings.EqualFold(npc.Name, name)
+	if matchKey {
+		match = strings.EqualFold(key, name)
+	}
+	if !match {
+		return Combatant{}, false
+	}
+	stats, display, ok := actorStats(&npc.Stats, npc.Name, key)
+	if !ok {
+		return Combatant{}, false
+	}
+	return Combatant{Stats: stats, Display: display, Kind: combatantNPC, ID: key}, true
+}
+
+func (gs *GameState) findMonsterCombatant(name string) (Combatant, bool) {
+	loc, ok := gs.WorldLocations[gs.Location]
+	if !ok {
+		return Combatant{}, false
+	}
 	ids := slices.Sorted(maps.Keys(loc.Monsters))
 	for _, id := range ids {
-		m := loc.Monsters[id]
-		if m == nil {
-			continue
-		}
-		if strings.EqualFold(id, name) || strings.EqualFold(m.ID, name) {
-			return actorStats(&m.Stats, m.Name, id)
+		if c, ok := monsterCombatant(loc.Monsters[id], id, name, true); ok {
+			return c, true
 		}
 	}
 	for _, id := range ids {
-		m := loc.Monsters[id]
-		if m == nil {
-			continue
-		}
-		if strings.EqualFold(m.Name, name) {
-			return actorStats(&m.Stats, m.Name, id)
+		if c, ok := monsterCombatant(loc.Monsters[id], id, name, false); ok {
+			return c, true
 		}
 	}
-	return nil, "", false
+	return Combatant{}, false
+}
+
+func monsterCombatant(m *character.Monster, id, name string, matchID bool) (Combatant, bool) {
+	if m == nil {
+		return Combatant{}, false
+	}
+	match := strings.EqualFold(m.Name, name)
+	if matchID {
+		match = strings.EqualFold(id, name) || strings.EqualFold(m.ID, name)
+	}
+	if !match {
+		return Combatant{}, false
+	}
+	stats, display, ok := actorStats(&m.Stats, m.Name, id)
+	if !ok {
+		return Combatant{}, false
+	}
+	return Combatant{Stats: stats, Display: display, Kind: combatantMonster, ID: id}, true
 }
 
 func actorStats(s *character.Stats, display, fallback string) (*character.Stats, string, bool) {

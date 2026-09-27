@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/state"
 	"github.com/muesli/reflow/wordwrap"
 )
@@ -49,6 +50,9 @@ var (
 			Foreground(lipgloss.Color("86")) // green
 
 	metaStyle = narratorStyle // copy narrator style for now
+
+	sidebarPlainStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("255")) // white
 
 	userStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("39")) // teal
@@ -131,6 +135,8 @@ func writeSidebar(gs *state.GameState, scenarioDisplay string, processing bool) 
 	content.WriteString(metaStyle.Render("Turn: "))
 	content.WriteString(fmt.Sprintf("%d", gs.TurnCounter) + "\n\n")
 
+	writePCSidebar(&content, gs)
+
 	content.WriteString(metaStyle.Render("Inventory: ") + "\n")
 	if len(gs.Inventory) == 0 {
 		content.WriteString("None\n\n")
@@ -140,9 +146,11 @@ func writeSidebar(gs *state.GameState, scenarioDisplay string, processing bool) 
 		}
 	}
 
-	content.WriteString("\n")
-	content.WriteString(metaStyle.Render("Commands:") + "\n")
-	content.WriteString(sidebarCommands)
+	// Commands section is hidden. sidebarCommands is kept for when it comes back.
+	_ = sidebarCommands
+	// content.WriteString("\n")
+	// content.WriteString(metaStyle.Render("Commands:") + "\n")
+	// content.WriteString(sidebarCommands)
 
 	if gs.IsEnded {
 		content.WriteString("\n" + titleStyle.Render("GAME ENDED") + "\n")
@@ -160,6 +168,66 @@ func writeSidebar(gs *state.GameState, scenarioDisplay string, processing bool) 
 	content.WriteString(promptStyle.Render("© 2025 Joseph Webster"))
 
 	return content.String()
+}
+
+func writePCSidebar(content *strings.Builder, gs *state.GameState) {
+	name := "PC"
+	var hp, maxHP, ac int
+	var levelClass string
+	if gs != nil && gs.PC != nil {
+		name = gs.PCName()
+		hp = gs.PC.HP
+		maxHP = gs.PC.MaxHP
+		if maxHP <= 0 {
+			maxHP = hp
+		}
+		ac = gs.PC.AC
+		levelClass = pcLevelClass(gs.PC.Level, gs.PC.Class)
+	}
+	content.WriteString(metaStyle.Render(name) + "\n")
+	if levelClass != "" {
+		content.WriteString(sidebarPlainStyle.Render(levelClass) + "\n")
+	}
+	fmt.Fprintf(content, "HP %d/%d\n", hp, maxHP)
+	fmt.Fprintf(content, "AC %d\n\n", ac)
+
+	content.WriteString(metaStyle.Render("Actions") + "\n")
+	names := pcActionNames(gs)
+	if len(names) == 0 {
+		content.WriteString("None\n\n")
+		return
+	}
+	for _, name := range names {
+		fmt.Fprintf(content, "• %s\n", name)
+	}
+	content.WriteString("\n")
+}
+
+func pcLevelClass(level int, class string) string {
+	var parts []string
+	if level > 0 {
+		parts = append(parts, fmt.Sprintf("Level %d", level))
+	}
+	if class != "" {
+		parts = append(parts, class)
+	}
+	return strings.Join(parts, " ")
+}
+
+func pcActionNames(gs *state.GameState) []string {
+	if gs == nil || gs.PC == nil || len(gs.PC.Actions) == 0 {
+		return nil
+	}
+	ids := slices.Sorted(maps.Keys(gs.PC.Actions))
+	names := make([]string, 0, len(ids))
+	for _, id := range ids {
+		name := gs.PC.Actions[id].Name
+		if name == "" {
+			name = id
+		}
+		names = append(names, name)
+	}
+	return names
 }
 
 // writeChatContent builds the chat content from game state for the current viewport width
@@ -204,10 +272,8 @@ func (m *ConsoleUI) writeChatContent() {
 		case "user":
 			userMsg := userStyle.Render(wordwrap.String(msg.Content, chatWidth-3))
 			content.WriteString(userMsg + "\n\n")
-			if isLastUserMessage(m.gameState.ChatHistory, i) {
-				for _, detail := range m.ephemeralAttempts {
-					content.WriteString(speakerStyle.Render(wordwrap.String(detail, chatWidth)) + "\n\n")
-				}
+			for _, detail := range m.ephemeralLinesAt(i) {
+				content.WriteString(speakerStyle.Render(wordwrap.String(detail, chatWidth)) + "\n\n")
 			}
 		}
 	}
@@ -225,13 +291,68 @@ func (m *ConsoleUI) writeChatContent() {
 	}
 }
 
-func isLastUserMessage(history []chat.ChatMessage, i int) bool {
-	for _, msg := range history[i+1:] {
-		if msg.Role == "user" {
-			return false
+// ephemeralTurn is the dice lines shown under one user message.
+type ephemeralTurn struct {
+	userIdx int
+	lines   []string
+}
+
+const ephemeralTurnLimit = 2
+
+func (m *ConsoleUI) clearEphemeralTurns() {
+	m.ephemeralTurns = nil
+}
+
+// beginEphemeralTurn starts a slot for a new user message and keeps the
+// previous turn. A second processing event for the same message, before any
+// dice arrive, reuses the empty slot.
+func (m *ConsoleUI) beginEphemeralTurn(userIdx int) {
+	if n := len(m.ephemeralTurns); n > 0 &&
+		m.ephemeralTurns[n-1].userIdx == userIdx &&
+		len(m.ephemeralTurns[n-1].lines) == 0 {
+		return
+	}
+	m.ephemeralTurns = append(m.ephemeralTurns, ephemeralTurn{userIdx: userIdx})
+	if len(m.ephemeralTurns) > ephemeralTurnLimit {
+		m.ephemeralTurns = m.ephemeralTurns[len(m.ephemeralTurns)-ephemeralTurnLimit:]
+	}
+}
+
+func (m *ConsoleUI) addEphemeralLine(line string) {
+	if len(m.ephemeralTurns) == 0 {
+		m.ephemeralTurns = []ephemeralTurn{{userIdx: lastUserMessageIdx(m.gameState)}}
+	}
+	last := &m.ephemeralTurns[len(m.ephemeralTurns)-1]
+	last.lines = append(last.lines, line)
+}
+
+func (m *ConsoleUI) dropCurrentEphemeralTurn() {
+	if len(m.ephemeralTurns) == 0 {
+		return
+	}
+	m.ephemeralTurns = m.ephemeralTurns[:len(m.ephemeralTurns)-1]
+}
+
+func (m *ConsoleUI) ephemeralLinesAt(userIdx int) []string {
+	var lines []string
+	for _, turn := range m.ephemeralTurns {
+		if turn.userIdx == userIdx {
+			lines = append(lines, turn.lines...)
 		}
 	}
-	return true
+	return lines
+}
+
+func lastUserMessageIdx(gs *state.GameState) int {
+	if gs == nil {
+		return -1
+	}
+	for i := len(gs.ChatHistory) - 1; i >= 0; i-- {
+		if gs.ChatHistory[i].Role == "user" {
+			return i
+		}
+	}
+	return -1
 }
 
 func formatNarratorResponse(response string, width int) string {

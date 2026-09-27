@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
@@ -46,5 +47,38 @@ func TestWriteSidebar_Processing(t *testing.T) {
 	}
 	if strings.Contains(got, "Syncing game state") {
 		t.Fatal("old syncing copy should be gone")
+	}
+}
+
+func TestWriteSidebar_PCAndActions(t *testing.T) {
+	gs := &state.GameState{
+		Location: "dock",
+		PC: &character.PC{
+			Name:  "Felix",
+			Level: 5,
+			Class: "Fighter",
+			HP:    10,
+			MaxHP: 10,
+			AC:    14,
+			Actions: map[string]character.Action{
+				"cutlass": {Name: "Cutlass"},
+				"bite":    {Name: "Bite"},
+			},
+		},
+		Inventory: []string{"torch"},
+	}
+	got := writeSidebar(gs, "Test", false)
+	if !strings.Contains(got, "Felix") || !strings.Contains(got, "Level 5 Fighter") || !strings.Contains(got, "HP 10/10") || !strings.Contains(got, "AC 14") {
+		t.Fatalf("sidebar missing PC stats: %q", got)
+	}
+	actions := strings.Index(got, "Actions")
+	inventory := strings.Index(got, "Inventory:")
+	bite := strings.Index(got, "Bite")
+	cutlass := strings.Index(got, "Cutlass")
+	if actions < 0 || bite < actions || cutlass < bite || inventory < cutlass {
+		t.Fatalf("want Actions, then Bite, Cutlass, then Inventory, got %q", got)
+	}
+	if strings.Contains(got, "Commands:") || strings.Contains(got, "Ctrl+C") {
+		t.Fatalf("commands section should be hidden, got %q", got)
 	}
 }

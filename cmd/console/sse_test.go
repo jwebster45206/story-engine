@@ -348,8 +348,8 @@ func TestUpdate_AttemptSSEIsEphemeral(t *testing.T) {
 		t.Fatalf("ChatHistory len = %d, want %d", len(ui.gameState.ChatHistory), histLen)
 	}
 	want := "Jack rolled 1d20... 12; *Result: 12* — hit"
-	if len(ui.ephemeralAttempts) != 1 || ui.ephemeralAttempts[0] != want {
-		t.Fatalf("ephemeralAttempts = %v, want %q", ui.ephemeralAttempts, want)
+	if lines := ui.ephemeralLinesAt(0); len(lines) != 1 || lines[0] != want {
+		t.Fatalf("ephemeral lines = %v, want %q", lines, want)
 	}
 
 	model, _ = ui.Update(sseEventMsg{event: SSEEvent{
@@ -359,8 +359,8 @@ func TestUpdate_AttemptSSEIsEphemeral(t *testing.T) {
 	}})
 	ui = model.(ConsoleUI)
 	wantMiss := "Jack rolled 1d20... 4; *Result: 4* — miss"
-	if len(ui.ephemeralAttempts) != 2 || ui.ephemeralAttempts[1] != wantMiss {
-		t.Fatalf("ephemeralAttempts = %v, want second %q", ui.ephemeralAttempts, wantMiss)
+	if lines := ui.ephemeralLinesAt(0); len(lines) != 2 || lines[1] != wantMiss {
+		t.Fatalf("ephemeral lines = %v, want second %q", lines, wantMiss)
 	}
 
 	model, _ = ui.Update(sseEventMsg{event: SSEEvent{
@@ -369,8 +369,21 @@ func TestUpdate_AttemptSSEIsEphemeral(t *testing.T) {
 		Data:   map[string]any{"user_message": "I look around"},
 	}})
 	ui = model.(ConsoleUI)
-	if len(ui.ephemeralAttempts) != 0 {
-		t.Fatalf("ephemeralAttempts should clear on next processing, got %v", ui.ephemeralAttempts)
+	if lines := ui.ephemeralLinesAt(0); len(lines) != 2 || lines[1] != wantMiss {
+		t.Fatalf("previous turn should stay visible, got %v", lines)
+	}
+	if lines := ui.ephemeralLinesAt(1); len(lines) != 0 {
+		t.Fatalf("new turn should have no dice yet, got %v", lines)
+	}
+
+	model, _ = ui.Update(sseEventMsg{event: SSEEvent{
+		Type:   "request.processing",
+		GameID: id,
+		Data:   map[string]any{"user_message": "I wait"},
+	}})
+	ui = model.(ConsoleUI)
+	if lines := ui.ephemeralLinesAt(0); len(lines) != 0 {
+		t.Fatalf("oldest turn should drop after a third message, got %v", lines)
 	}
 }
 
@@ -397,8 +410,8 @@ func TestUpdate_DeniedAttemptSSEShowsReasoning(t *testing.T) {
 	if len(ui.gameState.ChatHistory) != histLen {
 		t.Fatalf("ChatHistory len = %d, want %d", len(ui.gameState.ChatHistory), histLen)
 	}
-	if len(ui.ephemeralAttempts) != 1 || ui.ephemeralAttempts[0] != reason {
-		t.Fatalf("ephemeralAttempts = %v, want %q", ui.ephemeralAttempts, reason)
+	if lines := ui.ephemeralLinesAt(0); len(lines) != 1 || lines[0] != reason {
+		t.Fatalf("ephemeral lines = %v, want %q", lines, reason)
 	}
 }
 

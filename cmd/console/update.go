@@ -247,7 +247,6 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// sidebar Processing... until request.completed.
 			m.loading = false
 			m.processing = true
-			m.ephemeralAttempts = nil
 			m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.processing))
 
 			// Add the user message from the event data (if present)
@@ -258,6 +257,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.gameState.ChatHistory = append(m.gameState.ChatHistory, userMessage)
 				m.pendingUserMessages = append(m.pendingUserMessages, userMessage)
+				m.beginEphemeralTurn(len(m.gameState.ChatHistory) - 1)
 
 				// Reformat content to include the new user message
 				m.writeChatContent()
@@ -270,7 +270,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if content, ok := msg.event.Data["content"].(string); ok && content != "" {
 				success, _ := msg.event.Data["success"].(bool)
 				scope, _ := msg.event.Data["scope"].(string)
-				m.ephemeralAttempts = append(m.ephemeralAttempts, formatAttemptLine(content, success, scope))
+				m.addEphemeralLine(formatAttemptLine(content, success, scope))
 				m.writeChatContent()
 				if !m.userPinned {
 					m.chatViewport.GotoBottom()
@@ -318,7 +318,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.isStreaming = false
 			m.loading = false
 			m.processing = false
-			m.ephemeralAttempts = nil
+			m.dropCurrentEphemeralTurn()
 			m.metaViewport.SetContent(writeSidebar(m.gameState, m.scenarioDisplayName(), m.processing))
 
 			// Get error message from the data map
@@ -440,7 +440,7 @@ func (m ConsoleUI) handleSSEDisconnected(msg sseDisconnectedMsg) (tea.Model, tea
 	m.loading = false
 	m.isStreaming = false
 	m.processing = false
-	m.ephemeralAttempts = nil
+	m.clearEphemeralTurns()
 	if wasWaiting {
 		m.gameState.ChatHistory = append(m.gameState.ChatHistory, chat.ChatMessage{
 			Role:    "system",

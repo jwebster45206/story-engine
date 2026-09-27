@@ -32,6 +32,7 @@ func (m *ConsoleUI) mergeServerGameState(serverGS *state.GameState) {
 		m.gameState.WorldLocations = serverGS.WorldLocations
 		m.gameState.Location = serverGS.Location
 		m.gameState.Inventory = serverGS.Inventory
+		m.gameState.PC = serverGS.PC
 		m.gameState.TurnCounter = serverGS.TurnCounter
 		m.gameState.SceneTurnCounter = serverGS.SceneTurnCounter
 		m.gameState.Vars = serverGS.Vars

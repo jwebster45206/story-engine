@@ -13,6 +13,7 @@ import (
 	"github.com/jwebster45206/story-engine/internal/queue"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	queuePkg "github.com/jwebster45206/story-engine/pkg/queue"
+	"github.com/jwebster45206/story-engine/pkg/state"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -225,13 +226,13 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			UseReferee:  true,
 		}
 
-		fullMessage, ruling, err := w.consumeStream(chatReq, req, "failed to process chat request")
+		fullMessage, ruling, resolved, err := w.consumeStream(chatReq, req, "failed to process chat request")
 		if err != nil {
 			return err
 		}
 		chatReq.Ruling = ruling
 
-		if err := w.orchestrator.HandleAfterStream(context.Background(), gs, chatReq, fullMessage); err != nil {
+		if err := w.orchestrator.HandleAfterStream(context.Background(), resolved, chatReq, fullMessage); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
@@ -263,23 +264,13 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 			IsStoryEvent: true,
 		}
 
-		fullMessage, ruling, err := w.consumeStream(chatReq, req, "failed to process story event")
+		fullMessage, ruling, resolved, err := w.consumeStream(chatReq, req, "failed to process story event")
 		if err != nil {
 			return err
 		}
 		chatReq.Ruling = ruling
 
-		gs, err := w.orchestrator.GetGameState(w.ctx, req.GameStateID)
-		if err != nil {
-			w.log.Error("Failed to load game state for update",
-				"error", err,
-				"request_id", req.RequestID,
-			)
-			w.publishFailed(req.GameStateID, req.RequestID, err.Error())
-			return fmt.Errorf("failed to load game state: %w", err)
-		}
-
-		if err := w.orchestrator.HandleAfterStream(context.Background(), gs, chatReq, fullMessage); err != nil {
+		if err := w.orchestrator.HandleAfterStream(context.Background(), resolved, chatReq, fullMessage); err != nil {
 			w.log.Error("Failed to update game state after stream",
 				"error", err,
 				"request_id", req.RequestID,
@@ -309,7 +300,7 @@ func (w *Worker) processRequest(req *queuePkg.Request) error {
 	return nil
 }
 
-func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, errWrap string) (string, *chat.Ruling, error) {
+func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, errWrap string) (string, *chat.Ruling, *state.GameState, error) {
 	out, err := w.orchestrator.ProcessChatStream(w.ctx, chatReq)
 	if err != nil {
 		w.log.Error("Failed to start stream",
@@ -319,7 +310,7 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 			"type", req.Type,
 		)
 		w.publishFailed(req.GameStateID, req.RequestID, err.Error())
-		return "", nil, fmt.Errorf("%s: %w", errWrap, err)
+		return "", nil, nil, fmt.Errorf("%s: %w", errWrap, err)
 	}
 
 	for _, a := range out.Attempts {
@@ -360,19 +351,15 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 		}
 	}
 
-	// Gamestate needed for getting principal ID for usage tracking
-	gs, err := w.orchestrator.GetGameState(w.ctx, req.GameStateID)
-	if err != nil {
-		w.log.Error("Failed to load game state for usage tracking",
-			"error", err,
-			"request_id", req.RequestID,
-		)
+	var principalID uuid.UUID
+	if out.GameState != nil {
+		principalID = out.GameState.PrincipalID
 	}
 
 	w.log.Info("llm usage",
 		"type", "narrator",
 		"game_state_id", req.GameStateID,
-		"principal_id", gs.PrincipalID,
+		"principal_id", principalID,
 		"usage", usage,
 	)
 
@@ -381,7 +368,7 @@ func (w *Worker) consumeStream(chatReq chat.ChatRequest, req *queuePkg.Request, 
 	}
 	if streamErr != nil {
 		w.publishFailed(req.GameStateID, req.RequestID, streamErr.Error())
-		return "", nil, fmt.Errorf("%s: %w", errWrap, streamErr)
+		return "", nil, nil, fmt.Errorf("%s: %w", errWrap, streamErr)
 	}
-	return fullMessage.String(), out.Ruling, nil
+	return fullMessage.String(), out.Ruling, out.GameState, nil
 }

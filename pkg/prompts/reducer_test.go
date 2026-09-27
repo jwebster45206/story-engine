@@ -49,6 +49,9 @@ func TestBuildReducerMessages_PersistentThenDynamic(t *testing.T) {
 	if msgs[0].Content != ReducerPrompt {
 		t.Fatal("persistent block should be the reducer instruction body")
 	}
+	if !strings.Contains(msgs[0].Content, "HP, damage, and knockout are already resolved") {
+		t.Fatal("reducer prompt should forbid inferring HP and knockout")
+	}
 	if strings.Contains(msgs[0].Content, "CONTINGENCY RULES") {
 		t.Fatal("persistent block should not include contingency rules")
 	}

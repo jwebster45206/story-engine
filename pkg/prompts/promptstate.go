@@ -214,16 +214,16 @@ func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scen
 		if !anyNPCFocused(present, ps.FocusedActors) {
 			names := make([]string, len(present))
 			for i, npc := range present {
-				names[i] = npc.Name
+				names[i] = npcPromptName(npc)
 			}
 			fmt.Fprintf(sb, "NPCs here: %s\n", strings.Join(names, ", "))
 		} else {
 			sb.WriteString("NPCs here:\n")
 			for _, npc := range present {
 				if npcFocused(npc, ps.FocusedActors) && npc.Description != "" {
-					fmt.Fprintf(sb, "- %s: %s\n", npc.Name, npc.Description)
+					fmt.Fprintf(sb, "- %s: %s\n", npcPromptName(npc), npc.Description)
 				} else {
-					fmt.Fprintf(sb, "- %s\n", npc.Name)
+					fmt.Fprintf(sb, "- %s\n", npcPromptName(npc))
 				}
 			}
 		}
@@ -357,7 +357,7 @@ func (ps *PromptState) writeNPCsElsewhere(sb *strings.Builder) {
 		if locName == "" {
 			locName = "unknown"
 		}
-		entries = append(entries, fmt.Sprintf("- %s: %s", npc.Name, locName))
+		entries = append(entries, fmt.Sprintf("- %s: %s", npcPromptName(npc), locName))
 	}
 
 	if len(entries) == 0 {
@@ -423,6 +423,16 @@ func collectExitDirections(loc scenario.Location) []string {
 	}
 	sort.Strings(dirs)
 	return dirs
+}
+
+func npcPromptName(npc *character.NPC) string {
+	if npc == nil {
+		return ""
+	}
+	if npc.IsDefeated {
+		return npc.Name + " (knocked out)"
+	}
+	return npc.Name
 }
 
 func presentNPCs(npcs map[string]*character.NPC, location string) []*character.NPC {

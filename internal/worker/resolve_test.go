@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"log/slog"
 	"slices"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/jwebster45206/d20"
 	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/prompts"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -200,7 +202,12 @@ func seedForMiss(t *testing.T) int64 {
 }
 
 func TestPendingCombatReaction(t *testing.T) {
-	gs := &state.GameState{PC: &character.PC{Name: "Felix"}}
+	gs := &state.GameState{PC: &character.PC{
+		Name: "Felix",
+		Actions: map[string]character.Action{
+			"strike": {Name: "Strike", Type: "attack", Attempt: "1d20", Effect: "1d6"},
+		},
+	}}
 	player := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
 	got := pendingCombatReaction(gs, player)
 	if got == nil || !got.Allowed || got.Scope != chat.RulingScopeCombat || got.Subject != "Giant Rat" || got.Object != "Felix" {
@@ -221,6 +228,15 @@ func TestPendingCombatReaction(t *testing.T) {
 	}
 	if pendingCombatReaction(gs, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeMovement, Object: "drawbridge"}) != nil {
 		t.Error("movement should not pending")
+	}
+	shove := &state.GameState{PC: &character.PC{
+		Name: "Felix",
+		Actions: map[string]character.Action{
+			"shove": {Name: "Shove", Type: "attack"},
+		},
+	}}
+	if pendingCombatReaction(shove, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}) != nil {
+		t.Error("action without an effect should not pending")
 	}
 }
 
@@ -404,16 +420,226 @@ func TestRollContent(t *testing.T) {
 		actor, action, detail string
 		dc                    int
 		hit                   bool
-		want                  string
+		effect, want          string
 	}{
-		{"Skeleton", "Bite", "Rolled 1d20... 16; *Result: 16*", 10, true, "Bite: Skeleton rolled 1d20... 16; AC 10; *Result Hit*"},
-		{"Skeleton", "Bite", "rolled 1d20... 16; *Result: 16*", 10, false, "Bite: Skeleton rolled 1d20... 16; AC 10; *Result Miss*"},
-		{"Jack", "", "Rolled 1d20... 12; *Result: 12*", 10, true, "Jack rolled 1d20... 12; AC 10; *Result Hit*"},
-		{"Jack", "Strike", "Rolled 1d20... 12; +4 striking; *Result: 16*", 15, true, "Strike: Jack rolled 1d20... 12; +4 striking; AC 15; *Result Hit*"},
+		{"Skeleton", "Bite", "Rolled 1d20... 16; *Result: 16*", 10, true, "", "Bite: Skeleton rolled 1d20... 16; AC 10; *Result Hit*"},
+		{"Skeleton", "Bite", "rolled 1d20... 16; *Result: 16*", 10, false, "", "Bite: Skeleton rolled 1d20... 16; AC 10; *Result Miss*"},
+		{"Jack", "", "Rolled 1d20... 12; *Result: 12*", 10, true, "", "Jack rolled 1d20... 12; AC 10; *Result Hit*"},
+		{"Jack", "Strike", "Rolled 1d20... 12; +4 striking; *Result: 16*", 15, true, "", "Strike: Jack rolled 1d20... 12; +4 striking; AC 15; *Result Hit*"},
+		{"Skeleton", "Bite", "Rolled 1d20... 16; *Result: 16*", 13, true, "; 5 damage (Giant Rat 2/7)", "Bite: Skeleton rolled 1d20... 16; AC 13; *Result Hit*; 5 damage (Giant Rat 2/7)"},
 	}
 	for _, tt := range tests {
-		if got := rollContent(tt.actor, tt.action, tt.detail, tt.dc, tt.hit); got != tt.want {
+		if got := rollContent(tt.actor, tt.action, tt.detail, tt.dc, tt.hit, tt.effect); got != tt.want {
 			t.Errorf("rollContent() = %q, want %q", got, tt.want)
 		}
+	}
+}
+
+func TestResolveActionAttempt_HPAndKnockout(t *testing.T) {
+	strike := map[string]character.Action{
+		"strike": {Name: "Strike", Type: "attack", Attempt: "1d20", Effect: "1d4"},
+	}
+	seed, _ := seedForFace(t, 10, 21)
+	effect := effectTotal(t, seed, "1d4", 0)
+
+	t.Run("hit writes HP and a wound band", func(t *testing.T) {
+		pc := &character.PC{Name: "Felix", HP: 10, Actions: strike}
+		rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 8, MaxHP: 8, AC: 10}
+		p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default()}
+		got := p.resolveAttempts(combatGS(pc, rat), &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
+		if len(got) != 1 || !got[0].Success {
+			t.Fatalf("got %+v", got)
+		}
+		if rat.HP != 8-effect {
+			t.Fatalf("HP = %d, want %d", rat.HP, 8-effect)
+		}
+		band := "wounded"
+		if rat.HP*2 <= rat.MaxHP {
+			band = "badly wounded"
+		}
+		if !strings.Contains(got[0].NarratorText, "The Giant Rat is "+band+".") {
+			t.Errorf("narrator = %q", got[0].NarratorText)
+		}
+		assertNoDigits(t, got[0].NarratorText)
+		wantClause := damageClause("Giant Rat", effect, rat.HP, rat.MaxHP)
+		if !strings.Contains(got[0].Content, strings.TrimPrefix(wantClause, "; ")) {
+			t.Errorf("content = %q, want clause %q", got[0].Content, wantClause)
+		}
+	})
+
+	t.Run("miss leaves HP", func(t *testing.T) {
+		pc := &character.PC{Name: "Felix", HP: 10, Actions: strike}
+		rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 8, MaxHP: 8, AC: 30}
+		p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default()}
+		got := p.resolveAttempts(combatGS(pc, rat), &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
+		if len(got) != 1 || got[0].Success || rat.HP != 8 {
+			t.Fatalf("miss should leave HP 8, got %+v hp=%d", got, rat.HP)
+		}
+		if !strings.HasSuffix(got[0].NarratorText, "misses.") {
+			t.Errorf("narrator = %q", got[0].NarratorText)
+		}
+	})
+
+	t.Run("empty effect leaves HP", func(t *testing.T) {
+		pc := &character.PC{Name: "Felix", HP: 10, Actions: map[string]character.Action{
+			"shove": {Name: "Shove", Type: "attack"},
+		}}
+		rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 8, MaxHP: 8, AC: 10}
+		p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default()}
+		got := p.resolveAttempts(combatGS(pc, rat), &chat.Ruling{
+			Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat", ActionID: "shove",
+		})
+		if len(got) != 1 || !got[0].Success || rat.HP != 8 {
+			t.Fatalf("empty effect = %+v hp=%d", got, rat.HP)
+		}
+		if got[0].NarratorText != "Felix strikes Giant Rat with Shove and hits." {
+			t.Errorf("line = %q", got[0].NarratorText)
+		}
+	})
+
+	t.Run("damage modifier is added once", func(t *testing.T) {
+		boosted := effectTotal(t, seed, "1d4", 3)
+		pc := &character.PC{
+			Name: "Felix", HP: 10,
+			Modifiers: map[string]int{"damage": 3},
+			Actions:   strike,
+		}
+		rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 20, MaxHP: 20, AC: 10}
+		p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default()}
+		got := p.resolveAttempts(combatGS(pc, rat), &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
+		if len(got) != 1 || rat.HP != 20-boosted {
+			t.Fatalf("HP = %d, want %d, line %+v", rat.HP, 20-boosted, got)
+		}
+	})
+
+	t.Run("monster drops loot and despawns", func(t *testing.T) {
+		pc := &character.PC{Name: "Felix", HP: 10, Actions: strike}
+		rat := &character.Monster{
+			ID: "rat_1", Name: "Giant Rat", HP: 1, MaxHP: 4, AC: 10,
+			Items: []string{"pelt"}, DropItemsOnDefeat: true,
+		}
+		gs := combatGS(pc, rat)
+		p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default()}
+		got := p.resolveAttempts(gs, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"})
+		if len(got) != 1 || !strings.Contains(got[0].NarratorText, "The Giant Rat is knocked out.") {
+			t.Fatalf("narrator = %q", narratorTexts(got))
+		}
+		assertNoDigits(t, got[0].NarratorText)
+		loc := gs.WorldLocations["tavern"]
+		if _, ok := loc.Monsters["rat_1"]; ok {
+			t.Fatal("defeated monster should despawn")
+		}
+		if !slices.Contains(loc.Items, "pelt") {
+			t.Fatalf("items = %v, want pelt", loc.Items)
+		}
+		if _, _, ok := gs.FindActor("Giant Rat"); ok {
+			t.Fatal("despawned monster should not be a target")
+		}
+	})
+
+	t.Run("defeated NPC cannot be found or react", func(t *testing.T) {
+		pc := &character.PC{Name: "Felix", HP: 10, Actions: strike}
+		guard := &character.NPC{Name: "Guard Captain", Location: "tavern", HP: 1, MaxHP: 8, AC: 10}
+		gs := &state.GameState{
+			Location: "tavern",
+			PC:       pc,
+			NPCs:     map[string]*character.NPC{"guard": guard},
+		}
+		ruling := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Guard Captain"}
+		p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default(), chatQueue: &recordingQueue{}}
+		got := p.resolveAttempts(gs, ruling)
+		if len(got) != 1 || !guard.IsDefeated || guard.HP != 0 {
+			t.Fatalf("npc = %+v line %q", guard, narratorTexts(got))
+		}
+		if _, _, ok := gs.FindActor("Guard Captain"); ok {
+			t.Fatal("defeated NPC should not be found")
+		}
+		if err := p.enqueueReaction(context.Background(), gs, pendingCombatReaction(gs, ruling)); err != nil {
+			t.Fatalf("enqueueReaction: %v", err)
+		}
+		if n := len(p.chatQueue.(*recordingQueue).all()); n != 0 {
+			t.Fatalf("enqueued %d, want 0", n)
+		}
+	})
+
+	t.Run("PC knockout ends the game", func(t *testing.T) {
+		pc := &character.PC{Name: "Felix", HP: 1, MaxHP: 10, AC: 10}
+		rat := &character.Monster{
+			ID: "rat_1", Name: "Giant Rat", HP: 4, MaxHP: 4, AC: 12,
+			Actions: map[string]character.Action{
+				"bite": {Name: "Bite", Type: "attack", Attempt: "1d20", Effect: "1d4"},
+			},
+		}
+		gs := combatGS(pc, rat)
+		ruling := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Subject: "Giant Rat", Object: "Felix"}
+		p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default()}
+		got := p.resolveAttempts(gs, ruling)
+		if len(got) != 1 || !gs.IsEnded || pc.HP != 0 {
+			t.Fatalf("ended=%v hp=%d line %q", gs.IsEnded, pc.HP, narratorTexts(got))
+		}
+		if !strings.Contains(got[0].NarratorText, "is knocked out.") {
+			t.Errorf("narrator = %q", got[0].NarratorText)
+		}
+		msgs, err := prompts.BuildNarratorMessages(gs, &scenario.Scenario{Name: "Test", Rating: scenario.RatingPG}, "The rat bites.", 2, ruling, got[0].NarratorText)
+		if err != nil {
+			t.Fatalf("BuildNarratorMessages: %v", err)
+		}
+		last := msgs[len(msgs)-1].Content
+		if !strings.Contains(last, "THE END") {
+			t.Errorf("game-end prompt missing, last = %q", last)
+		}
+	})
+
+	t.Run("heal restores the actor", func(t *testing.T) {
+		pc := &character.PC{
+			Name: "Felix", HP: 4, MaxHP: 10,
+			Actions: map[string]character.Action{
+				"bandage": {Name: "Bandage", Type: "heal", Attempt: "1d20", Effect: "1d4"},
+			},
+		}
+		rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 8, MaxHP: 8, AC: 10}
+		p := &ChatOrchestrator{roller: d20.NewRoller(seed), logger: slog.Default()}
+		got := p.resolveAttempts(combatGS(pc, rat), &chat.Ruling{
+			Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat", ActionID: "bandage",
+		})
+		if len(got) != 1 || !got[0].Success {
+			t.Fatalf("got %+v", got)
+		}
+		if pc.HP != 4+effect || rat.HP != 8 {
+			t.Fatalf("pc HP = %d, want %d; rat HP = %d", pc.HP, 4+effect, rat.HP)
+		}
+		if strings.Contains(got[0].NarratorText, "wounded") || strings.Contains(got[0].NarratorText, "knocked out") {
+			t.Errorf("heal should not wound the target, got %q", got[0].NarratorText)
+		}
+		if !strings.Contains(got[0].Content, "healing") {
+			t.Errorf("content = %q", got[0].Content)
+		}
+	})
+}
+
+func effectTotal(t *testing.T, seed int64, expr string, damageMod int) int {
+	t.Helper()
+	roller := d20.NewRoller(seed)
+	if _, err := roller.Roll(d20Die); err != nil {
+		t.Fatalf("attempt roll: %v", err)
+	}
+	die, err := d20.DiceFromExpr(expr)
+	if err != nil {
+		t.Fatalf("DiceFromExpr: %v", err)
+	}
+	if damageMod != 0 {
+		die = die.WithModifier("damage", damageMod)
+	}
+	outcome, err := roller.Roll(die)
+	if err != nil {
+		t.Fatalf("effect roll: %v", err)
+	}
+	return outcome.Value
+}
+
+func assertNoDigits(t *testing.T, line string) {
+	t.Helper()
+	if strings.ContainsAny(line, "0123456789") {
+		t.Errorf("narrator line must not include digits, got %q", line)
 	}
 }

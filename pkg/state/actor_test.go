@@ -59,6 +59,11 @@ func TestFindActor(t *testing.T) {
 	if _, _, ok := gs.FindActor("Wolf"); ok {
 		t.Error("monster in another room should not be found")
 	}
+
+	gs.NPCs["guard"].IsDefeated = true
+	if _, _, ok := gs.FindActor("Guard Captain"); ok {
+		t.Fatal("defeated NPC should not be found")
+	}
 }
 
 func TestFindActor_UnnamedPC(t *testing.T) {
