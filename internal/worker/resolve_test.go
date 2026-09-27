@@ -34,46 +34,6 @@ func TestOutcomeLine(t *testing.T) {
 	}
 }
 
-func TestAttempt_SeededHitAndMiss(t *testing.T) {
-	probe := d20.NewRoller(1)
-	wantHit := mustRoll(t, probe).Value >= defaultDC
-	p := &ChatOrchestrator{roller: d20.NewRoller(1), logger: slog.Default()}
-	got := p.attempt("Felix", "Giant Rat")
-	want := outcomeLine("Felix", "Giant Rat", "", wantHit)
-	if got.NarratorText != want {
-		t.Errorf("attempt = %q, want %q", got.NarratorText, want)
-	}
-	if strings.Contains(got.NarratorText, "DC") || strings.Contains(strings.ToLower(got.NarratorText), "rolled") {
-		t.Errorf("narrator line must not include dice mechanics, got %q", got.NarratorText)
-	}
-	if !strings.HasPrefix(got.Content, "Felix rolled ") || !strings.Contains(got.Content, "AC 10") || !strings.Contains(got.Content, "*Result ") {
-		t.Errorf("content should name the actor, AC, and result, got %q", got.Content)
-	}
-
-	if got.Success != wantHit {
-		t.Errorf("Success = %v, want %v", got.Success, wantHit)
-	}
-
-	missSeed := seedForMiss(t)
-	p = &ChatOrchestrator{roller: d20.NewRoller(missSeed), logger: slog.Default()}
-	got = p.attempt("Felix", "Giant Rat")
-	if !strings.HasSuffix(got.NarratorText, "misses.") {
-		t.Errorf("expected a miss line, got %q", got.NarratorText)
-	}
-	if got.Success {
-		t.Error("expected Success=false on miss")
-	}
-	hitSeed := seedForHit(t)
-	p = &ChatOrchestrator{roller: d20.NewRoller(hitSeed), logger: slog.Default()}
-	got = p.attempt("Felix", "Giant Rat")
-	if !strings.HasSuffix(got.NarratorText, "hits.") {
-		t.Errorf("expected a hit line, got %q", got.NarratorText)
-	}
-	if !got.Success {
-		t.Error("expected Success=true on hit")
-	}
-}
-
 func TestResolveAttempts(t *testing.T) {
 	gs := &state.GameState{PC: &character.PC{Name: "Felix"}}
 	p := &ChatOrchestrator{roller: d20.NewRoller(1), logger: slog.Default()}
@@ -168,36 +128,6 @@ func mustRoll(t *testing.T, r *d20.Roller) d20.RollOutcome {
 		t.Fatalf("Roll: %v", err)
 	}
 	return o
-}
-
-func seedForHit(t *testing.T) int64 {
-	t.Helper()
-	for seed := int64(1); seed < 1000; seed++ {
-		o, err := d20.NewRoller(seed).Roll(d20Die)
-		if err != nil {
-			t.Fatalf("Roll: %v", err)
-		}
-		if o.Value >= defaultDC {
-			return seed
-		}
-	}
-	t.Fatal("no hit seed")
-	return 0
-}
-
-func seedForMiss(t *testing.T) int64 {
-	t.Helper()
-	for seed := int64(1); seed < 1000; seed++ {
-		o, err := d20.NewRoller(seed).Roll(d20Die)
-		if err != nil {
-			t.Fatalf("Roll: %v", err)
-		}
-		if o.Value < defaultDC {
-			return seed
-		}
-	}
-	t.Fatal("no miss seed")
-	return 0
 }
 
 func TestPendingCombatReaction(t *testing.T) {

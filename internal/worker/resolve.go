@@ -99,15 +99,16 @@ func actionHasEffect(gs *state.GameState, ruling *chat.Ruling) bool {
 		return false
 	}
 	name := ruling.ActorName(gs.PCName())
-	actor, ok := gs.FindCombatant(name)
-	if !ok {
+	c, ok := gs.FindCombatant(name)
+	if !ok || c.Stats == nil {
 		return false
 	}
-	_, action, picked, err := chosenAction(actor, ruling, name)
+	actor, err := c.Stats.ToActor(name, name)
 	if err != nil {
 		return false
 	}
-	return picked && action.Effect.Count > 0
+	action := chosenAction(actor, ruling.ActionID)
+	return action != nil && action.Effect.Count > 0
 }
 
 // reactionAction is the attack a counterattack will roll. The queued prompt
@@ -117,15 +118,15 @@ func reactionAction(gs *state.GameState, actorName string) (id, name string) {
 		return "", ""
 	}
 	c, ok := gs.FindCombatant(actorName)
-	if !ok {
+	if !ok || c.Stats == nil {
 		return "", ""
 	}
 	actor, err := c.Stats.ToActor(actorName, actorName)
 	if err != nil {
 		return "", ""
 	}
-	action, ok := pickAction(actor, "")
-	if !ok {
+	action := chosenAction(actor, "")
+	if action == nil {
 		return "", ""
 	}
 	name = action.Name
@@ -163,24 +164,33 @@ func (p *ChatOrchestrator) resolveActionAttempt(gs *state.GameState, ruling *cha
 		}
 	}
 
-	d20Actor, action, picked, err := chosenAction(actor, ruling, actorName)
-	if err != nil && p != nil && p.logger != nil {
-		p.logger.Error("actor projection failed", "error", err, "actor", actorName)
+	var d20Actor *d20.Actor
+	if actor.Stats != nil {
+		projected, err := actor.Stats.ToActor(actorName, actorName)
+		if err != nil && p != nil && p.logger != nil {
+			p.logger.Error("actor projection failed", "error", err, "actor", actorName)
+		}
+		if err == nil {
+			d20Actor = projected
+		}
 	}
+	action := chosenAction(d20Actor, ruling.ActionID)
+	var act d20.Action
 	actionName := ""
 	auto := false
 	die := d20Die
-	if err == nil && picked {
+	if action != nil {
+		act = *action
 		actionName = action.Name
 		if action.Attempt.Count == 0 {
 			auto = true
-		} else if d20Actor != nil {
+		} else {
 			die = d20Actor.Dice(action.Attempt, vocab.Striking)
 		}
 	}
 
 	if auto {
-		return p.finishAttempt(gs, actor, target, d20Actor, action, actorName, targetName, "", ruling.Scope)
+		return p.finishAttempt(gs, actor, target, d20Actor, act, actorName, targetName, "", ruling.Scope)
 	}
 	if p == nil || p.roller == nil {
 		return resolvedAttempt{}
@@ -201,69 +211,29 @@ func (p *ChatOrchestrator) resolveActionAttempt(gs *state.GameState, ruling *cha
 		}
 		return resolvedAttempt{NarratorText: text, Content: content, Success: false, Scope: ruling.Scope}
 	}
-	return p.finishAttempt(gs, actor, target, d20Actor, action, actorName, targetName, content, ruling.Scope)
+	return p.finishAttempt(gs, actor, target, d20Actor, act, actorName, targetName, content, ruling.Scope)
 }
 
-// attempt rolls a bare 1d20 against defaultDC. Used when the actor has no action.
-func (p *ChatOrchestrator) attempt(actor, target string) resolvedAttempt {
-	return p.rollAttempt(actor, target, "", d20Die, defaultDC)
-}
-
-// chosenAction projects the combatant and picks the ruling's action.
-// ok is false when the actor has no usable action, which is a bare 1d20.
-func chosenAction(c state.Combatant, ruling *chat.Ruling, actorName string) (*d20.Actor, d20.Action, bool, error) {
-	if ruling == nil || c.Stats == nil {
-		return nil, d20.Action{}, false, nil
-	}
-	actor, err := c.Stats.ToActor(actorName, actorName)
-	if err != nil {
-		return nil, d20.Action{}, false, err
-	}
-	action, ok := pickAction(actor, ruling.ActionID)
-	if !ok {
-		return actor, d20.Action{}, false, nil
-	}
-	return actor, action, true, nil
-}
-
-// pickAction uses actionID when the actor has it. Otherwise it uses the
-// lowest sorted attack. A missing menu returns false so the caller rolls 1d20.
-func pickAction(actor *d20.Actor, actionID string) (d20.Action, bool) {
+// chosenAction uses actionID when the actor has it. Otherwise it uses the
+// lowest sorted attack. A nil actor or a missing menu returns nil so the
+// caller rolls 1d20.
+func chosenAction(actor *d20.Actor, actionID string) *d20.Action {
 	if actor == nil {
-		return d20.Action{}, false
+		return nil
 	}
 	if id := strings.TrimSpace(actionID); id != "" {
 		if act, ok := actor.Action(id); ok {
-			return act, true
+			return new(act)
 		}
 	}
 	ids := slices.Sorted(maps.Keys(actor.Actions))
 	for _, id := range ids {
 		if actor.Actions[id].Type == vocab.Attack {
-			return actor.Actions[id], true
+			act := actor.Actions[id]
+			return new(act)
 		}
 	}
-	return d20.Action{}, false
-}
-
-func (p *ChatOrchestrator) rollAttempt(actor, target, actionName string, die d20.Dice, dc int) resolvedAttempt {
-	if p == nil || p.roller == nil {
-		return resolvedAttempt{}
-	}
-	outcome, err := p.roller.Roll(die)
-	if err != nil {
-		if p.logger != nil {
-			p.logger.Error("attempt roll failed", "error", err, "actor", actor)
-		}
-		return resolvedAttempt{}
-	}
-	success := outcome.Value >= dc
-	text := outcomeLine(actor, target, actionName, success)
-	content := rollContent(actor, actionName, outcome.Detail(), dc, success)
-	if p.logger != nil {
-		p.logger.Info(text, "content", content)
-	}
-	return resolvedAttempt{NarratorText: text, Content: content, Success: success}
+	return nil
 }
 
 // finishAttempt writes the hit line, and on a damaging effect updates HP.
