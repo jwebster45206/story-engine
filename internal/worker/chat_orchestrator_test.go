@@ -646,8 +646,8 @@ func TestProcessChatStream_AttachedRulingSkipsReferee(t *testing.T) {
 	if !strings.Contains(user, want[0]) {
 		t.Errorf("missing reaction strike %q in %q", want[0], user)
 	}
-	if pendingCombatReaction(&state.GameState{PC: &character.PC{Name: "Felix"}}, ruling) != nil {
-		t.Error("reaction should not chain another event")
+	if !isCombatResolution(chat.ChatRequest{IsStoryEvent: true, Ruling: ruling}) {
+		t.Error("a queued combat action should not chain another event")
 	}
 }
 
@@ -680,7 +680,12 @@ func (q *recordingQueue) all() []*queue.Request {
 }
 
 func tavernCombatFixture() (*state.GameState, *scenario.Scenario, *character.Monster) {
-	rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 5, MaxHP: 5}
+	rat := &character.Monster{
+		ID: "rat_1", Name: "Giant Rat", HP: 5, MaxHP: 5,
+		Actions: map[string]character.Action{
+			"bite": {Name: "Bite", Type: "attack", Attempt: "1d20+2", Effect: "1d4"},
+		},
+	}
 	gs := &state.GameState{
 		ID:       uuid.New(),
 		Scenario: "test.json",
@@ -700,140 +705,174 @@ func tavernCombatFixture() (*state.GameState, *scenario.Scenario, *character.Mon
 	return gs, sc, rat
 }
 
-func TestEnqueueReaction_AfterSync(t *testing.T) {
-	gs, sc, _ := tavernCombatFixture()
+func afterStreamQueue(t *testing.T, gs *state.GameState, sc *scenario.Scenario, stub *stubLLMService, req chat.ChatRequest) []*queue.Request {
+	t.Helper()
 	q := &recordingQueue{}
-	stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
 	p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
-	player := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
-	latest := p.syncGameState(context.Background(), gs, "Felix strikes the rat.")
-	if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player)); err != nil {
-		t.Fatalf("enqueueReaction: %v", err)
+	req.GameStateID = gs.ID
+	if err := p.HandleAfterStream(context.Background(), gs, req, "narration"); err != nil {
+		t.Fatalf("HandleAfterStream: %v", err)
 	}
-	got := q.all()
+	return q.all()
+}
+
+func combatDelta(actions ...conditionals.CombatAction) *stubLLMService {
+	return &stubLLMService{delta: &conditionals.GameStateDelta{CombatActions: actions}}
+}
+
+func TestHandleAfterStream_QueuesReducerCombatAction(t *testing.T) {
+	gs, sc, _ := tavernCombatFixture()
+	player := chat.ChatRequest{
+		Message: "I strike the rat.",
+		Ruling:  &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"},
+	}
+	got := afterStreamQueue(t, gs, sc, combatDelta(conditionals.CombatAction{Subject: "giant rat", Object: "felix", ActionID: "bite"}), player)
 	if len(got) != 1 {
 		t.Fatalf("enqueued %d, want 1", len(got))
 	}
 	req := got[0]
-	if req.Type != queue.RequestTypeStoryEvent || req.EventPrompt != "Giant Rat strikes Felix." {
+	if req.Type != queue.RequestTypeStoryEvent || req.EventPrompt != "Giant Rat strikes Felix with Bite." {
 		t.Errorf("request = %#v", req)
 	}
-	if req.Ruling == nil || req.Ruling.Subject != "Giant Rat" || req.Ruling.Object != "Felix" || !req.Ruling.Allowed || req.Ruling.Scope != chat.RulingScopeCombat {
-		t.Errorf("ruling = %#v", req.Ruling)
+	want := chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Subject: "Giant Rat", Object: "Felix", ActionID: "bite"}
+	if req.Ruling == nil || *req.Ruling != want {
+		t.Errorf("ruling = %#v, want %#v", req.Ruling, want)
 	}
 }
 
-func TestEnqueueReaction_NamesAction(t *testing.T) {
+func TestHandleAfterStream_UnprovokedAttack(t *testing.T) {
+	gs, sc, _ := tavernCombatFixture()
+	gs.WorldLocations["tavern"] = scenario.Location{Name: "The Tavern"}
+	gs.NPCs = map[string]*character.NPC{"guard": {
+		Name: "Guard Captain", Disposition: "hostile", Location: "tavern", HP: 12, MaxHP: 12,
+		Actions: map[string]character.Action{
+			"longsword": {Name: "Longsword", Type: "attack", Attempt: "1d20+5", Effect: "1d8"},
+		},
+	}}
+	chatTurn := chat.ChatRequest{
+		Message: "I look around.",
+		Ruling:  &chat.Ruling{Allowed: true, Scope: chat.RulingScopeExamine},
+	}
+	got := afterStreamQueue(t, gs, sc, combatDelta(conditionals.CombatAction{Subject: "guard", Object: "Felix", ActionID: "longsword"}), chatTurn)
+	if len(got) != 1 {
+		t.Fatalf("enqueued %d, want 1", len(got))
+	}
+	if got[0].EventPrompt != "Guard Captain strikes Felix with Longsword." {
+		t.Errorf("EventPrompt = %q", got[0].EventPrompt)
+	}
+}
+
+func TestHandleAfterStream_UnknownActionFallsBack(t *testing.T) {
 	gs, sc, rat := tavernCombatFixture()
 	rat.Actions = map[string]character.Action{
 		"shortbow": {Name: "Shortbow", Type: "attack", Attempt: "1d20+4"},
 		"bite":     {Name: "Bite", Type: "attack", Attempt: "1d20+2"},
 	}
-	q := &recordingQueue{}
-	stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
-	p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
-	player := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
-	latest := p.syncGameState(context.Background(), gs, "Felix strikes the rat.")
-	if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player)); err != nil {
-		t.Fatalf("enqueueReaction: %v", err)
-	}
-	got := q.all()
+	got := afterStreamQueue(t, gs, sc, combatDelta(conditionals.CombatAction{Subject: "Giant Rat", Object: "Felix", ActionID: "claw"}), chat.ChatRequest{Message: "wait"})
 	if len(got) != 1 {
 		t.Fatalf("enqueued %d, want 1", len(got))
 	}
-	req := got[0]
-	if req.EventPrompt != "Giant Rat strikes Felix with Bite." {
-		t.Errorf("EventPrompt = %q", req.EventPrompt)
-	}
-	if req.Ruling == nil || req.Ruling.ActionID != "bite" {
-		t.Errorf("ruling = %#v", req.Ruling)
+	if got[0].Ruling == nil || got[0].Ruling.ActionID != "bite" || got[0].EventPrompt != "Giant Rat strikes Felix with Bite." {
+		t.Errorf("request = %#v ruling = %#v", got[0], got[0].Ruling)
 	}
 }
 
-func TestEnqueueReaction_Skips(t *testing.T) {
-	player := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
+func TestHandleAfterStream_NoStrikeBackWithoutReducer(t *testing.T) {
+	gs, sc, _ := tavernCombatFixture()
+	player := chat.ChatRequest{
+		Message: "I strike the rat.",
+		Ruling:  &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"},
+	}
+	if got := afterStreamQueue(t, gs, sc, combatDelta(), player); len(got) != 0 {
+		t.Fatalf("enqueued %d, want 0", len(got))
+	}
+}
+
+func TestHandleAfterStream_CombatActionSkips(t *testing.T) {
+	ratBites := conditionals.CombatAction{Subject: "Giant Rat", Object: "Felix", ActionID: "bite"}
+	player := chat.ChatRequest{
+		Message: "I strike the rat.",
+		Ruling:  &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"},
+	}
 
 	t.Run("reducer failure", func(t *testing.T) {
 		gs, sc, _ := tavernCombatFixture()
-		q := &recordingQueue{}
 		stub := &stubLLMService{deltaErr: fmt.Errorf("reducer down")}
-		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
-		latest := p.syncGameState(context.Background(), gs, "strike")
-		if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player)); err != nil {
-			t.Fatalf("enqueueReaction: %v", err)
-		}
-		if n := len(q.all()); n != 0 {
+		if n := len(afterStreamQueue(t, gs, sc, stub, player)); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
 	})
 	t.Run("canceled", func(t *testing.T) {
 		gs, sc, _ := tavernCombatFixture()
 		q := &recordingQueue{}
-		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
-		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
+		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{combatDelta(ratBites)}, q, slog.Default(), 10)
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		latest := p.syncGameState(ctx, gs, "strike")
-		if err := p.enqueueReaction(ctx, latest, pendingCombatReaction(gs, player)); err != nil && ctx.Err() == nil {
-			t.Fatalf("enqueueReaction: %v", err)
+		if err := p.enqueueCombatActions(ctx, gs, []conditionals.CombatAction{ratBites}); err == nil {
+			t.Fatal("expected context error")
 		}
 		if n := len(q.all()); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
 	})
-	t.Run("actor gone", func(t *testing.T) {
+	t.Run("subject gone", func(t *testing.T) {
 		gs, sc, _ := tavernCombatFixture()
 		gs.WorldLocations["tavern"] = scenario.Location{Name: "The Tavern"}
-		q := &recordingQueue{}
-		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
-		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
-		latest := p.syncGameState(context.Background(), gs, "strike")
-		if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player)); err != nil {
-			t.Fatalf("enqueueReaction: %v", err)
-		}
-		if n := len(q.all()); n != 0 {
+		if n := len(afterStreamQueue(t, gs, sc, combatDelta(ratBites), player)); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
 	})
 	t.Run("game ended", func(t *testing.T) {
 		gs, sc, _ := tavernCombatFixture()
 		gs.IsEnded = true
-		q := &recordingQueue{}
-		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
-		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
-		latest := p.syncGameState(context.Background(), gs, "strike")
-		if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, player)); err != nil {
-			t.Fatalf("enqueueReaction: %v", err)
-		}
-		if n := len(q.all()); n != 0 {
+		if n := len(afterStreamQueue(t, gs, sc, combatDelta(ratBites), player)); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
 	})
-	t.Run("non-PC subject", func(t *testing.T) {
+	t.Run("combat resolution turn", func(t *testing.T) {
 		gs, sc, _ := tavernCombatFixture()
-		q := &recordingQueue{}
-		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
-		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
-		reaction := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Subject: "Giant Rat", Object: "Felix"}
-		latest := p.syncGameState(context.Background(), gs, "strike")
-		if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, reaction)); err != nil {
-			t.Fatalf("enqueueReaction: %v", err)
+		resolution := chat.ChatRequest{
+			Message:      "Giant Rat strikes Felix with Bite.",
+			IsStoryEvent: true,
+			Ruling:       &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Subject: "Giant Rat", Object: "Felix", ActionID: "bite"},
 		}
-		if n := len(q.all()); n != 0 {
+		if n := len(afterStreamQueue(t, gs, sc, combatDelta(ratBites), resolution)); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
 		}
 	})
-	t.Run("story event passes nil ruling", func(t *testing.T) {
+	t.Run("plain story event may trigger combat", func(t *testing.T) {
 		gs, sc, _ := tavernCombatFixture()
-		q := &recordingQueue{}
-		stub := &stubLLMService{delta: &conditionals.GameStateDelta{}}
-		p := NewChatOrchestrator(&stubStorage{gs: gs, sc: sc}, stubResolver{stub}, q, slog.Default(), 10)
-		latest := p.syncGameState(context.Background(), gs, "strike")
-		if err := p.enqueueReaction(context.Background(), latest, pendingCombatReaction(gs, nil)); err != nil {
-			t.Fatalf("enqueueReaction: %v", err)
+		event := chat.ChatRequest{Message: "The rat wakes.", IsStoryEvent: true}
+		if n := len(afterStreamQueue(t, gs, sc, combatDelta(ratBites), event)); n != 1 {
+			t.Fatalf("enqueued %d, want 1", n)
 		}
-		if n := len(q.all()); n != 0 {
+	})
+	t.Run("PC as subject", func(t *testing.T) {
+		gs, sc, _ := tavernCombatFixture()
+		pcActs := conditionals.CombatAction{Subject: "Felix", Object: "Giant Rat", ActionID: "strike"}
+		if n := len(afterStreamQueue(t, gs, sc, combatDelta(pcActs), player)); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
+		}
+	})
+	t.Run("target absent", func(t *testing.T) {
+		gs, sc, _ := tavernCombatFixture()
+		lost := conditionals.CombatAction{Subject: "Giant Rat", Object: "Guard Captain", ActionID: "bite"}
+		if n := len(afterStreamQueue(t, gs, sc, combatDelta(lost), player)); n != 0 {
+			t.Fatalf("enqueued %d, want 0", n)
+		}
+	})
+	t.Run("subject without attack", func(t *testing.T) {
+		gs, sc, rat := tavernCombatFixture()
+		rat.Actions = nil
+		if n := len(afterStreamQueue(t, gs, sc, combatDelta(ratBites), player)); n != 0 {
+			t.Fatalf("enqueued %d, want 0", n)
+		}
+	})
+	t.Run("one action per subject", func(t *testing.T) {
+		gs, sc, _ := tavernCombatFixture()
+		again := conditionals.CombatAction{Subject: "rat_1", Object: "Felix"}
+		if n := len(afterStreamQueue(t, gs, sc, combatDelta(ratBites, again), player)); n != 1 {
+			t.Fatalf("enqueued %d, want 1", n)
 		}
 	})
 }

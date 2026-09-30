@@ -177,7 +177,7 @@ func (p *ChatOrchestrator) referee(ctx context.Context, svc llm.LLMService, gs *
 }
 
 // HandleAfterStream saves chat history after streaming, then runs the reducer
-// and may enqueue a combat reaction.
+// and enqueues the monster and NPC combat actions it decided on.
 func (p *ChatOrchestrator) HandleAfterStream(ctx context.Context, gs *state.GameState, req chat.ChatRequest, responseMessage string) error {
 	// Cancel any in-process gamestate delta for this game state
 	p.metaCancelMu.Lock()
@@ -206,13 +206,20 @@ func (p *ChatOrchestrator) HandleAfterStream(ctx context.Context, gs *state.Game
 	}
 
 	if !gs.IsEnded {
-		pending := pendingCombatReaction(gs, req.Ruling)
-		latest := p.syncGameState(metaCtx, gs, responseMessage)
-		if err := p.enqueueReaction(metaCtx, latest, pending); err != nil {
-			p.logger.Error("Failed to enqueue reaction",
-				"error", err,
-				"game_state_id", gs.ID.String(),
-			)
+		latest, delta := p.syncGameState(metaCtx, gs, responseMessage)
+		if delta != nil && !isCombatResolution(req) {
+			if name := declinedStrikeBack(latest, req.Ruling, delta.CombatActions); name != "" {
+				p.logger.Info("Reducer gave no strike-back",
+					"game_state_id", gs.ID.String(),
+					"actor", name,
+				)
+			}
+			if err := p.enqueueCombatActions(metaCtx, latest, delta.CombatActions); err != nil {
+				p.logger.Error("Failed to enqueue combat actions",
+					"error", err,
+					"game_state_id", gs.ID.String(),
+				)
+			}
 		}
 	}
 
@@ -221,8 +228,9 @@ func (p *ChatOrchestrator) HandleAfterStream(ctx context.Context, gs *state.Game
 }
 
 // syncGameState extracts and updates the stateful parts of gamestate.
-// It returns the saved post-apply state, or nil if the reducer did not apply.
-func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameState, responseMessage string) *state.GameState {
+// It returns the saved post-apply state and the reducer delta, or nils if
+// the reducer did not apply.
+func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameState, responseMessage string) (*state.GameState, *conditionals.GameStateDelta) {
 	start := time.Now()
 	p.logger.Debug("Starting background game gamestate delta", "game_state_id", gs.ID.String(), "response", responseMessage)
 	defer func() {
@@ -234,13 +242,13 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 	s, err := p.storage.GetScenario(ctx, gs.Scenario)
 	if err != nil {
 		p.logger.Error("Failed to get scenario from storage", "error", err, "game_state_id", gs.ID.String())
-		return nil
+		return nil, nil
 	}
 
 	messages, err := prompts.BuildReducerMessages(gs, s, responseMessage)
 	if err != nil {
 		p.logger.Error("Failed to build reducer messages", "error", err, "game_state_id", gs.ID.String())
-		return nil
+		return nil, nil
 	}
 
 	// Send the gamestate delta request to the LLM
@@ -252,7 +260,7 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 	svc, err := p.resolver.Get(gs.Provider)
 	if err != nil {
 		p.logger.Error("Failed to resolve LLM provider for delta", "error", err, "provider", gs.Provider, "game_state_id", gs.ID.String())
-		return nil
+		return nil, nil
 	}
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		if attempt > 1 {
@@ -268,17 +276,17 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 		switch {
 		case ctx.Err() != nil:
 			p.logger.Error("Gamestate delta extraction canceled", "error", ctx.Err(), "game_state_id", gs.ID.String(), "attempt", attempt)
-			return nil
+			return nil, nil
 		case errors.Is(deltaErr, context.DeadlineExceeded):
 			// Attempt already used llmRequestTimeout; HTTP client has the same budget.
 			p.logger.Error("Gamestate delta extraction timed out", "error", deltaErr, "game_state_id", gs.ID.String(), "attempt", attempt)
-			return nil
+			return nil, nil
 		case deltaErr != nil && attempt < maxAttempts:
 			p.logger.Warn("Gamestate delta extraction failed, will retry", "error", deltaErr, "game_state_id", gs.ID.String(), "attempt", attempt)
 			continue
 		case deltaErr != nil:
 			p.logger.Error("Failed to get meta extraction response from LLM after retries", "error", deltaErr, "game_state_id", gs.ID.String(), "attempts", maxAttempts)
-			return nil
+			return nil, nil
 		}
 
 		p.logger.Info("llm usage",
@@ -293,17 +301,17 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 	}
 
 	if delta == nil {
-		return nil
+		return nil, nil
 	}
 
 	latestGS, err := p.storage.LoadGameState(ctx, gs.ID)
 	if err != nil {
 		p.logger.Error("Failed to load latest game state for gamestate delta", "error", err, "game_state_id", gs.ID.String())
-		return nil
+		return nil, nil
 	}
 	if latestGS == nil {
 		p.logger.Warn("Game state not found during gamestate delta", "game_state_id", gs.ID.String())
-		return nil
+		return nil, nil
 	}
 
 	// Increment turn counters on the latest game state
@@ -319,7 +327,7 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 	applier.ApplyVars()
 	if err := applier.Apply(); err != nil {
 		p.logger.Error("Failed to apply initial delta", "error", err, "game_state_id", latestGS.ID.String())
-		return nil
+		return nil, nil
 	}
 
 	p.applyConditionalsCascade(applier, latestGS.ID)
@@ -327,7 +335,7 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 	// Save the updated game state
 	if err := p.storage.UpdateGameState(ctx, latestGS.ID, latestGS); err != nil {
 		p.logger.Error("Failed to save updated game state after meta extraction", "error", err, "game_state_id", latestGS.ID.String())
-		return nil
+		return nil, nil
 	}
 
 	p.logger.Debug("Updated game meta",
@@ -337,7 +345,7 @@ func (p *ChatOrchestrator) syncGameState(ctx context.Context, gs *state.GameStat
 		"backend_model", usage.Model,
 	)
 
-	return latestGS
+	return latestGS, delta
 }
 
 // applyConditionalsCascade recursively evaluates and applies conditionals until none trigger
@@ -432,30 +440,50 @@ func (p *ChatOrchestrator) GetGameState(ctx context.Context, gameStateID uuid.UU
 	return gs, nil
 }
 
-func (p *ChatOrchestrator) enqueueReaction(ctx context.Context, gs *state.GameState, pending *chat.Ruling) error {
-	if pending == nil || p.chatQueue == nil || gs == nil {
+// enqueueCombatActions queues one story event per valid reducer combat
+// action, in order. Invalid actions are dropped, as is any repeat by a
+// subject that already has an action this turn.
+func (p *ChatOrchestrator) enqueueCombatActions(ctx context.Context, gs *state.GameState, actions []conditionals.CombatAction) error {
+	if len(actions) == 0 || p.chatQueue == nil || gs == nil || gs.IsEnded {
 		return nil
 	}
-	if err := ctx.Err(); err != nil {
-		return err
+	queued := make(map[string]bool, len(actions))
+	for _, a := range actions {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		ruling, actionName := combatActionRuling(gs, a)
+		if ruling == nil {
+			p.logger.Warn("Dropped invalid combat action",
+				"game_state_id", gs.ID.String(),
+				"subject", a.Subject,
+				"object", a.Object,
+				"action_id", a.ActionID,
+			)
+			continue
+		}
+		key := strings.ToLower(ruling.Subject)
+		if queued[key] {
+			continue
+		}
+		queued[key] = true
+		req := new(queue.Request{
+			RequestID:   uuid.New().String(),
+			Type:        queue.RequestTypeStoryEvent,
+			GameStateID: gs.ID,
+			EventPrompt: combatActionPrompt(ruling.Subject, ruling.Object, actionName),
+			Ruling:      ruling,
+			EnqueuedAt:  time.Now(),
+		})
+		if err := p.chatQueue.EnqueueRequest(ctx, req); err != nil {
+			return err
+		}
+		p.logger.Info("Queued combat action",
+			"game_state_id", gs.ID.String(),
+			"subject", ruling.Subject,
+			"object", ruling.Object,
+			"action_id", ruling.ActionID,
+		)
 	}
-	if gs.IsEnded {
-		return nil
-	}
-	if _, ok := gs.FindCombatant(pending.Subject); !ok {
-		return nil
-	}
-	actionID, actionName := reactionAction(gs, pending.Subject)
-	if actionID != "" {
-		pending.ActionID = actionID
-	}
-	req := new(queue.Request{
-		RequestID:   uuid.New().String(),
-		Type:        queue.RequestTypeStoryEvent,
-		GameStateID: gs.ID,
-		EventPrompt: reactionPrompt(pending.Subject, pending.Object, actionName),
-		Ruling:      pending,
-		EnqueuedAt:  time.Now(),
-	})
-	return p.chatQueue.EnqueueRequest(ctx, req)
+	return nil
 }

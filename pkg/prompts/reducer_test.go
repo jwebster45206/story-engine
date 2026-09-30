@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
@@ -89,6 +90,34 @@ func TestBuildReducerMessages_PersistentThenDynamic(t *testing.T) {
 		if m.Role == chat.ChatRoleUser {
 			t.Fatalf("player prompt should be omitted, msgs[%d] = %#v", i, m)
 		}
+	}
+}
+
+func TestBuildReducerMessages_CombatActions(t *testing.T) {
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
+	gs.PC = &character.PC{Name: "Felix"}
+	gs.Location = "tavern"
+	gs.WorldLocations = map[string]scenario.Location{
+		"tavern": {Name: "The Tavern", Monsters: map[string]*character.Monster{"rat_1": {
+			ID: "rat_1", Name: "Giant Rat", HP: 4,
+			Actions: map[string]character.Action{"bite": {Name: "Bite", Type: "attack"}},
+		}}},
+	}
+
+	msgs, err := BuildReducerMessages(gs, &scenario.Scenario{Name: "Test"}, "The rat snarls.")
+	if err != nil {
+		t.Fatalf("BuildReducerMessages: %v", err)
+	}
+	for _, want := range []string{"COMBAT", "combat_actions", "fights back", "hostile"} {
+		if !strings.Contains(msgs[0].Content, want) {
+			t.Errorf("reducer prompt missing %q", want)
+		}
+	}
+	if !strings.HasPrefix(msgs[1].Content, "Player Character: Felix\n") {
+		t.Errorf("dynamic block should name the PC, got %q", msgs[1].Content)
+	}
+	if !strings.Contains(msgs[1].Content, `"bite"`) {
+		t.Errorf("BEFORE state should carry monster actions, got %q", msgs[1].Content)
 	}
 }
 

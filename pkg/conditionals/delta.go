@@ -27,6 +27,8 @@ type GameStateDelta struct {
 
 	MonsterEvents []MonsterEvent `json:"monster_events,omitempty"`
 
+	CombatActions []CombatAction `json:"combat_actions,omitempty"`
+
 	// TODO: Add LocationEvents structure to track stateful elements of locations:
 	// such as exits being blocked/unblocked, conditions changing, etc.
 
@@ -61,6 +63,14 @@ type MonsterEvent struct {
 	Modifiers         map[string]int `json:"modifiers,omitempty"`
 	Items             []string       `json:"items,omitempty"`
 	DropItemsOnDefeat *bool          `json:"drop_items_on_defeat,omitempty"`
+}
+
+// CombatAction is a monster or NPC action the reducer decided happens next.
+// The engine validates it and resolves it on a queued story event.
+type CombatAction struct {
+	Subject  string `json:"subject"`             // acting monster or NPC
+	Object   string `json:"object"`              // target actor
+	ActionID string `json:"action_id,omitempty"` // id from the subject's actions menu
 }
 
 // NPCEvent represents a change to an NPC's state

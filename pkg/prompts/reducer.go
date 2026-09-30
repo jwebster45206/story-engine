@@ -41,6 +41,13 @@ GAME END
 MECHANICS
 - HP, damage, and knockout are already resolved. Do not spawn or despawn a monster to reflect a hit.
 
+COMBAT
+- combat_actions decides what monsters and NPCs do next, after this narrative. The engine rolls and narrates each entry; you only decide who acts.
+- subject: a monster or NPC at user_location in the BEFORE state that has actions. object: its target, the Player Character or another actor present. action_id: an id from the subject's actions.
+- A monster or NPC attacked in this narrative fights back, unless the narrative shows it fleeing, surrendering, or unable to act.
+- A hostile monster or NPC may attack unprovoked when the narrative shows it threatening or closing on its target. Friendly or neutral NPCs act only when attacked or when the narrative shows them joining a fight.
+- At most one entry per subject. Otherwise [].
+
 EXAMPLES
 - "sees a sword" → item_events: []
 - "picks up the sword from the table" → item_events:[{item:"Sword", action:"acquire", from:{type:"location", name:"Sword Chamber"}}]
@@ -48,6 +55,9 @@ EXAMPLES
 - "uses bandage and it is consumed" → item_events:[{item:"Bandage", action:"use", consumed:true}]
 - "repairs are discussed (rule:'Change scene to british_docks when repairs are started.')" → scene_change:null
 - "repairs begin (same rule)" → scene_change:{to:"british_docks", reason:"repairs were started"}
+- "Felix's blade cuts the goblin, and it snarls" → combat_actions:[{subject:"Goblin", object:"Felix", action_id:"scimitar"}]
+- "the wounded rat scurries into a drain" → combat_actions:[]
+- "the hostile guard draws steel and advances on Felix" → combat_actions:[{subject:"Guard Captain", object:"Felix", action_id:"longsword"}]
 `
 
 // BuildReducerMessages assembles the background delta-extraction call: a
@@ -75,7 +85,7 @@ func BuildReducerMessages(gs *state.GameState, sc *scenario.Scenario, responseMe
 		},
 		{
 			Role:    chat.ChatRoleSystem,
-			Content: "BEFORE game state: " + string(stateJSON),
+			Content: "Player Character: " + gs.PCName() + "\nBEFORE game state: " + string(stateJSON),
 		},
 		{
 			Role:    chat.ChatRoleAgent,

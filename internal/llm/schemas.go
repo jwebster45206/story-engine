@@ -88,6 +88,19 @@ func deltaUpdateSchema() map[string]any {
 					"required": []string{"npc_id"},
 				},
 			},
+			"combat_actions": map[string]any{
+				"type": "array",
+				"items": map[string]any{
+					"type":                 "object",
+					"additionalProperties": false,
+					"properties": map[string]any{
+						"subject":   map[string]any{"type": "string"},
+						"object":    map[string]any{"type": "string"},
+						"action_id": map[string]any{"type": "string"},
+					},
+					"required": []string{"subject", "object", "action_id"},
+				},
+			},
 			"set_vars": map[string]any{
 				"type": "object",
 				"additionalProperties": map[string]any{
@@ -98,7 +111,7 @@ func deltaUpdateSchema() map[string]any {
 				"type": "boolean",
 			},
 		},
-		"required": []string{"user_location", "scene_change", "item_events", "npc_events", "set_vars", "game_ended"},
+		"required": []string{"user_location", "scene_change", "item_events", "npc_events", "combat_actions", "set_vars", "game_ended"},
 	}
 }
 

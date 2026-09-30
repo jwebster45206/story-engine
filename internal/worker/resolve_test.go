@@ -10,6 +10,7 @@ import (
 	"github.com/jwebster45206/d20"
 	"github.com/jwebster45206/story-engine/pkg/character"
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/scenario"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
@@ -130,42 +131,45 @@ func mustRoll(t *testing.T, r *d20.Roller) d20.RollOutcome {
 	return o
 }
 
-func TestPendingCombatReaction(t *testing.T) {
-	gs := &state.GameState{PC: &character.PC{
-		Name: "Felix",
-		Actions: map[string]character.Action{
-			"strike": {Name: "Strike", Type: "attack", Attempt: "1d20", Effect: "1d6"},
-		},
-	}}
+func TestCombatActionRuling_Targets(t *testing.T) {
+	bite := map[string]character.Action{"bite": {Name: "Bite", Type: "attack", Attempt: "1d20", Effect: "1d4"}}
+	rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 4, MaxHP: 4, Actions: bite}
+	gs := combatGS(&character.PC{Name: "Felix"}, rat)
+	gs.NPCs = map[string]*character.NPC{"guard": {Name: "Guard Captain", Location: "tavern", HP: 8}}
+
+	for _, object := range []string{"", "PC", "felix"} {
+		got, name := combatActionRuling(gs, conditionals.CombatAction{Subject: "Giant Rat", Object: object})
+		if got == nil || got.Object != "Felix" || got.ActionID != "bite" || name != "Bite" {
+			t.Errorf("object %q: ruling = %#v name %q", object, got, name)
+		}
+	}
+	got, _ := combatActionRuling(gs, conditionals.CombatAction{Subject: "Giant Rat", Object: "guard"})
+	if got == nil || got.Object != "Guard Captain" {
+		t.Errorf("NPC target ruling = %#v", got)
+	}
+	if got, _ := combatActionRuling(gs, conditionals.CombatAction{Subject: "Giant Rat", Object: "rat_1"}); got != nil {
+		t.Errorf("self target ruling = %#v, want nil", got)
+	}
+}
+
+func TestDeclinedStrikeBack(t *testing.T) {
+	rat := &character.Monster{ID: "rat_1", Name: "Giant Rat", HP: 4, MaxHP: 4}
+	gs := combatGS(&character.PC{Name: "Felix"}, rat)
 	player := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}
-	got := pendingCombatReaction(gs, player)
-	if got == nil || !got.Allowed || got.Scope != chat.RulingScopeCombat || got.Subject != "Giant Rat" || got.Object != "Felix" {
-		t.Fatalf("player combat pending = %#v", got)
+
+	if got := declinedStrikeBack(gs, player, nil); got != "Giant Rat" {
+		t.Errorf("no actions = %q, want Giant Rat", got)
 	}
-	if pendingCombatReaction(gs, &chat.Ruling{Allowed: false, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}) != nil {
-		t.Error("denied combat should not pending")
+	if got := declinedStrikeBack(gs, player, []conditionals.CombatAction{{Subject: "rat_1", Object: "Felix"}}); got != "" {
+		t.Errorf("rat acted = %q, want empty", got)
 	}
-	if pendingCombatReaction(gs, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat}) != nil {
-		t.Error("empty object should not pending")
+	examine := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeExamine, Object: "Giant Rat"}
+	if got := declinedStrikeBack(gs, examine, nil); got != "" {
+		t.Errorf("non-combat = %q, want empty", got)
 	}
-	if pendingCombatReaction(gs, got) != nil {
-		t.Error("non-PC subject should not chain")
-	}
-	namedPC := &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Subject: "Felix", Object: "Giant Rat"}
-	if pendingCombatReaction(gs, namedPC) == nil {
-		t.Error("PC name as subject should pending")
-	}
-	if pendingCombatReaction(gs, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeMovement, Object: "drawbridge"}) != nil {
-		t.Error("movement should not pending")
-	}
-	shove := &state.GameState{PC: &character.PC{
-		Name: "Felix",
-		Actions: map[string]character.Action{
-			"shove": {Name: "Shove", Type: "attack"},
-		},
-	}}
-	if pendingCombatReaction(shove, &chat.Ruling{Allowed: true, Scope: chat.RulingScopeCombat, Object: "Giant Rat"}) != nil {
-		t.Error("action without an effect should not pending")
+	gs.DespawnMonster("rat_1")
+	if got := declinedStrikeBack(gs, player, nil); got != "" {
+		t.Errorf("knocked out = %q, want empty", got)
 	}
 }
 
@@ -449,7 +453,7 @@ func TestResolveActionAttempt_HPAndKnockout(t *testing.T) {
 
 	t.Run("defeated NPC cannot be found or react", func(t *testing.T) {
 		pc := &character.PC{Name: "Felix", HP: 10, Actions: strike}
-		guard := &character.NPC{Name: "Guard Captain", Location: "tavern", HP: 1, MaxHP: 8, AC: 10}
+		guard := &character.NPC{Name: "Guard Captain", Location: "tavern", HP: 1, MaxHP: 8, AC: 10, Actions: strike}
 		gs := &state.GameState{
 			Location: "tavern",
 			PC:       pc,
@@ -461,8 +465,9 @@ func TestResolveActionAttempt_HPAndKnockout(t *testing.T) {
 		if len(got) != 1 || !guard.IsDefeated || guard.HP != 0 {
 			t.Fatalf("npc = %+v line %q", guard, narratorTexts(got))
 		}
-		if err := p.enqueueReaction(context.Background(), gs, pendingCombatReaction(gs, ruling)); err != nil {
-			t.Fatalf("enqueueReaction: %v", err)
+		act := conditionals.CombatAction{Subject: "Guard Captain", Object: "Felix"}
+		if err := p.enqueueCombatActions(context.Background(), gs, []conditionals.CombatAction{act}); err != nil {
+			t.Fatalf("enqueueCombatActions: %v", err)
 		}
 		if n := len(p.chatQueue.(*recordingQueue).all()); n != 0 {
 			t.Fatalf("enqueued %d, want 0", n)
