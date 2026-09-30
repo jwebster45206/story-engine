@@ -81,9 +81,9 @@ func TestBuildNarratorMessages_BasicMessages(t *testing.T) {
 func TestBuildNarratorMessages_CombatAwareness(t *testing.T) {
 	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
 	gs.Location = "start"
-	gs.PC = &character.PC{Name: "Felix", Stats: character.Stats{Actions: map[string]character.Action{
+	gs.PC = &character.PC{Name: "Felix", Actions: map[string]character.Action{
 		"strike": {Name: "Strike", Type: "attack"},
-	}}}
+	}}
 
 	messages, err := BuildNarratorMessages(gs, basicScenario(), "I wait.", 20, nil)
 	if err != nil {
