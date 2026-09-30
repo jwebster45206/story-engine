@@ -2,6 +2,8 @@ package prompts
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
 	"strings"
 
@@ -189,8 +191,9 @@ func (ps *PromptState) ToSlimString() string {
 
 // writeCurrentLocation renders the <current_location> block with name,
 // description, items here, NPCs here, monsters here, and exits.
-// monsterFlavor includes AC/HP and description on monster lines.
-func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scenario.Location, hasCurrent bool, monsterFlavor bool) {
+// combatFlavor adds AC/HP and actions to monster and combat NPC lines, and
+// description to monster lines.
+func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scenario.Location, hasCurrent bool, combatFlavor bool) {
 	sb.WriteString("<current_location>\n")
 
 	if !hasCurrent {
@@ -211,7 +214,8 @@ func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scen
 	}
 
 	if present := presentNPCs(ps.NPCs, ps.Location); len(present) > 0 {
-		if !anyNPCFocused(present, ps.FocusedActors) {
+		combatNPCs := combatFlavor && slices.ContainsFunc(present, func(n *character.NPC) bool { return npcCombatInfo(n) != "" })
+		if !combatNPCs && !anyNPCFocused(present, ps.FocusedActors) {
 			names := make([]string, len(present))
 			for i, npc := range present {
 				names[i] = npcPromptName(npc)
@@ -220,11 +224,14 @@ func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scen
 		} else {
 			sb.WriteString("NPCs here:\n")
 			for _, npc := range present {
-				if npcFocused(npc, ps.FocusedActors) && npc.Description != "" {
-					fmt.Fprintf(sb, "- %s: %s\n", npcPromptName(npc), npc.Description)
-				} else {
-					fmt.Fprintf(sb, "- %s\n", npcPromptName(npc))
+				line := npcPromptName(npc)
+				if info := npcCombatInfo(npc); combatFlavor && info != "" {
+					line += " (" + info + ")"
 				}
+				if npcFocused(npc, ps.FocusedActors) && npc.Description != "" {
+					line += ": " + npc.Description
+				}
+				fmt.Fprintf(sb, "- %s\n", line)
 			}
 		}
 	}
@@ -238,8 +245,12 @@ func (ps *PromptState) writeCurrentLocation(sb *strings.Builder, currentLoc scen
 		sb.WriteString("Monsters here:\n")
 		for _, id := range monsterIDs {
 			m := ps.Monsters[id]
-			if monsterFlavor {
-				fmt.Fprintf(sb, "- %s (AC: %d, HP: %d/%d)", m.Name, m.AC, m.HP, m.MaxHP)
+			if combatFlavor {
+				fmt.Fprintf(sb, "- %s (AC: %d, HP: %d/%d", m.Name, m.AC, m.HP, m.MaxHP)
+				if names := actionNames(m.Actions); names != "" {
+					fmt.Fprintf(sb, ", actions: %s", names)
+				}
+				sb.WriteString(")")
 				if m.Description != "" {
 					fmt.Fprintf(sb, ": %s", m.Description)
 				}
@@ -433,6 +444,39 @@ func npcPromptName(npc *character.NPC) string {
 		return npc.Name + " (knocked out)"
 	}
 	return npc.Name
+}
+
+// npcCombatInfo is the disposition, AC/HP, and actions of an NPC that can
+// act in combat. Empty for narrative-only or knocked-out NPCs.
+func npcCombatInfo(npc *character.NPC) string {
+	if npc == nil || npc.IsDefeated || len(npc.Actions) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, 3)
+	if npc.Disposition != "" {
+		parts = append(parts, npc.Disposition)
+	}
+	if npc.MaxHP > 0 {
+		parts = append(parts, fmt.Sprintf("AC: %d, HP: %d/%d", npc.AC, npc.HP, npc.MaxHP))
+	}
+	parts = append(parts, "actions: "+actionNames(npc.Actions))
+	return strings.Join(parts, ", ")
+}
+
+// actionNames lists action display names in id order.
+func actionNames(actions map[string]character.Action) string {
+	if len(actions) == 0 {
+		return ""
+	}
+	ids := slices.Sorted(maps.Keys(actions))
+	names := make([]string, len(ids))
+	for i, id := range ids {
+		names[i] = actions[id].Name
+		if names[i] == "" {
+			names[i] = id
+		}
+	}
+	return strings.Join(names, ", ")
 }
 
 func presentNPCs(npcs map[string]*character.NPC, location string) []*character.NPC {

@@ -78,6 +78,26 @@ func TestBuildNarratorMessages_BasicMessages(t *testing.T) {
 	}
 }
 
+func TestBuildNarratorMessages_CombatAwareness(t *testing.T) {
+	gs := state.NewGameState("test.json", nil, "test-provider", "test-model")
+	gs.Location = "start"
+	gs.PC = &character.PC{Name: "Felix", Stats: character.Stats{Actions: map[string]character.Action{
+		"strike": {Name: "Strike", Type: "attack"},
+	}}}
+
+	messages, err := BuildNarratorMessages(gs, basicScenario(), "I wait.", 20, nil)
+	if err != nil {
+		t.Fatalf("BuildNarratorMessages: %v", err)
+	}
+	if !strings.Contains(messages[0].Content, "REMEMBER: In this game, the user is controlling: Felix\nActions: Strike") {
+		t.Errorf("persistent prompt should list PC actions, got %q", messages[0].Content)
+	}
+	user := messages[len(messages)-1].Content
+	if !strings.Contains(user, "Monsters and NPCs land or miss attacks only when a referee outcome reports it.") {
+		t.Errorf("rules should forbid unrolled attacks, got %q", user)
+	}
+}
+
 func TestBuildNarratorMessages_WithNarrator(t *testing.T) {
 	narrator := &scenario.Narrator{
 		ID:      "test_narrator",

@@ -69,6 +69,10 @@ And a more complete example with abilities and modifiers:
 | `items` | array | No | Items the monster is carrying |
 | `drop_items_on_defeat` | boolean | No | Whether items should drop when defeated (default: false) |
 
+### How Monsters Fight
+
+A monster or NPC acts in combat only if it has at least one entry in `actions`. After each turn, the state reducer decides which of them act next. A creature that was attacked usually fights back, and a hostile one may attack unprovoked. The engine then rolls each action as a follow-up story event. NPCs use `disposition` for this decision: friendly and neutral NPCs act only when attacked or when the story shows them joining a fight.
+
 ## Naming Conventions
 
 - **Template ID**: Use lowercase with underscores (e.g., `giant_rat`, `skeletal_warrior`, `orc_warrior`)

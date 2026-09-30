@@ -23,6 +23,7 @@ var narratorRules = []string{
 	"Stay within the story world. Only NPCs, locations, items, and monsters defined in the WORLD STATE may appear — invent nothing.",
 	"Do not act or speak for the Player Character. The player provides the PC's voice.",
 	"Resolve exactly one action, exchange, or location reveal — then stop and let the player respond.",
+	"Monsters and NPCs land or miss attacks only when a referee outcome reports it. Otherwise they may threaten, posture, or close in, but never strike, wound, or resolve an attack.",
 }
 
 func formatRulesBlock(rules []string) string {
@@ -84,6 +85,9 @@ func getPersistentNarratorPrompt(narrator *scenario.Narrator, pc *character.PC, 
 	pcPrompt := ""
 	if pc != nil {
 		pcPrompt = character.BuildPrompt(pc)
+		if names := actionNames(pc.Actions); names != "" {
+			pcPrompt += "\nActions: " + names
+		}
 	}
 	rs := getRuleSet(mode)
 	return fmt.Sprintf(systemPromptTemplate,
