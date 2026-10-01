@@ -8,7 +8,7 @@
       "vendor": "anthropic",
       "display_name": "Claude Sonnet",
       "api_key": "API_KEY_HERE",
-      "model": "claude-sonnet-4-6",
+      "model": "claude-sonnet-5-5",
       "backend_model": "claude-haiku-4-5"
     }
   },

@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/jwebster45206/story-engine/internal/config"
@@ -23,6 +24,16 @@ const (
 	vendorAnthropic       = "anthropic"
 	anthropicCacheTTLHour = "1h"
 )
+
+var anthropicBetweenToolsModels = []string{
+	"claude-sonnet-5-5",
+}
+
+// usesBetweenToolsThinking reports whether model must send between_tools.
+// Currently only Sonnet 5.5 supports between_tools.
+func usesBetweenToolsThinking(model string) bool {
+	return slices.Contains(anthropicBetweenToolsModels, model)
+}
 
 // AnthropicService implements LLMService for Anthropic Claude
 type AnthropicService struct {
@@ -56,6 +67,10 @@ type AnthropicSystemBlock struct {
 	CacheControl *AnthropicCacheControl `json:"cache_control,omitempty"`
 }
 
+type AnthropicThinking struct {
+	Type string `json:"type"`
+}
+
 type AnthropicChatRequest struct {
 	Model         string                 `json:"model"`
 	MaxTokens     int                    `json:"max_tokens"`
@@ -65,6 +80,7 @@ type AnthropicChatRequest struct {
 	StopSequences []string               `json:"stop_sequences,omitempty"`
 	Tools         []AnthropicTool        `json:"tools,omitempty"`
 	ToolChoice    *AnthropicToolChoice   `json:"tool_choice,omitempty"`
+	Thinking      *AnthropicThinking     `json:"thinking,omitempty"`
 }
 
 type AnthropicContentBlock struct {
@@ -278,6 +294,12 @@ func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatM
 		MaxTokens: DefaultMaxTokens,
 		Messages:  chat.ToLLMMessages(conversationMessages),
 		Stream:    true,
+	}
+
+	if usesBetweenToolsThinking(a.modelName) {
+		anthropicReq.Thinking = &AnthropicThinking{Type: "between_tools"}
+		// output_config.effort could be set here to tune latency;
+		// we are skipping for now and using the API default (high).
 	}
 
 	// Add system prompt if we have one

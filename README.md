@@ -65,9 +65,9 @@ Copy `config.template.json` to `config.json` (or `config.docker.json` for Compos
   "providers": {
     "sonnet": {
       "vendor": "anthropic",
-      "display_name": "Claude Sonnet 4.6",
+      "display_name": "Claude Sonnet 5.5",
       "api_key": "sk-ant-api03-...",
-      "model": "claude-sonnet-4-6",
+      "model": "claude-sonnet-5-5",
       "backend_model": "claude-haiku-4-5"
     }
   },
