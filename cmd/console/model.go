@@ -18,21 +18,6 @@ const (
 	PlaceHolderText = "Type your message here...\nExamples: Look around. Get the key. Talk to the guard."
 )
 
-type playStyle struct {
-	label       string
-	rules       state.RulesMode
-	temperature float64
-}
-
-var playStyles = []playStyle{
-	{"High creativity, relaxed rules", state.RulesRelaxed, 0.8},
-	{"Medium creativity, relaxed rules", state.RulesRelaxed, 0.6},
-	{"Medium creativity, strict rules", state.RulesStrict, 0.6},
-	{"Low creativity, strict rules", state.RulesStrict, 0.4},
-}
-
-const defaultPlayStyleIndex = 2
-
 // ConsoleUI is the BubbleTea model that runs the UI.
 // https://github.com/charmbracelet/bubbletea
 type ConsoleUI struct {
@@ -63,11 +48,7 @@ type ConsoleUI struct {
 	loadingPCs           bool
 	selectedScenarioFile string
 	defaultPCID          string // Default PC ID from scenario
-	selectedPCID         string // PC ID chosen before play-style modal
-
-	// Play style selection state
-	showPlayStyleModal bool
-	selectedPlayStyle  int
+	selectedPCID         string // PC ID chosen before provider selection
 
 	// Provider selection state
 	showProviderModal  bool
@@ -76,8 +57,6 @@ type ConsoleUI struct {
 	loadingProviders   bool
 	defaultProvider    string
 	selectedProviderID string
-	selectedRules      string
-	selectedTemp       float64
 
 	// Quit confirmation state
 	showQuitModal bool
@@ -225,7 +204,6 @@ func NewConsoleUI(cfg *ConsoleConfig, client *http.Client) ConsoleUI {
 		showScenarioModal: true,
 		loadingScenarios:  true,
 		selectedScenario:  0,
-		selectedPlayStyle: defaultPlayStyleIndex,
 	}
 }
 

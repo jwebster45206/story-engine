@@ -55,12 +55,12 @@ func getGameState(client *http.Client, baseURL string, gameStateID uuid.UUID) (*
 	return &gameState, nil
 }
 
-func createGameState(client *http.Client, baseURL string, scenarioFile string, pcID string, provider string, rules string, temperature float64) (*state.GameState, error) {
+func createGameState(client *http.Client, baseURL string, scenarioFile string, pcID string, provider string) (*state.GameState, error) {
 	req := state.GameState{
 		Scenario:    scenarioFile,
 		Provider:    provider,
-		Rules:       state.RulesMode(rules),
-		Temperature: temperature,
+		Rules:       state.RulesStrict,
+		Temperature: state.DefaultTemperature,
 	}
 	if pcID != "" {
 		req.PC = &character.PC{ID: pcID}

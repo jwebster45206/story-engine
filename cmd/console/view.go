@@ -413,10 +413,6 @@ func (m ConsoleUI) View() string {
 		return m.renderPCModal()
 	}
 
-	if m.showPlayStyleModal {
-		return m.renderPlayStyleModal()
-	}
-
 	if m.showProviderModal {
 		return m.renderProviderModal()
 	}
