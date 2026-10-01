@@ -71,6 +71,10 @@ type AnthropicThinking struct {
 	Type string `json:"type"`
 }
 
+type AnthropicOutputConfig struct {
+	Effort string `json:"effort,omitempty"`
+}
+
 type AnthropicChatRequest struct {
 	Model         string                 `json:"model"`
 	MaxTokens     int                    `json:"max_tokens"`
@@ -81,6 +85,7 @@ type AnthropicChatRequest struct {
 	Tools         []AnthropicTool        `json:"tools,omitempty"`
 	ToolChoice    *AnthropicToolChoice   `json:"tool_choice,omitempty"`
 	Thinking      *AnthropicThinking     `json:"thinking,omitempty"`
+	OutputConfig  *AnthropicOutputConfig `json:"output_config,omitempty"`
 }
 
 type AnthropicContentBlock struct {
@@ -298,8 +303,8 @@ func (a *AnthropicService) ChatStream(ctx context.Context, messages []chat.ChatM
 
 	if usesBetweenToolsThinking(a.modelName) {
 		anthropicReq.Thinking = &AnthropicThinking{Type: "between_tools"}
-		// output_config.effort could be set here to tune latency;
-		// we are skipping for now and using the API default (high).
+		// output_config.effort tunes latency.
+		anthropicReq.OutputConfig = &AnthropicOutputConfig{Effort: "medium"}
 	}
 
 	// Add system prompt if we have one

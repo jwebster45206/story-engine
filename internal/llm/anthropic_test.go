@@ -406,8 +406,9 @@ func TestAnthropicService_ChatStream_BetweenTools(t *testing.T) {
 	if !ok || thinking["type"] != "between_tools" {
 		t.Fatalf("thinking = %#v", gotBody["thinking"])
 	}
-	if _, ok := gotBody["output_config"]; ok {
-		t.Fatalf("output_config should be omitted, got %#v", gotBody["output_config"])
+	outputConfig, ok := gotBody["output_config"].(map[string]any)
+	if !ok || outputConfig["effort"] != "medium" {
+		t.Fatalf("output_config = %#v", gotBody["output_config"])
 	}
 
 	pc.Model = "claude-opus-5-5"
@@ -427,5 +428,8 @@ func TestAnthropicService_ChatStream_BetweenTools(t *testing.T) {
 	}
 	if _, ok := gotBody["thinking"]; ok {
 		t.Fatalf("opus should omit thinking, got %#v", gotBody["thinking"])
+	}
+	if _, ok := gotBody["output_config"]; ok {
+		t.Fatalf("opus should omit output_config, got %#v", gotBody["output_config"])
 	}
 }
