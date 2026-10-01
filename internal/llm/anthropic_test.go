@@ -358,3 +358,78 @@ func TestAnthropicService_ChatStream_PromptCache(t *testing.T) {
 		t.Fatalf("dynamic block should not have cache_control: %#v", second)
 	}
 }
+
+func TestUsesBetweenToolsThinking(t *testing.T) {
+	if !usesBetweenToolsThinking("claude-sonnet-5-5") {
+		t.Fatal("claude-sonnet-5-5 should use between_tools")
+	}
+	for _, model := range []string{
+		"claude-sonnet-4-6",
+		"claude-sonnet-5",
+		"claude-opus-5",
+		"claude-opus-5-5",
+		"claude-haiku-4-5",
+		"claude-test",
+	} {
+		if usesBetweenToolsThinking(model) {
+			t.Errorf("%s should not use between_tools", model)
+		}
+	}
+}
+
+func TestAnthropicService_ChatStream_BetweenTools(t *testing.T) {
+	var gotBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"))
+	}))
+	defer server.Close()
+
+	pc := anthropicPC()
+	pc.Model = "claude-sonnet-5-5"
+	svc := NewAnthropicService(pc, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
+	ch, err := svc.ChatStream(context.Background(), []chat.ChatMessage{
+		{Role: chat.ChatRoleUser, Content: "Hi"},
+	}, 0.5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for chunk := range ch {
+		if chunk.Error != nil {
+			t.Fatal(chunk.Error)
+		}
+	}
+	thinking, ok := gotBody["thinking"].(map[string]any)
+	if !ok || thinking["type"] != "between_tools" {
+		t.Fatalf("thinking = %#v", gotBody["thinking"])
+	}
+	outputConfig, ok := gotBody["output_config"].(map[string]any)
+	if !ok || outputConfig["effort"] != "medium" {
+		t.Fatalf("output_config = %#v", gotBody["output_config"])
+	}
+
+	pc.Model = "claude-opus-5-5"
+	svc = NewAnthropicService(pc, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.baseURL = server.URL
+	gotBody = nil
+	ch, err = svc.ChatStream(context.Background(), []chat.ChatMessage{
+		{Role: chat.ChatRoleUser, Content: "Hi"},
+	}, 0.5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for chunk := range ch {
+		if chunk.Error != nil {
+			t.Fatal(chunk.Error)
+		}
+	}
+	if _, ok := gotBody["thinking"]; ok {
+		t.Fatalf("opus should omit thinking, got %#v", gotBody["thinking"])
+	}
+	if _, ok := gotBody["output_config"]; ok {
+		t.Fatalf("opus should omit output_config, got %#v", gotBody["output_config"])
+	}
+}
