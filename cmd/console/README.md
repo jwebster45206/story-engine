@@ -38,7 +38,7 @@ API_BASE_URL=http://your-api-server:8080 go run ./cmd/console
 
 ### Startup Flow
 
-1. Select scenario, character, play style, and provider (provider picker is skipped when only one is configured)
+1. Select scenario, character, and provider (provider picker is skipped when only one is configured).
 2. A game state is created via the API
 3. The main interface loads with the opening narrative
 

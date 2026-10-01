@@ -148,9 +148,10 @@ func (m ConsoleUI) updatePCModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 				pcName := m.pcs[m.selectedPC]
 				m.selectedPCID = m.pcMap[pcName]
 				m.showPCModal = false
-				m.showPlayStyleModal = true
-				m.selectedPlayStyle = defaultPlayStyleIndex
-				return m, nil
+				m.showProviderModal = true
+				m.loadingProviders = true
+				m.err = nil
+				return m, m.loadProviders()
 			}
 		}
 	}
@@ -166,7 +167,6 @@ func (m ConsoleUI) handleGameStateCreated(msg gameStateCreatedMsg) (tea.Model, t
 	}
 
 	m.gameState = msg.gameState
-	m.showPlayStyleModal = false
 	m.showPCModal = false
 	m.showProviderModal = false
 	m.loadingProviders = false
@@ -187,65 +187,6 @@ func (m ConsoleUI) handleGameStateCreated(msg gameStateCreatedMsg) (tea.Model, t
 	m.ready = true
 
 	return m, tea.Batch(textarea.Blink, m.startSSE())
-}
-
-func (m ConsoleUI) updatePlayStyleModal(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-
-	case gameStateCreatedMsg:
-		return m.handleGameStateCreated(msg)
-
-	case tea.KeyMsg:
-		if m.loading {
-			if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyEsc {
-				return m, tea.Quit
-			}
-			return m, nil
-		}
-
-		if m.err != nil {
-			switch msg.Type {
-			case tea.KeyCtrlC:
-				return m, tea.Quit
-			case tea.KeyEsc:
-				m.showQuitModal = true
-				return m, nil
-			}
-			return m, nil
-		}
-
-		switch msg.Type {
-		case tea.KeyCtrlC:
-			return m, tea.Quit
-		case tea.KeyEsc:
-			m.showPlayStyleModal = false
-			m.showPCModal = true
-			m.err = nil
-			return m, nil
-		case tea.KeyUp:
-			if m.selectedPlayStyle > 0 {
-				m.selectedPlayStyle--
-			}
-		case tea.KeyDown:
-			if m.selectedPlayStyle < len(playStyles)-1 {
-				m.selectedPlayStyle++
-			}
-		case tea.KeyEnter:
-			style := playStyles[m.selectedPlayStyle]
-			m.selectedRules = string(style.rules)
-			m.selectedTemp = style.temperature
-			m.showPlayStyleModal = false
-			m.showProviderModal = true
-			m.loadingProviders = true
-			m.err = nil
-			return m, m.loadProviders()
-		}
-	}
-
-	return m, nil
 }
 
 func (m ConsoleUI) updateProviderModal(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -282,8 +223,6 @@ func (m ConsoleUI) updateProviderModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selectedScenarioFile,
 				m.selectedPCID,
 				providerID,
-				m.selectedRules,
-				m.selectedTemp,
 			)
 		}
 
@@ -304,7 +243,7 @@ func (m ConsoleUI) updateProviderModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			case tea.KeyEsc:
 				m.showProviderModal = false
-				m.showPlayStyleModal = true
+				m.showPCModal = true
 				m.err = nil
 				return m, nil
 			}
@@ -316,7 +255,7 @@ func (m ConsoleUI) updateProviderModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case tea.KeyEsc:
 			m.showProviderModal = false
-			m.showPlayStyleModal = true
+			m.showPCModal = true
 			m.err = nil
 			return m, nil
 		case tea.KeyUp:
@@ -337,8 +276,6 @@ func (m ConsoleUI) updateProviderModal(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selectedScenarioFile,
 				m.selectedPCID,
 				m.selectedProviderID,
-				m.selectedRules,
-				m.selectedTemp,
 			)
 		}
 	}
@@ -435,9 +372,6 @@ func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
 	m.selectedScenarioFile = ""
 	m.defaultPCID = ""
 	m.selectedPCID = ""
-	// Reset play style selection state
-	m.showPlayStyleModal = false
-	m.selectedPlayStyle = defaultPlayStyleIndex
 	// Reset provider selection state
 	m.showProviderModal = false
 	m.providers = nil
@@ -445,8 +379,6 @@ func (m *ConsoleUI) startNewGame() (tea.Model, tea.Cmd) {
 	m.loadingProviders = false
 	m.defaultProvider = ""
 	m.selectedProviderID = ""
-	m.selectedRules = ""
-	m.selectedTemp = 0
 	m.processing = false
 	m.finalMessageSent = false
 	m.err = nil // Clear any stale errors when starting new game
@@ -573,44 +505,6 @@ func (m ConsoleUI) renderPCModal() string {
 	modal := modalStyle.Width(60).Render(content.String())
 
 	// Center the modal
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modal, lipgloss.WithWhitespaceChars(" "))
-}
-
-func (m ConsoleUI) renderPlayStyleModal() string {
-	if m.width == 0 || m.height == 0 {
-		return "Loading..."
-	}
-
-	var content strings.Builder
-
-	if m.err != nil {
-		content.WriteString(modalTitleStyle.Render("Error"))
-		content.WriteString("\n\n")
-		content.WriteString(errorStyle.Render(fmt.Sprintf("Failed to create game: %v", m.err)))
-		content.WriteString("\n\n")
-		content.WriteString("Press Ctrl+C to force quit, Esc to go back")
-	} else if m.loading {
-		content.WriteString(modalTitleStyle.Render("Creating Game..."))
-		content.WriteString("\n\n")
-		content.WriteString(loadingStyle.Render("Setting up your adventure..."))
-	} else {
-		content.WriteString(modalTitleStyle.Render("Select Play Style"))
-		content.WriteString("\n\n")
-
-		for i, style := range playStyles {
-			if i == m.selectedPlayStyle {
-				content.WriteString(modalSelectedItemStyle.Render(fmt.Sprintf("▶ %s", style.label)))
-			} else {
-				content.WriteString(modalItemStyle.Render(fmt.Sprintf("  %s", style.label)))
-			}
-			content.WriteString("\n")
-		}
-
-		content.WriteString("\n")
-		content.WriteString(promptStyle.Render("Use ↑/↓ to navigate, Enter to select, Esc to go back"))
-	}
-
-	modal := modalStyle.Width(60).Render(content.String())
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modal, lipgloss.WithWhitespaceChars(" "))
 }
 

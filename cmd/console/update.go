@@ -30,12 +30,7 @@ func (m ConsoleUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updatePCModal(msg)
 	}
 
-	// Handle play style modal third
-	if m.showPlayStyleModal {
-		return m.updatePlayStyleModal(msg)
-	}
-
-	// Handle provider modal fourth
+	// Handle provider modal third
 	if m.showProviderModal {
 		return m.updateProviderModal(msg)
 	}
@@ -480,9 +475,9 @@ func (m ConsoleUI) loadPCs() tea.Cmd {
 	}
 }
 
-func (m ConsoleUI) createGameStateFromScenario(scenarioFile string, pcID string, provider string, rules string, temperature float64) tea.Cmd {
+func (m ConsoleUI) createGameStateFromScenario(scenarioFile string, pcID string, provider string) tea.Cmd {
 	return func() tea.Msg {
-		gs, err := createGameState(m.client, m.config.APIBaseURL, scenarioFile, pcID, provider, rules, temperature)
+		gs, err := createGameState(m.client, m.config.APIBaseURL, scenarioFile, pcID, provider)
 		return gameStateCreatedMsg{gs, err}
 	}
 }
