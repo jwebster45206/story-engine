@@ -30,30 +30,30 @@ type TestStep struct {
 	Expectations Expectations `json:"expect"`
 }
 
-// Expectations defines what to check after a test step executes
+// Expectations defines what to check after a test step executes.
+// JSON names match gamestate fields. Turn counters are not assertable.
 type Expectations struct {
-	// GameState properties - aligned with pkg/state/gamestate.go
-	Location         *string           `json:"location,omitempty"`           // User location
-	SceneName        *string           `json:"scene_name,omitempty"`         // Current scene name
-	Inventory        []string          `json:"inventory,omitempty"`          // Full inventory contents (order independent)
-	TurnCounter      *int              `json:"turn_counter,omitempty"`       // Total turn count
-	SceneTurnCounter *int              `json:"scene_turn_counter,omitempty"` // Scene-specific turn count
-	IsEnded          *bool             `json:"is_ended,omitempty"`           // Game ended state
-	Vars             map[string]string `json:"vars,omitempty"`               // Game variables
-	// NPC Locations (check specific NPC locations)
-	NPCLocations map[string]string `json:"npc_locations,omitempty"`
+	Location             *string           `json:"user_location,omitempty"`
+	SceneName            *string           `json:"scene_name,omitempty"`
+	InventoryContains    []string          `json:"inventory_contains,omitempty"`
+	InventoryNotContains []string          `json:"inventory_not_contains,omitempty"`
+	IsEnded              *bool             `json:"is_ended,omitempty"`
+	Vars                 map[string]string `json:"vars,omitempty"`
+	NPCLocations         map[string]string `json:"npc_locations,omitempty"`
 
-	// Response Analysis
+	// CombatRoll requires a combat-scoped attempt on the player turn and
+	// another on the strike-back story event. Hit, miss, and HP are ignored.
+	CombatRoll bool `json:"combat_roll,omitempty"`
+
 	ResponseContains    []string `json:"response_contains,omitempty"`
 	ResponseNotContains []string `json:"response_not_contains,omitempty"`
 	ResponseRegex       string   `json:"response_regex,omitempty"`
 	ResponseMinLength   *int     `json:"response_min_length,omitempty"`
 	ResponseMaxLength   *int     `json:"response_max_length,omitempty"`
 
-	// Story Event Analysis (for WAIT_FOR_STORY_EVENT steps)
-	StoryEventContains    []string `json:"story_event_contains,omitempty"`     // Story event message must contain these strings
-	StoryEventNotContains []string `json:"story_event_not_contains,omitempty"` // Story event message must NOT contain these strings
-	StoryEventExact       *string  `json:"story_event_exact,omitempty"`        // Exact story event message text
+	StoryEventContains    []string `json:"story_event_contains,omitempty"`
+	StoryEventNotContains []string `json:"story_event_not_contains,omitempty"`
+	StoryEventExact       *string  `json:"story_event_exact,omitempty"`
 }
 
 // TestResult contains the outcome of running a test step

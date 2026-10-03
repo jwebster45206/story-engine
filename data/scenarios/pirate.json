@@ -90,6 +90,9 @@
         },
         "giant_rat_1": {
           "template_id": "giant_rat"
+        },
+        "skeleton_1": {
+          "template_id": "skeleton"
         }
       }
     },

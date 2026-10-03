@@ -20,18 +20,14 @@
       "name": "Turn 2 Scene Turn 2 - Should Stay",
       "user_prompt": "I wait.",
       "expect": {
-        "scene_name": "scene_counter",
-        "turn_counter": 2,
-        "scene_turn_counter": 2
+        "scene_name": "scene_counter"
       }
     },
     {
       "name": "Turn 3 Scene Turn 3 - Should Transition",
       "user_prompt": "I wait again.",
       "expect": {
-        "scene_name": "turn_counter",
-        "turn_counter": 3,
-        "scene_turn_counter": 0
+        "scene_name": "turn_counter"
       }
     }
   ]

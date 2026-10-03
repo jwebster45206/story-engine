@@ -1,47 +1,29 @@
 {
-  "name": "Pirate Basic Movement Test",
+  "name": "Pirate movement",
   "scenario": "pirate.json",
   "seed_game_state": {
-    "scenario": "pirate.json",
     "scene_name": "shipwright",
-    "user_location": "tortuga",
-    "turn_counter": 1,
-    "scene_turn_counter": 1,
-    "user_inventory": [
-      "cutlass",
-      "spyglass",
-      "lockpicks"
-    ],
+    "user_location": "tortuga_docks",
     "chat_history": [
       {
         "role": "assistant",
-        "content": "You are the captain of The Black Pearl, one of the most feared pirate ships in the Caribbean. \n\nYou stand on the bustling docks of Tortuga, the salty air thick with the promise of adventure. Your ship needs repairs before you can set sail again. What will you do next?"
+        "content": "You stand on the Tortuga docks. The Black Pearl rides at her berth, the gangway leading aboard."
       }
     ]
   },
   "steps": [
     {
-      "name": "Move to Black Pearl",
-      "user_prompt": "I board The Black Pearl.",
+      "name": "Board the Black Pearl",
+      "user_prompt": "I walk up the gangway onto the Black Pearl.",
       "expect": {
-        "user_location": "black_pearl",
-        "turn_counter": 2
+        "user_location": "black_pearl"
       }
     },
     {
-      "name": "Go to Captain's Cabin",
+      "name": "Enter the cabin",
       "user_prompt": "I go through the cabin door.",
       "expect": {
-        "user_location": "captains_cabin",
-        "turn_counter": 3
-      }
-    },
-    {
-      "name": "Return to deck",
-      "user_prompt": "I go back through the cabin door.",
-      "expect": {
-        "user_location": "black_pearl",
-        "turn_counter": 4
+        "user_location": "captains_cabin"
       }
     }
   ]

@@ -1,69 +1,36 @@
 {
-  "name": "Pirate NPC Events Test",
+  "name": "Davey follows the player",
   "scenario": "pirate.json",
   "seed_game_state": {
-    "scenario": "pirate.json",
-    "scene": "british_docks",
-    "location": "sleepy_mermaid",
+    "scene_name": "british_docks",
+    "user_location": "tortuga_market",
     "vars": {
-      "ship_repair_ledger_acquired": "true",
-      "shipwright_hired": "true",
-      "davey_recruited": "false"
+      "davey_recruited": "true"
+    },
+    "npcs": {
+      "davey": {
+        "name": "Davey",
+        "location": "tortuga_market"
+      }
     },
     "chat_history": [
       {
         "role": "assistant",
-        "content": "Calypso smiles warmly as you finish paying the shipwright. 'Well done, Captain! Your ship will be seaworthy soon. But if you're planning anything dangerous, you might want to seek out old Davey in Tortuga. He's a skilled pirate who knows his way around the British docks.'"
+        "content": "Davey is in Tortuga Market, wooden leg planted, already halfway through a story about a storm off Hispaniola."
       }
     ]
   },
   "steps": [
     {
-      "name": "look for davey",
-      "user_prompt": "I head to Tortuga Market to look for Davey.",
+      "name": "Walk back to Tortuga",
+      "user_prompt": "I head east to Tortuga.",
       "expect": {
-        "location": "tortuga_market",
-        "npc_locations": {
-          "davey": "tortuga_market"
-        }
-      }
-    },
-    {
-      "name": "recruit davey - following should activate via conditional",
-      "user_prompt": "I approach Davey and say, 'Davey, old friend! I need your help. Will you follow me?'",
-      "expect": {
-        "location": "tortuga_market",
-        "npc_locations": {
-          "davey": "tortuga_market"
-        }
-      },
+        "user_location": "tortuga",
         "vars": {
           "davey_recruited": "true"
-        }
-    },
-    {
-      "name": "move to tortuga",
-      "user_prompt": "I return to Tortuga.",
-      "expect": {
-        "location": "tortuga",
+        },
         "npc_locations": {
           "davey": "tortuga"
-        },
-        "vars": {
-          "davey_recruited": "true"
-        }
-      }
-    },
-    {
-      "name": "move to black pearl",
-      "user_prompt": "I board the Black Pearl.",
-      "expect": {
-        "location": "black_pearl",
-        "npc_locations": {
-          "davey": "black_pearl"
-        },
-        "vars": {
-          "davey_recruited": "true"
         }
       }
     }

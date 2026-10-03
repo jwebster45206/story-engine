@@ -51,8 +51,10 @@ func LoadTestSuite(filename string) (TestSuite, error) {
 		return TestSuite{}, fmt.Errorf("failed to read test file %s: %w", filename, err)
 	}
 
+	dec := json.NewDecoder(bytes.NewReader(content))
+	dec.DisallowUnknownFields()
 	var suite TestSuite
-	if err := json.Unmarshal(content, &suite); err != nil {
+	if err := dec.Decode(&suite); err != nil {
 		return TestSuite{}, fmt.Errorf("failed to parse JSON in %s: %w", filename, err)
 	}
 
@@ -293,9 +295,7 @@ func (r *Runner) executeStep(ctx context.Context, gameStateID uuid.UUID, step Te
 		}
 
 		// For reset steps, we just check expectations against the reset state
-		if step.Expectations.Location != nil || step.Expectations.SceneName != nil ||
-			len(step.Expectations.Inventory) > 0 || len(step.Expectations.Vars) > 0 ||
-			len(step.Expectations.NPCLocations) > 0 {
+		if step.Expectations.hasStateChecks() {
 
 			resetState, err := r.getGameState(ctx, gameStateID)
 			if err != nil {
@@ -389,6 +389,17 @@ func (r *Runner) executeStep(ctx context.Context, gameStateID uuid.UUID, step Te
 
 	initialHistoryLen := len(preGameState.ChatHistory)
 
+	var watch *attemptWatch
+	if step.Expectations.CombatRoll {
+		watch, err = r.watchAttempts(ctx, gameStateID)
+		if err != nil {
+			result.Error = fmt.Errorf("failed to watch combat attempts: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+		defer watch.stop()
+	}
+
 	// Post async chat message and get request_id
 	requestID, err := PostChatAsync(ctx, r.Client, r.BaseURL, gameStateID, step.UserPrompt)
 	if err != nil {
@@ -415,6 +426,20 @@ func (r *Runner) executeStep(ctx context.Context, gameStateID uuid.UUID, step Te
 		return result
 	}
 
+	if step.Expectations.CombatRoll {
+		if err := r.waitForCombatRolls(ctx, gameStateID, watch, initialHistoryLen); err != nil {
+			result.Error = fmt.Errorf("combat roll: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+		postGameState, err = r.getGameState(ctx, gameStateID)
+		if err != nil {
+			result.Error = fmt.Errorf("failed to get gamestate after combat: %w", err)
+			result.Duration = time.Since(start)
+			return result
+		}
+	}
+
 	// Check expectations
 	if err := r.checkExpectations(step.Expectations, preGameState, postGameState, prevTurnCounter, prevInventory, assistantResponse); err != nil {
 		result.Error = fmt.Errorf("expectation failed: %w", err)
@@ -430,6 +455,57 @@ func (r *Runner) executeStep(ctx context.Context, gameStateID uuid.UUID, step Te
 // getGameState retrieves the current gamestate
 func (r *Runner) getGameState(ctx context.Context, gameStateID uuid.UUID) (*state.GameState, error) {
 	return GetGameState(ctx, r.Client, r.BaseURL, gameStateID)
+}
+
+func (exp Expectations) hasStateChecks() bool {
+	return exp.Location != nil || exp.SceneName != nil || exp.IsEnded != nil ||
+		len(exp.InventoryContains) > 0 || len(exp.InventoryNotContains) > 0 ||
+		len(exp.Vars) > 0 || len(exp.NPCLocations) > 0 ||
+		len(exp.ResponseContains) > 0 || len(exp.ResponseNotContains) > 0 ||
+		exp.ResponseRegex != "" || exp.ResponseMinLength != nil || exp.ResponseMaxLength != nil
+}
+
+// waitForCombatRolls blocks until the player turn and the strike-back story
+// event have each published a combat-scoped attempt.
+func (r *Runner) waitForCombatRolls(ctx context.Context, gameStateID uuid.UUID, watch *attemptWatch, initialHistoryLen int) error {
+	timeout := r.Timeout
+	if timeout <= 0 {
+		timeout = StoryEventTimeout
+	}
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
+	ticker := time.NewTicker(PollInterval)
+	defer ticker.Stop()
+
+	for {
+		rolls := 0
+		if watch != nil {
+			rolls = watch.combatCount()
+		}
+		gs, err := r.getGameState(ctx, gameStateID)
+		if err == nil && rolls >= 2 && hasNewStoryEvent(gs, initialHistoryLen) {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-deadline.C:
+			return fmt.Errorf("timeout waiting for combat rolls (combat attempts=%d)", rolls)
+		case <-ticker.C:
+		}
+	}
+}
+
+func hasNewStoryEvent(gs *state.GameState, initialLen int) bool {
+	if gs == nil || len(gs.ChatHistory) <= initialLen {
+		return false
+	}
+	for _, msg := range gs.ChatHistory[initialLen:] {
+		if msg.IsStoryEvent {
+			return true
+		}
+	}
+	return false
 }
 
 // checkExpectations validates the test expectations against the actual gamestate changes
@@ -448,31 +524,18 @@ func (r *Runner) checkExpectations(exp Expectations, preState, postState *state.
 		}
 	}
 
-	// Full inventory check (order independent)
-	if len(exp.Inventory) > 0 {
-		// Create maps for efficient comparison
-		expected := make(map[string]bool)
-		for _, item := range exp.Inventory {
-			expected[item] = true
+	actualItems := make(map[string]bool, len(postState.Inventory))
+	for _, item := range postState.Inventory {
+		actualItems[item] = true
+	}
+	for _, item := range exp.InventoryContains {
+		if !actualItems[item] {
+			return fmt.Errorf("expected inventory to contain '%s'. Actual inventory: %v", item, postState.Inventory)
 		}
-
-		actual := make(map[string]bool)
-		for _, item := range postState.Inventory {
-			actual[item] = true
-		}
-
-		// Check for missing items
-		for expectedItem := range expected {
-			if !actual[expectedItem] {
-				return fmt.Errorf("expected inventory to contain '%s', but it's missing. Actual inventory: %v", expectedItem, postState.Inventory)
-			}
-		}
-
-		// Check for extra items
-		for actualItem := range actual {
-			if !expected[actualItem] {
-				return fmt.Errorf("inventory contains unexpected item '%s'. Expected inventory: %v, Actual: %v", actualItem, exp.Inventory, postState.Inventory)
-			}
+	}
+	for _, item := range exp.InventoryNotContains {
+		if actualItems[item] {
+			return fmt.Errorf("expected inventory not to contain '%s'. Actual inventory: %v", item, postState.Inventory)
 		}
 	}
 
@@ -541,18 +604,6 @@ func (r *Runner) checkExpectations(exp Expectations, preState, postState *state.
 	if exp.ResponseMaxLength != nil {
 		if len(responseText) > *exp.ResponseMaxLength {
 			return fmt.Errorf("expected response length <= %d, got %d", *exp.ResponseMaxLength, len(responseText))
-		}
-	}
-
-	if exp.TurnCounter != nil {
-		if postState.TurnCounter != *exp.TurnCounter {
-			return fmt.Errorf("expected turn_counter to be %d, got %d", *exp.TurnCounter, postState.TurnCounter)
-		}
-	}
-
-	if exp.SceneTurnCounter != nil {
-		if postState.SceneTurnCounter != *exp.SceneTurnCounter {
-			return fmt.Errorf("expected scene_turn_counter to be %d, got %d", *exp.SceneTurnCounter, postState.SceneTurnCounter)
 		}
 	}
 

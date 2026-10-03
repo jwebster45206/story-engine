@@ -1,78 +1,32 @@
 {
-  "name": "Pirate Shipwright to British Docks Scene Transition",
+  "name": "Hire the shipwright",
   "scenario": "pirate.json",
   "seed_game_state": {
     "scene_name": "shipwright",
     "user_location": "sleepy_mermaid",
-    "turn_counter": 8,
-    "scene_turn_counter": 4,
-    "user_inventory": [
-      "cutlass",
-      "spyglass",
-      "lockpicks",
-      "bag of pieces of eight"
-    ],
+    "user_inventory": ["cutlass", "bag of pieces of eight"],
+    "vars": {
+      "ship_repair_ledger_acquired": "true",
+      "shipwright_hired": "false",
+      "rat_attacked": "false"
+    },
     "chat_history": [
       {
         "role": "user",
-        "content": "I examine my ship carefully for damage."
+        "content": "I show the shipwright the ship repair ledger and ask him to repair the Black Pearl."
       },
       {
         "role": "assistant",
-        "content": "You survey The Black Pearl with a captain's eye, noting the loose planks, frayed rigging, and water damage from your recent adventures. The ship needs serious attention before she'll be seaworthy again. You spot the ship repair ledger lying on deck - essential documentation for any proper repairs."
-      },
-      {
-        "role": "user",
-        "content": "I pick up the ship repair ledger and head to the Sleepy Mermaid."
-      },
-      {
-        "role": "assistant",
-        "content": "You secure the ship repair ledger and make your way to the Sleepy Mermaid. The tavern buzzes with the usual crowd of pirates and rogues. In the corner, you spot the gruff shipwright hunched over his ale, sketching ship designs. Calypso tends bar with her usual mysterious smile."
-      },
-      {
-        "role": "user",
-        "content": "I approach the shipwright to discuss my ship's repairs."
-      },
-      {
-        "role": "assistant",
-        "content": "The burly shipwright looks up from his sketches as you approach, his weathered face scowling. 'Aye, what ye be wantin'?' he growls. 'If it's about ship repairs, ye'll need proper documentation and coin. I don't work for free, Captain.'"
-      },
-      {
-        "role": "user",
-        "content": "I show him the ship repair ledger and explain the damage to my ship."
-      },
-      {
-        "role": "assistant",
-        "content": "The shipwright takes the ledger, flipping through its pages with a critical eye. 'Hmph, this be in order,' he grunts. 'The Black Pearl's seen better days, but with the right materials and a fair payment, I can have her shipshape in no time. It'll cost ye 500 gold doubloons to get her seaworthy again.'"
+        "content": "The shipwright flips through the ledger and grunts. 'She's in a bad way. Leave a deposit and I'll start the work. The rest can wait until she's seaworthy.'"
       }
     ]
   },
   "steps": [
     {
-      "name": "offer pieces of eight",
-      "user_prompt": "I swear like a pirate. ",
+      "name": "Pay the deposit",
+      "user_prompt": "I hand the shipwright the bag of pieces of eight and tell him to start the repairs now.",
       "expect": {
-        "scene_name": "shipwright",
-        "user_inventory": [
-          "cutlass",
-          "spyglass",
-          "lockpicks",
-          "bag of pieces of eight"
-        ],
-        "turn_counter": 9
-      }
-    },
-    {
-      "name": "Commission shipwright for repairs",
-      "user_prompt": "Arrgh! I hand him the bag of pieces of eight. \"You can start with this. I'll have the rest by morning. But we need to sail quickly, so please start the repairs now.\"",
-      "expect": {
-        "scene_name": "british_docks",
-        "user_inventory": [
-          "cutlass",
-          "spyglass",
-          "lockpicks"
-        ],
-        "turn_counter": 10
+        "scene_name": "british_docks"
       }
     }
   ]

@@ -4,159 +4,94 @@ Integration tests for the Story Engine that run against a live API and LLM.
 
 ## Quick Start
 
-Start the Story Engine API (defaults to `http://localhost:8080`), then:
+Start the Story Engine API with the scenarios directory loaded (defaults to `http://localhost:8080`), then:
 
 ```bash
 # Full suite (each JSON case once)
-go test -v -tags=integration ./integration/
+go test -tags=integration ./integration/
 
 # One case (subtest name = filename without .json)
-go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1'
+go test -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1'
 
 # Related group (filename prefix)
-go test -v -tags=integration ./integration/ -run 'TestIntegration/space_'
-
-# Repeat a case (flake check)
-go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1' -count=3
+go test -tags=integration ./integration/ -run 'TestIntegration/space_'
 ```
 
-These tests are behind `//go:build integration` and are **not** run by GitHub Actions (`go test ./...` without the tag).
+These tests are behind `//go:build integration` and are not run by `go test ./...` without the tag.
 
-## Overview
+The server people usually run loads `~/Documents/story-engine-scenarios`, not `data/`.
 
-These tests validate:
-- Real LLM integration
-- API endpoint functionality
-- Gamestate persistence and updates
-- Game mechanics (inventory, location changes, variables)
-- Scene transitions and game flow
+## What the suite checks
 
-## Test Structure
+Each case is one mechanic. Assertions are game state, not turn counts and not narrator wording.
 
-### Test Files
-- `cases/` — JSON test case definitions (one feature per file)
-- `runner/` — Test execution framework
-  - `types.go` — Data structures for test definitions
-  - `runner.go` — Core test execution logic
+- Movement, inventory, scene changes, NPC location, and game end
+- Space-disaster scene gates (stay in the scene, then the gate opens)
+- A Dracula story event, checked against the authored prompt
+- A cellar combat roll and the skeleton's strike-back, checked as SSE `attempt` events
 
-### Test Case Format
+## Test case format
 
 ```json
 {
-  "name": "Test Name",
-  "scenario": "scenario.json",
+  "name": "Pick up the ship repair ledger",
+  "scenario": "pirate.json",
   "seed_game_state": {
-    "provider": "sonnet",
-    "scenario": "scenario.json",
-    "location": "Starting Location",
-    "turn_counter": 0,
-    "inventory": ["item1", "item2"],
-    "vars": {
-      "some_flag": "true"
-    },
-    "chat_history": [
-      {
-        "role": "user",
-        "content": "Previous user message"
-      },
-      {
-        "role": "assistant",
-        "content": "Previous assistant response"
-      }
-    ]
+    "scene_name": "shipwright",
+    "user_location": "black_pearl"
   },
   "steps": [
     {
-      "name": "Step Name",
-      "user_prompt": "What the user types",
+      "name": "Read the ledger",
+      "user_prompt": "I pick up the ship repair ledger and read it.",
       "expect": {
-        "location": "Expected Location",
-        "inventory": ["item1", "new_item"],
-        "response_contains": ["expected", "words"],
-        "turn_counter": 1
+        "inventory_contains": ["ship repair ledger"]
       }
     }
   ]
 }
 ```
 
-See `cases/README.md` for seed/step authoring details, including `RESET_GAMESTATE` and `WAIT_FOR_STORY_EVENT`.
+`seed_game_state` uses gamestate field names. Unknown keys fail the load.
+
+`user_prompt` of `RESET_GAMESTATE` restores the seed. `WAIT_FOR_STORY_EVENT` waits for the next queued story event.
+
+### Expectation fields
+
+| Field | Checks |
+| --- | --- |
+| `user_location` | Player location id |
+| `scene_name` | Current scene id |
+| `inventory_contains` | Each item is in inventory |
+| `inventory_not_contains` | Each item is absent |
+| `vars` | Named variables equal these values |
+| `npc_locations` | Named NPCs are at these location ids |
+| `is_ended` | Game over flag |
+| `combat_roll` | A combat `attempt` on this turn and on the strike-back story event |
+| `story_event_contains` | Authored story-event text contains these phrases |
+
+Do not assert `turn_counter` or `scene_turn_counter`. Hit, miss, damage, and hit points are not integration assertions.
 
 ## Configuration
 
-### Command Line Flags
-
 | Flag | Default | Description |
-|------|---------|-------------|
-| `-scenario` | "" | Override scenario for all test cases (e.g. `pirate.json`) |
-| `-err` | `continue` | `continue` (run all steps) or `exit` (stop on first failure) |
-
-Selection is stock `go test -run`. Repeat with `go test -count=N`.
-
-### Scenario Override
-
-The `-scenario` flag tests the same JSON cases against different scenario variants without duplicating files:
-
-```bash
-go test -v -tags=integration ./integration/ -run 'TestIntegration/pirate_scene1' -scenario pirate.json
-```
-
-### Environment Variables
+| --- | --- | --- |
+| `-scenario` | "" | Override scenario for all cases |
+| `-err` | `continue` | `continue` runs remaining steps; `exit` stops the case on the first failure |
 
 | Variable | Default | Description |
-|----------|---------|-------------|
-| `API_BASE_URL` | `http://localhost:8080` | Base URL of the API to test |
-| `TEST_TIMEOUT_SECONDS` | `30` | Timeout per test step in seconds |
+| --- | --- | --- |
+| `API_BASE_URL` | `http://localhost:8080` | API to test |
+| `TEST_TIMEOUT_SECONDS` | `30` | Timeout per step |
 
-```bash
-API_BASE_URL=http://api.example.com:8080 go test -v -tags=integration ./integration/
-TEST_TIMEOUT_SECONDS=60 go test -v -tags=integration ./integration/
-```
+## Flow
 
-## Test Development
+1. `POST /v1/gamestate` creates the session.
+2. `PATCH /v1/gamestate/{id}` applies the seed.
+3. `POST /v1/chat` returns `202` and a request id.
+4. The runner polls `GET /v1/gamestate/{id}` until the turn is applied.
+5. A `combat_roll` step also listens on `GET /v1/events/gamestate/{id}`.
 
-1. Create a new JSON file in `integration/cases/`
-2. Use an existing scenario from `data/scenarios/`
-3. Seed realistic state with minimal chat history
-4. Define steps with specific expectations
-5. Run that file: `go test -v -tags=integration ./integration/ -run 'TestIntegration/<filename>'`
+Cases run sequentially. Each case gets its own gamestate.
 
-### Best Practices
-
-- **Realistic chat history**: Include just enough context for the LLM (2–4 messages)
-- **Specific expectations**: Test only what matters for each step
-- **Scenario consistency**: Use existing scenario data
-- **Descriptive names**: Filename (minus `.json`) is the `go test -run` subtest name
-
-### Expectation Types
-
-| Type | Description | Example |
-|------|-------------|---------|
-| `location` | Exact location match | `"Black Pearl"` |
-| `scene_name` | Current scene | `"shipwright"` |
-| `inventory` | Full inventory (order-independent) | `["sword"]` |
-| `vars` | Variable values | `{"door_open": "true"}` |
-| `npc_locations` | NPC positions | `{"Gibbs": "Black Pearl"}` |
-| `response_contains` | Required text (case-insensitive) | `["ship", "deck"]` |
-| `response_regex` | Regex pattern match | `".*treasure.*map.*"` |
-| `is_ended` | Game completion status | `true` |
-| `turn_counter` | Turn count | `3` |
-
-## Architecture
-
-### Test Flow
-1. **Create**: `POST /v1/gamestate` (immutable scenario and provider)
-2. **Seed**: `PATCH /v1/gamestate/{id}` (location, inventory, etc.)
-3. **Execute**: `POST /v1/chat` (`202` + `request_id`)
-4. **Poll**: Wait for gamestate update via `GET /v1/gamestate/{id}`
-5. **Validate**: Check expectations against updated gamestate and response
-6. **Repeat** for each step
-
-`provider`, `model_name`, and `scenario` are set on create and cannot be changed via PATCH. Optional seed `provider` is passed on create; omit it to use the server default.
-
-Cases run **sequentially**. Each case gets its own gamestate.
-
-### Error Handling
-- `-err continue` (default): remaining steps in a case still run after a failure
-- `-err exit`: stop that case on the first failed step
-- Per-step timeout via `TEST_TIMEOUT_SECONDS`
+PATCH replaces inventory, vars, NPCs, and chat history only when the seeded value is non-empty. An empty inventory list does not clear the PC's starting gear, so item checks use contains and not-contains.

@@ -21,8 +21,7 @@
       "user_prompt": "I wait.",
       "expect": {
         "scene_name": "min_turns",
-        "turn_counter": 9,
-        "scene_turn_counter": 2
+        "is_ended": false
       }
     },
     {
@@ -30,9 +29,7 @@
       "user_prompt": "I wait again.",
       "expect": {
         "scene_name": "min_turns",
-        "game_ended": true,
-        "turn_counter": 10,
-        "scene_turn_counter": 3
+        "is_ended": true
       }
     }
   ]

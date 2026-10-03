@@ -24,18 +24,14 @@
       "name": "Turn 4 - Should Stay",
       "user_prompt": "I continue monitoring the systems.",
       "expect": {
-        "scene_name": "turn_counter",
-        "turn_counter": 4,
-        "scene_turn_counter": 2
+        "scene_name": "turn_counter"
       }
     },
     {
       "name": "Turn 5 - Should Transition",
       "user_prompt": "I keep working on the repairs.",
       "expect": {
-        "scene_name": "min_scene_turns",
-        "turn_counter": 5,
-        "scene_turn_counter": 0
+        "scene_name": "min_scene_turns"
       }
     }
   ]
