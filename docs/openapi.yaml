@@ -24,9 +24,11 @@ paths:
     post:
       summary: Enqueue chat message
       description: |
-        Enqueues a message for the worker. Returns `202` + `request_id`; narration
-        streams on `GET /v1/events/gamestate/{id}` (`request.processing` → `attempt`
-        → `chat.chunk` → `request.completed` or `request.failed`). Max message length 255.
+        Enqueues a message. Returns `202` and `request_id`. Narration arrives on the game's SSE stream.
+
+        - Subscribe to `GET /v1/events/gamestate/{id}` before sending.
+        - Event order: `request.processing`, `attempt`, `chat.chunk`, then `request.completed` or `request.failed`.
+        - `message` max length is 255.
       operationId: sendChatMessage
       tags:
         - Chat
@@ -72,29 +74,23 @@ paths:
     get:
       summary: Subscribe to game events (SSE)
       description: |
-        Long-lived `text/event-stream` for one game. Subscribe before `POST /v1/chat`.
+        SSE stream for one game. Subscribe before `POST /v1/chat` and leave it open for the session.
 
-        Each event is two lines, `event: <type>` then `data: <json>`, ended by a blank line.
-        The JSON is the payload only: no envelope, and no request id. A comment line
-        `: keepalive` is written about every 30 seconds.
+        - Each event is `event: <type>`, then `data: <json>`, then a blank line. The JSON is the payload only.
+        - `: keepalive` about every 30s. Ignore comment lines.
+        - Send `Authorization: Bearer`. Use `fetch`, not `EventSource`.
+        - REST has no CORS headers. A browser needs a same-origin proxy, with buffering off on this path.
 
-        A turn is `connected` (once, when the stream opens), then for each request
-        `request.processing`, zero or more `attempt`, `chat.chunk` until `done`,
-        then `request.completed` or `request.failed`. Payload schemas are
-        `SSEConnected`, `SSERequestProcessing`, `SSEAttempt`, `SSEChatChunk`,
-        `SSERequestCompleted`, and `SSERequestFailed`. `attempt` lines are dice
-        results and are not stored in `chat_history`.
+        Events:
 
-        The reducer saves location, inventory, turn counters, and chat history
-        before `request.completed`. One `GET /v1/gamestate/{id}` after that event
-        is the snapshot. A combat reaction can be queued before completion and
-        then arrive on this same stream as another processing → attempt → chunk →
-        completed cycle, so leave the stream open across completions.
+        - `connected` — once, when the stream opens.
+        - `request.processing` — a request started. Display `user_message`.
+        - `attempt` — a dice line. Not included in `chat_history`.
+        - `chat.chunk` — append `content` until `done` is true.
+        - `request.completed` — the request is done. `GET /v1/gamestate/{id}` once for the updated state.
+        - `request.failed` — the request failed. See `error`.
 
-        The stream requires `Authorization: Bearer`. Browsers cannot use
-        `EventSource` for that header; read the body with `fetch`. Other routes
-        send no CORS headers, so a browser needs a same-origin reverse proxy, with
-        response buffering disabled on this path or chunks stall.
+        Another request, such as a story event, can follow `request.completed` on this same stream.
       operationId: subscribeGameEvents
       tags:
         - Events
@@ -1194,7 +1190,7 @@ components:
 
     SSEConnected:
       type: object
-      description: "Sent once when the stream opens (`event: connected`)."
+      description: Sent once when the stream opens.
       required:
         - game_id
         - message
@@ -1208,7 +1204,7 @@ components:
 
     SSERequestProcessing:
       type: object
-      description: "Worker picked up a queued request (`event: request.processing`)."
+      description: A request has started.
       required:
         - status
         - type
@@ -1221,13 +1217,11 @@ components:
           enum: [chat, story_event]
         user_message:
           type: string
-          description: Line to show. Chat messages already include the PC-name prefix.
+          description: Text to display for this request.
 
     SSEAttempt:
       type: object
-      description: |
-        Dice line for the current request (`event: attempt`). Not stored in `chat_history`.
-        `scope` is the ruling scope (`combat`, `movement`, `all`, and so on). `success` is false for denials.
+      description: Dice line for the current request. Not stored in chat history.
       required:
         - content
         - success
@@ -1243,7 +1237,7 @@ components:
 
     SSEChatChunk:
       type: object
-      description: "Narration fragment (`event: chat.chunk`). Concatenate `content` until `done` is true."
+      description: One piece of the narration. Append `content` until `done` is true.
       required:
         - content
         - done
@@ -1255,9 +1249,7 @@ components:
 
     SSERequestCompleted:
       type: object
-      description: |
-        Request finished (`event: request.completed`). Game state is already saved;
-        follow with one `GET /v1/gamestate/{id}`.
+      description: Request finished. Fetch the gamestate once.
       required:
         - status
         - result
@@ -1280,7 +1272,7 @@ components:
 
     SSERequestFailed:
       type: object
-      description: "Request failed (`event: request.failed`)."
+      description: Request failed.
       required:
         - status
         - error
