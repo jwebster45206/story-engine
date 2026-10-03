@@ -49,3 +49,19 @@ func TestDiscoverCaseFiles(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadTestSuite_RejectsUnknownExpect(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "bad.json")
+	body := []byte(`{
+		"name": "bad",
+		"scenario": "pirate.json",
+		"steps": [{"user_prompt": "hi", "expect": {"turn_counter": 1}}]
+	}`)
+	if err := os.WriteFile(path, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadTestSuite(path); err == nil {
+		t.Fatal("expected unknown expect field to fail")
+	}
+}

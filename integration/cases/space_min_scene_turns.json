@@ -20,18 +20,14 @@
       "name": "Turn 6 Scene Turn 1 - Should Stay (below minimum)",
       "user_prompt": "I wait.",
       "expect": {
-        "scene_name": "min_scene_turns",
-        "turn_counter": 6,
-        "scene_turn_counter": 1
+        "scene_name": "min_scene_turns"
       }
     },
     {
       "name": "Turn 7 Scene Turn 2 - Should Transition (at minimum)",
       "user_prompt": "I wait again.",
       "expect": {
-        "scene_name": "min_turns",
-        "turn_counter": 7,
-        "scene_turn_counter": 0
+        "scene_name": "min_turns"
       }
     }
   ]

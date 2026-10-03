@@ -1,0 +1,24 @@
+{
+  "name": "Cellar skeleton strikes back",
+  "scenario": "pirate.json",
+  "seed_game_state": {
+    "scene_name": "shipwright",
+    "user_location": "sleepy_mermaid_cellar",
+    "chat_history": [
+      {
+        "role": "assistant",
+        "content": "You are in the cellar of the Sleepy Mermaid. A skeleton stands among the barrels, and rats scatter at your boots."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "Attack the skeleton",
+      "user_prompt": "I attack the skeleton with my cutlass.",
+      "expect": {
+        "user_location": "sleepy_mermaid_cellar",
+        "combat_roll": true
+      }
+    }
+  ]
+}

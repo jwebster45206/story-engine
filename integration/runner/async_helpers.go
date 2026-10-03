@@ -1,12 +1,15 @@
 package runner
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 	"uuid"
 
@@ -167,7 +170,7 @@ func PollForApplier(ctx context.Context, client *http.Client, baseURL string, ga
 				return gameState, nil
 			}
 
-			// Also check UpdatedAt timestamp as fallback
+			// Also check UpdatedAt timestamp as a fallback
 			if gameState.UpdatedAt.After(afterChatState.UpdatedAt) {
 				// Wait one more poll cycle so the applier can finish its save
 				time.Sleep(PollInterval)
@@ -179,4 +182,144 @@ func PollForApplier(ctx context.Context, client *http.Client, baseURL string, ga
 			}
 		}
 	}
+}
+
+// attemptWatch records attempt scopes from the game's SSE stream.
+type attemptWatch struct {
+	cancel context.CancelFunc
+	mu     sync.Mutex
+	scopes []string
+}
+
+func (w *attemptWatch) stop() {
+	if w != nil && w.cancel != nil {
+		w.cancel()
+	}
+}
+
+func (w *attemptWatch) combatCount() int {
+	if w == nil {
+		return 0
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	n := 0
+	for _, scope := range w.scopes {
+		if scope == "combat" {
+			n++
+		}
+	}
+	return n
+}
+
+func (w *attemptWatch) add(scope string) {
+	w.mu.Lock()
+	w.scopes = append(w.scopes, scope)
+	w.mu.Unlock()
+}
+
+// watchAttempts subscribes to GET /v1/events/gamestate/{id} and returns once
+// the stream is connected. Call stop when the step is finished.
+func (r *Runner) watchAttempts(parent context.Context, gameStateID uuid.UUID) (*attemptWatch, error) {
+	ctx, cancel := context.WithCancel(parent)
+	w := &attemptWatch{cancel: cancel}
+	ready := make(chan struct{})
+	errc := make(chan error, 1)
+	go func() {
+		err := readAttemptStream(ctx, r.sseClient(), r.BaseURL, gameStateID, w, ready)
+		if err != nil && ctx.Err() == nil {
+			errc <- err
+		}
+	}()
+
+	select {
+	case <-parent.Done():
+		cancel()
+		return nil, parent.Err()
+	case err := <-errc:
+		cancel()
+		return nil, err
+	case <-ready:
+		return w, nil
+	case <-time.After(10 * time.Second):
+		cancel()
+		return nil, fmt.Errorf("timeout waiting for event stream")
+	}
+}
+
+func (r *Runner) sseClient() *http.Client {
+	return &http.Client{Transport: r.Client.Transport}
+}
+
+func readAttemptStream(ctx context.Context, client *http.Client, baseURL string, gameStateID uuid.UUID, watch *attemptWatch, ready chan struct{}) (err error) {
+	url := fmt.Sprintf("%s/v1/events/gamestate/%s", baseURL, gameStateID.String())
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("create event stream request: %w", err)
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Cache-Control", "no-cache")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("connect to event stream: %w", err)
+	}
+	defer func() {
+		closeErr := resp.Body.Close()
+		if err == nil && closeErr != nil && ctx.Err() == nil {
+			err = fmt.Errorf("close event stream: %w", closeErr)
+		}
+	}()
+	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("event stream returned %d", resp.StatusCode)
+		}
+		return fmt.Errorf("event stream returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	var eventType string
+	var dataLine string
+	connected := false
+	for scanner.Scan() {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		line := scanner.Text()
+		if line == "" {
+			if eventType == "connected" && !connected {
+				connected = true
+				close(ready)
+			}
+			if eventType == "attempt" && dataLine != "" {
+				var data map[string]any
+				if err := json.Unmarshal([]byte(dataLine), &data); err != nil {
+					return fmt.Errorf("decode attempt event: %w", err)
+				}
+				scope, _ := data["scope"].(string)
+				watch.add(scope)
+			}
+			eventType = ""
+			dataLine = ""
+			continue
+		}
+		if strings.HasPrefix(line, ":") {
+			continue
+		}
+		if value, ok := strings.CutPrefix(line, "event: "); ok {
+			eventType = value
+			continue
+		}
+		if value, ok := strings.CutPrefix(line, "data: "); ok {
+			dataLine = value
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("read event stream: %w", err)
+	}
+	if !connected {
+		return fmt.Errorf("event stream closed before connect")
+	}
+	return nil
 }
