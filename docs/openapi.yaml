@@ -24,9 +24,11 @@ paths:
     post:
       summary: Enqueue chat message
       description: |
-        Enqueues a message for the worker. Returns `202` + `request_id`; narration
-        streams on `GET /v1/events/gamestate/{id}` (`request.processing` → `chat.chunk`
-        → `request.completed` or `request.failed`). Max message length 255.
+        Enqueues a message. Returns `202` and `request_id`. Narration arrives on the game's SSE stream.
+
+        - Subscribe to `GET /v1/events/gamestate/{id}` before sending.
+        - Event order: `request.processing`, `attempt`, `chat.chunk`, then `request.completed` or `request.failed`.
+        - `message` max length is 255.
       operationId: sendChatMessage
       tags:
         - Chat
@@ -72,9 +74,23 @@ paths:
     get:
       summary: Subscribe to game events (SSE)
       description: |
-        SSE stream for a game. Events: `connected`, `request.processing`,
-        `chat.chunk` (`content`, `done`), `request.completed` (`result.message`),
-        `request.failed` (`error`). Keepalives every ~30s. Subscribe before chat.
+        SSE stream for one game. Subscribe before `POST /v1/chat` and leave it open for the session.
+
+        - Each event is `event: <type>`, then `data: <json>`, then a blank line. The JSON is the payload only.
+        - `: keepalive` about every 30s. Ignore comment lines.
+        - Send `Authorization: Bearer`. Use `fetch`, not `EventSource`.
+        - REST has no CORS headers. A browser needs a same-origin proxy, with buffering off on this path.
+
+        Events:
+
+        - `connected` — once, when the stream opens.
+        - `request.processing` — a request started. Display `user_message`.
+        - `attempt` — a dice line. Not included in `chat_history`.
+        - `chat.chunk` — append `content` until `done` is true.
+        - `request.completed` — the request is done. `GET /v1/gamestate/{id}` once for the updated state.
+        - `request.failed` — the request failed. See `error`.
+
+        Another request, such as a story event, can follow `request.completed` on this same stream.
       operationId: subscribeGameEvents
       tags:
         - Events
@@ -92,7 +108,15 @@ paths:
           content:
             text/event-stream:
               schema:
-                type: string
+                description: |
+                  One payload per SSE event. The type is the `event:` field, not a JSON property.
+                oneOf:
+                  - $ref: '#/components/schemas/SSEConnected'
+                  - $ref: '#/components/schemas/SSERequestProcessing'
+                  - $ref: '#/components/schemas/SSEAttempt'
+                  - $ref: '#/components/schemas/SSEChatChunk'
+                  - $ref: '#/components/schemas/SSERequestCompleted'
+                  - $ref: '#/components/schemas/SSERequestFailed'
         '400':
           description: Invalid path or ID
           content:
@@ -1164,6 +1188,101 @@ components:
         model:
           type: string
 
+    SSEConnected:
+      type: object
+      description: Sent once when the stream opens.
+      required:
+        - game_id
+        - message
+      properties:
+        game_id:
+          type: string
+          format: uuid
+        message:
+          type: string
+          example: Connected to event stream
+
+    SSERequestProcessing:
+      type: object
+      description: A request has started.
+      required:
+        - status
+        - type
+      properties:
+        status:
+          type: string
+          enum: [processing]
+        type:
+          type: string
+          enum: [chat, story_event]
+        user_message:
+          type: string
+          description: Text to display for this request.
+
+    SSEAttempt:
+      type: object
+      description: Dice line for the current request. Not stored in chat history.
+      required:
+        - content
+        - success
+        - scope
+      properties:
+        content:
+          type: string
+        success:
+          type: boolean
+        scope:
+          type: string
+          example: combat
+
+    SSEChatChunk:
+      type: object
+      description: One piece of the narration. Append `content` until `done` is true.
+      required:
+        - content
+        - done
+      properties:
+        content:
+          type: string
+        done:
+          type: boolean
+
+    SSERequestCompleted:
+      type: object
+      description: Request finished. Fetch the gamestate once.
+      required:
+        - status
+        - result
+      properties:
+        status:
+          type: string
+          enum: [completed]
+        result:
+          type: object
+          required:
+            - message
+            - duration_ms
+          properties:
+            message:
+              type: string
+              description: Full narration for this request.
+            duration_ms:
+              type: integer
+              format: int64
+
+    SSERequestFailed:
+      type: object
+      description: Request failed.
+      required:
+        - status
+        - error
+      properties:
+        status:
+          type: string
+          enum: [failed]
+        error:
+          type: string
+
     ErrorResponse:
       type: object
       required:
@@ -1178,7 +1297,7 @@ tags:
   - name: Chat
     description: Async chat enqueue
   - name: Events
-    description: SSE narration and status
+    description: SSE narration, dice attempts, and request status
   - name: Game State
     description: Game state management
   - name: Scenarios
