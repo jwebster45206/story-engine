@@ -13,7 +13,7 @@ Closed-world text adventure game: you chat, an LLM narrates, and the engine keep
 
 ## Architecture
 
-Story Engine exposes a REST API. Clients create a game session, subscribe to Server-Sent Events (SSE), and send chat turns. Narrative responses are streamed over SSE. 
+Story Engine exposes a REST API. Clients create a game session, subscribe to Server-Sent Events (SSE), and send chat turns. Narrative responses are streamed over SSE. A browser client needs a same-origin reverse proxy: REST sends no CORS headers, and the event stream requires `Authorization`, which `EventSource` cannot set.
 
 Redis holds game session state, chat request queue, per-game locks, and a pub/sub channel from worker to API. 
 
@@ -27,7 +27,7 @@ An optional console TUI lives under `cmd/console`.
 
 **Chat loop**
 1. `POST /v1/chat` — enqueue a player message (`202` + `request_id`).
-2. A referee call (backend model) rules whether the attempt is allowed, then narration arrives on the SSE stream (`request.processing` → `chat.chunk` → `request.completed` / `request.failed`).
+2. A referee call (backend model) rules whether the attempt is allowed, then narration arrives on the SSE stream (`request.processing` → `attempt` → `chat.chunk` → `request.completed` / `request.failed`). Dice lines (`attempt`) are not stored in chat history.
 3. Structured game state (location, inventory, vars, scenes, …) updates in the background.
 4. Engine-driven story events are also queued and streamed over the same SSE channel.
 
