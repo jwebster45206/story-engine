@@ -23,7 +23,7 @@ const strictLocations = `When narrating what the player sees, draw from the WORL
 2. **NPCs.** If characters are present at the location, include them in the scene — what they're doing, how they react. Don't ignore them.
 3. **Items.** Mention visible items when it feels natural, but you may also let the player discover them through exploration. Not every item needs to be announced on arrival.`
 
-const strictMonsters = `Monsters are listed in the WORLD STATE only when present at the player's location. If combat occurs, resolve it dramatically based on the listed AC/HP; defeated monsters (HP 0) are removed by the engine.`
+const strictMonsters = `Monsters are listed in the WORLD STATE only when present at the player's location. The engine rolls every attack; narrate only the outcomes it reports, using the listed AC/HP and actions. Defeated monsters (HP 0) are removed by the engine.`
 
 const strictRefereeMovement = `- The player may only travel listed exits in current_location.
 - Blocked exits are not usable.

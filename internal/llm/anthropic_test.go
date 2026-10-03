@@ -12,6 +12,7 @@ import (
 
 	"github.com/jwebster45206/story-engine/internal/config"
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 )
 
 func anthropicPC() *config.ProviderConfig {
@@ -186,7 +187,7 @@ func TestAnthropicService_DeltaUpdate_ToolUse(t *testing.T) {
 			t.Error("expected tools in delta request")
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"tool_use","id":"t1","name":"apply_changes","input":{"user_location":"dock","scene_change":null,"item_events":[],"npc_events":[],"set_vars":{},"game_ended":false}}],"model":"claude-backend","stop_reason":"tool_use","usage":{"input_tokens":1,"output_tokens":1}}`))
+		_, _ = w.Write([]byte(`{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"tool_use","id":"t1","name":"apply_changes","input":{"user_location":"dock","scene_change":null,"item_events":[],"npc_events":[],"combat_actions":[{"subject":"Giant Rat","object":"Felix","action_id":"bite"}],"set_vars":{},"game_ended":false}}],"model":"claude-backend","stop_reason":"tool_use","usage":{"input_tokens":1,"output_tokens":1}}`))
 	}))
 	defer server.Close()
 
@@ -195,6 +196,9 @@ func TestAnthropicService_DeltaUpdate_ToolUse(t *testing.T) {
 	delta, usage, err := svc.DeltaUpdate(context.Background(), []chat.ChatMessage{{Role: chat.ChatRoleUser, Content: "update"}})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(delta.CombatActions) != 1 || delta.CombatActions[0] != (conditionals.CombatAction{Subject: "Giant Rat", Object: "Felix", ActionID: "bite"}) {
+		t.Fatalf("combat_actions = %#v", delta.CombatActions)
 	}
 	if usage.Model != "claude-backend" {
 		t.Fatalf("model = %q", usage.Model)

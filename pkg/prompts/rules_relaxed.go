@@ -23,7 +23,7 @@ const relaxedLocations = `When narrating what the player sees, draw from the WOR
 2. **NPCs.** If characters are present at the location, include them in the scene — what they're doing, how they react. Don't ignore them.
 3. **Items.** Mention visible items when it feels natural. Not every item needs to be announced on arrival.`
 
-const relaxedMonsters = `Monsters listed in the WORLD STATE are authoritative for combat stats (AC/HP); defeated monsters (HP 0) are removed by the engine. Resolve encounters dramatically and consistently with the tone of the scenario.`
+const relaxedMonsters = `Monsters listed in the WORLD STATE are authoritative for combat stats (AC/HP) and actions; defeated monsters (HP 0) are removed by the engine. The engine rolls every attack; narrate the outcomes it reports dramatically and consistently with the tone of the scenario.`
 
 const relaxedRefereeMovement = `- Known exits are the obvious paths; other directions may be allowed.
 - Blocked exits are soft obstacles; a plausible attempt to pass them may be allowed.`

@@ -9,6 +9,7 @@ import (
 	"github.com/jwebster45206/d20"
 	"github.com/jwebster45206/d20/vocab"
 	"github.com/jwebster45206/story-engine/pkg/chat"
+	"github.com/jwebster45206/story-engine/pkg/conditionals"
 	"github.com/jwebster45206/story-engine/pkg/state"
 )
 
@@ -75,68 +76,89 @@ func (p *ChatOrchestrator) resolveAttempts(gs *state.GameState, ruling *chat.Rul
 	}
 }
 
-func pendingCombatReaction(gs *state.GameState, ruling *chat.Ruling) *chat.Ruling {
-	if ruling == nil || gs == nil || !ruling.Allowed || ruling.Scope != chat.RulingScopeCombat {
-		return nil
+// isCombatResolution reports whether req is a queued monster or NPC action.
+// Its narration describes that action, so the reducer must not act on it
+// again or every attack would queue the next.
+func isCombatResolution(req chat.ChatRequest) bool {
+	return req.IsStoryEvent && req.Ruling != nil && req.Ruling.Scope == chat.RulingScopeCombat
+}
+
+// combatActionRuling turns a reducer combat action into a pre-resolved
+// ruling. It returns nil when the subject is the PC, cannot act, or has no
+// usable action, or when the target is not present. An unknown action_id
+// falls back to the subject's lowest sorted attack. The queued prompt and
+// the later attempt both use the returned action, so the narrator sees the
+// same one.
+func combatActionRuling(gs *state.GameState, a conditionals.CombatAction) (ruling *chat.Ruling, actionName string) {
+	if gs == nil {
+		return nil, ""
 	}
-	if !ruling.IsPCSubject(gs.PCName()) {
-		return nil
+	subject, ok := gs.FindCombatant(a.Subject)
+	if !ok || subject.PC != nil || subject.Stats == nil {
+		return nil, ""
 	}
-	obj := strings.TrimSpace(ruling.Object)
-	if obj == "" || !actionHasEffect(gs, ruling) {
-		return nil
+	target, ok := combatActionTarget(gs, a.Object)
+	if !ok || strings.EqualFold(target, subject.Display) {
+		return nil, ""
+	}
+	actor, err := subject.Stats.ToActor(subject.Display, subject.Display)
+	if err != nil {
+		return nil, ""
+	}
+	action := chosenAction(actor, a.ActionID)
+	if action == nil {
+		return nil, ""
+	}
+	actionName = action.Name
+	if actionName == "" {
+		actionName = action.ID
 	}
 	return new(chat.Ruling{
-		Allowed: true,
-		Scope:   chat.RulingScopeCombat,
-		Subject: obj,
-		Object:  gs.PCName(),
-	})
+		Allowed:  true,
+		Scope:    chat.RulingScopeCombat,
+		Subject:  subject.Display,
+		Object:   target,
+		ActionID: action.ID,
+	}), actionName
 }
 
-func actionHasEffect(gs *state.GameState, ruling *chat.Ruling) bool {
-	if gs == nil || ruling == nil {
-		return false
+// combatActionTarget resolves the target display name. The PC is always a
+// valid target, even without stats; the attempt then rolls against defaultDC.
+func combatActionTarget(gs *state.GameState, name string) (string, bool) {
+	pcName := gs.PCName()
+	name = strings.TrimSpace(name)
+	if name == "" || strings.EqualFold(name, "PC") || strings.EqualFold(name, pcName) {
+		return pcName, true
 	}
-	name := ruling.ActorName(gs.PCName())
 	c, ok := gs.FindCombatant(name)
-	if !ok || c.Stats == nil {
-		return false
+	if !ok {
+		return "", false
 	}
-	actor, err := c.Stats.ToActor(name, name)
-	if err != nil {
-		return false
-	}
-	action := chosenAction(actor, ruling.ActionID)
-	return action != nil && action.Effect.Count > 0
+	return c.Display, true
 }
 
-// reactionAction is the attack a counterattack will roll. The queued prompt
-// and the later attempt both use it, so the narrator sees the same action.
-func reactionAction(gs *state.GameState, actorName string) (id, name string) {
-	if gs == nil {
-		return "", ""
+// declinedStrikeBack returns the name of the actor the PC attacked when that
+// actor can still act but got no combat action from the reducer.
+func declinedStrikeBack(gs *state.GameState, ruling *chat.Ruling, actions []conditionals.CombatAction) string {
+	if gs == nil || ruling == nil || !ruling.Allowed || ruling.Scope != chat.RulingScopeCombat {
+		return ""
 	}
-	c, ok := gs.FindCombatant(actorName)
-	if !ok || c.Stats == nil {
-		return "", ""
+	if !ruling.IsPCSubject(gs.PCName()) {
+		return ""
 	}
-	actor, err := c.Stats.ToActor(actorName, actorName)
-	if err != nil {
-		return "", ""
+	target, ok := gs.FindCombatant(ruling.Object)
+	if !ok || target.PC != nil {
+		return ""
 	}
-	action := chosenAction(actor, "")
-	if action == nil {
-		return "", ""
+	for _, a := range actions {
+		if c, ok := gs.FindCombatant(a.Subject); ok && c.Stats == target.Stats {
+			return ""
+		}
 	}
-	name = action.Name
-	if name == "" {
-		name = action.ID
-	}
-	return action.ID, name
+	return target.Display
 }
 
-func reactionPrompt(actor, target, actionName string) string {
+func combatActionPrompt(actor, target, actionName string) string {
 	if actionName == "" {
 		return fmt.Sprintf("%s strikes %s.", actor, target)
 	}

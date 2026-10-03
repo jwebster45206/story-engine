@@ -126,6 +126,35 @@ func TestPromptState_ToString_WithNPCsHere(t *testing.T) {
 	requireNotContains(t, result, "<npcs_elsewhere>")
 }
 
+func TestPromptState_ToString_CombatActions(t *testing.T) {
+	longsword := map[string]character.Action{"longsword": {Name: "Longsword", Type: "attack"}}
+	ps := &PromptState{
+		Location:       "tavern",
+		WorldLocations: map[string]scenario.Location{"tavern": {Name: "The Tavern"}},
+		NPCs: map[string]*character.NPC{
+			"guard":   {Name: "Guard Captain", Disposition: "hostile", Location: "tavern", AC: 16, HP: 12, MaxHP: 20, Actions: longsword},
+			"barkeep": {Name: "Barkeep", Disposition: "friendly", Location: "tavern"},
+			"thug":    {Name: "Thug", Location: "tavern", HP: 0, MaxHP: 8, IsDefeated: true, Actions: longsword},
+		},
+		Monsters: map[string]character.Monster{
+			"rat_1": {ID: "rat_1", Name: "Giant Rat", AC: 12, HP: 4, MaxHP: 4, Actions: map[string]character.Action{
+				"claw": {Type: "attack"},
+				"bite": {Name: "Bite", Type: "attack"},
+			}},
+		},
+	}
+
+	narrator := ps.ToString(nil)
+	requireContains(t, narrator, "- Guard Captain (hostile, AC: 16, HP: 12/20, actions: Longsword)\n")
+	requireContains(t, narrator, "- Barkeep\n")
+	requireContains(t, narrator, "- Thug (knocked out)\n")
+	requireContains(t, narrator, "- Giant Rat (AC: 12, HP: 4/4, actions: Bite, claw)\n")
+
+	slim := ps.ToSlimString()
+	requireNotContains(t, slim, "actions:")
+	requireContains(t, slim, "NPCs here: ")
+}
+
 func TestPromptState_KnockedOutNPC(t *testing.T) {
 	ps := &PromptState{
 		Location: "tavern",
